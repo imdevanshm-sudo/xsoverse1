@@ -2,6 +2,7 @@ export type DeviceTier = 'high' | 'low';
 
 export interface CanvasQualityProfile {
   tier: DeviceTier;
+  prefer2d: boolean;
   dpr: number | [number, number];
   shadows: boolean;
   antialias: boolean;
@@ -38,6 +39,30 @@ function readDeviceMemory(): number | undefined {
   }
 }
 
+/** True when the device can create a usable WebGL context. */
+export function supportsWebGL(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const canvas = document.createElement('canvas');
+    const gl =
+      canvas.getContext('webgl2', {
+        failIfMajorPerformanceCaveat: true,
+      }) ||
+      canvas.getContext('webgl', {
+        failIfMajorPerformanceCaveat: true,
+      }) ||
+      canvas.getContext('experimental-webgl');
+    if (!gl) return false;
+    const lose = (gl as WebGLRenderingContext).getExtension(
+      'WEBGL_lose_context',
+    );
+    lose?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Heuristic for older / constrained mobile GPUs and data-saver modes. */
 export function detectDeviceTier(): DeviceTier {
   if (typeof window === 'undefined') return 'high';
@@ -66,14 +91,29 @@ export function getCanvasQualityProfile(
   const reducedMotion =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const memory = typeof window !== 'undefined' ? readDeviceMemory() : undefined;
+  const cores =
+    typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 4 : 8;
+  const webglOk = typeof window !== 'undefined' ? supportsWebGL() : true;
+  const mobileLike =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(pointer: coarse)').matches &&
+    window.matchMedia('(max-width: 768px)').matches;
+  const prefer2d =
+    !webglOk ||
+    readSaveData() ||
+    (memory !== undefined && memory <= 2) ||
+    cores <= 2 ||
+    (tier === 'low' && mobileLike);
 
   if (tier === 'low') {
     return {
       tier,
+      prefer2d,
       dpr: 1,
       shadows: false,
       antialias: false,
-      powerPreference: 'low-power',
+      powerPreference: 'default',
       float: false,
       contactShadows: false,
       presentationControls: !reducedMotion,
@@ -88,6 +128,7 @@ export function getCanvasQualityProfile(
 
   return {
     tier,
+    prefer2d,
     dpr: [1, 1.5],
     shadows: true,
     antialias: true,

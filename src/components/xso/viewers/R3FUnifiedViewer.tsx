@@ -209,8 +209,7 @@ export function R3FUnifiedViewer({
           antialias: quality.antialias,
           alpha: false,
           powerPreference: quality.powerPreference,
-          stencil: false,
-          depth: true,
+          failIfMajorPerformanceCaveat: false,
         }}
         performance={{ min: quality.tier === 'low' ? 0.35 : 0.6 }}
       >
