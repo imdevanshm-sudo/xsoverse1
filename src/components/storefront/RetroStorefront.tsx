@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Monitor, MonitorOff } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -12,6 +12,15 @@ import { ConsoleBezel } from '@/components/storefront/ConsoleBezel';
 import { ConsoleControls } from '@/components/storefront/ConsoleControls';
 import { PressStartButton } from '@/components/storefront/PressStartButton';
 
+function preferCrtOff(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+    (window.matchMedia('(pointer: coarse)').matches &&
+      window.matchMedia('(max-width: 768px)').matches)
+  );
+}
+
 export function RetroStorefront() {
   const router = useRouter();
   const giftStyle = useXsoStore((s) => s.giftStyle);
@@ -19,6 +28,10 @@ export function RetroStorefront() {
   const [crtOn, setCrtOn] = useState(true);
   const [booting, setBooting] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (preferCrtOff()) setCrtOn(false);
+  }, []);
 
   const selectCartridge = useCallback(
     (id: GiftStyle) => {

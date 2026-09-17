@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import type { CartridgeSpec } from '@/lib/cartridges';
@@ -19,6 +19,15 @@ export const GameCartridge = memo(function GameCartridge({
   onSelect,
   index,
 }: GameCartridgeProps) {
+  const [liteMotion, setLiteMotion] = useState(false);
+
+  useEffect(() => {
+    setLiteMotion(
+      window.matchMedia('(pointer: coarse)').matches ||
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    );
+  }, []);
+
   return (
     <motion.button
       type="button"
@@ -32,7 +41,11 @@ export const GameCartridge = memo(function GameCartridge({
         y: selected ? -8 : 0,
         scale: selected ? 1.04 : 1,
       }}
-      whileHover={{ y: selected ? -8 : -4, scale: selected ? 1.04 : 1.02 }}
+      whileHover={
+        liteMotion
+          ? undefined
+          : { y: selected ? -8 : -4, scale: selected ? 1.04 : 1.02 }
+      }
       whileTap={{ scale: 0.98 }}
       transition={XSO_MOTION.select}
       style={{ transitionDelay: `${index * 20}ms` }}
@@ -97,14 +110,20 @@ export const GameCartridge = memo(function GameCartridge({
           <span className="h-2 w-2 rounded-full bg-[#1a1e24] shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]" />
         </div>
 
-        {selected && (
-          <motion.div
-            layoutId="cart-accent"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-1"
-            style={{ backgroundColor: cartridge.accent }}
-            transition={XSO_MOTION.select}
-          />
-        )}
+        {selected &&
+          (liteMotion ? (
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-1"
+              style={{ backgroundColor: cartridge.accent }}
+            />
+          ) : (
+            <motion.div
+              layoutId="cart-accent"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-1"
+              style={{ backgroundColor: cartridge.accent }}
+              transition={XSO_MOTION.select}
+            />
+          ))}
       </div>
 
       <span

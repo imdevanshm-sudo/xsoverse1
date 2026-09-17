@@ -65,7 +65,7 @@ export function ImmersivePreview({ lockedStyle }: ImmersivePreviewProps) {
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50">
-        <div className="pointer-events-auto border-t border-white/10 bg-[#0f1319]/95 shadow-[0_-16px_48px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <div className="pointer-events-auto border-t border-white/10 bg-[#0f1319] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] sm:bg-[#0f1319]/95 sm:backdrop-blur-xl">
           <div className="mx-auto flex max-w-lg flex-col gap-2 px-4 py-3.5 sm:px-5">
             <Link
               href={`/studio?${styleQuery(lockedStyle)}`}

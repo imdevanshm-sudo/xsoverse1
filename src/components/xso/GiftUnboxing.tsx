@@ -100,32 +100,26 @@ export function GiftUnboxing({ giftId }: { giftId: string }) {
       )}
 
       <PhoneFrame>
-        <motion.div
-          className="absolute inset-0"
-          initial={false}
-          animate={{
-            opacity: isUnwrapped ? 1 : 0.18,
-            scale: isUnwrapped ? 1 : 0.965,
-          }}
-          transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-          aria-hidden={!isUnwrapped}
-          style={{ willChange: 'transform, opacity' }}
-        >
-          <XsoViewer data={data} contained={false} />
-          {isUnwrapped && (
-            <motion.p
-              className="pointer-events-none absolute bottom-16 left-4 z-30 rounded-full border border-white/10 bg-black/55 px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-white/60 backdrop-blur-md"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              Handcrafted for {data.customerName} · {shortCode(giftId)}
-            </motion.p>
-          )}
-        </motion.div>
-
         <AnimatePresence>
-          {!isUnwrapped && (
+          {isUnwrapped ? (
+            <motion.div
+              key="souvenir"
+              className="absolute inset-0"
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <XsoViewer data={data} contained={false} />
+              <motion.p
+                className="pointer-events-none absolute bottom-16 left-4 z-30 rounded-full border border-white/10 bg-black/80 px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-white/60"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                Handcrafted for {data.customerName} · {shortCode(giftId)}
+              </motion.p>
+            </motion.div>
+          ) : (
             <GiftWrap
               key="gift-wrap"
               data={data}

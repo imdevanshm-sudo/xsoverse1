@@ -24,6 +24,7 @@ export function ScratchReveal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
+  const sampleTick = useRef(0);
   const [progress, setProgress] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [spark, setSpark] = useState<{ x: number; y: number; id: number }[]>(
@@ -36,7 +37,7 @@ export function ScratchReveal({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const rect = canvas.getBoundingClientRect();
     canvas.width = Math.max(1, Math.floor(rect.width * dpr));
     canvas.height = Math.max(1, Math.floor(rect.height * dpr));
@@ -56,12 +57,13 @@ export function ScratchReveal({
 
     // Specular streaks
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    for (let i = -h; i < w + h; i += 10) {
+    for (let i = -h; i < w + h; i += 14) {
       ctx.fillRect(i, 0, 3, h);
     }
 
-    // Micro grit
-    for (let i = 0; i < 900; i += 1) {
+    // Micro grit — lighter on small / low-DPR canvases
+    const grit = Math.min(900, Math.floor((w * h) / 8));
+    for (let i = 0; i < grit; i += 1) {
       const x = Math.random() * w;
       const y = Math.random() * h;
       ctx.fillStyle =
@@ -93,7 +95,7 @@ export function ScratchReveal({
   const measureCleared = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
     const sample = ctx.getImageData(0, 0, canvas.width, canvas.height);
     let cleared = 0;
-    const step = 16;
+    const step = canvas.width * canvas.height > 180_000 ? 32 : 16;
     for (let i = 3; i < sample.data.length; i += 4 * step) {
       if (sample.data[i] < 24) cleared += 1;
     }
@@ -135,9 +137,6 @@ export function ScratchReveal({
 
     last.current = { x, y };
 
-    const ratio = measureCleared(ctx, canvas);
-    setProgress(Math.min(1, ratio / REVEAL_RATIO));
-
     if (Math.random() > 0.72) {
       const id = Date.now() + Math.random();
       setSpark((prev) => [...prev.slice(-8), { x, y, id }]);
@@ -145,6 +144,12 @@ export function ScratchReveal({
         setSpark((prev) => prev.filter((s) => s.id !== id));
       }, 420);
     }
+
+    sampleTick.current += 1;
+    if (sampleTick.current % 4 !== 0) return;
+
+    const ratio = measureCleared(ctx, canvas);
+    setProgress(Math.min(1, ratio / REVEAL_RATIO));
 
     if (ratio > REVEAL_RATIO) {
       ctx.globalCompositeOperation = 'source-over';

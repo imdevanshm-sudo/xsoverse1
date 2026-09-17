@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import {
   Courier_Prime,
   Caveat,
@@ -12,6 +12,7 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-space-grotesk',
   display: 'swap',
+  preload: true,
 });
 
 const pressStart = Press_Start_2P({
@@ -19,6 +20,7 @@ const pressStart = Press_Start_2P({
   weight: '400',
   variable: '--font-press-start',
   display: 'swap',
+  preload: false,
 });
 
 const spaceMono = Space_Mono({
@@ -26,6 +28,7 @@ const spaceMono = Space_Mono({
   weight: ['400', '700'],
   variable: '--font-space-mono',
   display: 'swap',
+  preload: false,
 });
 
 const courierPrime = Courier_Prime({
@@ -33,19 +36,28 @@ const courierPrime = Courier_Prime({
   weight: ['400', '700'],
   variable: '--font-courier-prime',
   display: 'swap',
+  preload: false,
 });
 
 const caveat = Caveat({
   subsets: ['latin'],
-  weight: ['400', '600', '700'],
+  weight: ['400', '700'],
   variable: '--font-caveat',
   display: 'swap',
+  preload: false,
 });
 
 export const metadata: Metadata = {
   title: 'XSO · Retro Souvenir Console',
   description:
     'Choose your cartridge and build a one-of-one XSO souvenir — Loop, Rewind, Scrapbook, Accordion, or Movie Box.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#1a1e24',
 };
 
 export default function RootLayout({

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame, useLoader } from '@react-three/fiber';
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import {
   Center,
   ContactShadows,
@@ -19,6 +19,11 @@ import {
 } from 'three';
 import type { GiftStyle, XsoData } from '@/types/xso';
 import { buildMemoryTextureUrls } from '@/lib/loopTextures';
+import { useDeviceQuality } from '@/hooks/useDeviceQuality';
+import {
+  QualityProvider,
+  useQuality,
+} from '@/components/xso/viewers/QualityContext';
 import { ScratchReveal } from '@/components/xso/paper/ScratchReveal';
 import {
   CamcorderTimestamp,
@@ -91,6 +96,7 @@ export function R3FUnifiedViewer({
   data,
   initialSide = 0,
 }: R3FUnifiedViewerProps) {
+  const quality = useDeviceQuality();
   const [action, setAction] = useState(0);
   const [inspectedScrapbook, setInspectedScrapbook] = useState<number | null>(
     null,
@@ -191,61 +197,56 @@ export function R3FUnifiedViewer({
       aria-label={`3D ${data.giftStyle} souvenir`}
     >
       <Canvas
-        key={data.giftStyle}
+        key={`${data.giftStyle}-${quality.tier}`}
         style={{
           pointerEvents: inspectedScrapbook === null ? 'auto' : 'none',
         }}
-        shadows
-        dpr={[1, 1.5]}
+        shadows={quality.shadows}
+        dpr={quality.dpr}
+        frameloop="always"
         camera={{ position: [0, 0.15, 11], fov: 40 }}
         gl={{
-          antialias: true,
+          antialias: quality.antialias,
           alpha: false,
-          powerPreference: 'high-performance',
+          powerPreference: quality.powerPreference,
+          stencil: false,
+          depth: true,
         }}
-        performance={{ min: 0.6 }}
+        performance={{ min: quality.tier === 'low' ? 0.35 : 0.6 }}
       >
-        <color attach="background" args={['#0d0f12']} />
-        <fog attach="fog" args={['#0d0f12', 10, 18]} />
-        <StudioLights />
-        <DeskSurface />
+        <QualityProvider value={quality}>
+          <PauseWhenHidden />
+          <color attach="background" args={['#0d0f12']} />
+          {quality.fog ? (
+            <fog attach="fog" args={['#0d0f12', 10, 18]} />
+          ) : null}
+          <StudioLights />
+          <DeskSurface />
 
-        <PresentationControls
-          cursor
-          snap
-          speed={1.15}
-          zoom={0.92}
-          rotation={[0, 0, 0]}
-          polar={[-0.18, 0.22]}
-          azimuth={[-0.32, 0.32]}
-        >
-          <Float
-            speed={1.35}
-            rotationIntensity={0.07}
-            floatIntensity={0.12}
-            floatingRange={[-0.04, 0.04]}
-          >
-            <Center>
-              <SouvenirScene
-                key={data.giftStyle}
-                data={data}
-                action={action}
-                initialSide={initialSide}
-                onInspectScrapbook={setInspectedScrapbook}
-              />
-            </Center>
-          </Float>
-        </PresentationControls>
+          <SouvenirStage
+            data={data}
+            action={action}
+            initialSide={initialSide}
+            onInspectScrapbook={setInspectedScrapbook}
+          />
 
-        <ContactShadows
-          position={[0, -3.05, 0]}
-          opacity={0.68}
-          scale={11}
-          blur={3.2}
-          far={5.5}
-          resolution={512}
-          color="#050506"
-        />
+          {quality.contactShadows ? (
+            <ContactShadows
+              position={[0, -3.05, 0]}
+              opacity={0.68}
+              scale={11}
+              blur={2.4}
+              far={5.5}
+              resolution={512}
+              color="#050506"
+            />
+          ) : (
+            <mesh position={[0, -3.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[3.2, 24]} />
+              <meshBasicMaterial color="#050506" transparent opacity={0.45} />
+            </mesh>
+          )}
+        </QualityProvider>
       </Canvas>
 
       <div
@@ -270,11 +271,15 @@ export function R3FUnifiedViewer({
           Postcard {Math.min(4, action + 1)} of 4
         </p>
       )}
-      {isMoviebox ? <ProjectorBeamOverlay /> : null}
+      {isMoviebox && quality.softOverlays ? (
+        <ProjectorBeamOverlay />
+      ) : null}
       {isMoviebox ? <FilmFrameCounter frame={movieFrame} /> : null}
       {isAccordion && (
         <motion.div
-          className="absolute right-3 top-[42%] z-20 flex h-36 w-9 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-full border border-[#c4a882]/25 bg-[#2a221c]/55 backdrop-blur-sm active:cursor-grabbing"
+          className={`absolute right-3 top-[42%] z-20 flex h-36 w-9 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-full border border-[#c4a882]/25 bg-[#2a221c]/90 active:cursor-grabbing ${
+            quality.softOverlays ? 'backdrop-blur-sm' : ''
+          }`}
           drag="y"
           dragConstraints={{ top: 0, bottom: 0 }}
           dragElastic={0.7}
@@ -364,7 +369,9 @@ export function R3FUnifiedViewer({
               ? `absolute bottom-4 right-4 z-20 flex min-h-12 touch-manipulation select-none items-center justify-center rounded-[14px] border border-white/20 px-5 py-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#f2efe8] ${
                   pressing ? 'translate-y-1' : ''
                 }`
-              : 'absolute bottom-4 right-4 z-20 flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/70 px-4 py-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_24px_rgba(0,0,0,.45)] backdrop-blur-md'
+              : `absolute bottom-4 right-4 z-20 flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/85 px-4 py-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_24px_rgba(0,0,0,.45)] ${
+                  quality.softOverlays ? 'backdrop-blur-md' : ''
+                }`
           }
           style={
             isLoop
@@ -405,6 +412,78 @@ export function R3FUnifiedViewer({
         )}
       </AnimatePresence>
     </section>
+  );
+}
+
+function PauseWhenHidden() {
+  const set = useThree((state) => state.set);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      set({
+        frameloop: document.visibilityState === 'hidden' ? 'never' : 'always',
+      });
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [set]);
+
+  return null;
+}
+
+function SouvenirStage({
+  data,
+  action,
+  initialSide,
+  onInspectScrapbook,
+}: {
+  data: XsoData;
+  action: number;
+  initialSide: number;
+  onInspectScrapbook: (index: number) => void;
+}) {
+  const quality = useQuality();
+  const scene = (
+    <Center>
+      <SouvenirScene
+        key={data.giftStyle}
+        data={data}
+        action={action}
+        initialSide={initialSide}
+        onInspectScrapbook={onInspectScrapbook}
+      />
+    </Center>
+  );
+
+  const floated = quality.float ? (
+    <Float
+      speed={1.35}
+      rotationIntensity={0.07}
+      floatIntensity={0.12}
+      floatingRange={[-0.04, 0.04]}
+    >
+      {scene}
+    </Float>
+  ) : (
+    scene
+  );
+
+  if (!quality.presentationControls) {
+    return floated;
+  }
+
+  return (
+    <PresentationControls
+      cursor
+      snap
+      speed={quality.tier === 'low' ? 0.85 : 1.15}
+      zoom={0.92}
+      rotation={[0, 0, 0]}
+      polar={[-0.18, 0.22]}
+      azimuth={[-0.32, 0.32]}
+    >
+      {floated}
+    </PresentationControls>
   );
 }
 
@@ -458,6 +537,21 @@ function SouvenirScene({
 }
 
 function StudioLights() {
+  const quality = useQuality();
+  if (quality.tier === 'low') {
+    return (
+      <>
+        <ambientLight intensity={1.05} />
+        <hemisphereLight args={['#fff4df', '#17202a', 1.35]} />
+        <directionalLight
+          position={[4.5, 6.5, 8]}
+          intensity={2.8}
+          color="#fff0db"
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <ambientLight intensity={0.7} />
@@ -485,13 +579,14 @@ function StudioLights() {
 }
 
 function DeskSurface() {
+  const quality = useQuality();
   return (
     <group position={[0, 0, -1.5]}>
-      <mesh receiveShadow>
+      <mesh receiveShadow={quality.shadows}>
         <planeGeometry args={[18, 13]} />
         <meshStandardMaterial color="#17191c" roughness={0.92} metalness={0.02} />
       </mesh>
-      {Array.from({ length: 18 }).map((_, index) => (
+      {Array.from({ length: quality.deskStripes }).map((_, index) => (
         <mesh
           key={index}
           position={[-8.5 + index, 0, 0.012]}
@@ -950,6 +1045,8 @@ function ScrapbookScene({
 }
 
 function PaperFibers() {
+  const quality = useQuality();
+  if (!quality.paperFibers) return null;
   return (
     <group position={[0, 0, 0.17]}>
       {Array.from({ length: 28 }).map((_, index) => (
@@ -1104,6 +1201,7 @@ function ScrapbookInspection({
   index: number;
   onClose: () => void;
 }) {
+  const quality = useDeviceQuality();
   const titles = [
     'Receipt of Lore',
     'Friendship Field Note',
@@ -1113,7 +1211,9 @@ function ScrapbookInspection({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/70 p-4 backdrop-blur-md"
+      className={`fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/80 p-4 ${
+        quality.softOverlays ? 'backdrop-blur-md' : ''
+      }`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -1370,6 +1470,7 @@ const FILM_SPRING_K = 58;
 const FILM_DAMP = 7.2;
 
 function MovieBoxScene({ textures, turn }: { textures: Texture[]; turn: number }) {
+  const quality = useQuality();
   const strip = useRef<Group>(null);
   const stripY = useRef(0);
   const stripVelocity = useRef(0);
@@ -1407,16 +1508,29 @@ function MovieBoxScene({ textures, turn }: { textures: Texture[]; turn: number }
   return (
     <group scale={0.92} position={[0, 0.05, 0]}>
       <pointLight position={[0, 0.2, 2.2]} intensity={7.5} color="#ffd19a" />
-      <spotLight
-        position={[0.5, 1.2, 2.5]}
-        angle={0.45}
-        penumbra={0.85}
-        intensity={12}
-        color="#ffb870"
-        castShadow
-      />
+      {quality.tier === 'high' ? (
+        <spotLight
+          position={[0.5, 1.2, 2.5]}
+          angle={0.45}
+          penumbra={0.85}
+          intensity={12}
+          color="#ffb870"
+          castShadow
+        />
+      ) : (
+        <directionalLight
+          position={[0.5, 1.2, 2.5]}
+          intensity={4.5}
+          color="#ffb870"
+        />
+      )}
       {/* Projector housing */}
-      <mesh castShadow receiveShadow position={[0, 0, -0.62]} scale={[2.52, 3.78, 0.9]}>
+      <mesh
+        castShadow={quality.shadows}
+        receiveShadow={quality.shadows}
+        position={[0, 0, -0.62]}
+        scale={[2.52, 3.78, 0.9]}
+      >
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial
           color="#351018"
@@ -1449,16 +1563,20 @@ function MovieBoxScene({ textures, turn }: { textures: Texture[]; turn: number }
 }
 
 function FilmFrame({ texture }: { texture: Texture }) {
-  const sprocketY = [-0.95, -0.62, -0.29, 0.04, 0.37, 0.7, 1.03];
+  const quality = useQuality();
+  const sprocketY =
+    quality.tier === 'low'
+      ? [-0.95, -0.29, 0.37, 1.03]
+      : [-0.95, -0.62, -0.29, 0.04, 0.37, 0.7, 1.03];
   return (
     <group>
       {/* Film strip carrier */}
-      <mesh castShadow receiveShadow position={[0, 0, -0.02]}>
+      <mesh castShadow={quality.shadows} receiveShadow={quality.shadows} position={[0, 0, -0.02]}>
         <boxGeometry args={[4.35, 2.55, 0.07]} />
         <meshStandardMaterial color="#1a1410" roughness={0.85} metalness={0.15} />
       </mesh>
       {/* Cell base */}
-      <mesh castShadow>
+      <mesh castShadow={quality.shadows}>
         <boxGeometry args={[4.18, 2.42, 0.055]} />
         <meshStandardMaterial color="#0e0b0d" roughness={0.72} />
       </mesh>
@@ -1468,15 +1586,17 @@ function FilmFrame({ texture }: { texture: Texture }) {
         <meshBasicMaterial map={texture} toneMapped={false} />
       </mesh>
       {/* Subtitle / projected glow */}
-      <mesh position={[0, 0, 0.034]}>
-        <planeGeometry args={[3.34, 1.94]} />
-        <meshBasicMaterial
-          color="#ffcc88"
-          transparent
-          opacity={0.1}
-          blending={AdditiveBlending}
-        />
-      </mesh>
+      {quality.softOverlays ? (
+        <mesh position={[0, 0, 0.034]}>
+          <planeGeometry args={[3.34, 1.94]} />
+          <meshBasicMaterial
+            color="#ffcc88"
+            transparent
+            opacity={0.1}
+            blending={AdditiveBlending}
+          />
+        </mesh>
+      ) : null}
       <mesh position={[0, 0, 0.035]}>
         <planeGeometry args={[3.2, 1.78]} />
         <meshBasicMaterial color="#000" transparent opacity={0.18} />
@@ -1735,16 +1855,18 @@ function ProjectionCone() {
 }
 
 function useMemoryTextures(data: XsoData) {
+  const quality = useQuality();
   const urls = useMemo(() => buildMemoryTextureUrls(data), [data]);
   const textures = useLoader(TextureLoader, urls);
 
   useEffect(() => {
     textures.forEach((texture) => {
       texture.colorSpace = SRGBColorSpace;
-      texture.anisotropy = 4;
+      texture.anisotropy = quality.anisotropy;
+      texture.generateMipmaps = quality.tier === 'high';
       texture.needsUpdate = true;
     });
-  }, [textures]);
+  }, [textures, quality.anisotropy, quality.tier]);
 
   return textures;
 }
