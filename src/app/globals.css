@@ -1,0 +1,393 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --xso-space-1: 0.25rem;
+  --xso-space-2: 0.5rem;
+  --xso-space-3: 0.75rem;
+  --xso-space-4: 1rem;
+  --xso-space-5: 1.25rem;
+  --xso-space-6: 1.5rem;
+  --xso-space-8: 2rem;
+  --xso-page-x: clamp(0.75rem, 2.5vw, 2rem);
+  --xso-section-y: clamp(1.25rem, 3vw, 2rem);
+  --xso-header-h: 3.5rem;
+  --xso-radius-shell: 1.75rem;
+  --xso-radius-bezel: 1.15rem;
+  --xso-radius-panel: 0.75rem;
+  --xso-radius-control: 0.5rem;
+  --xso-radius-phone: 1.5rem;
+  --xso-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --xso-max-studio: 72rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply min-h-screen font-sans text-console-mist antialiased;
+  background-color: #1a1e24;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(157, 255, 176, 0.07), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0, 0, 0, 0.45), transparent 55%),
+    linear-gradient(165deg, #2a3038 0%, #1c2128 42%, #14181e 100%);
+  background-attachment: fixed;
+}
+
+@layer components {
+  .field {
+    @apply w-full border border-white/15 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-acid/60;
+    border-radius: var(--xso-radius-control);
+  }
+
+  .xso-page {
+    @apply relative min-h-[100dvh] overflow-x-hidden;
+    padding-inline: var(--xso-page-x);
+    padding-block: var(--xso-section-y);
+  }
+
+  .xso-panel {
+    @apply border border-white/10 bg-white/[0.03];
+    border-radius: var(--xso-radius-panel);
+    padding: var(--xso-space-4);
+  }
+
+  @media (min-width: 640px) {
+    .xso-panel {
+      padding: var(--xso-space-5);
+    }
+  }
+
+  .console-chassis {
+    @apply relative overflow-hidden border border-black/60;
+    border-radius: var(--xso-radius-shell);
+    background:
+      linear-gradient(160deg, #5a616b 0%, #3a414a 28%, #2c323a 58%, #22272e 100%);
+    box-shadow:
+      0 28px 60px rgba(0, 0, 0, 0.55),
+      0 8px 18px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -3px 0 rgba(0, 0, 0, 0.35),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    contain: layout paint;
+  }
+
+  @media (min-width: 640px) {
+    .console-chassis {
+      border-radius: 2.25rem;
+    }
+  }
+
+  .console-chassis::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0.35;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+  }
+
+  .screen-bezel {
+    @apply relative overflow-hidden border border-black/70 bg-console-ink;
+    border-radius: var(--xso-radius-bezel);
+    box-shadow:
+      inset 0 0 0 3px #0a0c0e,
+      inset 0 0 28px rgba(0, 0, 0, 0.85),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+    contain: layout paint;
+  }
+
+  @media (min-width: 640px) {
+    .screen-bezel {
+      border-radius: 1.5rem;
+    }
+  }
+
+  .crt-flicker {
+    animation: crt-flicker 4.5s linear infinite;
+  }
+
+  .studio-portrait {
+    background-color: #0e1218;
+    background-image:
+      radial-gradient(ellipse 55% 35% at 50% 18%, rgba(157, 255, 176, 0.07), transparent 58%),
+      radial-gradient(ellipse 70% 50% at 50% 100%, rgba(0, 0, 0, 0.55), transparent 60%),
+      linear-gradient(180deg, #151a22 0%, #0c1016 100%);
+  }
+
+  .gpu-fade {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+  }
+
+  .mode-header {
+    @apply sticky top-0 z-40 border-b border-white/10 bg-[#12161b]/90 backdrop-blur-xl;
+    height: var(--xso-header-h);
+  }
+
+  .mode-header-inner {
+    @apply mx-auto flex h-full items-center justify-between;
+    max-width: var(--xso-max-studio);
+    gap: var(--xso-space-3);
+    padding-inline: var(--xso-page-x);
+  }
+
+  .mode-nav-link {
+    @apply inline-flex h-9 shrink-0 items-center border border-phosphor/25 bg-black/30 px-3 font-pixel text-[8px] uppercase tracking-[0.16em] text-phosphor/85 transition hover:border-phosphor/50 hover:text-phosphor;
+    border-radius: var(--xso-radius-control);
+  }
+}
+
+/* —— VHS / camcorder rewind burst (≈300ms) —— */
+@keyframes vhs-scan-jitter {
+  0% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  20% {
+    transform: translateY(3px) translateX(-2px);
+    opacity: 0.55;
+  }
+  40% {
+    transform: translateY(-4px) translateX(3px);
+    opacity: 0.4;
+  }
+  60% {
+    transform: translateY(2px) translateX(-1px);
+    opacity: 0.6;
+  }
+  80% {
+    transform: translateY(-2px) translateX(2px);
+    opacity: 0.45;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+}
+
+@keyframes vhs-chroma-r {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  15% {
+    transform: translate(-3px, 1px);
+    opacity: 0.35;
+  }
+  45% {
+    transform: translate(-5px, -1px);
+    opacity: 0.45;
+  }
+  70% {
+    transform: translate(-2px, 2px);
+    opacity: 0.25;
+  }
+}
+
+@keyframes vhs-chroma-c {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  15% {
+    transform: translate(3px, -1px);
+    opacity: 0.3;
+  }
+  45% {
+    transform: translate(5px, 1px);
+    opacity: 0.4;
+  }
+  70% {
+    transform: translate(2px, -2px);
+    opacity: 0.2;
+  }
+}
+
+@keyframes vhs-tracking {
+  0% {
+    top: 18%;
+    opacity: 0;
+  }
+  25% {
+    top: 42%;
+    opacity: 0.55;
+  }
+  55% {
+    top: 68%;
+    opacity: 0.4;
+  }
+  100% {
+    top: 88%;
+    opacity: 0;
+  }
+}
+
+.vhs-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.18) 0 1px,
+    transparent 1px 3px
+  );
+  mix-blend-mode: multiply;
+  animation: vhs-scan-jitter 300ms steps(2, end) forwards;
+}
+
+.vhs-jitter {
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 2px,
+    rgba(255, 255, 255, 0.03) 2px 3px
+  );
+  animation: vhs-scan-jitter 300ms steps(3, end) forwards;
+  animation-direction: reverse;
+}
+
+.vhs-chroma-r {
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 40, 60, 0.22) 48%,
+    transparent 62%
+  );
+  mix-blend-mode: screen;
+  animation: vhs-chroma-r 300ms ease-out forwards;
+}
+
+.vhs-chroma-c {
+  background: linear-gradient(
+    255deg,
+    transparent 30%,
+    rgba(40, 220, 255, 0.2) 52%,
+    transparent 68%
+  );
+  mix-blend-mode: screen;
+  animation: vhs-chroma-c 300ms ease-out forwards;
+}
+
+.vhs-tracking {
+  height: 14%;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
+  mix-blend-mode: overlay;
+  animation: vhs-tracking 300ms linear forwards;
+}
+
+/* —— 35mm projector beam (moviebox) —— */
+@keyframes projector-flicker {
+  0%,
+  100% {
+    opacity: 0.42;
+  }
+  8% {
+    opacity: 0.52;
+  }
+  9% {
+    opacity: 0.38;
+  }
+  22% {
+    opacity: 0.48;
+  }
+  23% {
+    opacity: 0.4;
+  }
+  61% {
+    opacity: 0.5;
+  }
+  62% {
+    opacity: 0.43;
+  }
+}
+
+@keyframes projector-dust {
+  0% {
+    transform: translateY(0);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translateY(-8px);
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateY(-16px);
+    opacity: 0.2;
+  }
+}
+
+.projector-beam-core {
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 40%,
+    rgba(255, 180, 90, 0.22) 0%,
+    rgba(255, 140, 50, 0.08) 45%,
+    transparent 72%
+  );
+  mix-blend-mode: screen;
+}
+
+.projector-beam-flicker {
+  background: radial-gradient(
+    ellipse 50% 40% at 48% 38%,
+    rgba(255, 220, 150, 0.15) 0%,
+    transparent 65%
+  );
+  animation: projector-flicker 3.2s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+}
+
+.projector-dust {
+  background-image: radial-gradient(
+      circle at 20% 30%,
+      rgba(255, 230, 180, 0.35) 0 1px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 55% 45%,
+      rgba(255, 210, 140, 0.3) 0 1px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 78% 35%,
+      rgba(255, 240, 200, 0.28) 0 1px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 35% 62%,
+      rgba(255, 200, 120, 0.25) 0 1px,
+      transparent 2px
+    );
+  background-size: 100% 100%;
+  animation: projector-dust 6s linear infinite;
+  opacity: 0.5;
+  mix-blend-mode: screen;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt-flicker,
+  .animate-blink,
+  .animate-arcade-glow,
+  .vhs-scanlines,
+  .vhs-jitter,
+  .vhs-chroma-r,
+  .vhs-chroma-c,
+  .vhs-tracking,
+  .projector-beam-flicker,
+  .projector-dust {
+    animation: none !important;
+  }
+
+  .gpu-fade {
+    will-change: auto;
+  }
+}
