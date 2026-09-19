@@ -25,7 +25,7 @@ export function LiteSouvenirViewer({
         <LiteEngine data={data} initialSide={initialSide} />
       </div>
       <p className="pointer-events-none absolute left-2 top-2 z-40 rounded bg-black/75 px-2 py-1 font-mono text-[7px] uppercase tracking-[0.16em] text-white/55">
-        Lite mode · no 3D
+        Lite mode · WebGL unavailable
       </p>
     </div>
   );

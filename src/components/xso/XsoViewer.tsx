@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import {
   Component,
   memo,
+  useCallback,
   useEffect,
   useState,
   type ErrorInfo,
@@ -33,8 +34,8 @@ const R3FUnifiedViewer = dynamic<R3FUnifiedViewerProps>(
 );
 
 /** Renders a single locked souvenir style — no style-switcher chrome.
- *  Loop → letter/scratch · Rewind → VHS · Scrapbook → flat-lay · Accordion → ribbon.
- *  Falls back to 2D lite engines when WebGL is unavailable or the GPU is too weak. */
+ *  Prefers low-tier 3D on phones; falls back to Lite only if WebGL is
+ *  unavailable, Save-Data is on, ?lite=1, or the GPU context is lost. */
 export const XsoViewer = memo(function XsoViewer({
   data,
   initialSide = 0,
@@ -53,6 +54,10 @@ export const XsoViewer = memo(function XsoViewer({
     );
   }, []);
 
+  const fallBackToLite = useCallback(() => {
+    setForceLite(true);
+  }, []);
+
   const useLite = quality.prefer2d || forceLite || urlLite;
 
   const viewer = (
@@ -60,11 +65,12 @@ export const XsoViewer = memo(function XsoViewer({
       {useLite ? (
         <LiteSouvenirViewer data={data} initialSide={side} />
       ) : (
-        <WebGlBoundary onFallback={() => setForceLite(true)}>
+        <WebGlBoundary onFallback={fallBackToLite}>
           <R3FUnifiedViewer
             key={data.giftStyle}
             data={data}
             initialSide={side}
+            onContextLost={fallBackToLite}
           />
         </WebGlBoundary>
       )}

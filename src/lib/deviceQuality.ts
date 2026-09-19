@@ -52,25 +52,32 @@ function isNarrowViewport(): boolean {
   return window.matchMedia('(max-width: 768px)').matches;
 }
 
-/** True when the device can create a usable WebGL context. */
+function tryWebGlContext(
+  canvas: HTMLCanvasElement,
+  failIfMajorPerformanceCaveat: boolean,
+): boolean {
+  const attrs = { failIfMajorPerformanceCaveat };
+  const gl =
+    canvas.getContext('webgl2', attrs) ||
+    canvas.getContext('webgl', attrs) ||
+    canvas.getContext('experimental-webgl', attrs);
+  if (!gl) return false;
+  const lose = (gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
+  lose?.loseContext();
+  return true;
+}
+
+/**
+ * True when the device can create a usable WebGL context.
+ * Tries without the major-performance caveat first (older GPUs often
+ * fail that check but still run fine at DPR 1).
+ */
 export function supportsWebGL(): boolean {
   if (typeof window === 'undefined') return true;
   try {
     const canvas = document.createElement('canvas');
-    const gl =
-      canvas.getContext('webgl2', {
-        failIfMajorPerformanceCaveat: true,
-      }) ||
-      canvas.getContext('webgl', {
-        failIfMajorPerformanceCaveat: true,
-      }) ||
-      canvas.getContext('experimental-webgl');
-    if (!gl) return false;
-    const lose = (gl as WebGLRenderingContext).getExtension(
-      'WEBGL_lose_context',
-    );
-    lose?.loseContext();
-    return true;
+    if (tryWebGlContext(canvas, false)) return true;
+    return tryWebGlContext(document.createElement('canvas'), true);
   } catch {
     return false;
   }
@@ -79,6 +86,13 @@ export function supportsWebGL(): boolean {
 /** Heuristic for older / constrained mobile GPUs and data-saver modes. */
 export function detectDeviceTier(): DeviceTier {
   if (typeof window === 'undefined') return 'high';
+
+  if (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('quality') === 'low'
+  ) {
+    return 'low';
+  }
 
   const reducedMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)',
@@ -92,7 +106,7 @@ export function detectDeviceTier(): DeviceTier {
   const coarse = isCoarsePointer();
   const narrow = isNarrowViewport();
 
-  // Any touch phone/tablet: prefer the low path for stable frame times.
+  // Touch / narrow viewports use the low-quality 3D profile (not 2D).
   if (coarse) return 'low';
   if (cores <= 4 && narrow) return 'low';
 
@@ -113,9 +127,6 @@ export function getCanvasQualityProfile(
   const reducedMotion =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const memory = typeof window !== 'undefined' ? readDeviceMemory() : undefined;
-  const cores =
-    typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 4 : 8;
   const webglOk = typeof window !== 'undefined' ? supportsWebGL() : true;
   const coarse = isCoarsePointer();
   const narrow = isNarrowViewport();
@@ -123,13 +134,9 @@ export function getCanvasQualityProfile(
   const forceLite =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('lite') === '1';
-  const prefer2d =
-    forceLite ||
-    !webglOk ||
-    readSaveData() ||
-    (memory !== undefined && memory <= 2) ||
-    cores <= 2 ||
-    (tier === 'low' && mobileLike);
+
+  // Only skip 3D when WebGL is missing, Save-Data is on, or ?lite=1.
+  const prefer2d = forceLite || !webglOk || readSaveData();
 
   if (tier === 'low') {
     return {

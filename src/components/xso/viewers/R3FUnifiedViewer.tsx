@@ -82,6 +82,8 @@ const REWIND_BURST = [
 export interface R3FUnifiedViewerProps {
   data: XsoData;
   initialSide?: number;
+  /** Called when the WebGL context is lost mid-session. */
+  onContextLost?: () => void;
 }
 
 const ACTION_LABELS: Record<GiftStyle, string> = {
@@ -95,6 +97,7 @@ const ACTION_LABELS: Record<GiftStyle, string> = {
 export function R3FUnifiedViewer({
   data,
   initialSide = 0,
+  onContextLost,
 }: R3FUnifiedViewerProps) {
   const quality = useDeviceQuality();
   const [action, setAction] = useState(0);
@@ -217,6 +220,7 @@ export function R3FUnifiedViewer({
       >
         <QualityProvider value={quality}>
           <PauseWhenHidden />
+          <WebGlContextGuard onContextLost={onContextLost} />
           <color attach="background" args={['#0d0f12']} />
           {quality.fog ? (
             <fog attach="fog" args={['#0d0f12', 10, 18]} />
@@ -429,6 +433,28 @@ function PauseWhenHidden() {
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [set]);
+
+  return null;
+}
+
+/** Recover to Lite when the GPU drops the WebGL context mid-session. */
+function WebGlContextGuard({ onContextLost }: { onContextLost?: () => void }) {
+  const gl = useThree((state) => state.gl);
+  const lostRef = useRef(false);
+
+  useEffect(() => {
+    if (!onContextLost) return;
+    const canvas = gl.domElement;
+    const onLost = (event: Event) => {
+      event.preventDefault();
+      if (lostRef.current) return;
+      lostRef.current = true;
+      console.warn('[R3FUnifiedViewer] WebGL context lost; falling back to lite');
+      onContextLost();
+    };
+    canvas.addEventListener('webglcontextlost', onLost, false);
+    return () => canvas.removeEventListener('webglcontextlost', onLost, false);
+  }, [gl, onContextLost]);
 
   return null;
 }
