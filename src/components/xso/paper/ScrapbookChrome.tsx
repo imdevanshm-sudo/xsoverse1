@@ -78,7 +78,7 @@ export function ReshuffleCollageButton({
       whileHover={{ y: -2, rotate: -1 }}
       whileTap={{ scale: 0.94, y: 3, rotate: 2 }}
       transition={SCRAPBOOK_BOUNCE}
-      className={`absolute bottom-4 right-3 z-20 flex max-w-[9.5rem] touch-manipulation select-none flex-col items-center rounded-[3px] border border-[#c4b59a] px-3 py-2.5 text-center sm:right-4 ${
+      className={`absolute bottom-3 right-3 z-20 flex min-h-12 max-w-[9.5rem] touch-manipulation select-none flex-col items-center rounded-[3px] border border-[#c4b59a] px-3 py-3 text-center sm:bottom-4 sm:right-4 ${
         pressing ? 'translate-y-0.5' : ''
       }`}
       style={{

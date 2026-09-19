@@ -33,7 +33,7 @@ export function AccordionPullTab({
       whileHover={{ x: -3 }}
       whileTap={{ scale: 0.96, x: 4 }}
       transition={ACCORDION_SPRING}
-      className={`absolute bottom-5 right-2 z-20 flex touch-manipulation select-none items-stretch sm:right-3 ${
+      className={`absolute bottom-3 right-2 z-20 flex min-h-[6.5rem] touch-manipulation select-none items-stretch sm:bottom-5 sm:right-3 ${
         pressing ? 'translate-x-1' : ''
       }`}
       aria-label="Pull next panel"

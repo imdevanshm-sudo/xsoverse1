@@ -10,15 +10,17 @@ interface GameCartridgeProps {
   cartridge: CartridgeSpec;
   selected: boolean;
   index: number;
+  onSelect: () => void;
 }
 
-/** Display-only cart shell — selection is hardware D-pad only. */
+/** Tappable cart shell — D-pad still works as alternate input. */
 export const GameCartridge = memo(function GameCartridge({
   cartridge,
   selected,
   index,
+  onSelect,
 }: GameCartridgeProps) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!selected || !ref.current) return;
@@ -30,18 +32,21 @@ export const GameCartridge = memo(function GameCartridge({
   }, [selected]);
 
   return (
-    <motion.div
+    <motion.button
       ref={ref}
-      role="listitem"
-      aria-current={selected ? 'true' : undefined}
+      type="button"
+      role="radio"
+      aria-checked={selected}
       aria-label={`${cartridge.title} cartridge${selected ? ' · mounted' : ''}`}
-      className="relative w-[7.25rem] shrink-0 text-left sm:w-32"
+      onClick={onSelect}
+      className="relative w-[7.25rem] shrink-0 touch-manipulation select-none text-left sm:w-32"
       initial={false}
       animate={{
         y: selected ? -10 : 0,
         scale: selected ? 1.05 : 0.96,
         opacity: selected ? 1 : 0.72,
       }}
+      whileTap={{ scale: 0.97 }}
       transition={XSO_MOTION.snappy}
       style={{ transitionDelay: `${index * 12}ms` }}
     >
@@ -118,8 +123,8 @@ export const GameCartridge = memo(function GameCartridge({
           selected ? 'text-phosphor' : 'text-console-mist/45'
         }`}
       >
-        {selected ? 'IN SLOT' : 'STANDBY'}
+        {selected ? 'IN SLOT' : 'TAP TO LOAD'}
       </span>
-    </motion.div>
+    </motion.button>
   );
 });

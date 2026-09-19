@@ -109,6 +109,7 @@ export function R3FUnifiedViewer({
   const [reshuffleCue, setReshuffleCue] = useState(false);
   const glitchTimer = useRef<number | null>(null);
   const reshuffleTimer = useRef<number | null>(null);
+  const triggerLock = useRef(false);
 
   useEffect(() => {
     setAction(0);
@@ -122,6 +123,12 @@ export function R3FUnifiedViewer({
   }, [data.giftStyle]);
 
   const trigger = () => {
+    if (triggerLock.current) return;
+    triggerLock.current = true;
+    window.setTimeout(() => {
+      triggerLock.current = false;
+    }, 260);
+
     const style = data.giftStyle;
     if (style === 'rewind') {
       playCue('rewind');
@@ -194,13 +201,17 @@ export function R3FUnifiedViewer({
     return `${month} ${year}`;
   }, [data.timestamp]);
 
+  const tapAdvancesStack =
+    !quality.presentationControls && (isLoop || isRewind);
+
   return (
     <section
-      className="relative h-full min-h-[520px] w-full overflow-hidden bg-[#0b0c0e] shadow-[inset_0_0_60px_#000]"
+      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0b0c0e] shadow-[inset_0_0_60px_#000]"
       aria-label={`3D ${data.giftStyle} souvenir`}
     >
       <Canvas
         key={`${data.giftStyle}-${quality.tier}`}
+        className="!absolute inset-0 h-full w-full touch-none"
         style={{
           pointerEvents: inspectedScrapbook === null ? 'auto' : 'none',
         }}
@@ -217,6 +228,7 @@ export function R3FUnifiedViewer({
           depth: true,
         }}
         performance={{ min: quality.tier === 'low' ? 0.3 : 0.5 }}
+        onPointerMissed={tapAdvancesStack ? trigger : undefined}
       >
         <QualityProvider value={quality}>
           <PauseWhenHidden />
@@ -310,6 +322,15 @@ export function R3FUnifiedViewer({
           </span>
         </motion.div>
       )}
+      {tapAdvancesStack ? (
+        <button
+          type="button"
+          className="absolute inset-x-0 top-0 z-[15] h-[72%] touch-manipulation bg-transparent"
+          aria-label={ACTION_LABELS[data.giftStyle]}
+          onClick={trigger}
+        />
+      ) : null}
+
       <AnimatePresence>
         {showLetterScratch ? (
           <motion.div
@@ -318,7 +339,7 @@ export function R3FUnifiedViewer({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.97 }}
             transition={LOOP_SPRING}
-            className="absolute inset-x-3 bottom-[4.75rem] z-30 mx-auto max-w-[280px] sm:inset-x-6"
+            className="absolute inset-x-3 bottom-[5.25rem] z-30 mx-auto max-w-[280px] sm:inset-x-6"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <p className="mb-1.5 text-center font-hand text-[12px] text-[#d8cfc0]/80">
@@ -372,10 +393,10 @@ export function R3FUnifiedViewer({
           transition={isLoop ? LOOP_SPRING : UI_SPRING}
           className={
             isLoop
-              ? `absolute bottom-4 right-4 z-20 flex min-h-12 touch-manipulation select-none items-center justify-center rounded-[14px] border border-white/20 px-5 py-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#f2efe8] ${
+              ? `absolute bottom-3 right-3 z-20 flex min-h-12 min-w-[7.5rem] touch-manipulation select-none items-center justify-center rounded-[14px] border border-white/20 px-5 py-3 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#f2efe8] sm:bottom-4 sm:right-4 ${
                   pressing ? 'translate-y-1' : ''
                 }`
-              : `absolute bottom-4 right-4 z-20 flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/85 px-4 py-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_24px_rgba(0,0,0,.45)] ${
+              : `absolute bottom-3 right-3 z-20 flex min-h-12 min-w-12 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/85 px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_24px_rgba(0,0,0,.45)] sm:bottom-4 sm:right-4 ${
                   quality.softOverlays ? 'backdrop-blur-md' : ''
                 }`
           }
@@ -395,16 +416,20 @@ export function R3FUnifiedViewer({
           {ACTION_LABELS[data.giftStyle]}
         </motion.button>
       )}
-      <p className="pointer-events-none absolute bottom-6 left-6 z-20 font-mono text-[8px] uppercase tracking-[0.2em] text-white/40">
+      <p className="pointer-events-none absolute bottom-3 left-3 z-20 max-w-[55%] font-mono text-[8px] uppercase tracking-[0.16em] text-white/45 sm:bottom-6 sm:left-6 sm:tracking-[0.2em]">
         {isRewind
-          ? 'Tape spool · rewind the stack'
+          ? tapAdvancesStack
+            ? 'Tap stack · rewind the memory'
+            : 'Tape spool · rewind the stack'
           : isScrapbook
             ? 'Tap a scrap · inspect the memory'
             : isAccordion
               ? 'Pull the ribbon · unfold the keep'
               : isMoviebox
                 ? 'Crank the wheel · advance the reel'
-                : 'Drag to inspect · studio object'}
+                : tapAdvancesStack
+                  ? 'Tap the cards · loop the memory'
+                  : 'Drag to inspect · studio object'}
       </p>
 
       <AnimatePresence>

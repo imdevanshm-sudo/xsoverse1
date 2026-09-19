@@ -237,11 +237,18 @@ export function RetroStorefront() {
               Cartridge bay
             </p>
             <p className="font-mono text-[10px] leading-relaxed text-console-mist/50 sm:text-xs">
-              Use the D-pad to mount a cart · Press Start to boot memory
+              Tap a cart or use the D-pad · Press Start to boot memory
             </p>
           </div>
 
-          <CartridgeSelector selectedId={giftStyle} />
+          <CartridgeSelector
+            selectedId={giftStyle}
+            onSelect={(id) => {
+              if (booting) return;
+              setField('giftStyle', id);
+              playConsoleClick('pad');
+            }}
+          />
 
           <div className="space-y-xso-2">
             <PressStartButton
@@ -254,7 +261,7 @@ export function RetroStorefront() {
               }
             />
             <p className="text-center font-mono text-[9px] uppercase tracking-[0.16em] text-console-mist/35">
-              Hardware only · arrows cycle · enter boots
+              Tap carts · D-pad cycles · Start boots
             </p>
           </div>
 

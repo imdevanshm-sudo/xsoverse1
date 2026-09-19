@@ -14,10 +14,12 @@ import { GameCartridge } from '@/components/storefront/GameCartridge';
 
 interface CartridgeSelectorProps {
   selectedId: GiftStyle;
+  onSelect: (id: GiftStyle) => void;
 }
 
 export const CartridgeSelector = memo(function CartridgeSelector({
   selectedId,
+  onSelect,
 }: CartridgeSelectorProps) {
   const selected = getCartridge(selectedId);
 
@@ -25,8 +27,8 @@ export const CartridgeSelector = memo(function CartridgeSelector({
     <div className="space-y-xso-4 sm:space-y-xso-5">
       <div
         className="flex gap-xso-3 overflow-x-auto overscroll-x-contain scroll-smooth pb-xso-3 pt-xso-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:justify-center sm:gap-xso-4 sm:overflow-visible [&::-webkit-scrollbar]:hidden"
-        role="list"
-        aria-label="Cartridge bay · use D-pad to cycle"
+        role="radiogroup"
+        aria-label="Souvenir cartridges · tap or use D-pad"
       >
         {CARTRIDGES.map((cart, index) => (
           <GameCartridge
@@ -34,6 +36,7 @@ export const CartridgeSelector = memo(function CartridgeSelector({
             cartridge={cart}
             selected={selectedId === cart.id}
             index={index}
+            onSelect={() => onSelect(cart.id)}
           />
         ))}
       </div>

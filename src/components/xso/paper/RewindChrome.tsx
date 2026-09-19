@@ -102,7 +102,7 @@ export function VcrRewindButton({
       whileHover={{ y: -1 }}
       whileTap={{ scale: 0.94, y: 4 }}
       transition={REWIND_SPRING}
-      className={`absolute bottom-3 right-3 z-20 flex touch-manipulation select-none flex-col items-stretch overflow-hidden rounded-md border border-[#2a2a2a] sm:bottom-4 sm:right-4 ${
+      className={`absolute bottom-3 right-3 z-20 flex min-h-12 touch-manipulation select-none flex-col items-stretch overflow-hidden rounded-md border border-[#2a2a2a] sm:bottom-4 sm:right-4 ${
         pressing ? 'translate-y-1' : ''
       }`}
       style={{

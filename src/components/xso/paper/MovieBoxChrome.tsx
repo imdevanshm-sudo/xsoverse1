@@ -85,7 +85,7 @@ export function CrankAdvanceButton({
       whileHover={{ y: -1 }}
       whileTap={{ scale: 0.96, y: 3 }}
       transition={CRANK_SPRING}
-      className={`absolute bottom-3 right-3 z-20 flex touch-manipulation select-none items-center gap-2.5 rounded-md border border-[#5c3d28]/60 px-3 py-2.5 sm:bottom-4 sm:right-4 ${
+      className={`absolute bottom-3 right-3 z-20 flex min-h-12 touch-manipulation select-none items-center gap-2.5 rounded-md border border-[#5c3d28]/60 px-3.5 py-3 sm:bottom-4 sm:right-4 ${
         pressing ? 'translate-y-0.5' : ''
       }`}
       style={{
