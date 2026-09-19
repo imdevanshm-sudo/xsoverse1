@@ -4,16 +4,15 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 export const SCRAPBOOK_SPRING = {
   type: 'spring' as const,
-  stiffness: 280,
-  damping: 22,
-  mass: 0.85,
+  stiffness: 260,
+  damping: 28,
+  mass: 0.7,
 };
 
 export const SCRAPBOOK_BOUNCE = {
-  type: 'spring' as const,
-  stiffness: 340,
-  damping: 14,
-  mass: 0.7,
+  type: 'tween' as const,
+  duration: 0.28,
+  ease: 'easeOut' as const,
 };
 
 /** Paper-slide flash when the collage reshuffles. */

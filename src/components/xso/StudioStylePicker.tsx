@@ -1,10 +1,8 @@
 'use client';
 
 import { memo, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import { useXsoStore } from '@/store/useXsoStore';
 import { STYLE_OPTIONS } from '@/lib/styleOptions';
-import { XSO_MOTION } from '@/lib/layout';
 import type { GiftStyle } from '@/types/xso';
 
 /** Isolated style picker — only re-renders when giftStyle changes. */
@@ -50,11 +48,7 @@ export const StudioStylePicker = memo(function StudioStylePicker() {
               }`}
             >
               {selected && (
-                <motion.span
-                  layoutId="editor-style-ring"
-                  className="pointer-events-none absolute inset-0 rounded-xso-panel shadow-[0_0_0_1px_rgba(232,255,74,0.3)]"
-                  transition={XSO_MOTION.select}
-                />
+                <span className="pointer-events-none absolute inset-0 rounded-xso-panel ring-1 ring-acid/40" />
               )}
               <span className="relative text-xl leading-none" aria-hidden>
                 {style.icon}

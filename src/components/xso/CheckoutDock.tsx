@@ -47,7 +47,7 @@ export function CheckoutDock({ lockedStyle }: CheckoutDockProps) {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50">
-      <div className="pointer-events-auto border-t border-white/10 bg-[#0f1319] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] sm:bg-[#0f1319]/95 sm:backdrop-blur-xl">
+      <div className="xso-dock pointer-events-auto border-t border-white/10 bg-[#0f1319] shadow-[0_-8px_24px_rgba(0,0,0,0.4)]">
         <div className="mx-auto flex max-w-md items-center gap-3 px-4 py-3 sm:max-w-lg sm:px-5">
           <div className="min-w-0 flex-1">
             <p className="font-pixel text-[7px] uppercase tracking-[0.18em] text-white/40">

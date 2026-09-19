@@ -158,7 +158,7 @@ export function AccordionPanel({
   const headings = ['The Receipt', 'Friendship Report', 'Snapshots', 'A Letter'];
   return (
     <article
-      className={`relative h-full overflow-hidden border-x-2 border-[#4a3828]/45 bg-[#eee0c5] px-8 text-[#33281f] ${
+      className={`relative min-h-full overflow-hidden border-x-2 border-[#4a3828]/45 bg-[#eee0c5] px-5 text-[#33281f] sm:px-8 ${
         index === 0 ? 'pb-7 pt-12' : 'py-7'
       }`}
       style={{
@@ -179,12 +179,15 @@ export function AccordionPanel({
           <div className="my-3 border-t border-dashed border-current/50" />
           {data.lineItems.slice(0, 5).map((item) => (
             <p key={item.id} className="flex justify-between gap-3">
-              <span>{item.qty} {item.description}</span>
+              <span>
+                {item.qty} {item.description}
+              </span>
               <span>{item.price}</span>
             </p>
           ))}
           <p className="mt-4 flex justify-between text-base font-bold">
-            <span>Total</span><span>{data.total}</span>
+            <span>Total</span>
+            <span>{data.total}</span>
           </p>
         </div>
       )}
@@ -236,8 +239,8 @@ export function ViewMasterDisc({
 
   return (
     <motion.div
-      className="absolute left-1/2 top-1/2 h-[410px] w-[410px] rounded-full border-[12px] border-[#090708] bg-[#151214] shadow-[inset_0_0_0_5px_#32292d,0_14px_40px_rgba(0,0,0,.65)]"
-      animate={{ x: '-50%', y: '-50%', rotate: turn * 90 }}
+      className="absolute left-1/2 top-1/2 h-[410px] w-[410px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[12px] border-[#090708] bg-[#151214] shadow-[inset_0_0_0_5px_#32292d,0_14px_40px_rgba(0,0,0,.65)]"
+      animate={{ rotate: turn * 90 }}
       transition={SPRING}
       aria-hidden
     >

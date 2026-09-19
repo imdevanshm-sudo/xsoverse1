@@ -3,6 +3,7 @@ export type DeviceTier = 'high' | 'low';
 export interface CanvasQualityProfile {
   tier: DeviceTier;
   prefer2d: boolean;
+  /** Clamped pixel ratio — never exceeds 1.5. */
   dpr: number | [number, number];
   shadows: boolean;
   antialias: boolean;
@@ -16,6 +17,8 @@ export interface CanvasQualityProfile {
   anisotropy: number;
   softOverlays: boolean;
   reducedMotion: boolean;
+  /** Cap for ContactShadows map size when enabled. */
+  shadowMapSize: number;
 }
 
 function readSaveData(): boolean {
@@ -37,6 +40,16 @@ function readDeviceMemory(): number | undefined {
   } catch {
     return undefined;
   }
+}
+
+function isCoarsePointer(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(pointer: coarse)').matches;
+}
+
+function isNarrowViewport(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(max-width: 768px)').matches;
 }
 
 /** True when the device can create a usable WebGL context. */
@@ -76,13 +89,22 @@ export function detectDeviceTier(): DeviceTier {
   if (memory !== undefined && memory <= 4) return 'low';
 
   const cores = navigator.hardwareConcurrency || 4;
-  const coarse = window.matchMedia('(pointer: coarse)').matches;
-  const narrow = window.matchMedia('(max-width: 768px)').matches;
+  const coarse = isCoarsePointer();
+  const narrow = isNarrowViewport();
 
-  if (cores <= 4 && (coarse || narrow)) return 'low';
-  if (coarse && narrow) return 'low';
+  // Any touch phone/tablet: prefer the low path for stable frame times.
+  if (coarse) return 'low';
+  if (cores <= 4 && narrow) return 'low';
 
   return 'high';
+}
+
+/** Clamp DPR so mobile never exceeds 1.5×. */
+export function clampDpr(
+  value: number | [number, number],
+): number | [number, number] {
+  if (typeof value === 'number') return Math.min(1.5, Math.max(1, value));
+  return [Math.min(1.5, Math.max(1, value[0])), Math.min(1.5, value[1])];
 }
 
 export function getCanvasQualityProfile(
@@ -95,11 +117,14 @@ export function getCanvasQualityProfile(
   const cores =
     typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 4 : 8;
   const webglOk = typeof window !== 'undefined' ? supportsWebGL() : true;
-  const mobileLike =
+  const coarse = isCoarsePointer();
+  const narrow = isNarrowViewport();
+  const mobileLike = coarse || narrow;
+  const forceLite =
     typeof window !== 'undefined' &&
-    window.matchMedia('(pointer: coarse)').matches &&
-    window.matchMedia('(max-width: 768px)').matches;
+    new URLSearchParams(window.location.search).get('lite') === '1';
   const prefer2d =
+    forceLite ||
     !webglOk ||
     readSaveData() ||
     (memory !== undefined && memory <= 2) ||
@@ -110,37 +135,39 @@ export function getCanvasQualityProfile(
     return {
       tier,
       prefer2d,
-      dpr: 1,
+      dpr: clampDpr(1),
       shadows: false,
       antialias: false,
       powerPreference: 'default',
       float: false,
       contactShadows: false,
-      presentationControls: !reducedMotion,
+      presentationControls: false,
       fog: false,
       deskStripes: 0,
       paperFibers: false,
       anisotropy: 1,
       softOverlays: false,
       reducedMotion,
+      shadowMapSize: 256,
     };
   }
 
   return {
     tier,
     prefer2d,
-    dpr: [1, 1.5],
-    shadows: true,
-    antialias: true,
-    powerPreference: 'high-performance',
-    float: !reducedMotion,
-    contactShadows: true,
-    presentationControls: true,
-    fog: true,
-    deskStripes: 18,
-    paperFibers: true,
-    anisotropy: 4,
-    softOverlays: true,
+    dpr: clampDpr([1, 1.5]),
+    shadows: !coarse,
+    antialias: false,
+    powerPreference: 'default',
+    float: !reducedMotion && !coarse,
+    contactShadows: !coarse,
+    presentationControls: !coarse,
+    fog: !coarse,
+    deskStripes: coarse ? 0 : 18,
+    paperFibers: !coarse,
+    anisotropy: coarse ? 1 : 2,
+    softOverlays: !mobileLike,
     reducedMotion,
+    shadowMapSize: 256,
   };
 }

@@ -4,9 +4,9 @@ import { motion } from 'framer-motion';
 
 export const CRANK_SPRING = {
   type: 'spring' as const,
-  stiffness: 380,
-  damping: 22,
-  mass: 0.9,
+  stiffness: 300,
+  damping: 28,
+  mass: 0.7,
 };
 
 /** Warm amber projector beam + dust motes over the viewport. */
@@ -35,7 +35,7 @@ export function FilmFrameCounter({ frame, total = 4 }: { frame: number; total?: 
   return (
     <div className="pointer-events-none absolute left-3 top-3 z-30 sm:left-4 sm:top-4">
       <div
-        className="border border-[#ffb86a]/20 bg-[#0a0806]/72 px-3 py-2 font-mono backdrop-blur-[3px]"
+        className="xso-blur-safe border border-[#ffb86a]/20 bg-[#0a0806]/90 px-3 py-2 font-mono"
         style={{
           boxShadow:
             '0 4px 20px rgba(0,0,0,0.45), 0 0 28px rgba(255,150,60,0.14), inset 0 0 16px rgba(255,180,80,0.05)',

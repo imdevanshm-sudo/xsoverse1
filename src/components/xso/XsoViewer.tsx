@@ -4,9 +4,10 @@ import dynamic from 'next/dynamic';
 import {
   Component,
   memo,
+  useEffect,
+  useState,
   type ErrorInfo,
   type ReactNode,
-  useState,
 } from 'react';
 import type { XsoData } from '@/types/xso';
 import type { R3FUnifiedViewerProps } from '@/components/xso/viewers/R3FUnifiedViewer';
@@ -42,10 +43,17 @@ export const XsoViewer = memo(function XsoViewer({
 }: XsoViewerProps) {
   const quality = useDeviceQuality();
   const [forceLite, setForceLite] = useState(false);
+  const [urlLite, setUrlLite] = useState(false);
   const side =
     data.giftStyle === 'loop' && initialSide === 0 ? 3 : initialSide;
 
-  const useLite = quality.prefer2d || forceLite;
+  useEffect(() => {
+    setUrlLite(
+      new URLSearchParams(window.location.search).get('lite') === '1',
+    );
+  }, []);
+
+  const useLite = quality.prefer2d || forceLite || urlLite;
 
   const viewer = (
     <div className="relative h-full w-full overflow-hidden">

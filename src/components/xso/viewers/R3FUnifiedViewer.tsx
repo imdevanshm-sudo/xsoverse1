@@ -44,16 +44,16 @@ import {
 
 const UI_SPRING = {
   type: 'spring' as const,
-  stiffness: 200,
-  damping: 25,
-  mass: 1.2,
+  stiffness: 260,
+  damping: 28,
+  mass: 0.85,
 };
 
 const LOOP_SPRING = {
   type: 'spring' as const,
-  stiffness: 420,
-  damping: 16,
-  mass: 0.75,
+  stiffness: 300,
+  damping: 26,
+  mass: 0.65,
 };
 
 /** Distinct stack angles in radians (~ -2° … 3°). */
@@ -206,12 +206,14 @@ export function R3FUnifiedViewer({
         frameloop="always"
         camera={{ position: [0, 0.15, 11], fov: 40 }}
         gl={{
-          antialias: quality.antialias,
+          antialias: false,
           alpha: false,
-          powerPreference: quality.powerPreference,
+          powerPreference: 'default',
           failIfMajorPerformanceCaveat: false,
+          stencil: false,
+          depth: true,
         }}
-        performance={{ min: quality.tier === 'low' ? 0.35 : 0.6 }}
+        performance={{ min: quality.tier === 'low' ? 0.3 : 0.5 }}
       >
         <QualityProvider value={quality}>
           <PauseWhenHidden />
@@ -232,11 +234,12 @@ export function R3FUnifiedViewer({
           {quality.contactShadows ? (
             <ContactShadows
               position={[0, -3.05, 0]}
-              opacity={0.68}
+              opacity={0.55}
               scale={11}
-              blur={2.4}
+              blur={1.6}
               far={5.5}
-              resolution={512}
+              resolution={quality.shadowMapSize}
+              frames={quality.float ? Infinity : 1}
               color="#050506"
             />
           ) : (
@@ -537,7 +540,7 @@ function SouvenirScene({
 
 function StudioLights() {
   const quality = useQuality();
-  if (quality.tier === 'low') {
+  if (quality.tier === 'low' || !quality.shadows) {
     return (
       <>
         <ambientLight intensity={1.05} />
@@ -560,19 +563,18 @@ function StudioLights() {
         position={[4.5, 6.5, 8]}
         intensity={3.8}
         color="#fff0db"
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={quality.shadowMapSize}
+        shadow-mapSize-height={quality.shadowMapSize}
         shadow-bias={-0.0004}
       />
       <spotLight
-        castShadow
         position={[-4, 3, 7]}
-        intensity={24}
+        intensity={18}
         angle={0.48}
         penumbra={0.9}
         color="#aec8d8"
       />
-      <pointLight position={[4, -2, 4]} intensity={10} color="#d18d68" />
+      <pointLight position={[4, -2, 4]} intensity={8} color="#d18d68" />
     </>
   );
 }
@@ -1223,11 +1225,10 @@ function ScrapbookInspection({
       aria-label={`Inspect ${titles[index]}`}
     >
       <motion.article
-        layoutId={`scrapbook-memory-${index}`}
-        className="relative max-h-[82vh] w-full max-w-md cursor-default overflow-y-auto rounded-sm border border-[#e8dfd0] bg-[#fcfaf2] p-6 text-[#292722] shadow-[0_8px_24px_rgba(0,0,0,.4),0_40px_100px_rgba(0,0,0,.55)]"
-        initial={{ scale: 0.72, y: 56, rotate: index % 2 ? 5 : -5 }}
-        animate={{ scale: 1, y: 0, rotate: 0 }}
-        exit={{ scale: 0.82, y: 28, opacity: 0, rotate: index % 2 ? -3 : 3 }}
+        className="relative max-h-[82vh] w-full max-w-md cursor-default overflow-y-auto rounded-sm border border-[#e8dfd0] bg-[#fcfaf2] p-6 text-[#292722] shadow-[0_16px_48px_rgba(0,0,0,.5)]"
+        initial={{ opacity: 0, scale: 0.92, y: 24 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 16 }}
         transition={SCRAPBOOK_SPRING}
         onClick={(event) => event.stopPropagation()}
       >

@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import type { CartridgeSpec } from '@/lib/cartridges';
@@ -9,58 +9,53 @@ import { XSO_MOTION } from '@/lib/layout';
 interface GameCartridgeProps {
   cartridge: CartridgeSpec;
   selected: boolean;
-  onSelect: () => void;
   index: number;
 }
 
+/** Display-only cart shell — selection is hardware D-pad only. */
 export const GameCartridge = memo(function GameCartridge({
   cartridge,
   selected,
-  onSelect,
   index,
 }: GameCartridgeProps) {
-  const [liteMotion, setLiteMotion] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setLiteMotion(
-      window.matchMedia('(pointer: coarse)').matches ||
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    );
-  }, []);
+    if (!selected || !ref.current) return;
+    ref.current.scrollIntoView({
+      behavior: 'smooth',
+      inline: 'center',
+      block: 'nearest',
+    });
+  }, [selected]);
 
   return (
-    <motion.button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      aria-label={`${cartridge.title} cartridge — ${cartridge.tagline}`}
-      onClick={onSelect}
-      className="group relative w-[7.25rem] shrink-0 touch-manipulation text-left sm:w-32"
+    <motion.div
+      ref={ref}
+      role="listitem"
+      aria-current={selected ? 'true' : undefined}
+      aria-label={`${cartridge.title} cartridge${selected ? ' · mounted' : ''}`}
+      className="relative w-[7.25rem] shrink-0 text-left sm:w-32"
       initial={false}
       animate={{
-        y: selected ? -8 : 0,
-        scale: selected ? 1.04 : 1,
+        y: selected ? -10 : 0,
+        scale: selected ? 1.05 : 0.96,
+        opacity: selected ? 1 : 0.72,
       }}
-      whileHover={
-        liteMotion
-          ? undefined
-          : { y: selected ? -8 : -4, scale: selected ? 1.04 : 1.02 }
-      }
-      whileTap={{ scale: 0.98 }}
-      transition={XSO_MOTION.select}
-      style={{ transitionDelay: `${index * 20}ms` }}
+      transition={XSO_MOTION.snappy}
+      style={{ transitionDelay: `${index * 12}ms` }}
     >
       <div
         className={`relative overflow-hidden rounded-b-md rounded-t-[0.65rem] border ${
           selected
-            ? 'border-white/35 shadow-[0_18px_36px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.08),0_0_28px_var(--glow)]'
-            : 'border-black/50 shadow-[0_10px_22px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.12)]'
+            ? 'border-white/35 shadow-[0_12px_24px_rgba(0,0,0,0.45),0_0_16px_var(--glow)]'
+            : 'border-black/55 shadow-[0_6px_14px_rgba(0,0,0,0.35)]'
         }`}
         style={
           {
             '--glow': cartridge.accentSoft,
             background:
-              'linear-gradient(165deg, #6a727c 0%, #3d444d 38%, #2a3038 72%, #1c2128 100%)',
+              'linear-gradient(165deg, #4a4e54 0%, #2c3036 38%, #1a1d22 72%, #0e1013 100%)',
             transform: 'translateZ(0)',
           } as CSSProperties
         }
@@ -110,29 +105,21 @@ export const GameCartridge = memo(function GameCartridge({
           <span className="h-2 w-2 rounded-full bg-[#1a1e24] shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]" />
         </div>
 
-        {selected &&
-          (liteMotion ? (
-            <div
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-1"
-              style={{ backgroundColor: cartridge.accent }}
-            />
-          ) : (
-            <motion.div
-              layoutId="cart-accent"
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-1"
-              style={{ backgroundColor: cartridge.accent }}
-              transition={XSO_MOTION.select}
-            />
-          ))}
+        {selected ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-1"
+            style={{ backgroundColor: cartridge.accent }}
+          />
+        ) : null}
       </div>
 
       <span
         className={`mt-2 block text-center font-arcade text-[9px] uppercase tracking-[0.2em] ${
-          selected ? 'text-phosphor' : 'text-console-mist/55'
+          selected ? 'text-phosphor' : 'text-console-mist/45'
         }`}
       >
-        {selected ? 'LOADED' : 'SELECT'}
+        {selected ? 'IN SLOT' : 'STANDBY'}
       </span>
-    </motion.button>
+    </motion.div>
   );
 });

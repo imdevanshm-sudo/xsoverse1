@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Monitor, MonitorOff } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useXsoStore } from '@/store/useXsoStore';
 import type { GiftStyle } from '@/types/xso';
+import { CARTRIDGES, getCartridge } from '@/lib/cartridges';
 import { XSO_MOTION } from '@/lib/layout';
 import { CartridgeSelector } from '@/components/storefront/CartridgeSelector';
 import { ConsoleBezel } from '@/components/storefront/ConsoleBezel';
@@ -16,10 +16,41 @@ function preferCrtOff(): boolean {
   if (typeof window === 'undefined') return false;
   return (
     window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-    (window.matchMedia('(pointer: coarse)').matches &&
-      window.matchMedia('(max-width: 768px)').matches)
+    window.matchMedia('(pointer: coarse)').matches ||
+    window.matchMedia('(max-width: 768px)').matches
   );
 }
+
+function playConsoleClick(kind: 'pad' | 'start') {
+  try {
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = kind === 'start' ? 'square' : 'triangle';
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(kind === 'start' ? 180 : 320, now);
+    osc.frequency.exponentialRampToValueAtTime(
+      kind === 'start' ? 90 : 180,
+      now + 0.08,
+    );
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.11);
+    osc.addEventListener('ended', () => void ctx.close());
+  } catch {
+    /* ignore */
+  }
+}
+
+type PadKey = 'left' | 'right' | 'up' | 'down' | 'a' | 'b';
 
 export function RetroStorefront() {
   const router = useRouter();
@@ -27,50 +58,124 @@ export function RetroStorefront() {
   const setField = useXsoStore((s) => s.setField);
   const [crtOn, setCrtOn] = useState(true);
   const [booting, setBooting] = useState(false);
+  const [bootPhase, setBootPhase] = useState<
+    'idle' | 'insert' | 'checksum' | 'launch'
+  >('idle');
+  const [padPress, setPadPress] = useState<Partial<Record<PadKey, boolean>>>(
+    {},
+  );
   const [isPending, startTransition] = useTransition();
+  const bootTimers = useRef<number[]>([]);
 
   useEffect(() => {
     if (preferCrtOff()) setCrtOn(false);
   }, []);
 
-  const selectCartridge = useCallback(
-    (id: GiftStyle) => {
-      setField('giftStyle', id);
+  useEffect(() => {
+    return () => {
+      bootTimers.current.forEach((id) => window.clearTimeout(id));
+    };
+  }, []);
+
+  const flashPad = useCallback((key: PadKey) => {
+    setPadPress((prev) => ({ ...prev, [key]: true }));
+    window.setTimeout(() => {
+      setPadPress((prev) => ({ ...prev, [key]: false }));
+    }, 120);
+  }, []);
+
+  const cycleCartridge = useCallback(
+    (direction: 1 | -1) => {
+      if (booting) return;
+      const index = CARTRIDGES.findIndex((c) => c.id === giftStyle);
+      const next =
+        CARTRIDGES[
+          (index + direction + CARTRIDGES.length) % CARTRIDGES.length
+        ];
+      setField('giftStyle', next.id);
+      playConsoleClick('pad');
     },
-    [setField],
+    [booting, giftStyle, setField],
   );
 
   const startBuild = useCallback(() => {
     if (booting) return;
     setBooting(true);
-    const style = useXsoStore.getState().giftStyle;
-    window.setTimeout(() => {
-      startTransition(() => {
-        router.push(`/preview?style=${encodeURIComponent(style)}`);
-      });
-    }, 280);
+    setBootPhase('insert');
+    playConsoleClick('start');
+    const style = useXsoStore.getState().giftStyle as GiftStyle;
+
+    bootTimers.current.forEach((id) => window.clearTimeout(id));
+    bootTimers.current = [
+      window.setTimeout(() => setBootPhase('checksum'), 420),
+      window.setTimeout(() => setBootPhase('launch'), 900),
+      window.setTimeout(() => {
+        startTransition(() => {
+          router.push(`/preview?style=${encodeURIComponent(style)}`);
+        });
+      }, 1280),
+    ];
   }, [booting, router, startTransition]);
 
-  return (
-    <div className="xso-page">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40"
-        aria-hidden
-        style={{
-          backgroundImage: `
-            radial-gradient(circle at 20% 15%, rgba(255,255,255,0.04), transparent 28%),
-            radial-gradient(circle at 80% 80%, rgba(0,0,0,0.35), transparent 40%),
-            repeating-linear-gradient(125deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 7px)
-          `,
-        }}
-      />
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
 
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          flashPad('left');
+          cycleCartridge(-1);
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          flashPad('right');
+          cycleCartridge(1);
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          flashPad('up');
+          cycleCartridge(-1);
+          break;
+        case 'ArrowDown':
+          event.preventDefault();
+          flashPad('down');
+          cycleCartridge(1);
+          break;
+        case 'Enter':
+        case ' ':
+          event.preventDefault();
+          flashPad('a');
+          startBuild();
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [cycleCartridge, flashPad, startBuild]);
+
+  const mounted = getCartridge(giftStyle);
+  const controlsLocked = booting || isPending;
+
+  return (
+    <div className="xso-page flex min-h-[100dvh] items-center justify-center py-xso-4 sm:py-xso-6">
       <motion.div
-        className="gpu-fade relative mx-auto w-full max-w-store"
+        className="relative mx-auto w-full max-w-store px-1 sm:px-2"
         initial={false}
         animate={{
-          opacity: booting ? 0.35 : 1,
-          scale: booting ? 0.985 : 1,
+          opacity: bootPhase === 'launch' ? 0.25 : 1,
+          scale: bootPhase === 'launch' ? 0.985 : 1,
         }}
         transition={XSO_MOTION.boot}
       >
@@ -78,7 +183,7 @@ export function RetroStorefront() {
           crtEnabled={crtOn}
           brand={
             <>
-              <p className="font-pixel text-[8px] uppercase tracking-[0.28em] text-phosphor/80 sm:text-[10px] sm:tracking-[0.35em]">
+              <p className="font-pixel text-[8px] uppercase tracking-[0.28em] text-phosphor/75 sm:text-[10px] sm:tracking-[0.35em]">
                 XSO SYSTEMS
               </p>
               <h1 className="mt-1 font-arcade text-xl uppercase tracking-[0.12em] text-console-mist sm:text-2xl md:text-3xl">
@@ -92,57 +197,111 @@ export function RetroStorefront() {
                 Model · HANDHELD-01
               </p>
               <p className="mt-1 font-pixel text-[7px] uppercase tracking-[0.12em] text-phosphor/70 animate-blink sm:text-[8px] sm:tracking-[0.18em]">
-                PLAYER 1: READY
+                {booting ? 'CART BOOT…' : 'PLAYER 1: READY'}
               </p>
             </>
           }
-          deck={<ConsoleControls />}
+          deck={
+            <ConsoleControls
+              disabled={controlsLocked}
+              pressed={padPress}
+              onPadLeft={() => {
+                flashPad('left');
+                cycleCartridge(-1);
+              }}
+              onPadRight={() => {
+                flashPad('right');
+                cycleCartridge(1);
+              }}
+              onPadUp={() => {
+                flashPad('up');
+                cycleCartridge(-1);
+              }}
+              onPadDown={() => {
+                flashPad('down');
+                cycleCartridge(1);
+              }}
+              onActionA={() => {
+                flashPad('a');
+                startBuild();
+              }}
+              onActionB={() => {
+                flashPad('b');
+                cycleCartridge(1);
+              }}
+            />
+          }
         >
-          <div className="flex flex-wrap items-end justify-between gap-xso-3">
-            <div className="min-w-0 max-w-md">
-              <p className="font-pixel text-[8px] uppercase tracking-[0.28em] text-phosphor/70 sm:text-[9px]">
-                Choose Your Cartridge
-              </p>
-              <p className="mt-2 font-mono text-xs leading-relaxed text-console-mist/65 sm:text-sm">
-                Five souvenir engines. One slot. Pick a cart, then boot the
-                portrait studio.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCrtOn((v) => !v)}
-              className="inline-flex h-9 items-center gap-2 rounded-xso-control border border-phosphor/25 bg-black/40 px-2.5 font-pixel text-[8px] uppercase tracking-[0.18em] text-phosphor/80 transition hover:border-phosphor/50 hover:text-phosphor"
-              aria-pressed={crtOn}
-              aria-label={crtOn ? 'Disable CRT overlay' : 'Enable CRT overlay'}
-            >
-              {crtOn ? (
-                <Monitor className="h-3.5 w-3.5" aria-hidden />
-              ) : (
-                <MonitorOff className="h-3.5 w-3.5" aria-hidden />
-              )}
-              CRT {crtOn ? 'ON' : 'OFF'}
-            </button>
+          <div className="space-y-1">
+            <p className="font-pixel text-[8px] uppercase tracking-[0.28em] text-phosphor/70 sm:text-[9px]">
+              Cartridge bay
+            </p>
+            <p className="font-mono text-[10px] leading-relaxed text-console-mist/50 sm:text-xs">
+              Use the D-pad to mount a cart · Press Start to boot memory
+            </p>
           </div>
 
-          <CartridgeSelector
-            selectedId={giftStyle}
-            onSelect={selectCartridge}
-          />
+          <CartridgeSelector selectedId={giftStyle} />
 
-          <div className="space-y-xso-3">
+          <div className="space-y-xso-2">
             <PressStartButton
               onPress={startBuild}
-              disabled={booting || isPending}
+              disabled={controlsLocked}
               label={
-                booting || isPending
-                  ? 'BOOTING STUDIO…'
+                controlsLocked
+                  ? 'LOADING INTO MEMORY…'
                   : 'PRESS START / BUILD XSO'
               }
             />
-            <p className="text-center font-mono text-[10px] uppercase tracking-[0.16em] text-console-mist/40">
-              Soft boot → portrait souvenir studio
+            <p className="text-center font-mono text-[9px] uppercase tracking-[0.16em] text-console-mist/35">
+              Hardware only · arrows cycle · enter boots
             </p>
           </div>
+
+          <AnimatePresence>
+            {booting ? (
+              <motion.div
+                key="boot-overlay"
+                className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#030504]/92 px-6 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                aria-live="polite"
+              >
+                <p className="font-pixel text-[9px] uppercase tracking-[0.28em] text-phosphor/70">
+                  XSO BIOS
+                </p>
+                <p
+                  className="mt-4 font-arcade text-xl uppercase tracking-[0.16em] sm:text-2xl"
+                  style={{ color: mounted.accent }}
+                >
+                  {mounted.title}
+                </p>
+                <p className="mt-3 max-w-xs font-mono text-[11px] leading-relaxed text-console-mist/65">
+                  {bootPhase === 'insert' && 'Seating cartridge in Slot A…'}
+                  {bootPhase === 'checksum' &&
+                    'Verifying text · imagery · audio streams…'}
+                  {bootPhase === 'launch' && 'Mapping souvenir into memory…'}
+                </p>
+                <div className="mt-6 h-1.5 w-40 overflow-hidden rounded-full bg-white/10">
+                  <motion.div
+                    className="h-full origin-left rounded-full bg-phosphor"
+                    initial={{ scaleX: 0.08 }}
+                    animate={{
+                      scaleX:
+                        bootPhase === 'insert'
+                          ? 0.34
+                          : bootPhase === 'checksum'
+                            ? 0.72
+                            : 1,
+                    }}
+                    transition={{ duration: 0.28, ease: 'easeOut' }}
+                  />
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </ConsoleBezel>
       </motion.div>
     </div>

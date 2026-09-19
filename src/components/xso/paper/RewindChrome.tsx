@@ -3,10 +3,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
 
 const REWIND_SPRING = {
-  type: 'spring' as const,
-  stiffness: 380,
-  damping: 18,
-  mass: 0.8,
+  type: 'tween' as const,
+  duration: 0.2,
+  ease: 'easeOut' as const,
 };
 
 /** VHS chromatic split + scanline burst (≈300ms). */
@@ -56,7 +55,7 @@ export function CamcorderTimestamp({
       }
     >
       <div
-        className="border border-[#7cff9a]/35 bg-black/55 px-2 py-1.5 font-mono text-[8px] uppercase leading-tight tracking-[0.14em] text-[#7cff9a] shadow-[0_0_12px_rgba(124,255,154,0.15)] backdrop-blur-[2px] sm:text-[9px]"
+        className="xso-blur-safe border border-[#7cff9a]/35 bg-black/80 px-2 py-1.5 font-mono text-[8px] uppercase leading-tight tracking-[0.14em] text-[#7cff9a] shadow-[0_0_8px_rgba(124,255,154,0.12)] sm:text-[9px]"
         style={{
           textShadow: '0 0 6px rgba(124,255,154,0.45)',
           boxShadow: active

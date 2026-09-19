@@ -49,23 +49,23 @@ export function ImmersivePreview({ lockedStyle }: ImmersivePreviewProps) {
 
   return (
     <>
-      <div className="mx-auto flex min-h-[calc(100dvh-var(--xso-header-h))] w-full max-w-xl flex-col items-center px-4 pb-[7.25rem] pt-4 sm:px-6 sm:pt-6">
-        <p className="mb-3 font-pixel text-[8px] uppercase tracking-[0.28em] text-phosphor/55">
+      <div className="mx-auto flex min-h-[calc(100dvh-var(--xso-header-h))] w-full max-w-xl flex-col items-center px-3 pb-[6.75rem] pt-3 sm:px-6 sm:pb-[7.25rem] sm:pt-6">
+        <p className="mb-2 font-pixel text-[8px] uppercase tracking-[0.28em] text-phosphor/55 sm:mb-3">
           Experience · {cart.title}
         </p>
 
-        <div className="w-full max-w-[min(100%,420px)] flex-1 sm:max-w-[460px]">
+        <div className="flex w-full max-w-[min(100%,420px)] flex-1 flex-col justify-center sm:max-w-[460px]">
           <XsoViewer data={previewData} frameSize="hero" />
         </div>
 
-        <p className="mt-4 max-w-sm text-center font-mono text-[10px] leading-relaxed text-white/40">
+        <p className="mt-3 hidden max-w-sm text-center font-mono text-[10px] leading-relaxed text-white/40 sm:mt-4 sm:block">
           Play with the {cart.subtitle.toLowerCase()}. When it feels right,
           customize the lore and lock your keep.
         </p>
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50">
-        <div className="pointer-events-auto border-t border-white/10 bg-[#0f1319] shadow-[0_-16px_48px_rgba(0,0,0,0.45)] sm:bg-[#0f1319]/95 sm:backdrop-blur-xl">
+        <div className="xso-dock pointer-events-auto border-t border-white/10 bg-[#0f1319] shadow-[0_-8px_24px_rgba(0,0,0,0.4)]">
           <div className="mx-auto flex max-w-lg flex-col gap-2 px-4 py-3.5 sm:px-5">
             <Link
               href={`/studio?${styleQuery(lockedStyle)}`}

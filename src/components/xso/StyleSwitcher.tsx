@@ -1,10 +1,8 @@
 'use client';
 
 import { memo } from 'react';
-import { motion } from 'framer-motion';
 import type { GiftStyle } from '@/types/xso';
 import { STYLE_OPTIONS } from '@/lib/styleOptions';
-import { XSO_MOTION } from '@/lib/layout';
 
 interface StyleSwitcherProps {
   activeStyle: GiftStyle;
@@ -24,8 +22,8 @@ export const StyleSwitcher = memo(function StyleSwitcher({
     <nav
       className={
         external
-          ? 'mx-auto flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border border-white/10 bg-black/70 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-md [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-          : 'absolute left-1/2 top-3 z-30 flex -translate-x-1/2 gap-1 rounded-2xl border border-white/10 bg-black/65 p-1 shadow-xl backdrop-blur-md'
+          ? 'xso-blur-safe mx-auto flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border border-white/10 bg-black/85 p-1.5 shadow-[0_8px_20px_rgba(0,0,0,0.4)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+          : 'xso-blur-safe absolute left-1/2 top-3 z-30 flex -translate-x-1/2 gap-1 rounded-2xl border border-white/10 bg-black/85 p-1 shadow-lg'
       }
       aria-label="Change souvenir style"
     >
@@ -46,12 +44,10 @@ export const StyleSwitcher = memo(function StyleSwitcher({
             }`}
           >
             {selected && (
-              <motion.span
-                layoutId={external ? 'style-pill-ext' : 'style-pill'}
-                className={`absolute inset-0 bg-acid shadow-[0_0_18px_rgba(232,255,74,.32)] ${
+              <span
+                className={`absolute inset-0 bg-acid ${
                   external ? 'rounded-full' : 'rounded-xl'
                 }`}
-                transition={XSO_MOTION.select}
               />
             )}
             <span

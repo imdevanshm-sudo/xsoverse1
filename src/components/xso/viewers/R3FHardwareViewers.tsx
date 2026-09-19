@@ -35,7 +35,7 @@ export function R3FViewMasterViewer({
       <Canvas
         dpr={[1, 1.5]}
         camera={{ position: [0, 0, 8.8], fov: 38 }}
-        gl={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
+        gl={{ antialias: false, alpha: true, powerPreference: 'default' }}
       >
         <ViewMasterScene photos={data.photos} turn={turn} />
       </Canvas>
@@ -80,7 +80,7 @@ export function R3FMovieBoxViewer({
       <Canvas
         dpr={[1, 1.5]}
         camera={{ position: [0, 0.2, 9.5], fov: 40 }}
-        gl={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
+        gl={{ antialias: false, alpha: true, powerPreference: 'default' }}
       >
         <MovieBoxScene photos={data.photos} turn={turn} />
       </Canvas>

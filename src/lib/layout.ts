@@ -17,17 +17,23 @@ export const XSO_RADIUS = {
 
 export const XSO_MOTION = {
   boot: {
-    duration: 0.42,
+    duration: 0.28,
     ease: [0.22, 1, 0.36, 1] as const,
   },
   select: {
     type: 'spring' as const,
-    stiffness: 420,
-    damping: 28,
-    mass: 0.7,
+    stiffness: 320,
+    damping: 32,
+    mass: 0.55,
   },
   fade: {
-    duration: 0.22,
+    duration: 0.18,
+    ease: 'easeOut' as const,
+  },
+  /** Lightweight tween for coarse / reduced-motion paths. */
+  snappy: {
+    type: 'tween' as const,
+    duration: 0.16,
     ease: 'easeOut' as const,
   },
 };

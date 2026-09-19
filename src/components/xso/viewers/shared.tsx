@@ -17,16 +17,16 @@ import type { XsoData } from '@/types/xso';
 
 export const SPRING = {
   type: 'spring' as const,
-  stiffness: 200,
-  damping: 25,
-  mass: 1.2,
+  stiffness: 280,
+  damping: 30,
+  mass: 0.75,
 };
 
 export const HEAVY_SPRING = {
   type: 'spring' as const,
-  stiffness: 140,
-  damping: 34,
-  mass: 1.5,
+  stiffness: 200,
+  damping: 32,
+  mass: 0.95,
 };
 
 export interface Artifact {
@@ -200,19 +200,16 @@ export function TossCard({
 
   return (
     <motion.div
-      className="absolute inset-0 m-auto h-[540px] w-full max-w-[340px] cursor-grab active:cursor-grabbing"
+      className="absolute inset-0 m-auto h-[540px] w-full max-w-[340px] cursor-grab shadow-[0_18px_36px_rgba(0,0,0,.4)] active:cursor-grabbing"
       style={{
         zIndex,
         x: active ? x : 0,
         rotate: active ? rotate : artifact.rotation,
         opacity: active ? opacity : 1,
-        boxShadow: lifted
-          ? '0 40px 80px rgba(0,0,0,.55), 0 16px 28px rgba(0,0,0,.28), 0 2px 4px rgba(0,0,0,.15)'
-          : `0 ${22 + depth * 6}px ${44 + depth * 10}px rgba(0,0,0,.42), 0 ${6 + depth * 2}px ${14 + depth * 3}px rgba(0,0,0,.28), 0 1px 2px rgba(0,0,0,.12)`,
       }}
       animate={{
         scale: active ? 1 : Math.max(0.88, 0.96 - depth * 0.025),
-        y: active ? 0 : depth * 11,
+        y: active ? (lifted ? -6 : 0) : depth * 11,
       }}
       transition={SPRING}
       drag={active && !leaving ? 'x' : false}
