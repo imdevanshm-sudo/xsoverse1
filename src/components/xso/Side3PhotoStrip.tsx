@@ -1,7 +1,9 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
+import { LazyMedia } from '@/components/xso/LazyMedia';
+import { LIGHT_TWEEN } from '@/components/xso/viewers/shared';
 
 export interface Side3PhotoStripProps {
   data: XsoData;
@@ -28,6 +30,7 @@ const STICKERS: Array<{
 
 export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
   const panels = data.photos.slice(0, 4);
+  const reducedMotion = useReducedMotion();
 
   return (
     <article
@@ -35,7 +38,7 @@ export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
       aria-label="Y2K Purikura photo strip"
     >
       <div
-        className="relative overflow-hidden px-2.5 pb-4 pt-3 shadow-[0_20px_44px_rgba(0,0,0,0.5)]"
+        className="relative overflow-hidden px-2.5 pb-4 pt-3 mobile-flat-shadow shadow-[0_20px_44px_rgba(0,0,0,0.5)]"
         style={{
           background:
             'linear-gradient(180deg, #ffd6ec 0%, #ffe4f1 18%, #1a1218 18%, #1a1218 100%)',
@@ -53,40 +56,37 @@ export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
           {panels.map((src, i) => (
             <motion.figure
               key={`${data.id}-photo-${i}`}
-              initial={{ opacity: 0, y: 12 }}
+              initial={reducedMotion ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 * i, duration: 0.35 }}
+              transition={
+                reducedMotion
+                  ? LIGHT_TWEEN
+                  : { delay: 0.08 * i, duration: 0.35 }
+              }
               className="relative overflow-hidden"
               style={{
                 border: '3px solid rgba(255,255,255,0.95)',
-                boxShadow:
-                  'inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -8px 18px rgba(255,255,255,0.12), 0 4px 10px rgba(0,0,0,0.35)',
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <LazyMedia
                 src={src}
                 alt={`Photo ${i + 1}`}
-                className="aspect-[3/4] w-full object-cover"
-                draggable={false}
-                style={{
-                  filter:
-                    'contrast(1.15) saturate(1.25) brightness(1.12) drop-shadow(0 0 8px rgba(255,255,255,0.35))',
-                }}
+                className="aspect-[3/4] w-full object-cover mobile-no-filter"
+                width={220}
+                height={293}
+                style={
+                  reducedMotion
+                    ? undefined
+                    : {
+                        filter: 'contrast(1.1) saturate(1.15) brightness(1.08)',
+                      }
+                }
               />
               <div
-                className="pointer-events-none absolute inset-0"
+                className="pointer-events-none absolute inset-0 max-md:hidden"
                 style={{
                   background:
                     'radial-gradient(circle at 28% 18%, rgba(255,255,255,0.55), transparent 42%), linear-gradient(180deg, rgba(255,255,255,0.18), transparent 30%)',
-                }}
-                aria-hidden
-              />
-              <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-8"
-                style={{
-                  background:
-                    'linear-gradient(180deg, transparent, rgba(255,255,255,0.22))',
                 }}
                 aria-hidden
               />
@@ -100,7 +100,7 @@ export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
         {STICKERS.map((sticker) => (
           <span
             key={`${sticker.text}-${sticker.top}-${sticker.bottom}-${sticker.left}`}
-            className={`pointer-events-none absolute z-20 font-display font-extrabold drop-shadow-md ${
+            className={`pointer-events-none absolute z-20 font-display font-extrabold drop-shadow-md max-md:hidden ${
               sticker.badge
                 ? 'rounded-full border border-white/80 bg-hotpink px-1.5 py-0.5 text-[9px] tracking-wide'
                 : 'text-[14px]'
@@ -119,7 +119,7 @@ export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
           </span>
         ))}
         <p
-          className="pointer-events-none absolute bottom-10 left-3 z-30 max-w-[7rem] font-hand text-[12px] leading-snug text-[#2a4a7a]/85"
+          className="pointer-events-none absolute bottom-10 left-3 z-30 max-w-[7rem] font-hand text-[12px] leading-snug text-[#2a4a7a]/85 max-md:hidden"
           style={{ transform: 'rotate(-7deg)' }}
           aria-hidden
         >

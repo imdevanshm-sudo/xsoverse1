@@ -29,6 +29,13 @@ export const HEAVY_SPRING = {
   mass: 0.95,
 };
 
+/** GPU-friendly tween — transform/opacity only, no layout props. */
+export const LIGHT_TWEEN = {
+  type: 'tween' as const,
+  duration: 0.18,
+  ease: 'easeOut' as const,
+};
+
 export interface Artifact {
   id: 'receipt' | 'audit' | 'photos' | 'letter';
   label: string;

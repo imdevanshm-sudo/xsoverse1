@@ -36,7 +36,22 @@ export const XSO_MOTION = {
     duration: 0.16,
     ease: 'easeOut' as const,
   },
-};
+  /** Instant / near-instant — GPU opacity/transform only. */
+  instant: {
+    type: 'tween' as const,
+    duration: 0.01,
+  },
+} as const;
+
+/** Prefer tweens on low-end / reduced-motion; springs only on capable devices. */
+export function motionForDevice(options?: {
+  reducedMotion?: boolean;
+  lowEnd?: boolean;
+}) {
+  if (options?.reducedMotion) return XSO_MOTION.instant;
+  if (options?.lowEnd) return XSO_MOTION.snappy;
+  return XSO_MOTION.select;
+}
 
 export const HEADER_HEIGHT = 'h-14';
 export const STUDIO_MAX = 'max-w-6xl';

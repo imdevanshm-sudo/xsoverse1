@@ -6,6 +6,7 @@ import {
   Center,
   ContactShadows,
   Float,
+  PerformanceMonitor,
   PresentationControls,
 } from '@react-three/drei';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -19,12 +20,17 @@ import {
 } from 'three';
 import type { GiftStyle, XsoData } from '@/types/xso';
 import { buildMemoryTextureUrls } from '@/lib/loopTextures';
-import { useDeviceQuality } from '@/hooks/useDeviceQuality';
+import {
+  useAdaptiveCanvasQuality,
+  useDeviceQuality,
+} from '@/hooks/useDeviceQuality';
+import { clampDpr, DPR_RANGE } from '@/lib/deviceQuality';
 import {
   QualityProvider,
   useQuality,
 } from '@/components/xso/viewers/QualityContext';
 import { ScratchReveal } from '@/components/xso/paper/ScratchReveal';
+import { LazyMedia } from '@/components/xso/LazyMedia';
 import {
   CamcorderTimestamp,
   RewindGlitchBurst,
@@ -99,7 +105,8 @@ export function R3FUnifiedViewer({
   initialSide = 0,
   onContextLost,
 }: R3FUnifiedViewerProps) {
-  const quality = useDeviceQuality();
+  const { quality, onDecline, onIncline, onFallback } =
+    useAdaptiveCanvasQuality();
   const [action, setAction] = useState(0);
   const [inspectedScrapbook, setInspectedScrapbook] = useState<number | null>(
     null,
@@ -210,13 +217,13 @@ export function R3FUnifiedViewer({
       aria-label={`3D ${data.giftStyle} souvenir`}
     >
       <Canvas
-        key={`${data.giftStyle}-${quality.tier}`}
+        key={data.giftStyle}
         className="!absolute inset-0 h-full w-full touch-none"
         style={{
           pointerEvents: inspectedScrapbook === null ? 'auto' : 'none',
         }}
         shadows={quality.shadows}
-        dpr={quality.dpr}
+        dpr={clampDpr(quality.dpr ?? DPR_RANGE)}
         frameloop="always"
         camera={{ position: [0, 0.15, 11], fov: 40 }}
         gl={{
@@ -227,10 +234,20 @@ export function R3FUnifiedViewer({
           stencil: false,
           depth: true,
         }}
-        performance={{ min: quality.tier === 'low' ? 0.3 : 0.5 }}
+        performance={{ min: quality.tier === 'low' || quality.degradeSteps > 0 ? 0.25 : 0.5 }}
         onPointerMissed={tapAdvancesStack ? trigger : undefined}
       >
         <QualityProvider value={quality}>
+          <PerformanceMonitor
+            ms={250}
+            iterations={6}
+            step={0.15}
+            factor={1}
+            flipflops={3}
+            onDecline={onDecline}
+            onIncline={onIncline}
+            onFallback={onFallback}
+          />
           <PauseWhenHidden />
           <WebGlContextGuard onContextLost={onContextLost} />
           <color attach="background" args={['#0d0f12']} />
@@ -252,15 +269,15 @@ export function R3FUnifiedViewer({
               position={[0, -3.05, 0]}
               opacity={0.55}
               scale={11}
-              blur={1.6}
+              blur={1.2}
               far={5.5}
               resolution={quality.shadowMapSize}
-              frames={quality.float ? Infinity : 1}
+              frames={1}
               color="#050506"
             />
           ) : (
             <mesh position={[0, -3.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <circleGeometry args={[3.2, 24]} />
+              <circleGeometry args={[3.2, quality.segments]} />
               <meshBasicMaterial color="#050506" transparent opacity={0.45} />
             </mesh>
           )}
@@ -652,6 +669,42 @@ function DeskSurface() {
   );
 }
 
+function stackRestPose(
+  depth: number,
+  textureIndex: number,
+  isRewind: boolean,
+) {
+  const top = depth === 0;
+  const tilt = CARD_TILTS[textureIndex] ?? 0;
+  const mess = isRewind
+    ? REWIND_MESS[textureIndex] ?? REWIND_MESS[0]
+    : { x: 0, y: 0, z: 0, rz: 0 };
+  return {
+    x:
+      depth * (isRewind ? 0.12 : 0.1) +
+      (top ? mess.x * 0.35 : depth * 0.02 + mess.x),
+    y: -depth * (isRewind ? 0.1 : 0.09) + mess.y * (top ? 0.2 : 1),
+    z: depth * (isRewind ? 0.16 : 0.14) + mess.z,
+    rx: 0.01 * depth,
+    ry: 0,
+    rz: tilt + mess.rz,
+  };
+}
+
+function applyStackRestPoses(
+  order: number[],
+  cardRefs: Array<Group | null>,
+  isRewind: boolean,
+) {
+  order.forEach((textureIndex, depth) => {
+    const card = cardRefs[textureIndex];
+    if (!card) return;
+    const pose = stackRestPose(depth, textureIndex, isRewind);
+    card.position.set(pose.x, pose.y, pose.z);
+    card.rotation.set(pose.rx, pose.ry, pose.rz);
+  });
+}
+
 function DeskStack({
   textures,
   action,
@@ -668,15 +721,17 @@ function DeskStack({
   mode?: 'loop' | 'rewind';
 }) {
   const isRewind = mode === 'rewind';
-  const [order, setOrder] = useState(() =>
-    rotateIndices(textures.length, initialSide),
-  );
-  const orderRef = useRef(order);
-  orderRef.current = order;
+  const orderRef = useRef(rotateIndices(textures.length, initialSide));
   const cardRefs = useRef<(Group | null)[]>([]);
   const phase = useRef(1);
   const handledAction = useRef(action);
   const orderFlipped = useRef(false);
+  const reducedMotion = useQuality().reducedMotion;
+
+  // Keep mesh graph stable — layout is applied via refs (no useFrame setState).
+  useEffect(() => {
+    applyStackRestPoses(orderRef.current, cardRefs.current, isRewind);
+  }, [textures.length, isRewind]);
 
   useEffect(() => {
     if (handledAction.current === action) return;
@@ -684,13 +739,31 @@ function DeskStack({
     handledAction.current = action;
     if (steps <= 0) return;
 
+    if (reducedMotion) {
+      const logical = isRewind
+        ? rotateIndices(
+            textures.length,
+            (((initialSide - action) % textures.length) + textures.length) %
+              textures.length,
+          )
+        : rotateIndices(
+            textures.length,
+            (initialSide + action) % textures.length,
+          );
+      orderRef.current = logical;
+      phase.current = 1;
+      orderFlipped.current = true;
+      applyStackRestPoses(logical, cardRefs.current, isRewind);
+      return;
+    }
+
     if (steps === 1 && phase.current >= 1) {
       phase.current = 0;
       orderFlipped.current = false;
       return;
     }
 
-    // Rapid presses: snap to logical order.
+    // Rapid presses: snap to logical order without animating.
     const logical = isRewind
       ? rotateIndices(
           textures.length,
@@ -701,22 +774,16 @@ function DeskStack({
           textures.length,
           (initialSide + action) % textures.length,
         );
-    setOrder(logical);
     orderRef.current = logical;
     phase.current = 1;
     orderFlipped.current = true;
-    cardRefs.current.forEach((card) => {
-      if (!card) return;
-      card.position.set(0, 0, 0);
-      card.rotation.set(0, 0, 0);
-    });
-  }, [action, initialSide, textures.length, isRewind]);
+    applyStackRestPoses(logical, cardRefs.current, isRewind);
+  }, [action, initialSide, textures.length, isRewind, reducedMotion]);
 
   useFrame((_, delta) => {
     if (phase.current >= 1) return;
 
     if (isRewind) {
-      // Chaotic explode → spring snap (local offsets; parent holds rest pose).
       const speed = 1.05;
       phase.current = Math.min(1, phase.current + delta * speed);
       const t = phase.current;
@@ -729,22 +796,29 @@ function DeskStack({
           const card = cardRefs.current[textureIndex];
           if (!card) return;
           const boom = REWIND_BURST[textureIndex] ?? REWIND_BURST[0];
-          card.position.x = boom.x * burst;
-          card.position.y = boom.y * burst;
-          card.position.z = boom.z * burst;
-          card.rotation.x = boom.rx * burst;
-          card.rotation.y = boom.ry * burst;
-          card.rotation.z = boom.rz * burst;
+          const rest = stackRestPose(
+            orderRef.current.indexOf(textureIndex),
+            textureIndex,
+            true,
+          );
+          card.position.set(
+            rest.x + boom.x * burst,
+            rest.y + boom.y * burst,
+            rest.z + boom.z * burst,
+          );
+          card.rotation.set(
+            rest.rx + boom.rx * burst,
+            rest.ry + boom.ry * burst,
+            rest.rz + boom.rz * burst,
+          );
         });
       } else {
         if (!orderFlipped.current) {
           const current = orderRef.current;
-          const next = [
+          orderRef.current = [
             current[current.length - 1],
             ...current.slice(0, -1),
           ];
-          orderRef.current = next;
-          setOrder(next);
           orderFlipped.current = true;
         }
         const u = (t - explodeEnd) / (1 - explodeEnd);
@@ -752,34 +826,36 @@ function DeskStack({
           1 - Math.pow(2, -9 * u) * Math.cos((u * 5.5 * Math.PI) / 2);
         const settle = Math.min(1.12, Math.max(0, spring));
 
-        orderRef.current.forEach((textureIndex) => {
+        orderRef.current.forEach((textureIndex, depth) => {
           const card = cardRefs.current[textureIndex];
           if (!card) return;
           const boom = REWIND_BURST[textureIndex] ?? REWIND_BURST[0];
-          card.position.x = boom.x * (1 - settle);
-          card.position.y = boom.y * (1 - settle);
-          card.position.z = boom.z * (1 - settle);
-          card.rotation.x = boom.rx * (1 - settle);
-          card.rotation.y = boom.ry * (1 - settle);
-          card.rotation.z = boom.rz * (1 - settle);
+          const rest = stackRestPose(depth, textureIndex, true);
+          card.position.set(
+            rest.x + boom.x * (1 - settle),
+            rest.y + boom.y * (1 - settle),
+            rest.z + boom.z * (1 - settle),
+          );
+          card.rotation.set(
+            rest.rx + boom.rx * (1 - settle),
+            rest.ry + boom.ry * (1 - settle),
+            rest.rz + boom.rz * (1 - settle),
+          );
         });
       }
 
       if (t >= 1) {
-        cardRefs.current.forEach((card) => {
-          if (!card) return;
-          card.position.set(0, 0, 0);
-          card.rotation.set(0, 0, 0);
-        });
+        applyStackRestPoses(orderRef.current, cardRefs.current, true);
       }
       return;
     }
 
-    // Loop / default toss path
+    // Loop / default toss path — mutate refs only.
     const topIndex = orderRef.current[0];
     const card = topIndex === undefined ? null : cardRefs.current[topIndex];
     if (!card) return;
 
+    const rest = stackRestPose(0, topIndex, false);
     const speed = elastic ? 1.15 : 1.45;
     phase.current = Math.min(1, phase.current + delta * speed);
     const t = phase.current;
@@ -794,52 +870,37 @@ function DeskStack({
       : t;
     const lift = Math.sin(Math.min(1, e) * Math.PI);
 
-    card.position.x = direction * lift * 3.75;
-    card.position.y = lift * 2.35;
-    card.position.z = 0.55 + lift * 1.85 - e * 0.55;
-    card.rotation.z = direction * e * 1.05;
-    card.rotation.y = direction * Math.sin(e * Math.PI) * 0.38;
-    card.rotation.x = -lift * 0.12;
+    card.position.x = rest.x + direction * lift * 3.75;
+    card.position.y = rest.y + lift * 2.35;
+    card.position.z = rest.z + 0.55 + lift * 1.85 - e * 0.55;
+    card.rotation.z = rest.rz + direction * e * 1.05;
+    card.rotation.y = rest.ry + direction * Math.sin(e * Math.PI) * 0.38;
+    card.rotation.x = rest.rx - lift * 0.12;
 
     if (t >= 1) {
-      setOrder((current) => [...current.slice(1), current[0]]);
-      card.position.set(0, 0, 0);
-      card.rotation.set(0, 0, 0);
+      const current = orderRef.current;
+      orderRef.current = [...current.slice(1), current[0]];
+      applyStackRestPoses(orderRef.current, cardRefs.current, false);
     }
   });
 
   return (
     <group rotation={[-0.08, 0.06, -0.025]} position={[0, 0.1, 0]}>
-      {[...order].reverse().map((textureIndex, reverseIndex) => {
-        const depth = order.length - 1 - reverseIndex;
-        const top = depth === 0;
-        const tilt = CARD_TILTS[textureIndex] ?? 0;
-        const mess = isRewind
-          ? REWIND_MESS[textureIndex] ?? REWIND_MESS[0]
-          : { x: 0, y: 0, z: 0, rz: 0 };
-        return (
-          <group
-            key={textureIndex}
-            ref={(node) => {
-              cardRefs.current[textureIndex] = node;
-            }}
-            position={[
-              depth * (isRewind ? 0.12 : 0.1) +
-                (top ? mess.x * 0.35 : depth * 0.02 + mess.x),
-              -depth * (isRewind ? 0.1 : 0.09) + mess.y * (top ? 0.2 : 1),
-              depth * (isRewind ? 0.16 : 0.14) + mess.z,
-            ]}
-            rotation={[0.01 * depth, 0, tilt + mess.rz]}
-          >
-            <CardMesh
-              texture={textures[textureIndex]}
-              kind={textureIndex}
-              elevated={top}
-              aged={isRewind}
-            />
-          </group>
-        );
-      })}
+      {textures.map((texture, textureIndex) => (
+        <group
+          key={textureIndex}
+          ref={(node) => {
+            cardRefs.current[textureIndex] = node;
+          }}
+        >
+          <CardMesh
+            texture={texture}
+            kind={textureIndex}
+            elevated={false}
+            aged={isRewind}
+          />
+        </group>
+      ))}
     </group>
   );
 }
@@ -999,9 +1060,9 @@ function ScrapbookScene({
   }, [action]);
 
   useFrame((_, delta) => {
-    if (phase.current < 1) {
-      phase.current = Math.min(1, phase.current + delta * 1.35);
-    }
+    if (phase.current >= 1) return;
+
+    phase.current = Math.min(1, phase.current + delta * 1.35);
     const t = phase.current;
     const scatter = t < 0.38 ? Math.sin((t / 0.38) * Math.PI) : 0;
     const settle =
@@ -1027,7 +1088,13 @@ function ScrapbookScene({
       const goalZ = tz + scatter * 0.8 * (1 - settle);
       const goalR = tr + scatter * (index % 2 === 0 ? 0.55 : -0.45) * (1 - settle);
 
-      const damp = t < 1 ? 9 : 7;
+      if (t >= 1) {
+        item.position.set(tx, ty, tz);
+        item.rotation.z = tr;
+        return;
+      }
+
+      const damp = 9;
       item.position.x = MathUtils.damp(item.position.x, goalX, damp, delta);
       item.position.y = MathUtils.damp(item.position.y, goalY, damp, delta);
       item.position.z = MathUtils.damp(item.position.z, goalZ, damp, delta);
@@ -1099,9 +1166,10 @@ function ScrapbookScene({
 function PaperFibers() {
   const quality = useQuality();
   if (!quality.paperFibers) return null;
+  const count = quality.tier === 'low' ? 8 : 28;
   return (
     <group position={[0, 0, 0.17]}>
-      {Array.from({ length: 28 }).map((_, index) => (
+      {Array.from({ length: count }).map((_, index) => (
         <mesh
           key={index}
           position={[
@@ -1284,7 +1352,9 @@ function ScrapbookInspection({
         onClick={(event) => event.stopPropagation()}
       >
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.22] mix-blend-multiply"
+          className={`pointer-events-none absolute inset-0 opacity-[0.22] mix-blend-multiply max-md:hidden ${
+            quality.softOverlays ? '' : 'hidden'
+          }`}
           style={{
             backgroundImage:
               "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.55'/%3E%3C/svg%3E\")",
@@ -1340,12 +1410,13 @@ function ScrapbookInspection({
           )}
 
           {index === 2 && (
-            <div className="mt-5 bg-white p-3 pb-10 shadow-[0_12px_30px_rgba(45,31,20,.25)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+            <div className="relative mt-5 bg-white p-3 pb-10 shadow-[0_12px_30px_rgba(45,31,20,.25)]">
+              <LazyMedia
                 src={data.photos[0]}
                 alt={`Memory of ${data.customerName} and ${data.billerName}`}
                 className="aspect-[4/5] w-full object-cover"
+                width={480}
+                height={600}
               />
               <p className="mt-4 text-center font-hand text-[20px] font-semibold leading-snug">
                 Missed the train. Found the best story.
@@ -1558,15 +1629,19 @@ function MovieBoxScene({ textures, turn }: { textures: Texture[]; turn: number }
 
   return (
     <group scale={0.92} position={[0, 0.05, 0]}>
-      <pointLight position={[0, 0.2, 2.2]} intensity={7.5} color="#ffd19a" />
-      {quality.tier === 'high' ? (
+      <pointLight
+        position={[0, 0.2, 2.2]}
+        intensity={quality.tier === 'low' ? 3.5 : 7.5}
+        color="#ffd19a"
+      />
+      {quality.tier === 'high' && quality.degradeSteps === 0 ? (
         <spotLight
           position={[0.5, 1.2, 2.5]}
           angle={0.45}
           penumbra={0.85}
           intensity={12}
           color="#ffb870"
-          castShadow
+          castShadow={quality.shadows}
         />
       ) : (
         <directionalLight
@@ -1687,6 +1762,7 @@ function BronzeCrankWheel({ turn }: { turn: number }) {
   const angle = useRef(0);
   const spinVelocity = useRef(0);
   const previousTurn = useRef(turn);
+  const segments = useQuality().segments;
 
   useEffect(() => {
     if (previousTurn.current === turn) return;
@@ -1706,13 +1782,13 @@ function BronzeCrankWheel({ turn }: { turn: number }) {
 
   return (
     <group position={[2.05, -2.35, 0.92]}>
-      <mesh castShadow position={[0, 0, -0.06]}>
-        <cylinderGeometry args={[0.42, 0.42, 0.08, 32]} />
+      <mesh castShadow={false} position={[0, 0, -0.06]}>
+        <cylinderGeometry args={[0.42, 0.42, 0.08, segments]} />
         <meshStandardMaterial color="#2a1810" roughness={0.8} metalness={0.4} />
       </mesh>
       <group ref={crank}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.38, 0.38, 0.12, 32]} />
+        <mesh castShadow={false}>
+          <cylinderGeometry args={[0.38, 0.38, 0.12, segments]} />
           <meshStandardMaterial
             color="#c9925a"
             metalness={0.88}
@@ -1721,23 +1797,27 @@ function BronzeCrankWheel({ turn }: { turn: number }) {
           />
         </mesh>
         <mesh position={[0, 0, 0.07]}>
-          <circleGeometry args={[0.32, 32]} />
+          <circleGeometry args={[0.32, segments]} />
           <meshStandardMaterial
             color="#e8b878"
             metalness={0.75}
             roughness={0.22}
           />
         </mesh>
-        <mesh position={[0.52, 0, 0.1]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.06, 0.06, 0.55, 16]} />
+        <mesh
+          position={[0.52, 0, 0.1]}
+          rotation={[0, 0, Math.PI / 2]}
+          castShadow={false}
+        >
+          <cylinderGeometry args={[0.06, 0.06, 0.55, Math.max(8, segments / 2)]} />
           <meshStandardMaterial
             color="#8b5a32"
             metalness={0.82}
             roughness={0.25}
           />
         </mesh>
-        <mesh position={[0.78, 0, 0.1]} castShadow>
-          <sphereGeometry args={[0.11, 16, 16]} />
+        <mesh position={[0.78, 0, 0.1]} castShadow={false}>
+          <sphereGeometry args={[0.11, Math.max(8, segments / 2), Math.max(8, segments / 2)]} />
           <meshStandardMaterial
             color="#6b4423"
             metalness={0.85}

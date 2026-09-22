@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { motion } from 'framer-motion';
+import { PerformanceMonitor } from '@react-three/drei';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   Group,
   MathUtils,
@@ -10,9 +11,10 @@ import {
   Texture,
   TextureLoader,
 } from 'three';
-import type { XsoData } from '@/types/xso';
-import { playMechanicalCue, SPRING } from './shared';
+import { playMechanicalCue, SPRING, LIGHT_TWEEN } from './shared';
 import type { ViewerEngineProps } from './StackViewers';
+import { useAdaptiveCanvasQuality } from '@/hooks/useDeviceQuality';
+import { clampDpr, DPR_RANGE } from '@/lib/deviceQuality';
 
 const FALLBACK_TEXTURE =
   'data:image/svg+xml;charset=utf-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="320" height="240"%3E%3Crect width="100%25" height="100%25" fill="%23231b22"/%3E%3C/svg%3E';
@@ -24,6 +26,9 @@ export function R3FViewMasterViewer({
   const [turn, setTurn] = useState(
     Math.max(0, Math.min(3, Math.round(initialSide))),
   );
+  const { quality, onDecline, onIncline, onFallback } =
+    useAdaptiveCanvasQuality();
+  const reducedMotion = useReducedMotion();
 
   const pullLever = () => {
     playMechanicalCue('click');
@@ -33,19 +38,35 @@ export function R3FViewMasterViewer({
   return (
     <HardwareStage label="3D mechanical View-Master">
       <Canvas
-        dpr={[1, 1.5]}
+        dpr={clampDpr(quality.dpr ?? DPR_RANGE)}
+        shadows={false}
         camera={{ position: [0, 0, 8.8], fov: 38 }}
-        gl={{ antialias: false, alpha: true, powerPreference: 'default' }}
+        gl={{
+          antialias: false,
+          alpha: true,
+          powerPreference: 'default',
+          failIfMajorPerformanceCaveat: false,
+          stencil: false,
+        }}
+        performance={{ min: 0.3 }}
       >
+        <PerformanceMonitor
+          ms={250}
+          iterations={6}
+          flipflops={3}
+          onDecline={onDecline}
+          onIncline={onIncline}
+          onFallback={onFallback}
+        />
         <ViewMasterScene photos={data.photos} turn={turn} />
       </Canvas>
       <motion.button
         type="button"
         onClick={pullLever}
-        animate={{ rotateX: turn * 10 }}
-        whileTap={{ y: 18, rotateZ: 4 }}
-        transition={SPRING}
-        className="absolute bottom-8 right-8 z-20 h-28 w-12 origin-top rounded-b-2xl border-4 border-[#2a070e] bg-gradient-to-r from-[#8d142b] via-[#d33a50] to-[#791126] shadow-[5px_8px_0_#21050b]"
+        animate={reducedMotion ? undefined : { rotateX: turn * 10 }}
+        whileTap={{ y: 12 }}
+        transition={reducedMotion ? LIGHT_TWEEN : SPRING}
+        className="absolute bottom-8 right-8 z-20 h-28 w-12 origin-top touch-manipulation rounded-b-2xl border-4 border-[#2a070e] bg-gradient-to-r from-[#8d142b] via-[#d33a50] to-[#791126] shadow-[5px_8px_0_#21050b]"
         aria-label="Pull 3D View-Master lever"
       >
         <span className="font-mono text-[8px] font-bold uppercase text-white/75">
@@ -66,6 +87,9 @@ export function R3FMovieBoxViewer({
   const [turn, setTurn] = useState(
     Math.max(0, Math.min(3, Math.round(initialSide))),
   );
+  const { quality, onDecline, onIncline, onFallback } =
+    useAdaptiveCanvasQuality();
+  const reducedMotion = useReducedMotion();
 
   const crank = () => {
     playMechanicalCue('clack');
@@ -78,22 +102,39 @@ export function R3FMovieBoxViewer({
       className="border-[#3f1220] bg-[radial-gradient(circle_at_50%_38%,#4d1b2a_0%,#1a090f_50%,#090407_100%)] shadow-[inset_0_0_55px_#000,0_22px_55px_rgba(0,0,0,.5)]"
     >
       <Canvas
-        dpr={[1, 1.5]}
+        dpr={clampDpr(quality.dpr ?? DPR_RANGE)}
+        shadows={false}
         camera={{ position: [0, 0.2, 9.5], fov: 40 }}
-        gl={{ antialias: false, alpha: true, powerPreference: 'default' }}
+        gl={{
+          antialias: false,
+          alpha: true,
+          powerPreference: 'default',
+          failIfMajorPerformanceCaveat: false,
+          stencil: false,
+        }}
+        performance={{ min: 0.3 }}
       >
+        <PerformanceMonitor
+          ms={250}
+          iterations={6}
+          flipflops={3}
+          onDecline={onDecline}
+          onIncline={onIncline}
+          onFallback={onFallback}
+        />
         <MovieBoxScene photos={data.photos} turn={turn} />
       </Canvas>
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(255,188,125,.09),transparent_42%,rgba(0,0,0,.45)_100%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(255,188,125,.09),transparent_42%,rgba(0,0,0,.45)_100%)] max-md:opacity-60"
         aria-hidden
       />
       <motion.button
         type="button"
         onClick={crank}
-        animate={{ rotate: turn * 180 }}
-        transition={SPRING}
-        className="absolute bottom-9 right-10 z-20 h-16 w-16 rounded-full border-4 border-[#19090d] bg-gradient-to-br from-[#9d5b42] to-[#54241d] shadow-[5px_7px_0_#16080b]"
+        animate={reducedMotion ? undefined : { rotate: turn * 180 }}
+        transition={reducedMotion ? LIGHT_TWEEN : SPRING}
+        whileTap={{ scale: 0.96 }}
+        className="absolute bottom-9 right-10 z-20 h-16 w-16 touch-manipulation rounded-full border-4 border-[#19090d] bg-gradient-to-br from-[#9d5b42] to-[#54241d] shadow-[5px_7px_0_#16080b]"
         aria-label="Turn 3D projector crank"
       >
         <span className="absolute left-1/2 top-1/2 h-2 w-20 -translate-y-1/2 rounded-full bg-[#c88d6b] shadow-md">
@@ -136,7 +177,7 @@ function MoldedChassis() {
   return (
     <group position={[0, 0, -0.35]}>
       <mesh scale={[3.75, 2.75, 0.72]}>
-        <sphereGeometry args={[1, 48, 32]} />
+        <sphereGeometry args={[1, 20, 16]} />
         <meshStandardMaterial
           color="#a91f38"
           roughness={0.28}
@@ -183,7 +224,7 @@ function StereoDisc({ textures, turn }: { textures: Texture[]; turn: number }) {
             rotation={[0, angle, 0]}
           >
             <mesh>
-              <circleGeometry args={[2.45, 64]} />
+              <circleGeometry args={[2.45, 24]} />
               <meshStandardMaterial color="#100e10" roughness={0.72} />
             </mesh>
             {textures.map((texture, index) => {
@@ -204,7 +245,7 @@ function StereoDisc({ textures, turn }: { textures: Texture[]; turn: number }) {
               );
             })}
             <mesh position={[0, 0, 0.07]}>
-              <circleGeometry args={[0.38, 32]} />
+              <circleGeometry args={[0.38, 16]} />
               <meshStandardMaterial color="#554c50" metalness={0.65} roughness={0.3} />
             </mesh>
           </group>
@@ -224,15 +265,15 @@ function Lens({
   return (
     <group position={position}>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.88, 1.04, 0.34, 48]} />
+        <cylinderGeometry args={[0.88, 1.04, 0.34, 20]} />
         <meshStandardMaterial color="#26050c" roughness={0.32} />
       </mesh>
       <mesh position={[0, 0, 0.19]}>
-        <circleGeometry args={[0.69, 48]} />
+        <circleGeometry args={[0.69, 20]} />
         <meshBasicMaterial map={texture} toneMapped={false} />
       </mesh>
       <mesh position={[0, 0, 0.205]}>
-        <circleGeometry args={[0.69, 48]} />
+        <circleGeometry args={[0.69, 20]} />
         <meshStandardMaterial
           color="#a8d6e6"
           transparent
@@ -250,16 +291,9 @@ function MovieBoxScene({ photos, turn }: { photos: string[]; turn: number }) {
 
   return (
     <>
-      <ambientLight intensity={0.65} />
-      <directionalLight position={[5, 6, 7]} intensity={4.2} color="#ffe2d1" />
-      <pointLight position={[-3, 0, 4]} intensity={18} color="#a52f4a" />
-      <spotLight
-        position={[0, 1.5, 7]}
-        intensity={32}
-        angle={0.48}
-        penumbra={0.82}
-        color="#ffd3a3"
-      />
+      <ambientLight intensity={0.9} />
+      <directionalLight position={[5, 6, 7]} intensity={3.2} color="#ffe2d1" />
+      <pointLight position={[-3, 0, 4]} intensity={8} color="#a52f4a" />
 
       <group position={[0, 0.15, 0]}>
         <ProjectorHousing />

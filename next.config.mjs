@@ -2,7 +2,18 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion'],
+    optimizePackageImports: [
+      'lucide-react',
+      'framer-motion',
+      '@react-three/drei',
+      '@react-three/fiber',
+    ],
+  },
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'placehold.co' },
+      { protocol: 'https', hostname: '**.placehold.co' },
+    ],
   },
   compiler: {
     removeConsole:

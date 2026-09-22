@@ -9,11 +9,11 @@ export const CRANK_SPRING = {
   mass: 0.7,
 };
 
-/** Warm amber projector beam + dust motes over the viewport. */
+/** Warm amber projector beam + dust motes over the viewport (desktop only). */
 export function ProjectorBeamOverlay() {
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-[15] overflow-hidden"
+      className="pointer-events-none absolute inset-0 z-[15] overflow-hidden max-md:hidden"
       aria-hidden
     >
       <div className="projector-beam-core absolute inset-0" />

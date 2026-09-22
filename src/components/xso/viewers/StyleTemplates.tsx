@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
 import type { Artifact } from './shared';
 import { SPRING } from './shared';
+import { LazyMedia } from '@/components/xso/LazyMedia';
 
 const MEMORY_IDS = ['receipt', 'audit', 'photos', 'letter'] as const;
 const MEMORY_LABELS = ['Receipt', 'Audit', 'Photos', 'Letter'] as const;
@@ -54,14 +55,15 @@ export function ScrapbookMemory({
           tone={index === 0 ? 'cream' : 'slate'}
         />
         <div className="relative overflow-hidden border border-black/10 bg-[#e8e1d6]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <LazyMedia
             src={photoAt(data, index)}
             alt=""
-            className="aspect-[4/5] w-full object-cover saturate-110 contrast-110"
+            className="aspect-[4/5] w-full object-cover saturate-110 contrast-110 max-md:saturate-100 max-md:contrast-100"
+            width={280}
+            height={350}
           />
           <div
-            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/35 via-transparent to-amber-200/15"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/35 via-transparent to-amber-200/15 max-md:hidden"
             aria-hidden
           />
         </div>
@@ -209,8 +211,13 @@ export function AccordionPanel({
         <div className="mt-5 grid grid-cols-2 gap-3">
           {data.photos.slice(0, 4).map((photo, photoIndex) => (
             <div key={photoIndex} className="rotate-[-1deg] bg-white p-1.5 pb-5 shadow-md">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photo} alt="" className="aspect-square w-full object-cover" />
+              <LazyMedia
+                src={photo}
+                alt=""
+                className="aspect-square w-full object-cover"
+                width={240}
+                height={240}
+              />
             </div>
           ))}
         </div>
@@ -254,11 +261,13 @@ export function ViewMasterDisc({
               transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-146px) rotate(${-angle}deg)`,
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            {/* eslint-disable-next-line @next/next/no-img-element -- replaced below */}
+            <LazyMedia
               src={photos[index % photos.length]}
               alt=""
-              className="h-full w-full object-cover saturate-125"
+              className="h-full w-full object-cover saturate-125 max-md:saturate-100"
+              width={224}
+              height={160}
             />
           </div>
         );
@@ -279,11 +288,12 @@ export function ViewMasterLenses({ data, turn }: { data: XsoData; turn: number }
           key={`${photoIndex}-${index}`}
           className="h-28 w-32 overflow-hidden rounded-[45%] border-[7px] border-[#21050c] bg-black shadow-[inset_0_0_18px_#000,0_4px_8px_rgba(0,0,0,.4)]"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <LazyMedia
             src={photos[photoIndex]}
             alt=""
-            className="h-full w-full object-cover brightness-110 contrast-110"
+            className="h-full w-full object-cover brightness-110 contrast-110 max-md:brightness-100 max-md:contrast-100"
+            width={256}
+            height={224}
           />
         </div>
       ))}
@@ -301,8 +311,13 @@ export function CorkboardMemory({
   if (index === 2) {
     return (
       <article className="mx-auto w-[290px] rotate-[-1deg] bg-white p-3 pb-11 text-ink shadow-[0_4px_8px_rgba(60,32,15,.2),0_16px_28px_rgba(60,32,15,.38)]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photoAt(data, 0)} alt="" className="aspect-[4/5] w-full object-cover" />
+        <LazyMedia
+          src={photoAt(data, 0)}
+          alt=""
+          className="aspect-[4/5] w-full object-cover"
+          width={290}
+          height={360}
+        />
         <p
           className="mt-3 text-center text-sm font-bold"
           style={{ fontFamily: '"Bradley Hand", "Segoe Print", cursive' }}
@@ -410,12 +425,13 @@ export function MovieMemoryFrame({
         {index === 2 && (
           <div className="mt-5 flex gap-3 overflow-hidden">
             {data.photos.slice(0, 3).map((photo, photoIndex) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <LazyMedia
                 key={photoIndex}
                 src={photo}
                 alt=""
-                className="aspect-video min-w-0 flex-1 object-cover sepia-[.25] contrast-125"
+                className="aspect-video min-w-0 flex-1 object-cover sepia-[.25] contrast-125 max-md:sepia-0 max-md:contrast-100"
+                width={200}
+                height={112}
               />
             ))}
           </div>

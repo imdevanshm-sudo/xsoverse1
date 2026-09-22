@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   getCanvasQualityProfile,
+  downgradeCanvasQuality,
+  upgradeCanvasQuality,
   type CanvasQualityProfile,
 } from '@/lib/deviceQuality';
 
@@ -33,4 +35,33 @@ export function useDeviceQuality(): CanvasQualityProfile {
   }, []);
 
   return profile;
+}
+
+/**
+ * Device baseline + runtime adapts from `<PerformanceMonitor>`.
+ * Declines step fidelity down; inclines gently restore toward baseline.
+ */
+export function useAdaptiveCanvasQuality() {
+  const baseline = useDeviceQuality();
+  const [live, setLive] = useState(baseline);
+
+  useEffect(() => {
+    setLive(baseline);
+  }, [baseline]);
+
+  const onDecline = useCallback(() => {
+    setLive((current) => downgradeCanvasQuality(current));
+  }, []);
+
+  const onIncline = useCallback(() => {
+    setLive((current) => upgradeCanvasQuality(current, baseline));
+  }, [baseline]);
+
+  const onFallback = useCallback(() => {
+    setLive((current) =>
+      downgradeCanvasQuality(downgradeCanvasQuality(current)),
+    );
+  }, []);
+
+  return { quality: live, baseline, onDecline, onIncline, onFallback };
 }

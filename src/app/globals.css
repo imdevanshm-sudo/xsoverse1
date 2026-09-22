@@ -60,7 +60,13 @@ body {
   .xso-page {
     @apply relative min-h-[100dvh] overflow-x-hidden;
     padding-inline: var(--xso-page-x);
-    padding-block: var(--xso-section-y);
+    padding-block: 0.75rem;
+  }
+
+  @media (min-width: 640px) {
+    .xso-page {
+      padding-block: var(--xso-section-y);
+    }
   }
 
   .xso-panel {
@@ -73,6 +79,40 @@ body {
     .xso-panel {
       padding: var(--xso-space-5);
     }
+  }
+
+  /* Horizontal cartridge bay — snap scrolling for Instagram thumbs */
+  .cart-bay {
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 1.25rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .cart-bay::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cart-snap {
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+
+  @media (min-width: 640px) {
+    .cart-bay {
+      scroll-snap-type: none;
+    }
+
+    .cart-snap {
+      scroll-snap-align: none;
+      scroll-snap-stop: normal;
+    }
+  }
+
+  .thumb-zone {
+    /* Keep deck in the lower thumb reach; avoid extra vertical bulk */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .console-chassis {
@@ -143,7 +183,7 @@ body {
   }
 
   .screen-bezel--crt {
-    min-height: min(62dvh, 560px);
+    min-height: 0;
     max-height: none;
   }
 
@@ -153,7 +193,7 @@ body {
     }
 
     .screen-bezel--crt {
-      min-height: min(58dvh, 620px);
+      min-height: min(58dvh, 560px);
     }
   }
 
@@ -467,35 +507,49 @@ body {
   }
 
   .crt-scanlines {
-    opacity: 0.35;
+    opacity: 0.28;
+    background-size: 100% 4px;
   }
 
+  .projector-beam-core,
   .projector-beam-flicker,
   .projector-dust {
     animation: none !important;
-    opacity: 0.2;
-    mix-blend-mode: normal;
+    opacity: 0 !important;
+    display: none !important;
   }
 
   .console-chassis,
   .console-chassis--matte {
     box-shadow:
-      0 16px 36px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      inset 0 -2px 0 rgba(0, 0, 0, 0.4);
+      0 12px 28px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .mode-header {
     @apply bg-[#12161b];
     backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .xso-dock,
-  .xso-blur-safe {
+  .xso-blur-safe,
+  .screen-bezel,
+  .screen-bezel--crt {
     backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .gpu-fade {
     will-change: auto;
+  }
+
+  /* Avoid paint-heavy filter stacks on photo UIs */
+  .mobile-no-filter {
+    filter: none !important;
+  }
+
+  .mobile-flat-shadow {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
   }
 }

@@ -24,11 +24,11 @@ export const CartridgeSelector = memo(function CartridgeSelector({
   const selected = getCartridge(selectedId);
 
   return (
-    <div className="space-y-xso-4 sm:space-y-xso-5">
+    <div className="flex flex-col gap-3 sm:gap-xso-5">
       <div
-        className="flex gap-xso-3 overflow-x-auto overscroll-x-contain scroll-smooth pb-xso-3 pt-xso-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:justify-center sm:gap-xso-4 sm:overflow-visible [&::-webkit-scrollbar]:hidden"
+        className="cart-bay -mx-1 flex gap-2.5 overflow-x-auto overscroll-x-contain px-1 pb-1 pt-1 sm:mx-0 sm:justify-center sm:gap-xso-4 sm:overflow-visible sm:px-0 sm:pb-xso-3 sm:pt-xso-2"
         role="radiogroup"
-        aria-label="Souvenir cartridges · tap or use D-pad"
+        aria-label="Souvenir cartridges"
       >
         {CARTRIDGES.map((cart, index) => (
           <GameCartridge
@@ -46,77 +46,39 @@ export const CartridgeSelector = memo(function CartridgeSelector({
   );
 });
 
-function AudioWaveform({ color }: { color: string }) {
-  return (
-    <svg
-      width="36"
-      height="16"
-      viewBox="0 0 36 16"
-      aria-hidden
-      className="shrink-0 opacity-90"
-    >
-      {[3, 7, 11, 5, 13, 8, 4, 10, 6].map((h, i) => (
-        <rect
-          key={i}
-          x={i * 4}
-          y={(16 - h) / 2}
-          width="2.2"
-          height={h}
-          rx="1"
-          fill={color}
-          className="origin-center animate-pulse"
-          style={{ animationDelay: `${i * 90}ms`, animationDuration: '1.4s' }}
-        />
-      ))}
-    </svg>
-  );
-}
-
 function SlotHud({ cartridge }: { cartridge: CartridgeSpec }) {
   return (
-    <div className="overflow-hidden rounded-sm border border-phosphor/20 bg-[#050706]/85 p-xso-3 shadow-[inset_0_0_24px_rgba(0,0,0,0.55)] sm:p-xso-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-phosphor/10 pb-2">
-        <p className="font-pixel text-[8px] uppercase tracking-[0.22em] text-phosphor/65">
-          Slot A · Mounted
-        </p>
-        <div className="flex items-center gap-2">
-          <AudioWaveform color={cartridge.accent} />
-          <span className="font-mono text-[8px] uppercase tracking-[0.14em] text-console-mist/45">
-            AUDIO LIVE
-          </span>
-        </div>
-      </div>
-
-      <div className="mt-3 grid gap-xso-3 sm:grid-cols-[1.35fr_0.65fr] sm:items-end">
-        <div className="min-w-0">
+    <div className="overflow-hidden rounded-sm border border-phosphor/20 bg-[#050706]/90 px-3 py-2.5 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] sm:p-xso-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="font-pixel text-[7px] uppercase tracking-[0.2em] text-phosphor/55">
+            Mounted · Slot A
+          </p>
           <motion.p
             key={cartridge.id}
-            className="truncate font-arcade text-lg uppercase tracking-[0.14em] sm:text-xl"
+            className="mt-1 truncate font-arcade text-base uppercase tracking-[0.12em] sm:text-xl sm:tracking-[0.14em]"
             style={{ color: cartridge.accent }}
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={XSO_MOTION.fade}
           >
             {cartridge.title}
           </motion.p>
-          <p className="mt-1 font-mono text-xs text-console-mist/60">
-            {cartridge.tagline}
-          </p>
-          <p className="mt-3 font-mono text-[10px] leading-relaxed text-console-mist/55 sm:text-[11px]">
-            Emotional time-capsule ·{' '}
-            <span className="text-phosphor/80">Curated Text</span>
-            {' · '}
-            <span className="text-phosphor/80">Visual Imagery</span>
-            {' · '}
-            <span className="text-phosphor/80">Immersive Audio</span>
+          <p className="mt-1.5 font-mono text-[10px] leading-snug text-console-mist/60 sm:text-[11px] sm:leading-relaxed">
+            An emotional digital time-capsule —{' '}
+            <span className="text-phosphor/85">Curated Text</span>
+            {', '}
+            <span className="text-phosphor/85">Visual Imagery</span>
+            {', and '}
+            <span className="text-phosphor/85">Immersive Audio</span>.
           </p>
         </div>
-        <div className="flex flex-col items-start justify-center border-t border-phosphor/10 pt-xso-3 sm:items-end sm:border-l sm:border-t-0 sm:pl-xso-4 sm:pt-0">
-          <p className="font-pixel text-[8px] uppercase tracking-[0.2em] text-phosphor/55">
-            Credit
+        <div className="shrink-0 text-right">
+          <p className="font-pixel text-[7px] uppercase tracking-[0.16em] text-phosphor/45">
+            From
           </p>
-          <p className="mt-1 font-arcade text-base uppercase tracking-[0.16em] text-phosphor animate-blink sm:text-lg">
-            INSERT {CARTRIDGE_PRICE}
+          <p className="mt-0.5 font-arcade text-sm uppercase tracking-[0.14em] text-phosphor sm:text-base">
+            {CARTRIDGE_PRICE}
           </p>
         </div>
       </div>

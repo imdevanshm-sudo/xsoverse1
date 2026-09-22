@@ -3,7 +3,7 @@ export type DeviceTier = 'high' | 'low';
 export interface CanvasQualityProfile {
   tier: DeviceTier;
   prefer2d: boolean;
-  /** Clamped pixel ratio — never exceeds 1.5. */
+  /** Clamped pixel ratio — never exceeds 1.5. Prefer tuple form. */
   dpr: number | [number, number];
   shadows: boolean;
   antialias: boolean;
@@ -19,7 +19,16 @@ export interface CanvasQualityProfile {
   reducedMotion: boolean;
   /** Cap for ContactShadows map size when enabled. */
   shadowMapSize: number;
+  /** How many PerformanceMonitor declines have been applied (0–2). */
+  degradeSteps: number;
+  /** Geometry segment budget for cylinders / toruses. */
+  segments: number;
 }
+
+/** Hard ceiling for all Canvas DPR values. */
+export const MAX_CANVAS_DPR = 1.5;
+
+export const DPR_RANGE: [number, number] = [1, MAX_CANVAS_DPR];
 
 function readSaveData(): boolean {
   try {
@@ -42,14 +51,19 @@ function readDeviceMemory(): number | undefined {
   }
 }
 
-function isCoarsePointer(): boolean {
+export function isCoarsePointer(): boolean {
   if (typeof window === 'undefined') return false;
   return window.matchMedia('(pointer: coarse)').matches;
 }
 
-function isNarrowViewport(): boolean {
+export function isNarrowViewport(): boolean {
   if (typeof window === 'undefined') return false;
   return window.matchMedia('(max-width: 768px)').matches;
+}
+
+export function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 function tryWebGlContext(
@@ -88,16 +102,12 @@ export function detectDeviceTier(): DeviceTier {
   if (typeof window === 'undefined') return 'high';
 
   if (
-    typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('quality') === 'low'
   ) {
     return 'low';
   }
 
-  const reducedMotion = window.matchMedia(
-    '(prefers-reduced-motion: reduce)',
-  ).matches;
-  if (reducedMotion || readSaveData()) return 'low';
+  if (prefersReducedMotion() || readSaveData()) return 'low';
 
   const memory = readDeviceMemory();
   if (memory !== undefined && memory <= 4) return 'low';
@@ -113,20 +123,23 @@ export function detectDeviceTier(): DeviceTier {
   return 'high';
 }
 
-/** Clamp DPR so mobile never exceeds 1.5×. */
+/** Clamp DPR so nothing ever exceeds 1.5×. */
 export function clampDpr(
   value: number | [number, number],
 ): number | [number, number] {
-  if (typeof value === 'number') return Math.min(1.5, Math.max(1, value));
-  return [Math.min(1.5, Math.max(1, value[0])), Math.min(1.5, value[1])];
+  if (typeof value === 'number') {
+    return Math.min(MAX_CANVAS_DPR, Math.max(1, value));
+  }
+  return [
+    Math.min(MAX_CANVAS_DPR, Math.max(1, value[0])),
+    Math.min(MAX_CANVAS_DPR, value[1]),
+  ];
 }
 
 export function getCanvasQualityProfile(
   tier: DeviceTier = detectDeviceTier(),
 ): CanvasQualityProfile {
-  const reducedMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reducedMotion = prefersReducedMotion();
   const webglOk = typeof window !== 'undefined' ? supportsWebGL() : true;
   const coarse = isCoarsePointer();
   const narrow = isNarrowViewport();
@@ -142,7 +155,7 @@ export function getCanvasQualityProfile(
     return {
       tier,
       prefer2d,
-      dpr: clampDpr(1),
+      dpr: 1,
       shadows: false,
       antialias: false,
       powerPreference: 'default',
@@ -155,14 +168,16 @@ export function getCanvasQualityProfile(
       anisotropy: 1,
       softOverlays: false,
       reducedMotion,
-      shadowMapSize: 256,
+      shadowMapSize: 128,
+      degradeSteps: 0,
+      segments: 12,
     };
   }
 
   return {
     tier,
     prefer2d,
-    dpr: clampDpr([1, 1.5]),
+    dpr: clampDpr(DPR_RANGE),
     shadows: !coarse,
     antialias: false,
     powerPreference: 'default',
@@ -176,5 +191,61 @@ export function getCanvasQualityProfile(
     softOverlays: !mobileLike,
     reducedMotion,
     shadowMapSize: 256,
+    degradeSteps: 0,
+    segments: mobileLike ? 16 : 24,
   };
+}
+
+/**
+ * Step down fidelity when PerformanceMonitor reports a decline.
+ * Safe to call repeatedly; caps at a minimal GPU-friendly profile.
+ */
+export function downgradeCanvasQuality(
+  profile: CanvasQualityProfile,
+): CanvasQualityProfile {
+  const step = Math.min(2, profile.degradeSteps + 1);
+  if (step === 1) {
+    return {
+      ...profile,
+      degradeSteps: 1,
+      dpr: 1,
+      shadows: false,
+      contactShadows: false,
+      float: false,
+      fog: false,
+      softOverlays: false,
+      deskStripes: 0,
+      paperFibers: false,
+      shadowMapSize: 128,
+      segments: Math.min(profile.segments, 12),
+    };
+  }
+  return {
+    ...profile,
+    tier: 'low',
+    degradeSteps: 2,
+    dpr: 1,
+    shadows: false,
+    contactShadows: false,
+    float: false,
+    fog: false,
+    softOverlays: false,
+    presentationControls: false,
+    deskStripes: 0,
+    paperFibers: false,
+    anisotropy: 1,
+    shadowMapSize: 128,
+    segments: 8,
+  };
+}
+
+/** Gentle restore toward the device baseline after FPS recovers. */
+export function upgradeCanvasQuality(
+  current: CanvasQualityProfile,
+  baseline: CanvasQualityProfile,
+): CanvasQualityProfile {
+  if (current.degradeSteps <= 0) return baseline;
+  const step = current.degradeSteps - 1;
+  if (step === 0) return { ...baseline, degradeSteps: 0 };
+  return downgradeCanvasQuality({ ...baseline, degradeSteps: 0 });
 }
