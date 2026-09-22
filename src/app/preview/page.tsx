@@ -22,7 +22,7 @@ function PreviewShell() {
   }, [lockedStyle, setField, storeStyle]);
 
   return (
-    <main className="min-h-[100dvh] studio-portrait">
+    <main className="min-app-h studio-portrait">
       <ModeHeader
         mode="preview"
         brand="XSO PREVIEW"
@@ -39,7 +39,7 @@ export default function PreviewPage() {
   return (
     <Suspense
       fallback={
-        <main className="grid min-h-[100dvh] place-items-center font-mono text-sm text-white/50">
+        <main className="grid min-app-h place-items-center font-mono text-sm text-white/50">
           Loading preview…
         </main>
       }

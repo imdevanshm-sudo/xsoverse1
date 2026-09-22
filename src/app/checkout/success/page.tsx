@@ -83,7 +83,7 @@ function CheckoutSuccessInner() {
 
 export default function CheckoutSuccessPage() {
   return (
-    <main className="grid min-h-[100dvh] place-items-center px-4">
+    <main className="grid min-app-h place-items-center px-4">
       <Suspense
         fallback={
           <p className="font-mono text-sm text-white/50">Loading checkout…</p>

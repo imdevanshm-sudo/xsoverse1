@@ -6,7 +6,7 @@ export default function GiftPage({
   params: { id: string };
 }) {
   return (
-    <main className="min-h-screen">
+    <main className="min-app-h">
       <header className="flex items-center gap-3 px-4 pt-5 lg:px-8">
         <span className="grid h-8 w-8 place-items-center border border-acid font-display text-xs font-extrabold tracking-wide text-acid">
           BB

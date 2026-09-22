@@ -6,6 +6,7 @@ import {
   Space_Grotesk,
   Space_Mono,
 } from 'next/font/google';
+import { OrientationRoot } from '@/components/layout/OrientationRoot';
 import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({
@@ -51,13 +52,32 @@ export const metadata: Metadata = {
   title: 'XSO · Retro Souvenir Console',
   description:
     'Choose your cartridge and build a one-of-one XSO souvenir — Loop, Rewind, Scrapbook, Accordion, or Movie Box.',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'XSO',
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
+/**
+ * Portrait-first handheld console, but landscape is allowed and adapted.
+ * Works in Instagram / Safari / Chrome / legacy WebViews.
+ */
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  minimumScale: 1,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: 'cover',
-  themeColor: '#1a1e24',
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#1a1e24' },
+    { media: '(prefers-color-scheme: light)', color: '#1a1e24' },
+  ],
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({
@@ -70,7 +90,10 @@ export default function RootLayout({
       lang="en"
       className={`${spaceGrotesk.variable} ${pressStart.variable} ${spaceMono.variable} ${courierPrime.variable} ${caveat.variable}`}
     >
-      <body className="font-sans">{children}</body>
+      <body className="font-sans xso-safe-shell">
+        <OrientationRoot />
+        {children}
+      </body>
     </html>
   );
 }

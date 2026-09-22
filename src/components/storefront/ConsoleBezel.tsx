@@ -11,7 +11,7 @@ interface ConsoleBezelProps {
   deck: ReactNode;
 }
 
-/** Handheld shell — compact header + screen + thumb-zone deck. */
+  /** Handheld shell — compact header + screen + thumb-zone deck. */
 export function ConsoleBezel({
   brand,
   status,
@@ -20,7 +20,7 @@ export function ConsoleBezel({
   deck,
 }: ConsoleBezelProps) {
   return (
-    <div className="console-chassis console-chassis--matte">
+    <div className="console-chassis console-chassis--matte console-chassis--orient">
       <header className="relative grid h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-black/55 px-3 sm:h-xso-header sm:gap-xso-3 sm:px-xso-6">
         <div className="min-w-0">{brand}</div>
         <div className="justify-self-end text-right">{status}</div>
@@ -35,7 +35,7 @@ export function ConsoleBezel({
         </div>
       </div>
 
-      <div className="thumb-zone">{deck}</div>
+      <div className="thumb-zone shrink-0">{deck}</div>
 
       <div
         className="mx-auto mb-3 flex h-2.5 w-24 justify-center gap-1 opacity-40 sm:mb-xso-4 sm:h-3 sm:w-40"

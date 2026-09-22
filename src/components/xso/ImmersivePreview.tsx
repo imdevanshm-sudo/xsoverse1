@@ -49,7 +49,7 @@ export function ImmersivePreview({ lockedStyle }: ImmersivePreviewProps) {
 
   return (
     <>
-      <div className="mx-auto flex min-h-[calc(100dvh-var(--xso-header-h))] w-full max-w-xl flex-col items-center px-3 pb-[6.75rem] pt-3 sm:px-6 sm:pb-[7.25rem] sm:pt-6">
+      <div className="mx-auto flex min-app-h w-full max-w-xl flex-col items-center px-3 pb-[6.75rem] pt-3 sm:px-6 sm:pb-[7.25rem] sm:pt-6" style={{ minHeight: 'calc(var(--app-height, 100vh) - var(--xso-header-h))' }}>
         <p className="mb-2 font-pixel text-[8px] uppercase tracking-[0.28em] text-phosphor/55 sm:mb-3">
           Experience · {cart.title}
         </p>
