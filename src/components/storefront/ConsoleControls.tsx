@@ -40,7 +40,7 @@ export function ConsoleControls({
     'pointer-events-none absolute rounded-sm bg-[#12161b] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]';
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-black/50 bg-gradient-to-b from-[#1a1c20]/80 to-transparent px-4 py-3 sm:gap-xso-4 sm:px-xso-6 sm:py-xso-5">
+    <div className="flex items-center justify-between gap-3 border-t border-black/50 bg-gradient-to-b from-[#1a1c20]/80 to-transparent px-4 py-2.5 sm:gap-xso-4 sm:px-xso-6 sm:py-4">
       <div
         className="relative grid h-16 w-16 place-items-center rounded-full bg-gradient-to-b from-[#3a3d42] to-[#14161a] shadow-[0_5px_0_#08090b,inset_0_2px_0_rgba(255,255,255,0.1)] sm:h-[5.25rem] sm:w-[5.25rem]"
         role="group"

@@ -24,9 +24,9 @@ export const CartridgeSelector = memo(function CartridgeSelector({
   const selected = getCartridge(selectedId);
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-xso-5">
+    <div className="flex flex-col gap-2 sm:gap-3">
       <div
-        className="cart-bay -mx-1 flex gap-2.5 overflow-x-auto overscroll-x-contain px-1 pb-1 pt-1 sm:mx-0 sm:justify-center sm:gap-xso-4 sm:overflow-visible sm:px-0 sm:pb-xso-3 sm:pt-xso-2"
+        className="cart-bay -mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-0.5 pt-1 sm:mx-0 sm:justify-center sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-1 sm:pt-2"
         role="radiogroup"
         aria-label="Souvenir cartridges"
       >

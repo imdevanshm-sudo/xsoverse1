@@ -48,8 +48,8 @@ export const GameCartridge = memo(function GameCartridge({
       className="cart-snap relative w-[6.35rem] shrink-0 touch-manipulation select-none text-left sm:w-32"
       initial={false}
       animate={{
-        y: selected ? -8 : 0,
-        scale: selected ? 1.04 : 0.94,
+        y: selected ? -6 : 0,
+        scale: selected ? 1.03 : 0.94,
         opacity: selected ? 1 : 0.68,
       }}
       whileTap={{ scale: 0.96 }}
@@ -84,7 +84,7 @@ export const GameCartridge = memo(function GameCartridge({
         </div>
 
         <div
-          className="relative m-1.5 mt-2 min-h-[5.75rem] overflow-hidden rounded-sm border border-black/40 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] sm:m-2 sm:min-h-[8.25rem] sm:p-2"
+          className="relative m-1.5 mt-2 min-h-[5.25rem] overflow-hidden rounded-sm border border-black/40 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] sm:m-2 sm:min-h-[7rem] sm:p-2"
           style={{ backgroundColor: cartridge.labelBg, color: cartridge.ink }}
         >
           <div

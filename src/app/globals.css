@@ -110,24 +110,19 @@ body {
     }
   }
 
-  /* Storefront shell — centered, no phantom scroll past the console */
+  /* Storefront — single viewport shell (avoid nested min-heights) */
   .xso-store-shell {
     display: flex;
     width: 100%;
     min-height: 100vh;
-    min-height: var(--app-height, 100vh);
+    min-height: 100dvh;
+    min-height: var(--app-height, 100dvh);
     flex-direction: column;
     align-items: center;
     justify-content: center;
     overflow-x: clip;
     padding-inline: var(--xso-page-x);
-    padding-block: max(0.75rem, env(safe-area-inset-top, 0px))
-      max(0.75rem, env(safe-area-inset-bottom, 0px));
-  }
-
-  .xso-store-shell > * {
-    width: 100%;
-    max-width: 64rem;
+    padding-block: 0.75rem;
   }
 
   .xso-panel {
@@ -179,6 +174,7 @@ body {
   .console-chassis {
     @apply relative overflow-hidden border border-black/70;
     border-radius: var(--xso-radius-shell);
+    height: auto;
     background:
       linear-gradient(160deg, #5a616b 0%, #3a414a 28%, #2c323a 58%, #22272e 100%);
     box-shadow:
@@ -187,7 +183,6 @@ body {
       inset 0 1px 0 rgba(255, 255, 255, 0.16),
       inset 0 -3px 0 rgba(0, 0, 0, 0.35),
       inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-    contain: layout paint;
   }
 
   .console-chassis--matte {
@@ -240,13 +235,12 @@ body {
       inset 0 0 0 3px #0a0c0e,
       inset 0 0 28px rgba(0, 0, 0, 0.85),
       0 0 0 1px rgba(255, 255, 255, 0.05);
-    contain: layout paint;
   }
 
-  /* Hug content — never force a tall empty CRT void */
   .screen-bezel--crt {
-    min-height: 0;
-    height: auto;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none;
   }
 
   @media (min-width: 640px) {
