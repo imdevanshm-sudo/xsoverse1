@@ -97,7 +97,7 @@ body {
   }
 
   .xso-page {
-    @apply relative overflow-x-hidden;
+    @apply relative flex w-full flex-col items-center justify-center overflow-x-hidden;
     min-height: 100vh;
     min-height: var(--app-height, 100vh);
     padding-inline: var(--xso-page-x);
@@ -108,6 +108,26 @@ body {
     .xso-page {
       padding-block: var(--xso-section-y);
     }
+  }
+
+  /* Storefront shell — centered, no phantom scroll past the console */
+  .xso-store-shell {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    min-height: var(--app-height, 100vh);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: clip;
+    padding-inline: var(--xso-page-x);
+    padding-block: max(0.75rem, env(safe-area-inset-top, 0px))
+      max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .xso-store-shell > * {
+    width: 100%;
+    max-width: 64rem;
   }
 
   .xso-panel {
@@ -223,18 +243,15 @@ body {
     contain: layout paint;
   }
 
+  /* Hug content — never force a tall empty CRT void */
   .screen-bezel--crt {
     min-height: 0;
-    max-height: none;
+    height: auto;
   }
 
   @media (min-width: 640px) {
     .screen-bezel {
       border-radius: 1.5rem;
-    }
-
-    .screen-bezel--crt {
-      min-height: min(58dvh, 560px);
     }
   }
 
@@ -597,9 +614,11 @@ body {
 
 /* —— Orientation: landscape + short viewports (phones rotated, foldables) —— */
 @media (orientation: landscape) and (max-height: 520px) {
-  .xso-page {
+  .xso-page,
+  .xso-store-shell {
     padding-block: 0.35rem;
-    align-items: stretch !important;
+    justify-content: flex-start;
+    align-items: stretch;
   }
 
   .console-chassis {
@@ -614,6 +633,7 @@ body {
 
   .screen-bezel--crt {
     min-height: 0 !important;
+    height: auto;
   }
 
   .cart-bay {

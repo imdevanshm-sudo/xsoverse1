@@ -173,9 +173,9 @@ export function Store() {
   const controlsLocked = booting || isPending;
 
   return (
-    <div className="xso-page flex min-app-h items-start justify-center py-3 sm:items-center sm:py-xso-6">
+    <div className="xso-store-shell">
       <motion.div
-        className="relative mx-auto w-full max-w-store px-0 sm:px-2"
+        className="relative w-full max-w-store"
         initial={false}
         animate={{
           opacity: bootPhase === 'launch' ? 0.25 : 1,
