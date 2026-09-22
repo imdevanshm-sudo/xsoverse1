@@ -50,11 +50,10 @@ html {
 body {
   @apply min-h-screen font-sans text-console-mist antialiased;
   min-height: var(--app-height, 100vh);
-  background-color: #1a1e24;
+  background-color: #0b0f12;
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(157, 255, 176, 0.07), transparent 50%),
-    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0, 0, 0, 0.45), transparent 55%),
-    linear-gradient(165deg, #2a3038 0%, #1c2128 42%, #14181e 100%);
+    radial-gradient(ellipse 80% 45% at 50% -8%, rgba(157, 255, 176, 0.06), transparent 52%),
+    linear-gradient(180deg, #0e1318 0%, #0b0f12 55%, #080a0c 100%);
   background-attachment: scroll;
   overflow-x: clip;
   touch-action: manipulation;

@@ -24,11 +24,12 @@ export const CartridgeSelector = memo(function CartridgeSelector({
   const selected = getCartridge(selectedId);
 
   return (
-    <div className="flex flex-col gap-2 sm:gap-3">
+    <div className="flex w-full flex-col gap-5 sm:gap-6">
+      {/* Mobile / tablet: horizontal snap bay */}
       <div
-        className="cart-bay -mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-0.5 pt-1 sm:mx-0 sm:justify-center sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-1 sm:pt-2"
+        className="cart-bay flex w-full gap-3 overflow-x-auto overscroll-x-contain px-1 pb-1 pt-1 md:hidden"
         role="radiogroup"
-        aria-label="Souvenir cartridges"
+        aria-label="Choose a souvenir style"
       >
         {CARTRIDGES.map((cart, index) => (
           <GameCartridge
@@ -41,47 +42,100 @@ export const CartridgeSelector = memo(function CartridgeSelector({
         ))}
       </div>
 
-      <SlotHud cartridge={selected} />
+      {/* Desktop: responsive card grid */}
+      <div
+        className="hidden md:grid md:grid-cols-5 md:gap-3"
+        role="radiogroup"
+        aria-label="Choose a souvenir style"
+      >
+        {CARTRIDGES.map((cart) => {
+          const active = selectedId === cart.id;
+          return (
+            <button
+              key={cart.id}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onSelect(cart.id)}
+              className={`rounded-2xl border p-4 text-left transition-[border-color,background-color,transform] duration-200 ${
+                active
+                  ? 'border-white/25 bg-white/[0.07]'
+                  : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+              }`}
+              style={
+                active
+                  ? {
+                      boxShadow: `0 0 0 1px ${cart.accent}, 0 12px 28px rgba(0,0,0,0.35)`,
+                    }
+                  : undefined
+              }
+            >
+              <div
+                className="mb-3 h-1 w-8 rounded-full"
+                style={{ backgroundColor: cart.accent }}
+              />
+              <p
+                className="font-arcade text-sm uppercase tracking-[0.12em]"
+                style={{ color: cart.accent }}
+              >
+                {cart.title}
+              </p>
+              <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-white/45">
+                {cart.subtitle}
+              </p>
+              <p className="mt-2 line-clamp-2 font-mono text-[11px] leading-snug text-white/40">
+                {cart.tagline}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      <StyleDetail cartridge={selected} />
     </div>
   );
 });
 
-function SlotHud({ cartridge }: { cartridge: CartridgeSpec }) {
+function StyleDetail({ cartridge }: { cartridge: CartridgeSpec }) {
   return (
-    <div className="overflow-hidden rounded-sm border border-phosphor/20 bg-[#050706]/90 px-3 py-2.5 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] sm:p-xso-4">
-      <div className="flex items-start justify-between gap-3">
+    <section
+      className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5"
+      aria-live="polite"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="font-pixel text-[7px] uppercase tracking-[0.2em] text-phosphor/55">
-            Mounted · Slot A
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
+            Your keep · {cartridge.code}
           </p>
-          <motion.p
+          <motion.h2
             key={cartridge.id}
-            className="mt-1 truncate font-arcade text-base uppercase tracking-[0.12em] sm:text-xl sm:tracking-[0.14em]"
+            className="mt-1.5 font-arcade text-2xl uppercase tracking-[0.1em] sm:text-3xl"
             style={{ color: cartridge.accent }}
-            initial={{ opacity: 0, y: 4 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={XSO_MOTION.fade}
           >
             {cartridge.title}
-          </motion.p>
-          <p className="mt-1.5 font-mono text-[10px] leading-snug text-console-mist/60 sm:text-[11px] sm:leading-relaxed">
-            An emotional digital time-capsule —{' '}
-            <span className="text-phosphor/85">Curated Text</span>
-            {', '}
-            <span className="text-phosphor/85">Visual Imagery</span>
-            {', and '}
-            <span className="text-phosphor/85">Immersive Audio</span>.
+          </motion.h2>
+          <p className="mt-2 max-w-xl font-mono text-sm leading-relaxed text-white/55">
+            An emotional digital time-capsule crafted from{' '}
+            <span className="text-phosphor/90">Curated Text</span>,{' '}
+            <span className="text-phosphor/90">Visual Imagery</span>, and{' '}
+            <span className="text-phosphor/90">Immersive Audio</span>.
+          </p>
+          <p className="mt-2 font-mono text-xs text-white/40">
+            {cartridge.tagline}
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="font-pixel text-[7px] uppercase tracking-[0.16em] text-phosphor/45">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/35">
             From
           </p>
-          <p className="mt-0.5 font-arcade text-sm uppercase tracking-[0.14em] text-phosphor sm:text-base">
+          <p className="mt-1 font-arcade text-lg tracking-[0.08em] text-phosphor">
             {CARTRIDGE_PRICE}
           </p>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
