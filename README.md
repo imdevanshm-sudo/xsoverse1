@@ -19,7 +19,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Without Lemon Squeezy env vars, **BUY XSO ($14.99)** runs in preview mode: it saves the souvenir, marks it paid, and shows the shareable `/gift/[uniqueId]` link on `/checkout/success`.
+Without Lemon Squeezy env vars, checkout runs in free preview mode in local development only: it saves the souvenir, marks it paid, and shows the shareable `/gift/[uniqueId]` link on `/checkout/success`. In production, checkout refuses to run until Lemon Squeezy is configured.
 
 ## Gift storage (Supabase)
 
@@ -43,7 +43,9 @@ Copy `.env.example` → `.env.local` and set:
 - `LEMONSQUEEZY_WEBHOOK_SECRET`
 - `NEXT_PUBLIC_APP_URL`
 
-Webhook endpoint: `POST /api/webhooks/lemonsqueezy` (subscribe to `order_created`).
+Webhook endpoint: `POST /api/webhooks/lemonsqueezy` (subscribe to `order_created`). The signing secret is required; the signed webhook is the only thing that marks a gift paid.
+
+Lemon Squeezy cannot reach `localhost`, so to test real payments locally, expose the dev server with a tunnel (for example `npx cloudflared tunnel --url http://localhost:3000`) and use that URL for the webhook and `NEXT_PUBLIC_APP_URL`.
 
 ## Stack
 

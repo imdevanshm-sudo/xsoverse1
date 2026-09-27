@@ -44,8 +44,3 @@ export function pickXsoPayload(data: XsoData): XsoData {
   };
 }
 
-export function createGiftId(): string {
-  const stamp = Date.now().toString(36);
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `xso_${stamp}${rand}`;
-}

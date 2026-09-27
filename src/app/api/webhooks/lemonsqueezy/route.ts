@@ -18,6 +18,7 @@ interface LemonWebhookPayload {
     attributes?: {
       status?: string;
       identifier?: string;
+      store_id?: number | string;
     };
   };
 }
@@ -33,15 +34,14 @@ function verifySignature(rawBody: string, signature: string | null, secret: stri
 }
 
 export async function POST(request: Request) {
-  const rawBody = await request.text();
   const config = getLemonConfig();
-  const signature = request.headers.get('x-signature');
+  if (!config?.webhookSecret) {
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+  }
 
-  if (config?.webhookSecret) {
-    const valid = verifySignature(rawBody, signature, config.webhookSecret);
-    if (!valid) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
+  const rawBody = await request.text();
+  if (!verifySignature(rawBody, request.headers.get('x-signature'), config.webhookSecret)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
   let payload: LemonWebhookPayload;
@@ -52,32 +52,30 @@ export async function POST(request: Request) {
   }
 
   const eventName = payload.meta?.event_name;
-  if (eventName && eventName !== 'order_created') {
-    return NextResponse.json({ received: true, ignored: eventName });
+  if (eventName !== 'order_created') {
+    return NextResponse.json({ received: true, ignored: eventName ?? 'unknown' });
+  }
+
+  const attributes = payload.data?.attributes;
+  if (attributes?.store_id != null && String(attributes.store_id) !== String(config.storeId)) {
+    return NextResponse.json({ received: true, ignored: 'other store' });
+  }
+
+  if (attributes?.status !== 'paid') {
+    return NextResponse.json({ received: true, ignoredStatus: attributes?.status });
   }
 
   const giftId =
     payload.meta?.custom_data?.gift_id || payload.meta?.custom_data?.giftId;
-  const status = payload.data?.attributes?.status;
-  const orderId =
-    payload.data?.attributes?.identifier || payload.data?.id || undefined;
-
   if (!giftId) {
     return NextResponse.json({ received: true, warning: 'Missing gift_id' });
   }
 
-  if (status && status !== 'paid') {
-    return NextResponse.json({ received: true, ignoredStatus: status });
-  }
-
+  const orderId = attributes.identifier || payload.data?.id || undefined;
   const gift = await markGiftPaid(giftId, orderId);
   if (!gift) {
     return NextResponse.json({ received: true, warning: 'Gift not found' });
   }
 
-  return NextResponse.json({
-    received: true,
-    giftId: gift.id,
-    status: gift.status,
-  });
+  return NextResponse.json({ received: true, giftId: gift.id, status: gift.status });
 }

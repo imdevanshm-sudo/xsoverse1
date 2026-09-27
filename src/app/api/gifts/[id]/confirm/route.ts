@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getGift, markGiftPaid } from '@/lib/giftStore';
-import { getLemonConfig } from '@/lib/lemon';
+import { isPreviewCheckoutAllowed } from '@/lib/lemon';
 
 export const runtime = 'nodejs';
 
-/** Soft-confirm after Lemon redirect (webhook remains source of truth in production). */
+/**
+ * Activates free preview gifts in local development only. With Lemon Squeezy
+ * configured, the signed webhook is the only thing that can mark a gift paid.
+ */
 export async function POST(
   _request: Request,
   { params }: { params: { id: string } },
@@ -14,18 +17,13 @@ export async function POST(
     return NextResponse.json({ error: 'Gift not found' }, { status: 404 });
   }
 
-  if (gift.status === 'paid') {
+  if (gift.status === 'paid' || !isPreviewCheckoutAllowed()) {
     return NextResponse.json({ id: gift.id, status: gift.status });
   }
 
-  // In Lemon mode, redirect landing is a success signal; webhook may arrive later.
-  const updated = await markGiftPaid(
-    gift.id,
-    getLemonConfig() ? 'lemon-redirect' : 'preview',
-  );
-
+  const updated = await markGiftPaid(gift.id, 'preview');
   return NextResponse.json({
-    id: updated?.id,
-    status: updated?.status ?? 'paid',
+    id: updated?.id ?? gift.id,
+    status: updated?.status ?? gift.status,
   });
 }

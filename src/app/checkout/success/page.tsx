@@ -7,6 +7,7 @@ import { ShareGiftLink, giftPath } from '@/components/xso/ShareGiftLink';
 import type { XsoData } from '@/types/xso';
 
 const MAX_ATTEMPTS = 20;
+const MAX_PAID_ATTEMPTS = 60;
 const INTERVAL_MS = 900;
 
 type Phase = 'confirming' | 'ready' | 'error';
@@ -48,7 +49,7 @@ function CheckoutSuccessInner() {
     const poll = async () => {
       attempts += 1;
       try {
-        if (attempts === 1 && run === 0) {
+        if (preview && attempts === 1 && run === 0) {
           await fetch(`/api/gifts/${encodeURIComponent(giftId)}/confirm`, { method: 'POST' });
         }
 
@@ -70,11 +71,11 @@ function CheckoutSuccessInner() {
           return;
         }
 
-        if (response.status === 402 && attempts < MAX_ATTEMPTS) {
+        if (response.status === 402 && attempts < (preview ? MAX_ATTEMPTS : MAX_PAID_ATTEMPTS)) {
           setMessage(
             preview
               ? 'Activating preview gift…'
-              : 'Payment received. Generating your shareable link…',
+              : 'Payment received. Waiting for Lemon Squeezy to confirm…',
           );
           timer = window.setTimeout(poll, INTERVAL_MS);
           return;

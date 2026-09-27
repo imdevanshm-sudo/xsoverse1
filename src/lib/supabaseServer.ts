@@ -27,6 +27,10 @@ export function getSupabaseServer(): SupabaseClient {
 
   client = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      // Next.js 14 caches fetch by default; gift status must always be read fresh.
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
   });
   return client;
 }

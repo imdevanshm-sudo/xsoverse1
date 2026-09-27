@@ -1,4 +1,5 @@
-import { createGiftId, pickXsoPayload } from '@/lib/xsoPayload';
+import { randomBytes } from 'crypto';
+import { pickXsoPayload } from '@/lib/xsoPayload';
 import { markGiftPaid, saveGift, type StoredGift } from '@/lib/giftStore';
 import type { XsoData } from '@/types/xso';
 
@@ -21,6 +22,16 @@ export function getLemonConfig(): LemonConfig | null {
     variantId,
     webhookSecret: process.env.LEMONSQUEEZY_WEBHOOK_SECRET,
   };
+}
+
+/** Free preview checkout is only allowed outside production when Lemon is not configured. */
+export function isPreviewCheckoutAllowed(): boolean {
+  return !getLemonConfig() && process.env.NODE_ENV !== 'production';
+}
+
+/** Gift links act as the access secret, so IDs must be unguessable. */
+function createGiftId(): string {
+  return `xso_${randomBytes(12).toString('base64url')}`;
 }
 
 export function getAppUrl(requestUrl?: string): string {

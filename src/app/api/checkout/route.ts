@@ -5,6 +5,7 @@ import {
   createPendingGift,
   getAppUrl,
   getLemonConfig,
+  isPreviewCheckoutAllowed,
 } from '@/lib/lemon';
 import { isGiftStyle, pickXsoPayload } from '@/lib/xsoPayload';
 import type { XsoData } from '@/types/xso';
@@ -22,10 +23,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid giftStyle' }, { status: 400 });
     }
 
+    const lemon = getLemonConfig();
+    if (!lemon && !isPreviewCheckoutAllowed()) {
+      return NextResponse.json(
+        { error: 'Payments are not configured yet. Please try again later.' },
+        { status: 503 },
+      );
+    }
+
     const payload = pickXsoPayload(body.data);
     const gift = await createPendingGift(payload);
     const appUrl = getAppUrl(request.url);
-    const lemon = getLemonConfig();
 
     if (!lemon) {
       await activateGiftPreview(gift.id);
@@ -45,12 +53,7 @@ export async function POST(request: Request) {
       appUrl,
     });
 
-    return NextResponse.json({
-      mode: 'lemon',
-      giftId: gift.id,
-      checkoutUrl,
-      giftUrl: `${appUrl}/gift/${gift.id}`,
-    });
+    return NextResponse.json({ mode: 'lemon', checkoutUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Checkout failed';
     return NextResponse.json({ error: message }, { status: 500 });
