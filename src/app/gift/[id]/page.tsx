@@ -1,22 +1,69 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { GiftUnboxing } from '@/components/xso/GiftUnboxing';
+import { GiftPendingPoller } from '@/components/xso/GiftPendingPoller';
+import { getGift } from '@/lib/giftStore';
 
-export default function GiftPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+type GiftPageProps = { params: { id: string } };
+
+const loadGift = cache(getGift);
+
+export async function generateMetadata({ params }: GiftPageProps): Promise<Metadata> {
+  const gift = await getGift(params.id).catch(() => null);
+  const robots = { index: false, follow: false };
+
+  if (!gift || gift.status !== 'paid') {
+    return {
+      title: 'An XSO gift is waiting',
+      description: 'Someone made you a one-of-one XSO souvenir.',
+      robots,
+    };
+  }
+
+  const { customerName, billerName, occasion } = gift.data;
+  const title = `A gift for ${customerName} from ${billerName}`;
+  const description = occasion
+    ? `${occasion} · a one-of-one XSO souvenir.`
+    : 'A one-of-one XSO souvenir, made just for you.';
+
+  return {
+    title,
+    description,
+    robots,
+    openGraph: { title, description, type: 'website' },
+    twitter: { card: 'summary', title, description },
+  };
+}
+
+export default async function GiftPage({ params }: GiftPageProps) {
+  const gift = await getGift(params.id);
+  if (!gift) notFound();
+
   return (
     <main className="min-app-h">
       <header className="flex items-center gap-3 px-4 pt-5 lg:px-8">
-        <span className="grid h-8 w-8 place-items-center border border-acid font-display text-xs font-extrabold tracking-wide text-acid">
-          BB
-        </span>
+        <Link
+          href="/"
+          className="grid h-8 w-8 place-items-center rounded-md border border-phosphor/60 font-pixel text-[8px] tracking-wide text-phosphor"
+          aria-label="XSO home"
+        >
+          XSO
+        </Link>
         <span className="font-display text-sm font-bold tracking-wide">
           XSO Gift Unboxing
         </span>
       </header>
 
-      <GiftUnboxing giftId={params.id} />
+      {gift.status === 'paid' ? (
+        <GiftUnboxing giftId={gift.id} initialData={gift.data} />
+      ) : (
+        <GiftPendingPoller giftId={gift.id} />
+      )}
     </main>
   );
 }

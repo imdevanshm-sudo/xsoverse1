@@ -1,86 +1,22 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { XsoViewer } from '@/components/xso/XsoViewer';
 import { PhoneFrame } from '@/components/xso/PhoneFrame';
-import {
-  getMockXsoData,
-  type GiftStyle,
-  type XsoData,
-} from '@/types/xso';
-import { GIFT_STYLES } from '@/lib/xsoPayload';
+import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
+import type { GiftStyle, XsoData } from '@/types/xso';
 
-export function GiftUnboxing({ giftId }: { giftId: string }) {
-  const [data, setData] = useState<XsoData | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+export function GiftUnboxing({
+  giftId,
+  initialData,
+}: {
+  giftId: string;
+  initialData: XsoData;
+}) {
+  const data = initialData;
   const [isUnwrapped, setIsUnwrapped] = useState(false);
-  const note = useMemo(
-    () => (data ? giftTagNote(data, giftId) : ''),
-    [data, giftId],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        const response = await fetch(`/api/gifts/${giftId}`);
-        if (response.ok) {
-          const json = (await response.json()) as { data: XsoData };
-          if (!cancelled) {
-            setData(json.data);
-            setLoadError(null);
-          }
-          return;
-        }
-
-        if (response.status === 402) {
-          if (!cancelled) {
-            setLoadError('Payment confirmed pending — refreshing…');
-            window.setTimeout(() => {
-              void load();
-            }, 1200);
-          }
-          return;
-        }
-
-        if (response.status === 404 && giftId.startsWith('xso_')) {
-          if (!cancelled) {
-            setLoadError('Gift not found. Complete checkout to generate this link.');
-          }
-          return;
-        }
-      } catch {
-        // Fall through to personalized mock for demo ids.
-      }
-
-      if (!cancelled) {
-        setData(personalizeGift(giftId));
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [giftId]);
-
-  if (loadError && !data) {
-    return (
-      <div className="mx-auto w-full max-w-sm px-3 py-16 text-center">
-        <p className="font-mono text-sm text-amber-200/85">{loadError}</p>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="mx-auto w-full max-w-sm px-3 py-16 text-center font-mono text-sm text-white/50">
-        Loading gift…
-      </div>
-    );
-  }
+  const note = useMemo(() => giftTagNote(data, giftId), [data, giftId]);
 
   const unwrap = () => {
     if (isUnwrapped) return;
@@ -93,12 +29,6 @@ export function GiftUnboxing({ giftId }: { giftId: string }) {
       <p className="mb-5 text-center font-mono text-[9px] uppercase tracking-[0.24em] text-white/40">
         One-of-one souvenir · {shortCode(giftId)}
       </p>
-      {loadError && (
-        <p className="mb-4 text-center font-mono text-[11px] text-amber-200/80">
-          {loadError}
-        </p>
-      )}
-
       <PhoneFrame>
         <AnimatePresence>
           {isUnwrapped ? (
@@ -130,6 +60,10 @@ export function GiftUnboxing({ giftId }: { giftId: string }) {
           )}
         </AnimatePresence>
       </PhoneFrame>
+
+      <div className="mt-5">
+        <ShareGiftLink giftId={giftId} recipientName={data.customerName} compact />
+      </div>
     </div>
   );
 }
@@ -351,31 +285,14 @@ function wrapSurface(matte: boolean): CSSProperties {
   };
 }
 
-function personalizeGift(giftId: string): XsoData {
-  const mock = getMockXsoData();
-  const hash = hashString(giftId || mock.id);
-  const explicitStyle = GIFT_STYLES.find((style) =>
-    giftId.toLowerCase().includes(style),
-  );
-  const giftStyle = explicitStyle ?? GIFT_STYLES[hash % GIFT_STYLES.length];
-  const code = shortCode(giftId);
-
-  return {
-    ...mock,
-    id: giftId || mock.id,
-    giftStyle,
-    occasion: `${mock.occasion} · ${code}`,
-    certifiedStampText: `${mock.certifiedStampText} · ${code}`,
-    birthdayMessage: `${mock.birthdayMessage}\n\nP.S. ${mock.greenFlags[
-      hash % mock.greenFlags.length
-    ].toLowerCase()} — still undefeated.`,
-  };
-}
-
 function giftTagNote(data: XsoData, giftId: string) {
+  const initial = data.billerName?.charAt(0) ?? '';
+  if (!data.lineItems?.length) {
+    return `Made just for you. — ${initial}`;
+  }
   const index = hashString(giftId) % data.lineItems.length;
-  const memory = data.lineItems[index].description.toLowerCase();
-  return `Open this when you miss our ${memory}. — ${data.billerName.charAt(0)}`;
+  const memory = (data.lineItems[index].description || 'memories').toLowerCase();
+  return `Open this when you miss our ${memory}. — ${initial}`;
 }
 
 function hashString(value: string) {
