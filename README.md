@@ -25,8 +25,9 @@ Without Lemon Squeezy env vars, **BUY XSO ($14.99)** runs in preview mode: it sa
 
 Gifts are stored in a Supabase Postgres `gifts` table. Set in `.env.local`:
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` (server-only; never expose to the client)
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (used by the `src/utils/supabase` helpers)
+- `SUPABASE_SECRET_KEY` (server-only, used for gift storage; never expose to the client)
 
 Create the table by running [`supabase/migrations/0001_gifts.sql`](supabase/migrations/0001_gifts.sql) in the Supabase SQL editor, or with the CLI: `supabase db push`.
 

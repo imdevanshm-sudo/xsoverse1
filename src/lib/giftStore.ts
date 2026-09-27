@@ -51,7 +51,7 @@ function shouldUseSupabase(): boolean {
   if (isSupabaseConfigured()) return true;
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
-      'Gift storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.',
+      'Gift storage is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY.',
     );
   }
   return false;
