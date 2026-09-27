@@ -76,7 +76,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
   },
 ];
 
-export const CARTRIDGE_PRICE = '$14.99';
+export const CARTRIDGE_PRICE = '$15.00';
 
 export function getCartridge(id: GiftStyle): CartridgeSpec {
   return CARTRIDGES.find((c) => c.id === id) ?? CARTRIDGES[0];
