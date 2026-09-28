@@ -76,7 +76,9 @@ export const CARTRIDGES: CartridgeSpec[] = [
   },
 ];
 
-export const CARTRIDGE_PRICE = '$15.00';
+/** Charged amount in cents; checkout sends this to Lemon Squeezy as a custom price. */
+export const CARTRIDGE_PRICE_CENTS = 1499;
+export const CARTRIDGE_PRICE = `$${(CARTRIDGE_PRICE_CENTS / 100).toFixed(2)}`;
 
 export function getCartridge(id: GiftStyle): CartridgeSpec {
   return CARTRIDGES.find((c) => c.id === id) ?? CARTRIDGES[0];

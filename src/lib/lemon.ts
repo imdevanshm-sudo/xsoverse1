@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import { pickXsoPayload } from '@/lib/xsoPayload';
+import { CARTRIDGE_PRICE_CENTS } from '@/lib/cartridges';
 import { markGiftPaid, saveGift, type StoredGift } from '@/lib/giftStore';
 import type { XsoData } from '@/types/xso';
 
@@ -90,6 +91,7 @@ export async function createLemonCheckout(options: {
       data: {
         type: 'checkouts',
         attributes: {
+          custom_price: CARTRIDGE_PRICE_CENTS,
           checkout_data: {
             custom: {
               gift_id: options.giftId,
