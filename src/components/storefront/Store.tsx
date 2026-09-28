@@ -119,9 +119,7 @@ export function Store() {
       <CrtOverlay enabled={crtOn} />
 
       <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col md:max-w-4xl lg:max-w-5xl px-4 pb-36 pt-4 sm:px-6 sm:pb-40 sm:pt-6">
-        <SystemBar />
-
-        <header className="mb-8 mt-10 sm:mb-12 sm:mt-14">
+        <header className="mb-8 mt-6 sm:mb-12 sm:mt-10">
           <h1 className="font-arcade text-5xl font-bold uppercase tracking-[0.1em] text-white sm:text-6xl md:text-7xl">
             XSO
           </h1>
@@ -214,25 +212,6 @@ export function Store() {
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </div>
-  );
-}
-
-function SystemBar() {
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] pb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
-      <div className="flex items-center gap-2">
-        <span className="relative grid h-2 w-2 place-items-center" aria-hidden>
-          <span className="pwr-led-halo absolute -inset-1 rounded-full bg-phosphor/40" />
-          <span className="relative h-2 w-2 rounded-full bg-phosphor shadow-[0_0_6px_#9dffb0,0_0_14px_rgba(157,255,176,0.6)]" />
-        </span>
-        <span className="text-phosphor/80">PWR</span>
-      </div>
-      <p className="truncate tabular-nums" aria-label="System status: ready">
-        XSO-NET <span className="text-white/20">{"//"}</span> V1.0{' '}
-        <span className="text-white/20">{"//"}</span>{' '}
-        <span className="text-white/70">READY</span>
-      </p>
     </div>
   );
 }
