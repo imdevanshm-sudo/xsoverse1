@@ -154,7 +154,7 @@ body {
     scroll-snap-stop: always;
   }
 
-  @media (min-width: 640px) {
+  @media (min-width: 768px) {
     .cart-bay {
       scroll-snap-type: none;
     }
@@ -531,7 +531,22 @@ body {
   mix-blend-mode: screen;
 }
 
+.pwr-led-halo {
+  animation: pwr-led-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes pwr-led-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .pwr-led-halo,
   .crt-flicker,
   .animate-blink,
   .animate-arcade-glow,

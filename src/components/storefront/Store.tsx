@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useXsoStore } from '@/store/useXsoStore';
 import type { GiftStyle } from '@/types/xso';
-import { CARTRIDGE_PRICE, getCartridge } from '@/lib/cartridges';
+import { CARTRIDGE_PRICE, CARTRIDGES, getCartridge } from '@/lib/cartridges';
 import { XSO_MOTION } from '@/lib/layout';
 import { CartridgeSelector } from '@/components/storefront/CartridgeSelector';
 import { ConversionBar } from '@/components/storefront/ConversionBar';
@@ -111,33 +111,41 @@ export function Store() {
   }, [startBuild]);
 
   const mounted = getCartridge(giftStyle);
+  const mountedIndex = Math.max(0, CARTRIDGES.findIndex((c) => c.id === mounted.id));
   const controlsLocked = booting || isPending;
 
   return (
     <div className="relative min-h-screen w-full bg-[#0b0f12] text-console-mist [min-height:100dvh] [min-height:var(--app-height,100dvh)]">
       <CrtOverlay enabled={crtOn} />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col px-4 pb-32 pt-6 sm:px-6 sm:pb-36 sm:pt-10">
-        <header className="mb-8 sm:mb-10">
-          <h1 className="font-arcade text-4xl uppercase tracking-[0.12em] text-white sm:text-5xl md:text-6xl">
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col md:max-w-4xl px-4 pb-36 pt-4 sm:px-6 sm:pb-40 sm:pt-6">
+        <SystemBar />
+
+        <header className="mb-8 mt-10 sm:mb-12 sm:mt-14">
+          <h1 className="font-arcade text-5xl font-bold uppercase tracking-[0.1em] text-white sm:text-6xl md:text-7xl">
             XSO
           </h1>
-          <p className="mt-3 max-w-md font-mono text-sm leading-relaxed text-white/50 sm:mt-4 sm:text-base">
-            Build a one-of-one emotional time-capsule — pick a style, then craft
-            the memory.
+          <p className="mt-3 max-w-md text-[15px] leading-relaxed text-white/55 sm:mt-4 sm:text-base">
+            A one-of-one digital time capsule. Pick a cartridge, then craft the
+            memory inside it.
           </p>
         </header>
 
         <section aria-labelledby="style-bay-heading">
-          <div className="mb-3 flex items-baseline justify-between gap-3">
+          <div className="mb-1 flex items-baseline justify-between gap-3">
             <h2
               id="style-bay-heading"
-              className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/45"
+              className="truncate whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.2em] text-white/45"
             >
-              Choose a style
+              Slot A <span className="text-white/20">{"//"}</span> Select cartridge
             </h2>
-            <p className="font-mono text-[10px] text-white/30 sm:hidden">
-              Swipe
+            <p
+              className="shrink-0 whitespace-nowrap font-mono text-[10px] tabular-nums tracking-[0.14em] text-white/30"
+              aria-label={`Cartridge ${mountedIndex + 1} of ${CARTRIDGES.length}`}
+            >
+              <span className="text-white/70">{String(mountedIndex + 1).padStart(2, '0')}</span>
+              {' / '}
+              {String(CARTRIDGES.length).padStart(2, '0')}
             </p>
           </div>
 
@@ -156,6 +164,8 @@ export function Store() {
         onPress={startBuild}
         disabled={controlsLocked}
         styleTitle={mounted.title}
+        styleCode={mounted.code}
+        accent={mounted.accent}
         price={CARTRIDGE_PRICE}
         label={controlsLocked ? 'Loading…' : 'Build your XSO'}
       />
@@ -172,7 +182,7 @@ export function Store() {
             aria-live="polite"
           >
             <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-phosphor/70">
-              Preparing
+              {mounted.code} <span className="text-white/25">→</span> Slot A
             </p>
             <p
               className="mt-4 font-arcade text-2xl uppercase tracking-[0.14em] sm:text-3xl"
@@ -181,7 +191,7 @@ export function Store() {
               {mounted.title}
             </p>
             <p className="mt-3 max-w-xs font-mono text-[12px] leading-relaxed text-white/55">
-              {bootPhase === 'insert' && 'Loading your style…'}
+              {bootPhase === 'insert' && 'Inserting cartridge…'}
               {bootPhase === 'checksum' &&
                 'Gathering text · imagery · audio…'}
               {bootPhase === 'launch' && 'Opening your studio…'}
@@ -204,6 +214,25 @@ export function Store() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function SystemBar() {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] pb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
+      <div className="flex items-center gap-2">
+        <span className="relative grid h-2 w-2 place-items-center" aria-hidden>
+          <span className="pwr-led-halo absolute -inset-1 rounded-full bg-phosphor/40" />
+          <span className="relative h-2 w-2 rounded-full bg-phosphor shadow-[0_0_6px_#9dffb0,0_0_14px_rgba(157,255,176,0.6)]" />
+        </span>
+        <span className="text-phosphor/80">PWR</span>
+      </div>
+      <p className="truncate tabular-nums" aria-label="System status: ready">
+        XSO-NET <span className="text-white/20">{"//"}</span> V1.0{' '}
+        <span className="text-white/20">{"//"}</span>{' '}
+        <span className="text-white/70">READY</span>
+      </p>
     </div>
   );
 }
