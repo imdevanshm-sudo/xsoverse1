@@ -154,7 +154,7 @@ body {
     scroll-snap-stop: always;
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 1024px) {
     .cart-bay {
       scroll-snap-type: none;
     }
@@ -529,6 +529,36 @@ body {
   animation: projector-dust 6s linear infinite;
   opacity: 0.5;
   mix-blend-mode: screen;
+}
+
+/* Cartridge label title scales to the label width; px fallback for older browsers. */
+.cart-title-wrap {
+  container-type: inline-size;
+}
+
+.cart-title {
+  font-size: 16px;
+  letter-spacing: 0.08em;
+}
+
+@supports (container-type: inline-size) {
+  .cart-title {
+    font-size: clamp(11px, calc(100cqi / (var(--chars, 9) * 0.75)), 24px);
+  }
+}
+
+.cart-veil {
+  background:
+    linear-gradient(180deg, rgba(210, 225, 235, 0.06), rgba(210, 225, 235, 0) 40%),
+    linear-gradient(180deg, rgba(14, 17, 21, 0.42), rgba(9, 11, 14, 0.6));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+@media (min-width: 768px) and (pointer: fine) {
+  .cart-veil {
+    backdrop-filter: saturate(0.55);
+    -webkit-backdrop-filter: saturate(0.55);
+  }
 }
 
 .pwr-led-halo {

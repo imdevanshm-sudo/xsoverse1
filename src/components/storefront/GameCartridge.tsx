@@ -16,9 +16,9 @@ interface GameCartridgeProps {
 
 /** Chamfered top-right corner plus a grip notch cut into the top edge. */
 const SHELL_CLIP =
-  'polygon(0 0, 30% 0, 30% 5px, 46% 5px, 46% 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%)';
+  'polygon(0 0, 32% 0, 32% 5px, 48% 5px, 48% 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%)';
 
-/** Handheld-style cartridge: graphite shell, recessed sticker label, grip ridges. */
+/** Handheld-style cartridge: graphite shell, printed label with color header stripe. */
 export const GameCartridge = memo(function GameCartridge({
   cartridge,
   selected,
@@ -44,6 +44,7 @@ export const GameCartridge = memo(function GameCartridge({
   }, [selected, quality.reducedMotion]);
 
   const slot = String(index + 1).padStart(2, '0');
+  const accent = cartridge.accent;
 
   return (
     <motion.button
@@ -53,32 +54,30 @@ export const GameCartridge = memo(function GameCartridge({
       aria-checked={selected}
       aria-label={`${cartridge.title}, ${cartridge.subtitle}${selected ? ', selected' : ''}`}
       onClick={onSelect}
-      className="cart-snap group relative w-[9.25rem] shrink-0 touch-manipulation select-none text-left rounded-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/60 sm:w-[10.5rem] md:w-auto"
+      className="cart-snap relative w-[11.75rem] shrink-0 touch-manipulation select-none rounded-sm text-left outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/60 sm:w-[12.5rem] lg:w-auto"
       initial={false}
-      animate={{ y: selected ? -6 : 0, opacity: selected ? 1 : 0.62 }}
+      animate={{ y: selected ? -6 : 0 }}
       whileTap={{ scale: 0.96 }}
       transition={transition}
-      style={{ '--accent': cartridge.accent } as CSSProperties}
+      style={{ '--accent': accent } as CSSProperties}
     >
-      {/* Floor glow when inserted */}
+      {/* Glow halo (outside the clipped shell so it can bleed) */}
       <div
         aria-hidden
-        className={`pointer-events-none absolute -bottom-3 left-1/2 h-8 w-4/5 -translate-x-1/2 rounded-[50%] transition-opacity duration-300 ${
+        className={`pointer-events-none absolute inset-[3px] rounded-md transition-opacity duration-300 ${
           selected ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{
-          background: `radial-gradient(ellipse at center, ${cartridge.accentSoft}, transparent 70%)`,
-        }}
+        style={{ boxShadow: `0 0 0 1px ${accent}55, 0 0 26px ${accent}55, 0 14px 30px rgba(0,0,0,0.5)` }}
       />
 
       {/* Outer edge (acts as the border) */}
       <div
-        className="relative aspect-[10/11] w-full p-px transition-colors duration-200"
+        className="relative aspect-[10/11.5] w-full p-[1.5px]"
         style={{
           clipPath: SHELL_CLIP,
           background: selected
-            ? `linear-gradient(180deg, ${cartridge.accent}, rgba(255,255,255,0.08))`
-            : 'linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04))',
+            ? `linear-gradient(180deg, ${accent}, ${accent}66)`
+            : 'linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04))',
         }}
       >
         {/* Graphite shell */}
@@ -86,49 +85,68 @@ export const GameCartridge = memo(function GameCartridge({
           className="relative flex h-full w-full flex-col"
           style={{
             clipPath: SHELL_CLIP,
-            background: 'linear-gradient(170deg, #23272d 0%, #16191d 55%, #111316 100%)',
+            background: 'linear-gradient(170deg, #25292f 0%, #17191d 55%, #111316 100%)',
           }}
         >
-          {/* Grip ridges */}
-          <div
-            aria-hidden
-            className="mx-3 mt-3 h-3 rounded-[1px] opacity-70"
-            style={{
-              backgroundImage:
-                'repeating-linear-gradient(180deg, rgba(255,255,255,0.10) 0 1px, transparent 1px 3px)',
-            }}
-          />
-
-          {/* Embossed insert arrow + slot meta */}
-          <div className="mx-3 mt-1.5 flex items-center justify-between font-mono text-[8px] uppercase tracking-[0.18em] text-white/35">
-            <span aria-hidden>▼</span>
-            <span>Slot {slot}</span>
+          {/* Grip ridges + slot meta */}
+          <div className="mx-3 mt-3 flex items-center gap-2">
+            <div
+              aria-hidden
+              className="h-3 flex-1 rounded-[1px] opacity-70"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(180deg, rgba(255,255,255,0.12) 0 1px, transparent 1px 3px)',
+              }}
+            />
+            <span className="mr-3 font-mono text-[8px] uppercase tracking-[0.18em] text-white/35">
+              ▼ {slot}
+            </span>
           </div>
 
-          {/* Recessed sticker label */}
-          <div className="mx-2.5 mt-1.5 flex-1 rounded-md bg-black/50 p-[3px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]">
-            <div
-              className="relative flex h-full flex-col overflow-hidden rounded-[4px] px-2.5 pb-2 pt-2"
-              style={{
-                background: `linear-gradient(160deg, transparent 55%, rgba(0,0,0,0.3) 100%), ${cartridge.accent}`,
-                color: '#0b0f12',
-              }}
-            >
-              <div className="flex items-center justify-between font-mono text-[8px] font-bold uppercase tracking-[0.16em] opacity-70">
-                <span>{cartridge.code}</span>
-                <span>{cartridge.year}</span>
+          {/* Recessed label well */}
+          <div className="mx-2 mt-2 flex-1 rounded-md bg-black/55 p-[3px] shadow-[inset_0_1px_3px_rgba(0,0,0,0.85)]">
+            {/* Printed sticker */}
+            <div className="relative flex h-full flex-col overflow-hidden rounded-[4px] bg-[#f2eee4] text-[#101214]">
+              {/* Color header stripe with serial */}
+              <div
+                className="truncate whitespace-nowrap px-2 py-1.5 font-mono text-[8px] font-bold uppercase tracking-[0.12em] text-[#0b0f12]"
+                style={{ background: accent }}
+              >
+                {cartridge.code} <span className="opacity-40">{'//'}</span> {cartridge.title}
               </div>
-              <p className="mt-auto whitespace-nowrap font-arcade text-[15px] font-extrabold uppercase leading-none tracking-[0.06em] sm:text-base md:text-[13px] lg:text-[15px]">
-                {cartridge.title}
-              </p>
-              <div aria-hidden className="mt-1.5 h-[3px] w-full bg-black/80" />
-              <p className="mt-1 truncate font-mono text-[8.5px] uppercase tracking-[0.14em] opacity-75">
-                {cartridge.subtitle}
-              </p>
-              {/* Sticker sheen */}
+
+              {/* Inner sticker border */}
+              <div className="relative m-[3px] flex flex-1 flex-col rounded-[2px] border border-black/15 px-1.5 pb-2 pt-1.5">
+                <span
+                  aria-hidden
+                  className="absolute right-1.5 top-0.5 font-arcade text-[28px] font-bold leading-none tracking-tight opacity-40"
+                  style={{ color: accent, WebkitTextStroke: '1px rgba(0,0,0,0.25)' }}
+                >
+                  {slot}
+                </span>
+                <div className="cart-title-wrap mt-auto">
+                  <p
+                    className="cart-title whitespace-nowrap font-arcade font-bold uppercase leading-[0.95]"
+                    style={{ '--chars': cartridge.title.length } as CSSProperties}
+                  >
+                    {cartridge.title}
+                  </p>
+                </div>
+                <div aria-hidden className="mt-1.5 flex gap-[3px]">
+                  <span className="h-[3px] flex-1 rounded-full" style={{ background: accent }} />
+                  <span className="h-[3px] w-3 rounded-full bg-black/80" />
+                  <span className="h-[3px] w-1.5 rounded-full bg-black/80" />
+                </div>
+                <p className="mt-1.5 flex justify-between gap-2 font-mono text-[8.5px] uppercase tracking-[0.14em] text-black/55">
+                  <span className="truncate">{cartridge.subtitle}</span>
+                  <span className="shrink-0 tabular-nums text-black/40">{cartridge.year}</span>
+                </p>
+              </div>
+
+              {/* Paper sheen */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.35)_0%,transparent_32%)] mix-blend-soft-light"
+                className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.45)_0%,transparent_30%)]"
               />
             </div>
           </div>
@@ -136,11 +154,11 @@ export const GameCartridge = memo(function GameCartridge({
           {/* Base edge */}
           <div className="mx-3 mb-2.5 mt-2 flex items-center justify-between">
             <span
-              className={`font-mono text-[8px] uppercase tracking-[0.18em] transition-colors ${
+              className={`font-mono text-[8px] font-bold uppercase tracking-[0.2em] ${
                 selected ? 'text-[color:var(--accent)]' : 'text-white/30'
               }`}
             >
-              {selected ? 'Inserted' : 'Tap to load'}
+              {selected ? '● Inserted' : 'Tap to load'}
             </span>
             <span aria-hidden className="flex gap-[3px]">
               {[0, 1, 2, 3].map((i) => (
@@ -148,6 +166,14 @@ export const GameCartridge = memo(function GameCartridge({
               ))}
             </span>
           </div>
+
+          {/* Smoky frosted veil for unselected carts */}
+          <div
+            aria-hidden
+            className={`cart-veil pointer-events-none absolute inset-0 transition-opacity duration-300 ${
+              selected ? 'opacity-0' : 'opacity-100'
+            }`}
+          />
         </div>
       </div>
     </motion.button>

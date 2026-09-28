@@ -27,7 +27,7 @@ export const CartridgeSelector = memo(function CartridgeSelector({
   return (
     <div className="flex w-full flex-col gap-6 sm:gap-8">
       <div
-        className="cart-bay -mx-4 flex gap-3 overflow-x-auto overscroll-x-contain px-4 pb-5 pt-3 sm:-mx-6 sm:gap-4 sm:px-6 md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0"
+        className="cart-bay -mx-4 flex gap-3 overflow-x-auto overscroll-x-contain px-4 pb-5 pt-3 sm:-mx-6 sm:gap-4 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0"
         role="radiogroup"
         aria-label="Choose a souvenir style"
       >

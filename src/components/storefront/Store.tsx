@@ -118,7 +118,7 @@ export function Store() {
     <div className="relative min-h-screen w-full bg-[#0b0f12] text-console-mist [min-height:100dvh] [min-height:var(--app-height,100dvh)]">
       <CrtOverlay enabled={crtOn} />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col md:max-w-4xl px-4 pb-36 pt-4 sm:px-6 sm:pb-40 sm:pt-6">
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col md:max-w-4xl lg:max-w-5xl px-4 pb-36 pt-4 sm:px-6 sm:pb-40 sm:pt-6">
         <SystemBar />
 
         <header className="mb-8 mt-10 sm:mb-12 sm:mt-14">

@@ -25,7 +25,7 @@ export function ConversionBar({
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50">
       <div className="pointer-events-auto border-t border-white/10 bg-[#0b0f12]/90 px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_rgba(0,0,0,0.35)] supports-[backdrop-filter]:bg-[#0b0f12]/65 supports-[backdrop-filter]:backdrop-blur-md supports-[backdrop-filter]:backdrop-saturate-150 sm:px-6">
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-3 md:max-w-4xl">
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-3 md:max-w-4xl lg:max-w-5xl">
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
               <span
