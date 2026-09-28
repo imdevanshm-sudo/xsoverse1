@@ -1,144 +1,149 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import type { CSSProperties } from 'react';
 import type { LineItem, XsoData } from '@/types/xso';
 import {
   CoffeeStain,
   HandNote,
+  InkStamp,
   PaperGrain,
 } from '@/components/xso/paper/PaperCraft';
+import { formatReceiptQty } from '@/lib/receiptFormat';
 
 export interface Side1ReceiptProps {
   data: XsoData;
 }
 
 const PAPER = '#fcfaf2';
-const INK = '#2a2a2a';
+const INK = '#262626';
 const MUTED = '#4a4a4a';
 
 const CLIP_RECEIPT =
   'polygon(0% 8px, 4% 0, 8% 8px, 12% 0, 16% 8px, 20% 0, 24% 8px, 28% 0, 32% 8px, 36% 0, 40% 8px, 44% 0, 48% 8px, 52% 0, 56% 8px, 60% 0, 64% 8px, 68% 0, 72% 8px, 76% 0, 80% 8px, 84% 0, 88% 8px, 92% 0, 96% 8px, 100% 0, 100% calc(100% - 8px), 96% 100%, 92% calc(100% - 8px), 88% 100%, 84% calc(100% - 8px), 80% 100%, 76% calc(100% - 8px), 72% 100%, 68% calc(100% - 8px), 64% 100%, 60% calc(100% - 8px), 56% 100%, 52% calc(100% - 8px), 48% 100%, 44% calc(100% - 8px), 40% 100%, 36% calc(100% - 8px), 32% 100%, 28% calc(100% - 8px), 24% 100%, 20% calc(100% - 8px), 16% 100%, 12% calc(100% - 8px), 8% 100%, 4% calc(100% - 8px), 0% 100%)';
 
-const listVariants = {
-  hidden: {},
-  show: {
-    transition: { staggerChildren: 0.07, delayChildren: 0.12 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 8 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const },
-  },
-};
-
 export function Side1Receipt({ data }: Side1ReceiptProps) {
   return (
-    <article
-      className="relative mx-auto w-full max-w-[320px] px-4 pb-5 pt-5 font-receipt text-[11.5px] leading-[1.35] shadow-2xl"
-      style={{
-        color: INK,
-        background: `linear-gradient(180deg, rgba(255,255,255,0.45), transparent 18%), ${PAPER}`,
-        clipPath: CLIP_RECEIPT,
-        WebkitClipPath: CLIP_RECEIPT,
-        transform: 'rotate(-2deg)',
-        boxShadow:
-          '0 28px 50px rgba(0,0,0,0.3), 0 10px 20px rgba(0,0,0,0.18)',
-      }}
-      aria-label="Thermal receipt"
+    <div
+      className="relative mx-auto w-full max-w-[320px]"
+      style={{ transform: 'rotate(-2deg)' }}
     >
-      <PaperGrain opacity={0.22} />
-      <CoffeeStain className="bottom-16 left-4" />
-      <HandNote className="bottom-8 right-3" rotate={-8}>
-        lol remember this??
-      </HandNote>
+      {/* clip-path swallows box-shadow, so the paper shadow is its own layer */}
+      <div
+        className="pointer-events-none absolute inset-x-1 inset-y-2"
+        style={{
+          boxShadow:
+            '0 30px 48px rgba(0,0,0,0.32), 0 12px 18px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.18)',
+        }}
+        aria-hidden
+      />
+      <article
+        className="relative px-4 pb-6 pt-6 font-receipt text-[11.5px] uppercase leading-[1.4] tabular-nums"
+        style={{
+          color: INK,
+          background: `linear-gradient(180deg, rgba(255,255,255,0.5), transparent 16%, transparent 84%, rgba(0,0,0,0.035)), ${PAPER}`,
+          clipPath: CLIP_RECEIPT,
+          WebkitClipPath: CLIP_RECEIPT,
+        }}
+        aria-label="Thermal receipt"
+      >
+        <PaperGrain opacity={0.18} />
+        <CoffeeStain className="bottom-16 left-4" />
+        <HandNote className="bottom-8 right-3 normal-case" rotate={-8}>
+          lol remember this??
+        </HandNote>
 
-      <div className="relative z-10">
-        <p className="mb-2 text-center text-[13px] font-bold tracking-[0.04em]">
-          {data.merchantName}
-        </p>
-        <p style={{ color: MUTED }}>CASHIER: {data.cashier.toUpperCase()}</p>
-        <p style={{ color: MUTED }}>
-          CUSTOMER: {data.customerName.toUpperCase()}
-        </p>
-        <p style={{ color: MUTED }}>{data.timestamp}</p>
-        {data.occasion ? (
-          <p style={{ color: MUTED }}>OCCASION: {data.occasion.toUpperCase()}</p>
-        ) : null}
+        <div className="relative z-10">
+          <p className="mb-2 text-center text-[13px] font-bold tracking-[0.06em]">
+            {data.merchantName}
+          </p>
+          <ReceiptMeta label="Cashier" value={data.cashier} />
+          <ReceiptMeta label="Customer" value={data.customerName} />
+          <p style={{ color: MUTED }}>{data.timestamp}</p>
+          {data.occasion ? (
+            <ReceiptMeta label="Occasion" value={data.occasion} />
+          ) : null}
 
-        <DashedDivider />
-
-        <div
-          className="mb-1 grid grid-cols-[2.2rem_1fr_4.6rem] gap-1 text-[10px] opacity-60"
-          aria-hidden
-        >
-          <span>QTY</span>
-          <span>ITEM</span>
-          <span className="text-right">AMT</span>
-        </div>
-
-        <motion.ul
-          className="m-0 list-none p-0"
-          variants={listVariants}
-          initial="hidden"
-          animate="show"
-        >
-          {data.lineItems.map((item: LineItem) => (
-            <motion.li
-              key={item.id}
-              variants={itemVariants}
-              className="mb-[0.28rem] grid grid-cols-[2.2rem_1fr_4.6rem] gap-1"
-            >
-              <span className="whitespace-pre">{item.qty}</span>
-              <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-                {item.description}
-              </span>
-              <span className="text-right">{item.price}</span>
-            </motion.li>
-          ))}
-        </motion.ul>
-
-        <DashedDivider />
-
-        <div className="grid gap-[0.28rem]">
-          <TotalsRow label="SUBTOTAL" value={data.subtotal} />
-          <TotalsRow label="EMOTIONAL TAX" value={data.emotionalTax} />
           <DashedDivider />
-          <div className="flex justify-between gap-3 text-[15px] font-bold">
-            <span>TOTAL</span>
-            <span className="text-right">{data.total}</span>
+
+          <div
+            className="mb-1 grid grid-cols-[4.2ch_1fr_auto] gap-x-1.5 text-[10px] opacity-60"
+            aria-hidden
+          >
+            <span>QTY</span>
+            <span>ITEM</span>
+            <span className="text-right">AMT</span>
+          </div>
+
+          <ul className="m-0 list-none p-0">
+            {data.lineItems.map((item: LineItem, index) => (
+              <li
+                key={item.id}
+                className="receipt-row mb-[0.3rem] grid grid-cols-[4.2ch_1fr_auto] items-baseline gap-x-1.5"
+                style={{ '--i': index } as CSSProperties}
+              >
+                <span className="text-right">{formatReceiptQty(item.qty)}</span>
+                <span className="flex min-w-0 items-baseline">
+                  <span className="min-w-0 truncate">{item.description}</span>
+                  <span className="receipt-leader" aria-hidden />
+                </span>
+                <span className="text-right">{item.price}</span>
+              </li>
+            ))}
+          </ul>
+
+          <DashedDivider />
+
+          <div className="grid gap-[0.3rem]">
+            <TotalsRow label="Subtotal" value={data.subtotal} />
+            <TotalsRow label="Emotional tax" value={data.emotionalTax} />
+            <DashedDivider />
+            <div className="flex items-baseline text-[15px] font-bold">
+              <span>Total</span>
+              <span className="receipt-leader" aria-hidden />
+              <span className="text-right">{data.total}</span>
+            </div>
+          </div>
+
+          <BarcodeSvg id={data.id} />
+
+          <p className="mt-3 text-center font-bold tracking-[0.04em]">
+            No refunds / no returns
+          </p>
+          <div className="mt-3 flex justify-center">
+            <InkStamp size="sm" rotate={-9}>
+              {data.certifiedStampText || 'Certified bestie'}
+            </InkStamp>
           </div>
         </div>
+      </article>
+    </div>
+  );
+}
 
-        <BarcodeSvg id={data.id} />
-
-        <p className="mt-3 text-center font-bold tracking-[0.03em]">
-          NO REFUNDS / NO RETURNS
-        </p>
-        <p className="mt-2 text-center text-[10px] opacity-55">
-          *** {data.certifiedStampText} ***
-        </p>
-      </div>
-    </article>
+function ReceiptMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <p className="truncate" style={{ color: MUTED }}>
+      {label}: {value}
+    </p>
   );
 }
 
 function DashedDivider() {
   return (
-    <p className="my-2 text-center tracking-[-0.08em] opacity-70" aria-hidden>
-      --------------------------------
-    </p>
+    <div
+      className="my-2 h-0 border-t-[1.5px] border-dashed opacity-60"
+      style={{ borderColor: INK }}
+      aria-hidden
+    />
   );
 }
 
 function TotalsRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-3">
-      <span>{label}</span>
-      <span className="max-w-[62%] text-right">{value}</span>
+    <div className="flex items-baseline">
+      <span className="shrink-0">{label}</span>
+      <span className="receipt-leader" aria-hidden />
+      <span className="max-w-[60%] truncate text-right">{value}</span>
     </div>
   );
 }
@@ -160,6 +165,7 @@ function BarcodeSvg({ id }: { id: string }) {
         className="h-10 w-full max-w-[260px]"
         role="img"
         aria-label="Barcode"
+        shapeRendering="crispEdges"
       >
         {bars.map((width, i) => {
           const rect = (
@@ -170,7 +176,7 @@ function BarcodeSvg({ id }: { id: string }) {
               width={width}
               height={40}
               fill={INK}
-              opacity={0.85}
+              opacity={0.88}
             />
           );
           x += width + 1;

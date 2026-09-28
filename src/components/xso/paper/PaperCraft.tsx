@@ -2,11 +2,74 @@
 
 import type { CSSProperties, ReactNode } from 'react';
 
-/** High-res SVG fractal grain for paper surfaces. */
+/** One static grain tile (2 octaves) shared by every paper surface. */
 export const PAPER_GRAIN_URL =
-  "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.55'/%3E%3C/svg%3E\")";
+  "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.27 0 0 0 0 0.22 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\")";
 
 export const PAPER_CREAM = '#fcfaf2';
+
+function speckleMask(): string {
+  let seed = 7;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+  const holes = Array.from({ length: 70 }, () => {
+    const r = (0.4 + rand() * 1.3).toFixed(2);
+    return `<circle cx='${(rand() * 160).toFixed(1)}' cy='${(rand() * 80).toFixed(1)}' r='${r}' fill='black' fill-opacity='${(0.55 + rand() * 0.45).toFixed(2)}'/>`;
+  }).join('');
+  const patches = Array.from({ length: 6 }, () => {
+    return `<ellipse cx='${(rand() * 160).toFixed(0)}' cy='${(rand() * 80).toFixed(0)}' rx='${(14 + rand() * 22).toFixed(0)}' ry='${(6 + rand() * 12).toFixed(0)}' fill='black' fill-opacity='${(0.12 + rand() * 0.16).toFixed(2)}'/>`;
+  }).join('');
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='160' height='80'><defs><mask id='m'><rect width='160' height='80' fill='white'/>${patches}${holes}</mask></defs><rect width='160' height='80' fill='black' mask='url(%23m)'/></svg>`;
+  return `url("data:image/svg+xml,${svg.replace(/</g, '%3C').replace(/>/g, '%3E')}")`;
+}
+
+/** Static speckle + uneven-density mask for rubber-stamp ink. */
+export const INK_SPECKLE_MASK = speckleMask();
+
+/**
+ * Rubber stamp with a double border, uneven ink and a faint bleed halo.
+ * `thunk` plays a one-shot scale/rotate landing via CSS.
+ */
+export function InkStamp({
+  children,
+  color = '#c81e1e',
+  halo = 'rgba(200, 30, 30, 0.35)',
+  rotate = -10,
+  size = 'md',
+  thunk = false,
+  delayMs = 0,
+  className = '',
+}: {
+  children: ReactNode;
+  color?: string;
+  halo?: string;
+  rotate?: number;
+  size?: 'sm' | 'md';
+  thunk?: boolean;
+  delayMs?: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`ink-stamp ink-stamp--${size} ${thunk ? 'ink-stamp--thunk' : ''} ${className}`}
+      style={
+        {
+          '--stamp-ink': color,
+          '--stamp-halo': halo,
+          '--stamp-rot': `${rotate}deg`,
+          '--stamp-delay': `${delayMs}ms`,
+          WebkitMaskImage: INK_SPECKLE_MASK,
+          maskImage: INK_SPECKLE_MASK,
+        } as CSSProperties
+      }
+      aria-hidden
+    >
+      <span className="ink-stamp__inner">{children}</span>
+    </div>
+  );
+}
 
 const DOG_EAR_CLIP =
   'polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%)';
@@ -17,7 +80,7 @@ const TORN_CLIP =
 export function PaperGrain({ opacity = 0.28 }: { opacity?: number }) {
   return (
     <div
-      className="pointer-events-none absolute inset-0 mix-blend-multiply"
+      className="pointer-events-none absolute inset-0"
       style={{
         opacity,
         backgroundImage: PAPER_GRAIN_URL,

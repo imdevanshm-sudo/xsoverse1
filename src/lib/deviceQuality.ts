@@ -1,8 +1,12 @@
 export type DeviceTier = 'high' | 'low';
 
+export type LiteReason = 'forced' | 'no-webgl' | 'save-data' | 'low-end' | 'performance';
+
 export interface CanvasQualityProfile {
   tier: DeviceTier;
   prefer2d: boolean;
+  /** Why the 2D viewer was chosen; null when 3D is allowed. */
+  liteReason: LiteReason | null;
   /** Clamped pixel ratio — never exceeds 1.5. Prefer tuple form. */
   dpr: number | [number, number];
   shadows: boolean;
@@ -123,6 +127,38 @@ export function detectDeviceTier(): DeviceTier {
   return 'high';
 }
 
+/**
+ * Phones and laptops too weak for three.js — these get the 2D viewer.
+ * Ordinary modern phones stay on the low-tier 3D profile.
+ */
+export function isLowEndDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (new URLSearchParams(window.location.search).get('quality') === 'low') {
+    return true;
+  }
+  if (readSaveData()) return true;
+  const memory = readDeviceMemory();
+  if (memory !== undefined && memory <= 3) return true;
+  const cores = navigator.hardwareConcurrency;
+  return cores !== undefined && cores > 0 && cores <= 4;
+}
+
+export function liteReasonLabel(reason: LiteReason | null): string {
+  switch (reason) {
+    case 'no-webgl':
+      return 'Lite mode · WebGL unavailable';
+    case 'save-data':
+      return 'Lite mode · Data saver on';
+    case 'low-end':
+      return 'Lite mode · Optimized for this device';
+    case 'performance':
+      return 'Lite mode · Switched for smoother playback';
+    case 'forced':
+    default:
+      return 'Lite mode';
+  }
+}
+
 /** Clamp DPR so nothing ever exceeds 1.5×. */
 export function clampDpr(
   value: number | [number, number],
@@ -148,13 +184,22 @@ export function getCanvasQualityProfile(
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('lite') === '1';
 
-  // Only skip 3D when WebGL is missing, Save-Data is on, or ?lite=1.
-  const prefer2d = forceLite || !webglOk || readSaveData();
+  const liteReason: LiteReason | null = forceLite
+    ? 'forced'
+    : !webglOk
+      ? 'no-webgl'
+      : typeof window !== 'undefined' && readSaveData()
+        ? 'save-data'
+        : isLowEndDevice()
+          ? 'low-end'
+          : null;
+  const prefer2d = liteReason !== null;
 
   if (tier === 'low') {
     return {
       tier,
       prefer2d,
+      liteReason,
       dpr: 1,
       shadows: false,
       antialias: false,
@@ -177,6 +222,7 @@ export function getCanvasQualityProfile(
   return {
     tier,
     prefer2d,
+    liteReason,
     dpr: clampDpr(DPR_RANGE),
     shadows: !coarse,
     antialias: false,
@@ -195,6 +241,29 @@ export function getCanvasQualityProfile(
     segments: mobileLike ? 16 : 24,
   };
 }
+
+/** Deterministic profile for SSR and the hydration render. */
+export const SSR_QUALITY_PROFILE: CanvasQualityProfile = {
+  tier: 'high',
+  prefer2d: false,
+  liteReason: null,
+  dpr: DPR_RANGE,
+  shadows: true,
+  antialias: false,
+  powerPreference: 'default',
+  float: true,
+  contactShadows: true,
+  presentationControls: true,
+  fog: true,
+  deskStripes: 18,
+  paperFibers: true,
+  anisotropy: 2,
+  softOverlays: true,
+  reducedMotion: false,
+  shadowMapSize: 256,
+  degradeSteps: 0,
+  segments: 24,
+};
 
 /**
  * Step down fidelity when PerformanceMonitor reports a decline.

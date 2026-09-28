@@ -14,6 +14,7 @@ import type { XsoData } from '@/types/xso';
 import type { R3FUnifiedViewerProps } from '@/components/xso/viewers/R3FUnifiedViewer';
 import { PhoneFrame, type PhoneFrameSize } from '@/components/xso/PhoneFrame';
 import { useDeviceQuality } from '@/hooks/useDeviceQuality';
+import type { LiteReason } from '@/lib/deviceQuality';
 import { LiteSouvenirViewer } from '@/components/xso/viewers/LiteSouvenirViewer';
 
 export interface XsoViewerProps {
@@ -23,6 +24,8 @@ export interface XsoViewerProps {
   frameSize?: PhoneFrameSize;
   /** @deprecated Style switching disabled — kept for API compat. */
   showStyleSwitcher?: boolean;
+  /** Stop rendering the 3D canvas (e.g. while checkout is locking). */
+  paused?: boolean;
 }
 
 const R3FUnifiedViewer = dynamic<R3FUnifiedViewerProps>(
@@ -34,16 +37,18 @@ const R3FUnifiedViewer = dynamic<R3FUnifiedViewerProps>(
 );
 
 /** Renders a single locked souvenir style — no style-switcher chrome.
- *  Prefers low-tier 3D on phones; falls back to Lite only if WebGL is
- *  unavailable, Save-Data is on, ?lite=1, or the GPU context is lost. */
+ *  Capable phones get low-tier 3D; low-end devices, missing WebGL,
+ *  Save-Data, ?lite=1, a lost GPU context or a sustained FPS floor
+ *  switch to the 2D Lite viewer. */
 export const XsoViewer = memo(function XsoViewer({
   data,
   initialSide = 0,
   contained = true,
   frameSize = 'default',
+  paused = false,
 }: XsoViewerProps) {
   const quality = useDeviceQuality();
-  const [forceLite, setForceLite] = useState(false);
+  const [runtimeReason, setRuntimeReason] = useState<LiteReason | null>(null);
   const [urlLite, setUrlLite] = useState(false);
   const side =
     data.giftStyle === 'loop' && initialSide === 0 ? 3 : initialSide;
@@ -55,22 +60,33 @@ export const XsoViewer = memo(function XsoViewer({
   }, []);
 
   const fallBackToLite = useCallback(() => {
-    setForceLite(true);
+    setRuntimeReason((current) => current ?? 'no-webgl');
   }, []);
 
-  const useLite = quality.prefer2d || forceLite || urlLite;
+  const fallBackForPerf = useCallback(() => {
+    setRuntimeReason((current) => current ?? 'performance');
+  }, []);
+
+  const liteReason: LiteReason | null =
+    quality.liteReason ?? runtimeReason ?? (urlLite ? 'forced' : null);
 
   const viewer = (
     <div className="relative h-full w-full overflow-hidden">
-      {useLite ? (
-        <LiteSouvenirViewer data={data} initialSide={side} />
+      {liteReason ? (
+        <LiteSouvenirViewer
+          data={data}
+          initialSide={side}
+          reason={liteReason}
+        />
       ) : (
         <WebGlBoundary onFallback={fallBackToLite}>
           <R3FUnifiedViewer
             key={data.giftStyle}
             data={data}
             initialSide={side}
+            paused={paused}
             onContextLost={fallBackToLite}
+            onPerfFallback={fallBackForPerf}
           />
         </WebGlBoundary>
       )}

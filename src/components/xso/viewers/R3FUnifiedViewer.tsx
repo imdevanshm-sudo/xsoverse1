@@ -1,7 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
   Center,
   ContactShadows,
@@ -62,6 +69,9 @@ const LOOP_SPRING = {
   mass: 0.65,
 };
 
+const PERF_WARMUP_MS = 5000;
+const PERF_FLOOR_DECLINES = 2;
+
 /** Distinct stack angles in radians (~ -2° … 3°). */
 const CARD_TILTS = [
   (-2 * Math.PI) / 180,
@@ -90,6 +100,10 @@ export interface R3FUnifiedViewerProps {
   initialSide?: number;
   /** Called when the WebGL context is lost mid-session. */
   onContextLost?: () => void;
+  /** Called when FPS keeps dropping after quality is already at its floor. */
+  onPerfFallback?: () => void;
+  /** Stop rendering frames entirely. */
+  paused?: boolean;
 }
 
 const ACTION_LABELS: Record<GiftStyle, string> = {
@@ -104,9 +118,31 @@ export function R3FUnifiedViewer({
   data,
   initialSide = 0,
   onContextLost,
+  onPerfFallback,
+  paused = false,
 }: R3FUnifiedViewerProps) {
   const { quality, onDecline, onIncline, onFallback } =
     useAdaptiveCanvasQuality();
+  const atQualityFloor = quality.degradeSteps >= 2;
+  const mountedAt = useRef(0);
+  const floorDeclines = useRef(0);
+  useEffect(() => {
+    mountedAt.current = performance.now();
+  }, []);
+  // Only give up on 3D after sustained drops at the lowest profile, ignoring
+  // the first seconds where texture decode and shader compile skew FPS.
+  const handleDecline = useCallback(() => {
+    if (!atQualityFloor) {
+      onDecline();
+      return;
+    }
+    if (!onPerfFallback) return;
+    if (performance.now() - mountedAt.current < PERF_WARMUP_MS) return;
+    floorDeclines.current += 1;
+    if (floorDeclines.current >= PERF_FLOOR_DECLINES) onPerfFallback();
+  }, [atQualityFloor, onDecline, onPerfFallback]);
+  const sectionRef = useRef<HTMLElement>(null);
+  const renderVisible = useRenderVisible(sectionRef);
   const [action, setAction] = useState(0);
   const [inspectedScrapbook, setInspectedScrapbook] = useState<number | null>(
     null,
@@ -213,6 +249,7 @@ export function R3FUnifiedViewer({
 
   return (
     <section
+      ref={sectionRef}
       className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0b0c0e] shadow-[inset_0_0_60px_#000]"
       aria-label={`3D ${data.giftStyle} souvenir`}
     >
@@ -224,7 +261,7 @@ export function R3FUnifiedViewer({
         }}
         shadows={quality.shadows}
         dpr={clampDpr(quality.dpr ?? DPR_RANGE)}
-        frameloop="always"
+        frameloop={renderVisible && !paused ? 'always' : 'never'}
         camera={{ position: [0, 0.15, 11], fov: 40 }}
         gl={{
           antialias: false,
@@ -244,11 +281,10 @@ export function R3FUnifiedViewer({
             step={0.15}
             factor={1}
             flipflops={3}
-            onDecline={onDecline}
+            onDecline={handleDecline}
             onIncline={onIncline}
             onFallback={onFallback}
           />
-          <PauseWhenHidden />
           <WebGlContextGuard onContextLost={onContextLost} />
           <color attach="background" args={['#0d0f12']} />
           {quality.fog ? (
@@ -463,20 +499,31 @@ export function R3FUnifiedViewer({
   );
 }
 
-function PauseWhenHidden() {
-  const set = useThree((state) => state.set);
+/** False while the tab is hidden or the element is scrolled off screen. */
+function useRenderVisible(ref: RefObject<HTMLElement>) {
+  const [onScreen, setOnScreen] = useState(true);
+  const [tabVisible, setTabVisible] = useState(true);
 
   useEffect(() => {
-    const onVisibility = () => {
-      set({
-        frameloop: document.visibilityState === 'hidden' ? 'never' : 'always',
-      });
-    };
+    const onVisibility = () =>
+      setTabVisible(document.visibilityState !== 'hidden');
+    onVisibility();
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [set]);
+  }, []);
 
-  return null;
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setOnScreen(entry?.isIntersecting ?? true),
+      { threshold: 0.01 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return onScreen && tabVisible;
 }
 
 /** Recover to Lite when the GPU drops the WebGL context mid-session. */
@@ -569,6 +616,7 @@ function SouvenirScene({
   onInspectScrapbook: (index: number) => void;
 }) {
   const textures = useMemoryTextures(data);
+  if (!textures) return null;
 
   switch (data.giftStyle) {
     case 'loop':
@@ -1321,7 +1369,7 @@ function ScrapbookInspection({
   index: number;
   onClose: () => void;
 }) {
-  const quality = useDeviceQuality();
+  const quality = useDeviceQuality({ clientOnly: true });
   const titles = [
     'Receipt of Lore',
     'Friendship Field Note',
@@ -1985,16 +2033,106 @@ function ProjectionCone() {
   );
 }
 
-function useMemoryTextures(data: XsoData) {
+/** Only the fields the memory textures actually draw. */
+function memoryTextureKey(data: XsoData) {
+  return JSON.stringify([
+    data.merchantName,
+    data.customerName,
+    data.billerName,
+    data.timestamp,
+    data.lineItems,
+    data.total,
+    data.certifiedStampText,
+    data.auditMetrics,
+    data.birthdayMessage,
+    data.photos[0] ?? '',
+  ]);
+}
+
+/**
+ * Loads the four memory textures, reusing any whose SVG didn't change and
+ * disposing the ones that were replaced. Returns null until the first set
+ * is ready so the scene never renders blank cards.
+ */
+function useMemoryTextures(data: XsoData): Texture[] | null {
   const quality = useQuality();
-  const urls = useMemo(() => buildMemoryTextureUrls(data), [data]);
-  const textures = useLoader(TextureLoader, urls);
+  const textureKey = memoryTextureKey(data);
+  const urls = useMemo(
+    () => buildMemoryTextureUrls(data),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [textureKey],
+  );
+  const cacheRef = useRef(new Map<string, Texture>());
+  const settingsRef = useRef({
+    anisotropy: quality.anisotropy,
+    mipmaps: quality.tier === 'high',
+  });
+  settingsRef.current = {
+    anisotropy: quality.anisotropy,
+    mipmaps: quality.tier === 'high',
+  };
+  const [textures, setTextures] = useState<Texture[] | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    const loader = new TextureLoader();
+    const cache = cacheRef.current;
+
+    const load = (url: string): Promise<Texture> => {
+      const cached = cache.get(url);
+      if (cached) return Promise.resolve(cached);
+      return loader
+        .loadAsync(url)
+        .then((texture) => {
+          texture.colorSpace = SRGBColorSpace;
+          texture.anisotropy = settingsRef.current.anisotropy;
+          texture.generateMipmaps = settingsRef.current.mipmaps;
+          return texture;
+        })
+        .catch(() => new Texture());
+    };
+
+    Promise.all(urls.map(load)).then((loaded) => {
+      if (cancelled) {
+        loaded.forEach((texture, index) => {
+          if (cache.get(urls[index]) !== texture) texture.dispose();
+        });
+        return;
+      }
+      const next = new Map<string, Texture>();
+      urls.forEach((url, index) => next.set(url, loaded[index]));
+      cache.forEach((texture, url) => {
+        if (next.get(url) !== texture) texture.dispose();
+      });
+      cacheRef.current = next;
+      setTextures(loaded);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [urls]);
+
+  useEffect(
+    () => () => {
+      cacheRef.current.forEach((texture) => texture.dispose());
+      cacheRef.current = new Map();
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!textures) return;
+    const mipmaps = quality.tier === 'high';
     textures.forEach((texture) => {
-      texture.colorSpace = SRGBColorSpace;
+      if (
+        texture.anisotropy === quality.anisotropy &&
+        texture.generateMipmaps === mipmaps
+      ) {
+        return;
+      }
       texture.anisotropy = quality.anisotropy;
-      texture.generateMipmaps = quality.tier === 'high';
+      texture.generateMipmaps = mipmaps;
       texture.needsUpdate = true;
     });
   }, [textures, quality.anisotropy, quality.tier]);

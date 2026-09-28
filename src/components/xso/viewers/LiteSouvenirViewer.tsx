@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
+import { liteReasonLabel, type LiteReason } from '@/lib/deviceQuality';
 import {
   SPRING,
   getArtifacts,
@@ -15,9 +16,11 @@ import { AccordionPanel, MovieMemoryFrame, getScrapbookArtifacts } from '@/compo
 export function LiteSouvenirViewer({
   data,
   initialSide = 0,
+  reason = null,
 }: {
   data: XsoData;
   initialSide?: number;
+  reason?: LiteReason | null;
 }) {
   return (
     <div className="lite-souvenir relative h-full w-full overflow-hidden bg-[#0b0c0e]">
@@ -25,7 +28,7 @@ export function LiteSouvenirViewer({
         <LiteEngine data={data} initialSide={initialSide} />
       </div>
       <p className="pointer-events-none absolute left-2 top-2 z-40 rounded bg-black/75 px-2 py-1 font-mono text-[7px] uppercase tracking-[0.16em] text-white/55">
-        Lite mode · WebGL unavailable
+        {liteReasonLabel(reason)}
       </p>
     </div>
   );

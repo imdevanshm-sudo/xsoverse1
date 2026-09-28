@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useXsoStore } from '@/store/useXsoStore';
 import { XsoViewer } from '@/components/xso/XsoViewer';
@@ -47,6 +48,12 @@ export function ImmersivePreview({ lockedStyle }: ImmersivePreviewProps) {
     [data, lockedStyle],
   );
 
+  const router = useRouter();
+  const studioHref = `/studio?${styleQuery(lockedStyle)}`;
+  useEffect(() => {
+    router.prefetch(studioHref);
+  }, [router, studioHref]);
+
   return (
     <>
       <div className="mx-auto flex min-app-h w-full max-w-xl flex-col items-center px-3 pb-[6.75rem] pt-3 sm:px-6 sm:pb-[7.25rem] sm:pt-6" style={{ minHeight: 'calc(var(--app-height, 100vh) - var(--xso-header-h))' }}>
@@ -68,7 +75,7 @@ export function ImmersivePreview({ lockedStyle }: ImmersivePreviewProps) {
         <div className="xso-dock pointer-events-auto border-t border-white/10 bg-[#0f1319] shadow-[0_-8px_24px_rgba(0,0,0,0.4)]">
           <div className="mx-auto flex max-w-lg flex-col gap-2 px-4 py-3.5 sm:px-5">
             <Link
-              href={`/studio?${styleQuery(lockedStyle)}`}
+              href={studioHref}
               className="flex min-h-12 w-full touch-manipulation items-center justify-center rounded-full border border-phosphor/30 bg-gradient-to-b from-phosphor/95 to-[#5aef7a] px-5 py-3.5 text-center font-pixel text-[9px] uppercase leading-snug tracking-[0.12em] text-ink shadow-[0_6px_0_#1a5c2e,0_12px_28px_rgba(0,0,0,0.4)] transition-[transform,opacity] duration-200 ease-xso active:translate-y-0.5 active:shadow-[0_3px_0_#1a5c2e] sm:text-[10px]"
             >
               ✨ Customize This Souvenir ({CARTRIDGE_PRICE})

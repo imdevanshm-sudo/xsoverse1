@@ -4,8 +4,8 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
 } from 'react';
-import { motion } from 'framer-motion';
 import { Pause, Play } from 'lucide-react';
 import type { XsoData } from '@/types/xso';
 import {
@@ -63,14 +63,9 @@ export function Side4BirthdayCard({ data }: Side4BirthdayCardProps) {
         </p>
       </header>
 
-      <motion.p
-        className="relative z-10 mb-5 whitespace-pre-wrap font-sans text-[15px] leading-relaxed text-ink"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-      >
+      <p className="paper-fade-in relative z-10 mb-5 whitespace-pre-wrap font-sans text-[15px] leading-relaxed text-ink">
         {data.birthdayMessage}
-      </motion.p>
+      </p>
 
       <div className="relative z-10 mb-5">
         <VoiceNotePlayer
@@ -148,29 +143,21 @@ function VoiceNotePlayer({ label, src }: { label: string; src?: string }) {
         <p className="truncate font-mono text-[10px] uppercase tracking-wide text-ink/55">
           {label}
         </p>
-        <div className="mt-1 flex h-8 items-end gap-[3px]" aria-hidden>
+        <div
+          className={`vn-bars mt-1 flex h-8 items-end gap-[3px] ${playing ? 'is-playing' : ''}`}
+          aria-hidden
+        >
           {bars.map((h, i) => (
-            <motion.span
+            <span
               key={i}
-              className="w-[3px] rounded-full bg-hotpink/80"
-              animate={
-                playing
-                  ? {
-                      height: [h * 0.45, h, h * 0.6, h * 0.9, h * 0.5],
-                    }
-                  : { height: h * 0.4 }
+              className="vn-bar w-[3px] rounded-full bg-hotpink/80"
+              style={
+                {
+                  height: h,
+                  '--vn-dur': `${700 + (i % 4) * 80}ms`,
+                  '--vn-delay': `${i * 40}ms`,
+                } as CSSProperties
               }
-              transition={
-                playing
-                  ? {
-                      duration: 0.7 + (i % 4) * 0.08,
-                      repeat: Infinity,
-                      ease: 'easeInOut',
-                      delay: i * 0.04,
-                    }
-                  : { duration: 0.2 }
-              }
-              style={{ height: h * 0.4 }}
             />
           ))}
         </div>

@@ -1,7 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import type { CSSProperties } from 'react';
 import type { AuditMetrics, XsoData } from '@/types/xso';
+import { InkStamp, PaperGrain } from '@/components/xso/paper/PaperCraft';
 
 export interface Side2AuditProps {
   data: XsoData;
@@ -83,15 +84,7 @@ export function Side2Audit({ data }: Side2AuditProps) {
         }}
         aria-hidden
       />
-      <div
-        className="pointer-events-none absolute inset-0 mix-blend-multiply opacity-25"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.55'/%3E%3C/svg%3E\")",
-          backgroundSize: '180px 180px',
-        }}
-        aria-hidden
-      />
+      <PaperGrain opacity={0.22} />
       <p
         className="pointer-events-none absolute bottom-3 left-3 z-20 max-w-[10rem] font-hand text-[14px] leading-snug text-[#5a2a2a]/80"
         style={{ transform: 'rotate(-4deg)' }}
@@ -119,17 +112,10 @@ export function Side2Audit({ data }: Side2AuditProps) {
             const isFull = i < fullStars;
             const isHalf = i === fullStars && hasHalf;
             return (
-              <motion.span
+              <span
                 key={i}
-                initial={{ scale: 0, rotate: -30, opacity: 0 }}
-                animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 420,
-                  damping: 16,
-                  delay: 0.12 + i * 0.08,
-                }}
-                className="inline-flex"
+                className="star-pop inline-flex"
+                style={{ '--i': i } as CSSProperties}
                 aria-hidden
               >
                 <StarIcon
@@ -137,7 +123,7 @@ export function Side2Audit({ data }: Side2AuditProps) {
                   half={isHalf}
                   gradId={`star-half-${i}`}
                 />
-              </motion.span>
+              </span>
             );
           })}
         </div>
@@ -165,24 +151,14 @@ export function Side2Audit({ data }: Side2AuditProps) {
         />
       </div>
 
-      <motion.div
+      <div
         className="pointer-events-none absolute left-1/2 top-[44%] z-20 -translate-x-1/2 -translate-y-1/2"
-        initial={{ scale: 0, rotate: -28, opacity: 0 }}
-        animate={{ scale: 1, rotate: -12, opacity: 0.88 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.45 }}
         aria-hidden
       >
-        <div
-          className="select-none border-[3px] border-dashed border-red-600 px-3 py-2 font-display text-[13px] font-extrabold uppercase tracking-[0.14em] text-red-600"
-          style={{
-            textShadow: '1px 1px 0 rgba(185,28,28,0.25)',
-            boxShadow: 'inset 0 0 0 1px rgba(220,38,38,0.35)',
-            filter: 'contrast(1.1)',
-          }}
-        >
+        <InkStamp rotate={-11} thunk delayMs={450}>
           {stamp}
-        </div>
-      </motion.div>
+        </InkStamp>
+      </div>
     </article>
   );
 }
@@ -265,14 +241,12 @@ function RadarChart({ metrics }: { metrics: AuditMetrics }) {
         );
       })}
 
-      <motion.polygon
+      <polygon
+        className="radar-in"
         points={radarPolygon(metrics, cx, cy, maxR)}
         fill="rgba(0,0,0,0.18)"
         stroke="#000"
         strokeWidth="2"
-        initial={{ opacity: 0, scale: 0.6 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 180, damping: 18, delay: 0.2 }}
         style={{ transformOrigin: `${cx}px ${cy}px` }}
       />
 

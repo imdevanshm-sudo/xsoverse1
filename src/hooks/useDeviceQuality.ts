@@ -2,18 +2,25 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
+  SSR_QUALITY_PROFILE,
   getCanvasQualityProfile,
   downgradeCanvasQuality,
   upgradeCanvasQuality,
   type CanvasQualityProfile,
 } from '@/lib/deviceQuality';
 
-/** Stable canvas/UI quality profile for the current device. */
-export function useDeviceQuality(): CanvasQualityProfile {
+/**
+ * Stable canvas/UI quality profile for the current device.
+ * SSR-rendered callers start from a fixed profile so hydration matches;
+ * pass `clientOnly` from components that never render on the server.
+ */
+export function useDeviceQuality({
+  clientOnly = false,
+}: { clientOnly?: boolean } = {}): CanvasQualityProfile {
   const [profile, setProfile] = useState<CanvasQualityProfile>(() =>
-    typeof window === 'undefined'
-      ? getCanvasQualityProfile('high')
-      : getCanvasQualityProfile(),
+    clientOnly && typeof window !== 'undefined'
+      ? getCanvasQualityProfile()
+      : SSR_QUALITY_PROFILE,
   );
 
   useEffect(() => {
@@ -42,7 +49,7 @@ export function useDeviceQuality(): CanvasQualityProfile {
  * Declines step fidelity down; inclines gently restore toward baseline.
  */
 export function useAdaptiveCanvasQuality() {
-  const baseline = useDeviceQuality();
+  const baseline = useDeviceQuality({ clientOnly: true });
   const [live, setLive] = useState(baseline);
 
   useEffect(() => {

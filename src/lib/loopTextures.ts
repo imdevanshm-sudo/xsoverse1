@@ -1,23 +1,31 @@
 import type { XsoData } from '@/types/xso';
+import { formatReceiptQty, RECEIPT_MAX_ITEMS } from '@/lib/receiptFormat';
 
 const PAPER = '#fcfaf2';
 
-/** Shared defs: paper grain + coffee ring for SVG memory cards. */
+/** One 120px grain tile (2 octaves, stitched) repeated across every card. */
+const GRAIN_DEFS = `
+      <filter id="grain" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" result="n"/>
+        <feColorMatrix type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0 0.32  0 0 0 0.22 0" in="n"/>
+      </filter>
+      <pattern id="grain-tile" width="120" height="120" patternUnits="userSpaceOnUse">
+        <rect width="120" height="120" filter="url(#grain)"/>
+      </pattern>`;
+
+/** Shared defs: paper grain + torn edge for SVG memory cards. */
 function paperDefs(id: string) {
   return `
     <defs>
-      <filter id="grain-${id}" x="0%" y="0%" width="100%" height="100%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch" result="n"/>
-        <feColorMatrix type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0 0.32  0 0 0 0.22 0" in="n"/>
-      </filter>
+      ${GRAIN_DEFS}
       <clipPath id="torn-${id}">
         <path d="M8,14 L28,4 L52,12 L78,3 L104,11 L132,2 L158,10 L186,4 L214,12 L242,3 L270,11 L298,2 L326,10 L354,4 L382,12 L410,3 L438,11 L466,2 L494,10 L522,4 L548,12 L572,5 L592,14 L592,806 L572,816 L548,808 L522,816 L494,807 L466,816 L438,808 L410,816 L382,807 L354,816 L326,808 L298,816 L270,807 L242,816 L214,808 L186,816 L158,807 L132,816 L104,808 L78,816 L52,807 L28,816 L8,806 Z"/>
       </clipPath>
     </defs>`;
 }
 
-function grainOverlay(id: string) {
-  return `<rect width="600" height="820" filter="url(#grain-${id})" opacity="0.45" style="mix-blend-mode:multiply"/>`;
+function grainOverlay() {
+  return `<rect width="600" height="820" fill="url(#grain-tile)" opacity="0.4"/>`;
 }
 
 function coffeeRing(cx: number, cy: number) {
@@ -48,20 +56,102 @@ function dogEar() {
     <path d="M562 0 L562 38 L600 38" fill="none" stroke="#000" stroke-opacity="0.08"/>`;
 }
 
+const MONO = "'Courier New', Courier, monospace";
+/** Courier New advances exactly 0.6em per glyph, so row widths are computable. */
+const ROW_FONT = 17;
+const QTY_RIGHT = 84;
+const DESC_LEFT = 98;
+const AMOUNT_RIGHT = 566;
+
+function ellipsize(value: string, max: number) {
+  if (value.length <= max) return value;
+  return `${value.slice(0, Math.max(1, max - 1))}…`;
+}
+
+/** Qty · description · dot leaders · right-aligned amount. */
+function receiptRow(
+  qty: string | null,
+  description: string,
+  price: string,
+  y: number,
+  { size = ROW_FONT, cls = 'row', left = DESC_LEFT } = {},
+) {
+  const charW = size * 0.6;
+  const amount = price.trim().slice(0, 12);
+  const amountLeft = AMOUNT_RIGHT - amount.length * charW;
+  const maxDesc = Math.max(4, Math.floor((amountLeft - left - 3 * charW) / charW));
+  const desc = ellipsize(description.trim().toUpperCase(), maxDesc);
+  const leaderStart = left + desc.length * charW + charW * 0.6;
+  const leaderEnd = amountLeft - charW * 0.6;
+  const leader =
+    leaderEnd - leaderStart > charW
+      ? `<line x1="${leaderStart.toFixed(1)}" y1="${y - 4}" x2="${leaderEnd.toFixed(1)}" y2="${y - 4}" class="dots"/>`
+      : '';
+  const qtyCell =
+    qty === null
+      ? ''
+      : `<text x="${QTY_RIGHT}" y="${y}" text-anchor="end" class="${cls}">${escapeXml(
+          formatReceiptQty(qty),
+        )}</text>`;
+  return `${qtyCell}<text x="${left}" y="${y}" class="${cls}">${escapeXml(desc)}</text>${leader}<text x="${AMOUNT_RIGHT}" y="${y}" text-anchor="end" class="${cls}">${escapeXml(
+    amount,
+  )}</text>`;
+}
+
+function speckles(width: number, height: number, count: number, seed: number) {
+  let s = seed;
+  const rand = () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+  const patches = Array.from({ length: 5 }, () =>
+    `<ellipse cx="${(rand() * width).toFixed(0)}" cy="${(rand() * height).toFixed(0)}" rx="${(30 + rand() * 50).toFixed(0)}" ry="${(10 + rand() * 18).toFixed(0)}" fill="#000" fill-opacity="${(0.12 + rand() * 0.18).toFixed(2)}"/>`,
+  ).join('');
+  const holes = Array.from({ length: count }, () =>
+    `<circle cx="${(rand() * width).toFixed(1)}" cy="${(rand() * height).toFixed(1)}" r="${(0.6 + rand() * 2).toFixed(1)}" fill="#000" fill-opacity="${(0.55 + rand() * 0.45).toFixed(2)}"/>`,
+  ).join('');
+  return patches + holes;
+}
+
+const STAMP_W = 360;
+const STAMP_H = 96;
+const STAMP_SPECKLES = speckles(STAMP_W, STAMP_H, 110, 11);
+
+/** Angled rubber stamp: double border, uneven ink, static speckle mask. */
+function inkStamp(id: string, text: string, x: number, y: number, rotate: number, color: string) {
+  const label = ellipsize(text.trim().toUpperCase() || 'CERTIFIED BESTIE', 20);
+  const fontSize = label.length > 16 ? 22 : 26;
+  return `
+    <defs>
+      <mask id="ink-${id}" maskUnits="userSpaceOnUse" x="${-STAMP_W / 2 - 10}" y="${-STAMP_H / 2 - 10}" width="${STAMP_W + 20}" height="${STAMP_H + 20}">
+        <rect x="${-STAMP_W / 2 - 10}" y="${-STAMP_H / 2 - 10}" width="${STAMP_W + 20}" height="${STAMP_H + 20}" fill="#fff"/>
+        <g transform="translate(${-STAMP_W / 2} ${-STAMP_H / 2})">${STAMP_SPECKLES}</g>
+      </mask>
+    </defs>
+    <g transform="translate(${x} ${y}) rotate(${rotate})" opacity="0.88">
+      <g mask="url(#ink-${id})">
+        <rect x="${-STAMP_W / 2 + 2}" y="${-STAMP_H / 2 + 2}" width="${STAMP_W - 4}" height="${STAMP_H - 4}" rx="10" fill="none" stroke="${color}" stroke-opacity="0.25" stroke-width="12"/>
+        <rect x="${-STAMP_W / 2 + 2}" y="${-STAMP_H / 2 + 2}" width="${STAMP_W - 4}" height="${STAMP_H - 4}" rx="10" fill="none" stroke="${color}" stroke-width="7"/>
+        <rect x="${-STAMP_W / 2 + 14}" y="${-STAMP_H / 2 + 14}" width="${STAMP_W - 28}" height="${STAMP_H - 28}" rx="5" fill="none" stroke="${color}" stroke-width="2.5"/>
+        <text y="${fontSize * 0.36}" text-anchor="middle" style="font:900 ${fontSize}px 'Arial Black',Arial,sans-serif;letter-spacing:3px;fill:${color}">${escapeXml(label)}</text>
+      </g>
+    </g>`;
+}
+
 export function buildMemoryTextureUrls(data: XsoData) {
   const stampDate =
     (data.timestamp.split(/[\s/]/)[0] || '03.15') + " · FILED";
-  const receiptLines = data.lineItems
-    .slice(0, 5)
-    .map(
-      (item, index) =>
-        `<text x="34" y="${178 + index * 34}" class="row">${escapeXml(
-          `${item.qty} ${item.description}`,
-        )}</text><text x="566" y="${178 + index * 34}" text-anchor="end" class="row">${escapeXml(
-          item.price,
-        )}</text>`,
-    )
-    .join('');
+  const shownItems = data.lineItems.slice(0, RECEIPT_MAX_ITEMS);
+  const hiddenCount = data.lineItems.length - shownItems.length;
+  const receiptLines =
+    shownItems
+      .map((item, index) =>
+        receiptRow(item.qty, item.description, item.price, 176 + index * 26),
+      )
+      .join('') +
+    (hiddenCount > 0
+      ? `<text x="${DESC_LEFT}" y="${176 + shownItems.length * 26}" class="row" opacity=".65">+${hiddenCount} MORE</text>`
+      : '');
   const metricLines = Object.entries(data.auditMetrics)
     .map(
       ([label, score], index) =>
@@ -91,18 +181,19 @@ export function buildMemoryTextureUrls(data: XsoData) {
       <rect width="600" height="820" fill="${PAPER}"/>
       <g clip-path="url(#torn-r)">
         <rect width="600" height="820" fill="${PAPER}"/>
-        ${grainOverlay('r')}
-        <style>.mono{font:700 22px monospace;fill:#242424}.row{font:17px monospace;fill:#303030}.hand{font:italic 20px 'Segoe Print','Bradley Hand',cursive;fill:#2a4a7a;opacity:.8}</style>
-        <text x="300" y="64" text-anchor="middle" class="mono">${escapeXml(data.merchantName)}</text>
-        <text x="34" y="104" class="row">CUSTOMER: ${escapeXml(data.customerName.toUpperCase())}</text>
-        <path d="M30 130H570" stroke="#333" stroke-dasharray="8 7" opacity=".7"/>
+        ${grainOverlay()}
+        <style>.mono{font:700 22px ${MONO};fill:#242424}.row{font:${ROW_FONT}px ${MONO};fill:#2c2c2c}.meta{font:15px ${MONO};fill:#4a4a4a}.dots{stroke:#2c2c2c;stroke-width:2;stroke-linecap:round;stroke-dasharray:0.1 7;opacity:.5}</style>
+        <text x="300" y="62" text-anchor="middle" class="mono">${escapeXml(data.merchantName.toUpperCase())}</text>
+        <text x="34" y="98" class="meta">CUSTOMER: ${escapeXml(ellipsize(data.customerName.toUpperCase(), 40))}</text>
+        <text x="34" y="120" class="meta">${escapeXml(ellipsize(data.timestamp.toUpperCase(), 44))}</text>
+        <path d="M30 140H570" stroke="#333" stroke-width="1.5" stroke-dasharray="8 7" opacity=".6"/>
         ${receiptLines}
-        <path d="M30 380H570" stroke="#333" stroke-dasharray="8 7" opacity=".7"/>
-        <text x="34" y="438" class="mono">TOTAL</text><text x="566" y="438" text-anchor="end" class="mono">${escapeXml(data.total)}</text>
-        <rect x="130" y="500" width="340" height="90" fill="url(#bars)"/>
-        <defs><pattern id="bars" width="13" height="1" patternUnits="userSpaceOnUse"><rect width="4" height="90" fill="#222"/><rect x="7" width="2" height="90" fill="#222"/></pattern></defs>
-        <text x="300" y="640" text-anchor="middle" class="row">${escapeXml(data.certifiedStampText)}</text>
-        <text x="300" y="688" text-anchor="middle" class="row">ITEMIZED CHAOS · NO REFUNDS, EVER</text>
+        <path d="M30 408H570" stroke="#333" stroke-width="1.5" stroke-dasharray="8 7" opacity=".6"/>
+        ${receiptRow(null, 'TOTAL', data.total, 448, { size: 22, cls: 'mono', left: 34 })}
+        <rect x="130" y="478" width="340" height="80" fill="url(#bars)"/>
+        <defs><pattern id="bars" width="13" height="1" patternUnits="userSpaceOnUse"><rect width="4" height="80" fill="#222"/><rect x="7" width="2" height="80" fill="#222"/></pattern></defs>
+        ${inkStamp('r', data.certifiedStampText, 300, 626, -10, '#c21d24')}
+        <text x="300" y="728" text-anchor="middle" class="meta">ITEMIZED CHAOS · NO REFUNDS, EVER</text>
         ${handNote('lol remember this??', 420, 760, -8)}
         ${coffeeRing(120, 720)}
       </g>
@@ -114,12 +205,12 @@ export function buildMemoryTextureUrls(data: XsoData) {
       ${paperDefs('a')}
       <rect width="600" height="820" fill="#f3e4a0"/>
       <style>.title{font:900 34px sans-serif;fill:#111}.label{font:700 17px monospace;fill:#111}</style>
-      ${grainOverlay('a')}
+      ${grainOverlay()}
       <rect x="22" y="22" width="556" height="776" fill="none" stroke="#111" stroke-width="7"/>
       <text x="300" y="82" text-anchor="middle" class="title">FRIENDSHIP AUDIT</text>
       <text x="300" y="132" text-anchor="middle" class="label">${escapeXml(data.customerName.toUpperCase())}</text>
       ${metricLines}
-      <g transform="translate(300 590) rotate(-10)"><rect x="-190" y="-48" width="380" height="96" rx="10" fill="none" stroke="#b62b32" stroke-width="9"/><text y="12" text-anchor="middle" style="font:900 27px sans-serif;fill:#b62b32">${escapeXml(data.certifiedStampText)}</text></g>
+      ${inkStamp('a', data.certifiedStampText, 300, 590, -11, '#b62b32')}
       ${handNote('never let them navigate', 48, 760, -4, '#5a2a2a')}
       ${dateStamp(stampDate, 500, 740, -18)}
       ${dogEar()}
@@ -138,7 +229,7 @@ export function buildMemoryTextureUrls(data: XsoData) {
         </linearGradient>
       </defs>
       <rect width="600" height="820" fill="url(#paper-l)"/>
-      ${grainOverlay('l')}
+      ${grainOverlay()}
       <style>.head{font:800 32px Georgia,serif;fill:#302b28}.body{font:23px Georgia,serif;fill:#403936}</style>
       <text x="52" y="78" class="head">DEAR ${escapeXml(data.customerName.toUpperCase())},</text>
       ${letterLines}

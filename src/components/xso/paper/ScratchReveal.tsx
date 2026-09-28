@@ -7,10 +7,33 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const BRUSH = 26;
 const REVEAL_RATIO = 0.48;
+const SAMPLE_INTERVAL_MS = 300;
+const SPARK_POOL = 6;
+const MAX_DPR = 1.5;
+
+type Point = { x: number; y: number };
+
+/** Soft round brush, rendered once and stamped with drawImage. */
+function createBrush(dpr: number): HTMLCanvasElement {
+  const size = Math.ceil(BRUSH * 2 * dpr);
+  const brush = document.createElement('canvas');
+  brush.width = size;
+  brush.height = size;
+  const ctx = brush.getContext('2d');
+  if (ctx) {
+    const r = size / 2;
+    const soft = ctx.createRadialGradient(r, r, 2 * dpr, r, r, r);
+    soft.addColorStop(0, 'rgba(0,0,0,1)');
+    soft.addColorStop(0.55, 'rgba(0,0,0,0.75)');
+    soft.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = soft;
+    ctx.fillRect(0, 0, size, size);
+  }
+  return brush;
+}
 
 export function ScratchReveal({
   reward,
@@ -22,30 +45,40 @@ export function ScratchReveal({
   className?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const brushRef = useRef<HTMLCanvasElement | null>(null);
+  const sampleRef = useRef<HTMLCanvasElement | null>(null);
+  const rectRef = useRef<DOMRect | null>(null);
   const drawing = useRef(false);
-  const last = useRef<{ x: number; y: number } | null>(null);
-  const sampleTick = useRef(0);
+  const last = useRef<Point | null>(null);
+  const pending = useRef<Point[]>([]);
+  const frame = useRef<number | null>(null);
+  const lastSample = useRef(0);
+  const revealedRef = useRef(false);
+  const sparkEls = useRef<(HTMLSpanElement | null)[]>([]);
+  const sparkCursor = useRef(0);
   const [progress, setProgress] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const [spark, setSpark] = useState<{ x: number; y: number; id: number }[]>(
-    [],
-  );
 
   const paintFoil = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    ctxRef.current = ctx;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
     const rect = canvas.getBoundingClientRect();
+    rectRef.current = rect;
     canvas.width = Math.max(1, Math.floor(rect.width * dpr));
     canvas.height = Math.max(1, Math.floor(rect.height * dpr));
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    brushRef.current = createBrush(dpr);
 
     const w = rect.width;
     const h = rect.height;
 
+    ctx.globalCompositeOperation = 'source-over';
     const base = ctx.createLinearGradient(0, 0, w, h);
     base.addColorStop(0, '#d8d4ce');
     base.addColorStop(0.35, '#9a9690');
@@ -55,22 +88,16 @@ export function ScratchReveal({
     ctx.fillStyle = base;
     ctx.fillRect(0, 0, w, h);
 
-    // Specular streaks
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
     for (let i = -h; i < w + h; i += 14) {
       ctx.fillRect(i, 0, 3, h);
     }
 
-    // Micro grit — lighter on small / low-DPR canvases
     const grit = Math.min(900, Math.floor((w * h) / 8));
     for (let i = 0; i < grit; i += 1) {
-      const x = Math.random() * w;
-      const y = Math.random() * h;
       ctx.fillStyle =
-        Math.random() > 0.5
-          ? 'rgba(255,255,255,0.18)'
-          : 'rgba(40,35,30,0.16)';
-      ctx.fillRect(x, y, 1.2, 1.2);
+        i % 2 === 0 ? 'rgba(255,255,255,0.18)' : 'rgba(40,35,30,0.16)';
+      ctx.fillRect(Math.random() * w, Math.random() * h, 1.2, 1.2);
     }
 
     ctx.fillStyle = 'rgba(35,30,28,0.55)';
@@ -81,102 +108,158 @@ export function ScratchReveal({
     ctx.font = '600 9px ui-monospace, monospace';
     ctx.fillStyle = 'rgba(35,30,28,0.4)';
     ctx.fillText('DRAG · WIPE · REVEAL', w / 2, h / 2 + 10);
+    ctx.globalCompositeOperation = 'destination-out';
   }, [label]);
 
   useEffect(() => {
     paintFoil();
+    let resizeFrame: number | null = null;
     const onResize = () => {
-      if (!revealed) paintFoil();
+      if (revealedRef.current || resizeFrame !== null) return;
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = null;
+        paintFoil();
+      });
     };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [paintFoil, revealed]);
+    window.addEventListener('resize', onResize, { passive: true });
+    return () => {
+      window.removeEventListener('resize', onResize);
+      if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+    };
+  }, [paintFoil]);
 
-  const measureCleared = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
-    const sample = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    let cleared = 0;
-    const step = canvas.width * canvas.height > 180_000 ? 32 : 16;
-    for (let i = 3; i < sample.data.length; i += 4 * step) {
-      if (sample.data[i] < 24) cleared += 1;
-    }
-    return cleared / (sample.data.length / (4 * step));
-  };
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    [],
+  );
 
-  const scratchStroke = (clientX: number, clientY: number) => {
+  /** Share of foil cleared, read from a quarter-size copy of the canvas. */
+  const measureCleared = useCallback((): number => {
     const canvas = canvasRef.current;
-    if (!canvas || revealed) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!canvas) return 0;
+    const w = Math.max(1, Math.floor(canvas.width / 4));
+    const h = Math.max(1, Math.floor(canvas.height / 4));
+    let sample = sampleRef.current;
+    if (!sample) {
+      sample = document.createElement('canvas');
+      sampleRef.current = sample;
+    }
+    if (sample.width !== w || sample.height !== h) {
+      sample.width = w;
+      sample.height = h;
+    }
+    const sctx = sample.getContext('2d', { willReadFrequently: true });
+    if (!sctx) return 0;
+    sctx.clearRect(0, 0, w, h);
+    sctx.drawImage(canvas, 0, 0, w, h);
+    const { data } = sctx.getImageData(0, 0, w, h);
+    let cleared = 0;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 24) cleared += 1;
+    }
+    return cleared / (w * h);
+  }, []);
 
-    const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+  const checkProgress = useCallback(() => {
+    if (revealedRef.current) return;
+    lastSample.current = performance.now();
+    const ratio = measureCleared();
+    if (ratio > REVEAL_RATIO) {
+      revealedRef.current = true;
+      setRevealed(true);
+      setProgress(1);
+      return;
+    }
+    setProgress(Math.min(1, ratio / REVEAL_RATIO));
+  }, [measureCleared]);
 
-    ctx.globalCompositeOperation = 'destination-out';
+  const emitSpark = useCallback((point: Point) => {
+    const el = sparkEls.current[sparkCursor.current];
+    sparkCursor.current = (sparkCursor.current + 1) % SPARK_POOL;
+    if (!el || typeof el.animate !== 'function') return;
+    el.animate(
+      [
+        { transform: `translate(${point.x}px, ${point.y}px) scale(1)`, opacity: 1 },
+        {
+          transform: `translate(${point.x}px, ${point.y - 12}px) scale(0.3)`,
+          opacity: 0,
+        },
+      ],
+      { duration: 420, easing: 'ease-out' },
+    );
+  }, []);
+
+  const flush = useCallback(() => {
+    frame.current = null;
+    const ctx = ctxRef.current;
+    const brush = brushRef.current;
+    const points = pending.current;
+    pending.current = [];
+    if (!ctx || !brush || points.length === 0 || revealedRef.current) return;
+
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.lineWidth = BRUSH * 2;
-
-    const soft = ctx.createRadialGradient(x, y, 2, x, y, BRUSH);
-    soft.addColorStop(0, 'rgba(0,0,0,1)');
-    soft.addColorStop(0.55, 'rgba(0,0,0,0.75)');
-    soft.addColorStop(1, 'rgba(0,0,0,0)');
-
-    if (last.current) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.95)';
-      ctx.beginPath();
-      ctx.moveTo(last.current.x, last.current.y);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    }
-
-    ctx.fillStyle = soft;
+    ctx.strokeStyle = 'rgba(0,0,0,0.95)';
     ctx.beginPath();
-    ctx.arc(x, y, BRUSH, 0, Math.PI * 2);
-    ctx.fill();
-
-    last.current = { x, y };
-
-    if (Math.random() > 0.72) {
-      const id = Date.now() + Math.random();
-      setSpark((prev) => [...prev.slice(-8), { x, y, id }]);
-      window.setTimeout(() => {
-        setSpark((prev) => prev.filter((s) => s.id !== id));
-      }, 420);
+    let prev = last.current;
+    for (const point of points) {
+      if (prev) {
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(point.x, point.y);
+      }
+      prev = point;
     }
+    ctx.stroke();
+    for (const point of points) {
+      ctx.drawImage(brush, point.x - BRUSH, point.y - BRUSH, BRUSH * 2, BRUSH * 2);
+    }
+    last.current = prev;
 
-    sampleTick.current += 1;
-    if (sampleTick.current % 4 !== 0) return;
+    const tail = points[points.length - 1];
+    if (tail && Math.random() > 0.6) emitSpark(tail);
 
-    const ratio = measureCleared(ctx, canvas);
-    setProgress(Math.min(1, ratio / REVEAL_RATIO));
+    if (performance.now() - lastSample.current >= SAMPLE_INTERVAL_MS) {
+      checkProgress();
+    }
+  }, [checkProgress, emitSpark]);
 
-    if (ratio > REVEAL_RATIO) {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      setRevealed(true);
-      setProgress(1);
+  const queue = (clientX: number, clientY: number) => {
+    const rect = rectRef.current;
+    if (!rect || revealedRef.current) return;
+    pending.current.push({ x: clientX - rect.left, y: clientY - rect.top });
+    if (frame.current === null) {
+      frame.current = requestAnimationFrame(flush);
     }
   };
 
   const onPointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     e.stopPropagation();
     e.preventDefault();
+    rectRef.current = e.currentTarget.getBoundingClientRect();
     drawing.current = true;
     last.current = null;
     e.currentTarget.setPointerCapture(e.pointerId);
-    scratchStroke(e.clientX, e.clientY);
+    queue(e.clientX, e.clientY);
   };
 
   const onPointerMove = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!drawing.current) return;
     e.stopPropagation();
-    scratchStroke(e.clientX, e.clientY);
+    queue(e.clientX, e.clientY);
   };
 
   const onPointerUp = () => {
+    if (!drawing.current) return;
     drawing.current = false;
+    if (frame.current !== null) {
+      cancelAnimationFrame(frame.current);
+      flush();
+    }
     last.current = null;
+    checkProgress();
   };
 
   return (
@@ -187,48 +270,39 @@ export function ScratchReveal({
           'inset 0 1px 0 rgba(255,255,255,0.7), 0 8px 18px rgba(0,0,0,0.12)',
       }}
     >
-      <motion.div
-        className="flex min-h-[108px] items-center justify-center px-4 py-5 text-center"
-        initial={false}
-        animate={{
+      <div
+        className="flex min-h-[108px] items-center justify-center px-4 py-5 text-center transition-[opacity,transform] duration-300 ease-out"
+        style={{
           opacity: revealed ? 1 : 0.35 + progress * 0.55,
-          scale: revealed ? 1 : 0.98 + progress * 0.02,
+          transform: `scale(${revealed ? 1 : 0.98 + progress * 0.02})`,
         }}
-        transition={{ type: 'spring', stiffness: 260, damping: 22 }}
       >
         <p className="font-hand text-[17px] leading-snug text-[#2c241c]">
           {reward}
         </p>
-      </motion.div>
+      </div>
 
-      <AnimatePresence>
-        {!revealed ? (
-          <motion.canvas
-            key="foil"
-            ref={canvasRef}
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 h-full w-full touch-none cursor-crosshair"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            aria-label="Scratch-off foil — drag to reveal the hidden note"
-          />
-        ) : null}
-      </AnimatePresence>
+      <canvas
+        ref={canvasRef}
+        className={`absolute inset-0 h-full w-full touch-none transition-opacity duration-500 ease-out ${
+          revealed ? 'pointer-events-none opacity-0' : 'cursor-crosshair'
+        }`}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        aria-label="Scratch-off foil — drag to reveal the hidden note"
+        aria-hidden={revealed}
+      />
 
-      {spark.map((s) => (
+      {Array.from({ length: SPARK_POOL }, (_, i) => (
         <span
-          key={s.id}
-          className="pointer-events-none absolute z-10 h-1.5 w-1.5 rounded-full bg-white/90"
-          style={{
-            left: s.x,
-            top: s.y,
-            boxShadow: '0 0 8px rgba(255,255,255,0.9)',
-            transform: 'translate(-50%, -50%)',
+          key={i}
+          ref={(el) => {
+            sparkEls.current[i] = el;
           }}
+          className="pointer-events-none absolute left-0 top-0 z-10 -ml-[3px] -mt-[3px] h-1.5 w-1.5 rounded-full bg-white/90 opacity-0"
+          style={{ boxShadow: '0 0 8px rgba(255,255,255,0.9)' }}
           aria-hidden
         />
       ))}
@@ -239,8 +313,8 @@ export function ScratchReveal({
           aria-hidden
         >
           <div
-            className="h-full rounded-full bg-[#2c241c]/55 transition-[width] duration-150"
-            style={{ width: `${Math.round(progress * 100)}%` }}
+            className="h-full origin-left rounded-full bg-[#2c241c]/55 transition-transform duration-150"
+            style={{ transform: `scaleX(${progress})` }}
           />
         </div>
       ) : null}
