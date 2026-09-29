@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Copy } from 'lucide-react';
 import { splitReward } from '@/lib/reward';
+import { ScratchReveal } from '@/components/xso/paper/ScratchReveal';
 
 /** Must run synchronously inside the click so the user gesture is still live. */
 function execCopy(text: string): boolean {
@@ -49,14 +50,17 @@ async function copyText(text: string): Promise<boolean> {
 
 type CopyState = 'idle' | 'copied' | 'failed';
 
-/** Perforated paper coupon with the reward code printed in plain sight. */
+/** Perforated paper coupon; the code sits under a scratch-off foil until revealed. */
 export function SecretOffer({ reward }: { reward: string }) {
   const reduce = useReducedMotion();
   const [copyState, setCopyState] = useState<CopyState>('idle');
+  const [revealed, setRevealed] = useState(false);
   const resetTimer = useRef<number | null>(null);
   const { code, perk } = splitReward(reward);
   const copyValue = code || perk;
   const copied = copyState === 'copied';
+
+  useEffect(() => setRevealed(false), [reward]);
 
   useEffect(
     () => () => {
@@ -91,26 +95,38 @@ export function SecretOffer({ reward }: { reward: string }) {
             </span>
           </header>
 
-          <div className="rounded-xl border-2 border-dashed border-[#d3c4aa] bg-[#f3ebdc] px-3 py-3 text-center">
-            <p className="font-receipt text-[10px] uppercase tracking-[0.26em] text-[#8a7b66]">
-              Promo code
-            </p>
-            <p className="mt-0.5 select-all font-receipt text-[22px] font-bold tracking-[0.1em] text-[#2b2621] sm:text-2xl">
-              {code || perk}
-            </p>
-            {code ? (
-              <p className="mt-1 font-serif text-[15px] italic leading-snug text-[#5c4a3a]">
-                {perk}
+          <ScratchReveal
+            key={reward}
+            reward={reward}
+            label="Scratch to reveal"
+            compact
+            unstyled
+            onReveal={() => setRevealed(true)}
+            className="rounded-xl border-2 border-dashed border-[#d3c4aa] bg-[#f3ebdc]"
+          >
+            <div>
+              <p className="font-receipt text-[10px] uppercase tracking-[0.26em] text-[#8a7b66]">
+                Promo code
               </p>
-            ) : null}
-          </div>
+              <p className="mt-0.5 select-all font-receipt text-[22px] font-bold tracking-[0.1em] text-[#2b2621] sm:text-2xl">
+                {code || perk}
+              </p>
+              {code ? (
+                <p className="mt-1 font-serif text-[15px] italic leading-snug text-[#5c4a3a]">
+                  {perk}
+                </p>
+              ) : null}
+            </div>
+          </ScratchReveal>
 
           <div className="mt-3 flex items-center justify-between gap-3">
             <p
               className="min-w-0 font-receipt text-[11px] leading-snug text-[#7a6c58]"
               aria-live="polite"
             >
-              {copyState === 'copied'
+              {!revealed
+                ? 'Scratch the foil to reveal your code.'
+                : copyState === 'copied'
                 ? 'Copied to clipboard.'
                 : copyState === 'failed'
                   ? 'Copy blocked — long-press the code.'
@@ -119,11 +135,14 @@ export function SecretOffer({ reward }: { reward: string }) {
             <motion.button
               type="button"
               onClick={() => void copy()}
+              disabled={!revealed}
               animate={copied && !reduce ? { scale: [1, 1.1, 1] } : { scale: 1 }}
               whileTap={reduce ? undefined : { scale: 0.95 }}
               transition={{ duration: 0.34, ease: 'easeOut' }}
-              aria-label={copied ? 'Code copied' : `Copy code ${copyValue}`}
-              className={`paper-chip inline-flex min-w-[8.25rem] shrink-0 touch-manipulation items-center justify-center gap-1.5 ${
+              aria-label={
+                !revealed ? 'Scratch the foil first' : copied ? 'Code copied' : `Copy code ${copyValue}`
+              }
+              className={`paper-chip inline-flex min-w-[8.25rem] shrink-0 touch-manipulation items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-45 ${
                 copied ? 'is-copied' : ''
               }`}
             >

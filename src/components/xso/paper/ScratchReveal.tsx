@@ -61,6 +61,7 @@ export function ScratchReveal({
   className = '',
   variant = 'silver',
   compact = false,
+  unstyled = false,
   onReveal,
   children,
 }: {
@@ -70,6 +71,8 @@ export function ScratchReveal({
   variant?: 'silver' | 'holo';
   /** Shorter foil for tight hosts like the Loop deck card. */
   compact?: boolean;
+  /** Skip the default paper box so the host can style the frame. */
+  unstyled?: boolean;
   onReveal?: () => void;
   /** Custom content under the foil; defaults to the reward in handwriting. */
   children?: ReactNode;
@@ -293,11 +296,14 @@ export function ScratchReveal({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border border-[#c9c0b0] bg-[#fcfaf2] ${className}`}
-      style={{
-        boxShadow:
-          'inset 0 1px 0 rgba(255,255,255,0.7), 0 8px 18px rgba(0,0,0,0.12)',
-      }}
+      className={`relative overflow-hidden ${
+        unstyled ? '' : 'rounded-xl border border-[#c9c0b0] bg-[#fcfaf2]'
+      } ${className}`}
+      style={
+        unstyled
+          ? undefined
+          : { boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7), 0 8px 18px rgba(0,0,0,0.12)' }
+      }
     >
       <div
         className={`flex items-center justify-center px-4 text-center ${compact ? 'min-h-[80px] py-3' : 'min-h-[108px] py-5'} transition-[opacity,transform] duration-300 ease-out`}
