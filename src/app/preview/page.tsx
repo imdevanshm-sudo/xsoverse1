@@ -22,11 +22,12 @@ function PreviewShell() {
   }, [lockedStyle, setField, storeStyle]);
 
   return (
-    <main className="min-app-h studio-portrait">
+    <main className="min-app-h preview-paper">
       <ModeHeader
         mode="preview"
-        brand="XSO PREVIEW"
-        meta={<span style={{ color: cart.accent }}>{cart.title}</span>}
+        tone="paper"
+        brand="XSO Preview"
+        meta={cart.title.charAt(0) + cart.title.slice(1).toLowerCase()}
         actionHref="/"
         actionLabel="Store"
       />
@@ -39,7 +40,7 @@ export default function PreviewPage() {
   return (
     <Suspense
       fallback={
-        <main className="grid min-app-h place-items-center font-mono text-sm text-white/50">
+        <main className="preview-paper grid min-app-h place-items-center font-receipt text-sm text-[#7a6c58]">
           Loading preview…
         </main>
       }

@@ -33,6 +33,7 @@ const config: Config = {
       },
       fontFamily: {
         display: ['var(--font-space-grotesk)', 'sans-serif'],
+        serif: ['var(--font-fraunces)', 'Georgia', 'serif'],
         arcade: ['var(--font-space-grotesk)', 'sans-serif'],
         pixel: ['var(--font-press-start)', 'monospace'],
         mono: ['var(--font-space-mono)', 'ui-monospace', 'monospace'],

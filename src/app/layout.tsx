@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import {
   Courier_Prime,
   Caveat,
+  Fraunces,
   Press_Start_2P,
   Space_Grotesk,
   Space_Mono,
@@ -48,6 +49,14 @@ const caveat = Caveat({
   preload: false,
 });
 
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-fraunces',
+  display: 'swap',
+  preload: false,
+  style: ['normal', 'italic'],
+});
+
 export const metadata: Metadata = {
   title: 'XSO · Retro Souvenir Console',
   description:
@@ -88,7 +97,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${pressStart.variable} ${spaceMono.variable} ${courierPrime.variable} ${caveat.variable}`}
+      className={`${spaceGrotesk.variable} ${pressStart.variable} ${spaceMono.variable} ${courierPrime.variable} ${caveat.variable} ${fraunces.variable}`}
     >
       <body className="font-sans xso-safe-shell">
         <OrientationRoot />

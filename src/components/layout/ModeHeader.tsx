@@ -9,6 +9,10 @@ interface ModeHeaderProps {
   meta?: ReactNode;
   actionHref: string;
   actionLabel: string;
+  /** `paper` renders the warm, centered keepsake header. */
+  tone?: 'console' | 'paper';
+  /** Right-hand detail for the paper tone (e.g. cartridge code). */
+  aside?: ReactNode;
 }
 
 /** Fixed-height mode chrome — single row, no wrap/shift. */
@@ -18,7 +22,44 @@ export function ModeHeader({
   meta,
   actionHref,
   actionLabel,
+  tone = 'console',
+  aside,
 }: ModeHeaderProps) {
+  if (tone === 'paper') {
+    return (
+      <header className="mode-header" data-mode={mode} data-tone="paper">
+        <div className="mode-header-inner grid grid-cols-[1fr_auto_1fr]">
+          <Link
+            href={actionHref}
+            className="mode-nav-link gap-1.5 justify-self-start"
+            prefetch
+          >
+            <span aria-hidden>←</span>
+            {actionLabel}
+          </Link>
+          <p className="flex min-w-0 items-baseline justify-center gap-2 whitespace-nowrap">
+            <span className="font-receipt text-[11px] font-bold uppercase tracking-[0.22em] text-[#2b2621]">
+              {brand}
+            </span>
+            {meta ? (
+              <>
+                <span className="text-[#b9ab94]" aria-hidden>
+                  ·
+                </span>
+                <span className="font-serif text-[15px] italic text-[#b8603e]">
+                  {meta}
+                </span>
+              </>
+            ) : null}
+          </p>
+          <div className="min-w-0 justify-self-end truncate font-receipt text-[11px] tracking-[0.14em] text-[#9a8a73]">
+            {aside}
+          </div>
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="mode-header" data-mode={mode}>
       <div className="mode-header-inner">
