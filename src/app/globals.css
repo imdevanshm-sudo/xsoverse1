@@ -949,56 +949,60 @@ html.is-landscape .xso-dock {
     animation: none !important;
   }
 }
-/* ── Paper keepsake system (preview) ─────────────────────────────── */
+/* ── Warm stone keepsake system (preview) ────────────────────────── */
 :root {
+  /* Dark fibre specks for cream card stock */
   --paper-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.24 0 0 0 0 0.17 0 0 0 0 0.1 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --paper-ink: #2b2621;
-  --paper-linen: #f4eee3;
+  /* Light warm grain for the stone background */
+  --stone-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.95 0 0 0 0 0.88 0 0 0 0 0.76 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --stone-900: #1e1d1b;
+  --stone-800: #262422;
+  --stone-700: #2f2c29;
+  --stone-line: #3d3934;
+  --paper-cream: #f1e8d8;
   --paper-stock: #faf5ea;
-  --paper-edge: #dccfb9;
-  --paper-sage: #7d8f6e;
-  --paper-terracotta: #b8603e;
-  --paper-forest: #2f5443;
-  --paper-shadow: 0 1px 2px rgba(61, 43, 25, 0.12), 0 8px 20px -6px rgba(61, 43, 25, 0.22),
-    0 22px 44px -18px rgba(61, 43, 25, 0.3);
+  --paper-terracotta: #b8653f;
+  --paper-sage: #a3b48f;
+  --paper-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 24px -8px rgba(0, 0, 0, 0.5),
+    0 28px 50px -20px rgba(0, 0, 0, 0.6);
 }
 
 .preview-paper {
-  color: var(--paper-ink);
-  background-color: #e7dfd1;
+  color: var(--paper-cream);
+  background-color: var(--stone-900);
   background-image:
-    var(--paper-noise),
-    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255, 250, 240, 0.7), transparent 70%),
-    radial-gradient(ellipse 60% 50% at 85% 100%, rgba(184, 96, 62, 0.08), transparent 70%),
-    linear-gradient(180deg, #ebe4d7 0%, #e2d9c9 100%);
+    var(--stone-noise),
+    radial-gradient(ellipse 65% 40% at 50% 0%, rgba(214, 170, 120, 0.1), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 90% 100%, rgba(184, 101, 63, 0.08), transparent 70%),
+    linear-gradient(180deg, var(--stone-800) 0%, var(--stone-900) 100%);
   background-size: 200px 200px, auto, auto, auto;
   background-attachment: fixed;
 }
 
 .mode-header[data-tone='paper'] {
-  background: rgba(244, 238, 227, 0.96);
-  border-bottom: 1px solid var(--paper-edge);
-  box-shadow: 0 6px 18px -12px rgba(61, 43, 25, 0.35);
+  background: rgba(38, 36, 34, 0.97);
+  border-bottom: 1px solid var(--stone-line);
+  box-shadow: 0 8px 20px -14px rgba(0, 0, 0, 0.7);
   backdrop-filter: none;
 }
 
 .mode-header[data-tone='paper'] .mode-nav-link {
   height: 2.25rem;
-  border: 1px solid #cdbfa6;
+  border: 1px solid #4a443d;
   border-radius: 999px;
-  background: var(--paper-stock);
+  background: var(--stone-700);
   padding-inline: 0.85rem;
   font-family: var(--font-courier-prime), ui-monospace, monospace;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
-  color: var(--paper-ink);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 2px 6px -2px rgba(61, 43, 25, 0.25);
+  color: var(--paper-cream);
+  box-shadow: inset 0 1px 0 rgba(255, 245, 230, 0.06), 0 2px 6px -2px rgba(0, 0, 0, 0.5);
   transition: transform 160ms var(--xso-ease), background-color 160ms;
 }
 
 .mode-header[data-tone='paper'] .mode-nav-link:hover {
-  background: #fffaf0;
+  background: #37332f;
 }
 
 .mode-header[data-tone='paper'] .mode-nav-link:active {
@@ -1008,15 +1012,22 @@ html.is-landscape .xso-dock {
 .mode-header[data-tone='paper'] .mode-nav-link:focus-visible,
 .paper-button:focus-visible,
 .paper-chip:focus-visible {
-  outline: 2px solid var(--paper-terracotta);
+  outline: 2px solid #e2b48f;
   outline-offset: 2px;
 }
 
-/* Deck fits above the sticky dock on short phones, grows on tall screens */
+/* Deck leaves room for the coupon to peek above the sticky dock */
 .memory-deck {
-  height: min(58vh, 560px);
-  height: min(calc(var(--app-height, 100vh) * 0.58), 560px, calc(var(--app-height, 100vh) - 21rem));
-  min-height: 340px;
+  height: min(52vh, 540px);
+  height: min(calc(var(--app-height, 100vh) * 0.52), 540px, calc(var(--app-height, 100vh) - 26rem));
+  min-height: 320px;
+}
+
+@media (min-width: 1024px) {
+  .memory-deck {
+    height: min(calc(var(--app-height, 100vh) - 30rem), 520px);
+    min-height: 360px;
+  }
 }
 
 .paper-card {
@@ -1031,37 +1042,37 @@ html.is-landscape .xso-dock {
 .paper-frame {
   border-radius: 22px;
   padding: 10px;
-  background: var(--paper-linen) var(--paper-noise);
+  background: var(--stone-700) var(--stone-noise);
   background-size: 200px 200px;
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--stone-line);
   box-shadow: var(--paper-shadow);
 }
 
 .paper-button {
   min-height: 2.75rem;
   border-radius: 999px;
-  border: 1px solid #cdbfa6;
-  background: linear-gradient(180deg, #fffaf0 0%, #f1e9da 100%);
+  border: 1px solid #d8ccb6;
+  background: linear-gradient(180deg, #fbf6ec 0%, #eee4d2 100%);
   padding: 0 1.1rem;
   font-family: var(--font-courier-prime), ui-monospace, monospace;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--paper-ink);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 0 #cdbfa6,
-    0 6px 14px -6px rgba(61, 43, 25, 0.35);
+  color: #2b2621;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 0 #b9ab94,
+    0 8px 16px -6px rgba(0, 0, 0, 0.55);
 }
 
 @media (hover: hover) {
   .paper-button:hover {
-    background: linear-gradient(180deg, #fffcf5 0%, #f5eee1 100%);
+    background: linear-gradient(180deg, #fffaf2 0%, #f3eadb 100%);
   }
 }
 
 /* Vintage ticket: notched perforation, drop-shadow survives the mask */
 .paper-ticket-shadow {
-  filter: drop-shadow(0 2px 2px rgba(61, 43, 25, 0.14)) drop-shadow(0 12px 18px rgba(61, 43, 25, 0.18));
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)) drop-shadow(0 14px 22px rgba(0, 0, 0, 0.45));
 }
 
 .paper-ticket {
@@ -1078,70 +1089,46 @@ html.is-landscape .xso-dock {
     radial-gradient(circle 9px at 2.5rem 100%, transparent 97%, #000) bottom / 100% 51% no-repeat;
 }
 
-.ink-seal {
-  display: inline-grid;
-  place-items: center;
-  min-width: 4.5rem;
-  padding: 0.3rem 0.5rem;
-  border: 2px solid rgba(184, 96, 62, 0.75);
-  border-radius: 6px;
-  font-family: var(--font-courier-prime), ui-monospace, monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(184, 96, 62, 0.85);
-  transform: rotate(-6deg);
-  mix-blend-mode: multiply;
-  transition: color 300ms, border-color 300ms, transform 300ms var(--xso-ease);
-}
-
-.ink-seal.is-open {
-  color: rgba(47, 84, 67, 0.9);
-  border-color: rgba(47, 84, 67, 0.75);
-  transform: rotate(4deg) scale(1.04);
-}
-
 .paper-chip {
-  min-height: 2.25rem;
+  min-height: 2.5rem;
   border-radius: 999px;
-  border: 1px solid #cdbfa6;
-  background: #fffaf0;
-  padding: 0 0.85rem;
+  border: 1px solid #8f4a2f;
+  background: linear-gradient(180deg, #c27350 0%, #a65a3b 100%);
+  padding: 0 0.95rem;
   font-family: var(--font-courier-prime), ui-monospace, monospace;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--paper-ink);
-  box-shadow: 0 2px 0 #d8ccb6;
-  transition: background-color 200ms, color 200ms, border-color 200ms, box-shadow 200ms;
+  color: #fff5ea;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 0 #7e4029;
+  transition: background 200ms, border-color 200ms, box-shadow 200ms;
 }
 
 .paper-chip.is-copied {
-  background: var(--paper-forest);
-  border-color: var(--paper-forest);
-  color: #f6efe2;
-  box-shadow: 0 2px 0 #22402f, 0 0 0 4px rgba(125, 143, 110, 0.25);
+  background: linear-gradient(180deg, #7f9270 0%, #66785a 100%);
+  border-color: #56664b;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 0 #46543d,
+    0 0 0 4px rgba(163, 180, 143, 0.28);
 }
 
 .paper-dock {
-  background: rgba(244, 238, 227, 0.97);
-  background-image: var(--paper-noise);
+  background: rgba(30, 29, 27, 0.97);
+  background-image: var(--stone-noise);
   background-size: 200px 200px;
-  border-top: 1px solid var(--paper-edge);
-  box-shadow: 0 -12px 30px -14px rgba(61, 43, 25, 0.35);
+  border-top: 1px solid var(--stone-line);
+  box-shadow: 0 -14px 32px -12px rgba(0, 0, 0, 0.7);
 }
 
-/* Matte forest CTA: default · hover · active · focus · loading */
+/* Matte terracotta CTA: default · hover · active · focus · loading */
 .matte-cta {
-  color: #f6efe2;
-  background: linear-gradient(180deg, #3b6752 0%, #2f5443 100%);
+  color: #fff5ea;
+  background: linear-gradient(180deg, #c27350 0%, #a65a3b 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
     inset 0 -4px 8px rgba(0, 0, 0, 0.2),
-    0 3px 0 #22402f,
-    0 12px 24px -10px rgba(47, 84, 67, 0.6);
+    0 3px 0 #7e4029,
+    0 14px 26px -12px rgba(0, 0, 0, 0.7);
   transition:
     transform 200ms var(--xso-ease),
     box-shadow 200ms var(--xso-ease),
@@ -1153,40 +1140,40 @@ html.is-landscape .xso-dock {
     transform: translateY(-1px);
     filter: brightness(1.05);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
       inset 0 -4px 8px rgba(0, 0, 0, 0.2),
-      0 4px 0 #22402f,
-      0 16px 28px -10px rgba(47, 84, 67, 0.65);
+      0 4px 0 #7e4029,
+      0 18px 30px -12px rgba(0, 0, 0, 0.75);
   }
 }
 
 .matte-cta:active {
   transform: translateY(2px) scale(0.98);
   box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.28),
-    0 1px 0 #22402f,
-    0 4px 10px -6px rgba(47, 84, 67, 0.5);
+    inset 0 2px 6px rgba(0, 0, 0, 0.3),
+    0 1px 0 #7e4029,
+    0 4px 10px -6px rgba(0, 0, 0, 0.6);
 }
 
 .matte-cta:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 3px var(--paper-linen),
-    0 0 0 5px var(--paper-terracotta),
-    0 3px 0 #22402f;
+    0 0 0 3px var(--stone-900),
+    0 0 0 5px #e2b48f,
+    0 3px 0 #7e4029;
 }
 
 .matte-cta.is-loading {
-  filter: saturate(0.8) brightness(0.95);
+  filter: saturate(0.8) brightness(0.92);
   transform: translateY(2px);
   box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.25),
-    0 1px 0 #22402f;
+    inset 0 2px 6px rgba(0, 0, 0, 0.28),
+    0 1px 0 #7e4029;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .matte-cta,
-  .ink-seal {
+  .paper-chip {
     transition: none;
   }
 }

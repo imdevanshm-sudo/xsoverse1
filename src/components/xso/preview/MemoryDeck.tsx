@@ -106,7 +106,7 @@ export function MemoryDeck({
             <span
               key={artifact.id}
               className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
-                index === topIndex ? 'w-5 bg-[#2f5443]' : 'w-1.5 bg-[#2b2621]/20'
+                index === topIndex ? 'w-5 bg-[#a3b48f]' : 'w-1.5 bg-[#f1e8d8]/20'
               }`}
             />
           ))}

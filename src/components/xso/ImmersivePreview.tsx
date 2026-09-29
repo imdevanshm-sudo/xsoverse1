@@ -87,13 +87,13 @@ export function ImmersivePreview({ lockedStyle }: ImmersivePreviewProps) {
 
   return (
     <div style={accentVars}>
-      <div className="mx-auto grid w-full max-w-xl gap-8 px-5 pb-[calc(11rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6 sm:pt-8 lg:max-w-5xl lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center lg:gap-14 lg:pb-44">
+      <div className="mx-auto grid w-full max-w-xl gap-10 px-5 pb-[calc(10.5rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6 sm:pt-8 lg:max-w-5xl lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-14 lg:pb-48 lg:pt-10">
         <div className="flex min-w-0 flex-col items-center">
           <div className="mb-4 flex w-full max-w-[400px] items-baseline justify-between gap-3">
-            <p className="truncate font-receipt text-[11px] uppercase tracking-[0.2em] text-[#6f604d]">
+            <p className="truncate font-receipt text-[11px] uppercase tracking-[0.2em] text-[#b3a794]">
               {STAGE_HINT[lockedStyle]}
             </p>
-            <p className="shrink-0 font-receipt text-[11px] tracking-[0.14em] text-[#9a8a73]">
+            <p className="shrink-0 rounded-full border border-[#4a443d] px-2 py-0.5 font-receipt text-[10px] tracking-[0.16em] text-[#a89c8a]">
               {cart.code}
             </p>
           </div>
@@ -113,22 +113,23 @@ export function ImmersivePreview({ lockedStyle }: ImmersivePreviewProps) {
               />
             </div>
           )}
+
+          <div className="mt-7 w-full max-w-[400px]">
+            <SecretOffer reward={data.scratchOffReward} />
+          </div>
         </div>
 
-        <aside className="mx-auto grid w-full max-w-[400px] gap-6 lg:mx-0">
-          <div>
-            <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#6d7f5f]">
-              {cart.subtitle}
-            </p>
-            <h1 className="mt-1.5 font-serif text-[2rem] font-semibold leading-[1.05] tracking-tight text-[#2b2621] lg:text-[2.6rem]">
-              {cart.tagline}
-            </h1>
-            <p className="mt-3 text-[15px] leading-relaxed text-[#5c5043]">
-              Flip through the keepsakes, scratch the foil, then make every
-              line your own in the studio.
-            </p>
-          </div>
-          <SecretOffer reward={data.scratchOffReward} />
+        <aside className="mx-auto w-full max-w-[400px] lg:sticky lg:top-24 lg:mx-0 lg:pt-16">
+          <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#a3b48f]">
+            {cart.subtitle}
+          </p>
+          <h1 className="mt-1.5 font-serif text-[2rem] font-semibold leading-[1.05] tracking-tight text-[#f1e8d8] lg:text-[2.6rem]">
+            {cart.tagline}
+          </h1>
+          <p className="mt-3 text-[15px] leading-relaxed text-[#b3a794]">
+            Flip through the keepsakes, grab your secret code, then make every
+            line your own in the studio.
+          </p>
         </aside>
       </div>
 

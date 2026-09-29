@@ -9,7 +9,7 @@ interface ModeHeaderProps {
   meta?: ReactNode;
   actionHref: string;
   actionLabel: string;
-  /** `paper` renders the warm, centered keepsake header. */
+  /** `paper` renders the warm-stone, centered keepsake header. */
   tone?: 'console' | 'paper';
   /** Right-hand detail for the paper tone (e.g. cartridge code). */
   aside?: ReactNode;
@@ -38,21 +38,21 @@ export function ModeHeader({
             {actionLabel}
           </Link>
           <p className="flex min-w-0 items-baseline justify-center gap-2 whitespace-nowrap">
-            <span className="font-receipt text-[11px] font-bold uppercase tracking-[0.22em] text-[#2b2621]">
+            <span className="font-receipt text-[11px] font-bold uppercase tracking-[0.22em] text-[#f1e8d8]">
               {brand}
             </span>
             {meta ? (
               <>
-                <span className="text-[#b9ab94]" aria-hidden>
+                <span className="text-[#5a534b]" aria-hidden>
                   ·
                 </span>
-                <span className="font-serif text-[15px] italic text-[#b8603e]">
+                <span className="font-serif text-[15px] italic text-[#d08a67]">
                   {meta}
                 </span>
               </>
             ) : null}
           </p>
-          <div className="min-w-0 justify-self-end truncate font-receipt text-[11px] tracking-[0.14em] text-[#9a8a73]">
+          <div className="min-w-0 justify-self-end truncate font-receipt text-[11px] tracking-[0.14em] text-[#a89c8a]">
             {aside}
           </div>
         </div>

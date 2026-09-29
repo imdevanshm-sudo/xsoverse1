@@ -36,16 +36,7 @@ function createBrush(dpr: number): HTMLCanvasElement {
   return brush;
 }
 
-type FoilVariant = 'silver' | 'holo' | 'copper';
-
-const FOIL_STOPS: Record<FoilVariant, [number, string][]> = {
-  copper: [
-    [0, '#d9b98f'],
-    [0.3, '#b48a5e'],
-    [0.52, '#ecd6b4'],
-    [0.76, '#a67a50'],
-    [1, '#cfae84'],
-  ],
+const FOIL_STOPS: Record<'silver' | 'holo', [number, string][]> = {
   silver: [
     [0, '#d8d4ce'],
     [0.35, '#9a9690'],
@@ -70,16 +61,13 @@ export function ScratchReveal({
   className = '',
   variant = 'silver',
   onReveal,
-  forceReveal = false,
   children,
 }: {
   reward: string;
   label?: string;
   className?: string;
-  variant?: FoilVariant;
+  variant?: 'silver' | 'holo';
   onReveal?: () => void;
-  /** Peels the foil away without scratching (e.g. a "copy code" shortcut). */
-  forceReveal?: boolean;
   /** Custom content under the foil; defaults to the reward in handwriting. */
   children?: ReactNode;
 }) {
@@ -212,14 +200,6 @@ export function ScratchReveal({
     }
     setProgress(Math.min(1, ratio / REVEAL_RATIO));
   }, [measureCleared, onReveal]);
-
-  useEffect(() => {
-    if (!forceReveal || revealedRef.current) return;
-    revealedRef.current = true;
-    setRevealed(true);
-    setProgress(1);
-    onReveal?.();
-  }, [forceReveal, onReveal]);
 
   const emitSpark = useCallback((point: Point) => {
     const el = sparkEls.current[sparkCursor.current];
