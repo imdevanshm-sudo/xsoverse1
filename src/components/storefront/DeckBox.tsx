@@ -1,11 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import type { ThemePack } from '@/lib/themes';
 
 const CARD_COUNT = 4;
-const SPRING = { type: 'spring' as const, stiffness: 260, damping: 22, mass: 0.8 };
+const SPRING = {
+  type: 'spring' as const,
+  stiffness: 260,
+  damping: 22,
+  mass: 0.8,
+};
 
 function cardVariants(index: number): Variants {
   const offset = index - (CARD_COUNT - 1) / 2;
@@ -20,18 +25,32 @@ function cardVariants(index: number): Variants {
   };
 }
 
+const OPEN_DELAY_MS = 320;
+/** If navigation never happens (offline, cancelled), re-arm the box. */
+const REARM_MS = 2500;
+
 /** Physical deck box: four mini cards peek out and fan open on hover/tap. */
 export function DeckBox({
   theme,
   styleLabel,
+  loaded,
   onOpen,
+  onCustomize,
 }: {
   theme: ThemePack;
   styleLabel: string;
+  loaded: boolean;
   onOpen: () => void;
+  onCustomize: () => void;
 }) {
   const reduce = useReducedMotion();
   const [opening, setOpening] = useState(false);
+  const timers = useRef<number[]>([]);
+
+  useEffect(() => {
+    const pending = timers.current;
+    return () => pending.forEach((t) => window.clearTimeout(t));
+  }, []);
 
   const open = () => {
     if (opening) return;
@@ -40,80 +59,101 @@ export function DeckBox({
       return;
     }
     setOpening(true);
-    window.setTimeout(onOpen, 320);
+    timers.current.push(
+      window.setTimeout(onOpen, OPEN_DELAY_MS),
+      window.setTimeout(() => setOpening(false), REARM_MS),
+    );
   };
 
   return (
-    <motion.button
-      type="button"
-      onClick={open}
-      initial="rest"
-      animate={opening ? 'open' : 'rest'}
-      whileHover="open"
-      whileFocus="open"
-      whileTap={{ scale: 0.98 }}
-      className="deck-box group flex w-full touch-manipulation flex-col items-center rounded-3xl pb-2 text-center"
-      aria-label={`${theme.title} — open the preview in ${styleLabel}`}
-    >
-      <div className="relative h-[250px] w-full max-w-[230px]" style={{ perspective: 900 }}>
-        <div
-          aria-hidden
-          className="absolute inset-x-3 bottom-[52%] h-6 rounded-t-[10px]"
-          style={{ background: theme.box.body, filter: 'brightness(0.62)' }}
-        />
-
-        {Array.from({ length: CARD_COUNT }, (_, index) => (
-          <motion.div
-            key={index}
-            aria-hidden
-            variants={reduce ? undefined : cardVariants(index)}
-            transition={SPRING}
-            className="paper-card absolute bottom-[40%] left-1/2 -ml-[52px] h-[140px] w-[104px] origin-bottom overflow-hidden !rounded-[10px] p-2"
-            style={{ zIndex: 10 + index }}
-          >
-            <MiniFace kind={index} />
-          </motion.div>
-        ))}
-
-        <div
-          className="absolute inset-x-0 bottom-0 z-30 flex h-[56%] flex-col justify-end overflow-hidden rounded-[16px] p-3"
-          style={{
-            background: `linear-gradient(180deg, ${theme.box.body} 0%, color-mix(in srgb, ${theme.box.body} 82%, #000) 100%)`,
-            boxShadow:
-              'inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -10px 18px rgba(0,0,0,0.25), 0 18px 30px -12px rgba(0,0,0,0.7)',
-          }}
-        >
+    <div className="relative flex w-full flex-col items-center">
+      <motion.button
+        type="button"
+        onClick={open}
+        initial="rest"
+        animate={opening ? 'open' : 'rest'}
+        whileHover="open"
+        whileFocus="open"
+        whileTap={{ scale: 0.98 }}
+        className="deck-box group flex w-full touch-manipulation flex-col items-center rounded-3xl pb-2 text-center"
+        aria-label={`${theme.title}: load this deck and open the preview in ${styleLabel}`}
+      >
+        <div className="relative h-[250px] w-full max-w-[230px]" style={{ perspective: 900 }}>
+          {loaded ? (
+            <span className="pointer-events-none absolute -right-2 top-[98px] z-40 rotate-[6deg] rounded-md border-2 border-[#9daf88]/80 bg-[#1f231c] px-2 py-0.5 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#c9d6b6] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.7)]">
+              ✓ Loaded
+            </span>
+          ) : null}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-60 mix-blend-multiply"
-            style={{ backgroundImage: 'var(--paper-noise)', backgroundSize: '200px 200px' }}
+            className="absolute inset-x-3 bottom-[52%] h-6 rounded-t-[10px]"
+            style={{ background: theme.box.body, filter: 'brightness(0.62)' }}
           />
+
+          {Array.from({ length: CARD_COUNT }, (_, index) => (
+            <motion.div
+              key={index}
+              aria-hidden
+              variants={reduce ? undefined : cardVariants(index)}
+              transition={SPRING}
+              className="paper-card absolute bottom-[40%] left-1/2 -ml-[52px] h-[140px] w-[104px] origin-bottom overflow-hidden !rounded-[10px] p-2"
+              style={{ zIndex: 10 + index }}
+            >
+              <MiniFace kind={index} />
+            </motion.div>
+          ))}
+
           <div
-            className="relative rounded-[10px] px-3 py-2.5 text-left"
-            style={{ background: theme.box.label, color: '#2b2825' }}
+            className="absolute inset-x-0 bottom-0 z-30 flex h-[56%] flex-col justify-end overflow-hidden rounded-[16px] p-3"
+            style={{
+              background: `linear-gradient(180deg, ${theme.box.body} 0%, color-mix(in srgb, ${theme.box.body} 82%, #000) 100%)`,
+              boxShadow:
+                'inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -10px 18px rgba(0,0,0,0.25), 0 18px 30px -12px rgba(0,0,0,0.7)',
+            }}
           >
-            <p className="font-receipt text-[10px] uppercase tracking-[0.2em] text-[#8a7b66]">
-              {theme.code} · 4 memories
-            </p>
-            <p className="mt-0.5 font-serif text-[19px] font-semibold leading-tight">
-              {theme.title}
-            </p>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-60 mix-blend-multiply"
+              style={{
+                backgroundImage: 'var(--paper-noise)',
+                backgroundSize: '200px 200px',
+              }}
+            />
+            <div
+              className="relative rounded-[10px] px-3 py-2.5 text-left"
+              style={{ background: theme.box.label, color: '#2b2825' }}
+            >
+              <p className="font-receipt text-[10px] uppercase tracking-[0.2em] text-[#8a7b66]">
+                {theme.code} · 4 memories
+              </p>
+              <p className="mt-0.5 font-serif text-[19px] font-semibold leading-tight">
+                {theme.title}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <p className="mt-4 max-w-[250px] text-[14px] leading-relaxed text-[#b3a794]">
-        {theme.blurb}
-      </p>
-      <p className="mt-2 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#e2b48f] transition-colors group-hover:text-[#f7f4eb]">
-        Open preview →
-      </p>
-    </motion.button>
+        <p className="mt-4 max-w-[250px] text-[14px] leading-relaxed text-[#b3a794]">
+          {theme.blurb}
+        </p>
+        <p className="mt-2 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#e2b48f] transition-colors group-hover:text-[#f7f4eb]">
+          Open preview →
+        </p>
+      </motion.button>
+      <button
+        type="button"
+        onClick={onCustomize}
+        className="mt-2 inline-flex min-h-[44px] touch-manipulation items-center gap-1.5 rounded-xl px-4 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#a89c8a] underline decoration-[#5a534b] underline-offset-4 transition-colors hover:text-[#f7f4eb] hover:decoration-[#e2b48f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2b48f] active:scale-[0.98]"
+        aria-label={`Load ${theme.title} and customize it`}
+      >
+        Customize this deck
+      </button>
+    </div>
   );
 }
 
 /** Tiny stand-ins for receipt, audit, photo strip and letter. */
-function MiniFace({ kind }: { kind: number }) {
+export function MiniFace({ kind }: { kind: number }) {
   if (kind === 0) {
     return (
       <div className="flex h-full flex-col gap-1 font-receipt text-[6px] uppercase text-[#6b6257]">
@@ -140,7 +180,10 @@ function MiniFace({ kind }: { kind: number }) {
           <div key={i} className="h-[5px] overflow-hidden rounded-full bg-[#2b2825]/10">
             <div
               className="h-full rounded-full"
-              style={{ width: `${w}%`, background: i % 2 ? '#9daf88' : '#c85a32' }}
+              style={{
+                width: `${w}%`,
+                background: i % 2 ? '#9daf88' : '#c85a32',
+              }}
             />
           </div>
         ))}
