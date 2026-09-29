@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from 'react';
 
 const BRUSH = 26;
@@ -35,14 +36,40 @@ function createBrush(dpr: number): HTMLCanvasElement {
   return brush;
 }
 
+const FOIL_STOPS: Record<'silver' | 'holo', [number, string][]> = {
+  silver: [
+    [0, '#d8d4ce'],
+    [0.35, '#9a9690'],
+    [0.55, '#ece8e2'],
+    [0.8, '#7a7670'],
+    [1, '#c4bfb7'],
+  ],
+  holo: [
+    [0, '#c9cfe6'],
+    [0.18, '#e6c9f2'],
+    [0.36, '#bff0de'],
+    [0.52, '#f4f1e6'],
+    [0.68, '#f6e1b8'],
+    [0.84, '#c4dcf6'],
+    [1, '#a9a6c4'],
+  ],
+};
+
 export function ScratchReveal({
   reward,
   label = 'Scratch to reveal',
   className = '',
+  variant = 'silver',
+  onReveal,
+  children,
 }: {
   reward: string;
   label?: string;
   className?: string;
+  variant?: 'silver' | 'holo';
+  onReveal?: () => void;
+  /** Custom content under the foil; defaults to the reward in handwriting. */
+  children?: ReactNode;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -80,11 +107,9 @@ export function ScratchReveal({
 
     ctx.globalCompositeOperation = 'source-over';
     const base = ctx.createLinearGradient(0, 0, w, h);
-    base.addColorStop(0, '#d8d4ce');
-    base.addColorStop(0.35, '#9a9690');
-    base.addColorStop(0.55, '#ece8e2');
-    base.addColorStop(0.8, '#7a7670');
-    base.addColorStop(1, '#c4bfb7');
+    for (const [offset, color] of FOIL_STOPS[variant]) {
+      base.addColorStop(offset, color);
+    }
     ctx.fillStyle = base;
     ctx.fillRect(0, 0, w, h);
 
@@ -109,7 +134,7 @@ export function ScratchReveal({
     ctx.fillStyle = 'rgba(35,30,28,0.4)';
     ctx.fillText('DRAG · WIPE · REVEAL', w / 2, h / 2 + 10);
     ctx.globalCompositeOperation = 'destination-out';
-  }, [label]);
+  }, [label, variant]);
 
   useEffect(() => {
     paintFoil();
@@ -170,10 +195,11 @@ export function ScratchReveal({
       revealedRef.current = true;
       setRevealed(true);
       setProgress(1);
+      onReveal?.();
       return;
     }
     setProgress(Math.min(1, ratio / REVEAL_RATIO));
-  }, [measureCleared]);
+  }, [measureCleared, onReveal]);
 
   const emitSpark = useCallback((point: Point) => {
     const el = sparkEls.current[sparkCursor.current];
@@ -277,9 +303,11 @@ export function ScratchReveal({
           transform: `scale(${revealed ? 1 : 0.98 + progress * 0.02})`,
         }}
       >
-        <p className="font-hand text-[17px] leading-snug text-[#2c241c]">
-          {reward}
-        </p>
+        {children ?? (
+          <p className="font-hand text-[17px] leading-snug text-[#2c241c]">
+            {reward}
+          </p>
+        )}
       </div>
 
       <canvas

@@ -26,6 +26,10 @@ export interface XsoViewerProps {
   showStyleSwitcher?: boolean;
   /** Stop rendering the 3D canvas (e.g. while checkout is locking). */
   paused?: boolean;
+  /** Fires each time the user loops / advances the souvenir. */
+  onAdvance?: () => void;
+  /** Overlay the scratch-off foil on the stage when the letter is on top. */
+  scratchDock?: boolean;
 }
 
 const R3FUnifiedViewer = dynamic<R3FUnifiedViewerProps>(
@@ -46,6 +50,8 @@ export const XsoViewer = memo(function XsoViewer({
   contained = true,
   frameSize = 'default',
   paused = false,
+  onAdvance,
+  scratchDock = true,
 }: XsoViewerProps) {
   const quality = useDeviceQuality();
   const [runtimeReason, setRuntimeReason] = useState<LiteReason | null>(null);
@@ -77,6 +83,7 @@ export const XsoViewer = memo(function XsoViewer({
           data={data}
           initialSide={side}
           reason={liteReason}
+          onAdvance={onAdvance}
         />
       ) : (
         <WebGlBoundary onFallback={fallBackToLite}>
@@ -85,6 +92,8 @@ export const XsoViewer = memo(function XsoViewer({
             data={data}
             initialSide={side}
             paused={paused}
+            onAdvance={onAdvance}
+            scratchDock={scratchDock}
             onContextLost={fallBackToLite}
             onPerfFallback={fallBackForPerf}
           />

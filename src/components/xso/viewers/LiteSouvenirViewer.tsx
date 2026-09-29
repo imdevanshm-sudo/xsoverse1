@@ -1,7 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import {
+  useMemo,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
+import {
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+} from 'framer-motion';
 import type { XsoData } from '@/types/xso';
 import { liteReasonLabel, type LiteReason } from '@/lib/deviceQuality';
 import {
@@ -17,15 +30,17 @@ export function LiteSouvenirViewer({
   data,
   initialSide = 0,
   reason = null,
+  onAdvance,
 }: {
   data: XsoData;
   initialSide?: number;
   reason?: LiteReason | null;
+  onAdvance?: () => void;
 }) {
   return (
     <div className="lite-souvenir relative h-full w-full overflow-hidden bg-[#0b0c0e]">
       <div className="absolute inset-0 flex flex-col">
-        <LiteEngine data={data} initialSide={initialSide} />
+        <LiteEngine data={data} initialSide={initialSide} onAdvance={onAdvance} />
       </div>
       <p className="pointer-events-none absolute left-2 top-2 z-40 rounded bg-black/75 px-2 py-1 font-mono text-[7px] uppercase tracking-[0.16em] text-white/55">
         {liteReasonLabel(reason)}
@@ -37,34 +52,106 @@ export function LiteSouvenirViewer({
 function LiteEngine({
   data,
   initialSide,
+  onAdvance,
 }: {
   data: XsoData;
   initialSide: number;
+  onAdvance?: () => void;
 }) {
+  const props = { data, initialSide, onAdvance };
   switch (data.giftStyle) {
-    case 'loop':
-      return <LiteStack data={data} initialSide={initialSide} mode="loop" />;
     case 'rewind':
-      return <LiteStack data={data} initialSide={initialSide} mode="rewind" />;
+      return <LiteStack {...props} mode="rewind" />;
     case 'scrapbook':
-      return <LiteScrapbook data={data} initialSide={initialSide} />;
+      return <LiteScrapbook {...props} />;
     case 'accordion':
-      return <LiteAccordion data={data} initialSide={initialSide} />;
+      return <LiteAccordion {...props} />;
     case 'moviebox':
-      return <LiteMovieBox data={data} initialSide={initialSide} />;
+      return <LiteMovieBox {...props} />;
+    case 'loop':
     default:
-      return <LiteStack data={data} initialSide={initialSide} mode="loop" />;
+      return <LiteStack {...props} mode="loop" />;
   }
+}
+
+const TILT_MAX = 7;
+
+/**
+ * Tilts toward the pointer on hover (fine pointers) and leans gently toward
+ * the finger while pressed on touch. Springs back on leave/release.
+ */
+function TiltCard({
+  children,
+  disabled = false,
+  className = '',
+  style,
+  onTap,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  className?: string;
+  style?: CSSProperties;
+  onTap?: () => void;
+}) {
+  const reduce = useReducedMotion();
+  const rx = useMotionValue(0);
+  const ry = useMotionValue(0);
+  const rotateX = useSpring(rx, { stiffness: 220, damping: 20 });
+  const rotateY = useSpring(ry, { stiffness: 220, damping: 20 });
+  const glareX = useTransform(rotateY, [-TILT_MAX, TILT_MAX], ['20%', '80%']);
+  const glare = useMotionTemplate`radial-gradient(circle at ${glareX} 30%, rgba(255,255,255,0.22), transparent 55%)`;
+  const active = !disabled && !reduce;
+
+  const lean = (e: PointerEvent<HTMLDivElement>, strength = 1) => {
+    if (!active) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    ry.set(px * TILT_MAX * 2 * strength);
+    rx.set(-py * TILT_MAX * 2 * strength);
+  };
+  const reset = () => {
+    rx.set(0);
+    ry.set(0);
+  };
+
+  return (
+    <motion.div
+      className={className}
+      style={{ ...style, rotateX, rotateY, transformPerspective: 900 }}
+      onPointerMove={(e) => {
+        if (e.pointerType === 'mouse') lean(e);
+      }}
+      onPointerDown={(e) => {
+        if (e.pointerType !== 'mouse') lean(e, 0.6);
+      }}
+      onPointerUp={reset}
+      onPointerLeave={reset}
+      onPointerCancel={reset}
+      onClick={onTap}
+    >
+      {children}
+      {active ? (
+        <motion.div
+          className="pointer-events-none absolute inset-0 z-10 rounded-[inherit]"
+          style={{ background: glare }}
+          aria-hidden
+        />
+      ) : null}
+    </motion.div>
+  );
 }
 
 function LiteStack({
   data,
   initialSide,
   mode,
+  onAdvance,
 }: {
   data: XsoData;
   initialSide: number;
   mode: 'loop' | 'rewind';
+  onAdvance?: () => void;
 }) {
   const artifacts = useMemo(() => getArtifacts(data), [data]);
   const [order, setOrder] = useState(() =>
@@ -84,27 +171,43 @@ function LiteStack({
       ? order.map((id) => artifacts.find((a) => a.id === id)!)
       : artifacts.filter((_, i) => i >= discarded);
 
-  const advance = () => {
-    playMechanicalCue('click');
+  const [tossing, setTossing] = useState<string | null>(null);
+  const reduce = useReducedMotion();
+
+  const commitAdvance = () => {
     if (mode === 'loop') {
       setOrder((current) => [...current.slice(1), current[0]]);
-      return;
-    }
-    if (discarded < artifacts.length) {
+    } else if (discarded < artifacts.length) {
       setDiscarded((v) => v + 1);
     } else {
       setDiscarded(0);
     }
+    onAdvance?.();
+  };
+
+  const advance = () => {
+    if (tossing) return;
+    playMechanicalCue('click');
+    const topId = ordered[0]?.id;
+    if (!topId || reduce) {
+      commitAdvance();
+      return;
+    }
+    setTossing(topId);
   };
 
   const top = ordered[0];
+  const visible = ordered.slice(0, 3);
 
   return (
     <section
       className="relative flex h-full min-h-0 flex-col bg-[#111316]"
       aria-label={mode === 'loop' ? 'Lite memory loop' : 'Lite rewind stack'}
     >
-      <div className="relative min-h-0 flex-1 overflow-hidden px-3 pb-2 pt-9">
+      <div
+        className="relative min-h-0 flex-1 overflow-hidden px-3 pb-3 pt-9"
+        style={{ perspective: 1100 }}
+      >
         {ordered.length === 0 ? (
           <button
             type="button"
@@ -114,38 +217,69 @@ function LiteStack({
             ↺ Recall papers
           </button>
         ) : (
-          ordered
-            .slice(0, 3)
-            .map((artifact, depth) => (
-              <div
+          visible.map((artifact, depth) => {
+            const isTossing = tossing === artifact.id;
+            return (
+              <motion.div
                 key={artifact.id}
-                className="absolute inset-x-3 bottom-2 top-9 overflow-hidden rounded-md border border-white/10 bg-[#fcfaf2] shadow-[0_12px_28px_rgba(0,0,0,0.45)]"
-                style={{
-                  zIndex: 10 - depth,
-                  transform: `translateY(${depth * 10}px) scale(${1 - depth * 0.03})`,
-                  opacity: depth === 0 ? 1 : 0.92,
+                className="absolute inset-x-3 bottom-3 top-9"
+                style={{ zIndex: isTossing ? 20 : 10 - depth }}
+                initial={false}
+                animate={
+                  isTossing
+                    ? mode === 'loop'
+                      ? { y: -46, x: 28, rotate: 9, rotateX: 18, scale: 0.94, opacity: 0 }
+                      : { x: '-115%', rotate: -14, opacity: 0 }
+                    : {
+                        y: depth * 10,
+                        x: 0,
+                        rotate: depth === 0 ? 0 : depth % 2 ? 1.6 : -1.4,
+                        rotateX: 0,
+                        scale: 1 - depth * 0.035,
+                        opacity: depth === 0 ? 1 : 0.9,
+                      }
+                }
+                transition={
+                  isTossing
+                    ? { duration: 0.28, ease: [0.4, 0, 0.9, 0.6] }
+                    : SPRING
+                }
+                onAnimationComplete={() => {
+                  if (isTossing) {
+                    setTossing(null);
+                    commitAdvance();
+                  }
                 }}
               >
-                <div className="h-full overflow-y-auto overscroll-contain p-2">
-                  {artifact.content}
-                </div>
-              </div>
-            ))
+                <TiltCard
+                  disabled={depth !== 0 || isTossing}
+                  className="relative h-full overflow-hidden rounded-md border border-black/10 bg-[#fcfaf2] shadow-[0_14px_30px_rgba(0,0,0,0.5),0_2px_6px_rgba(0,0,0,0.35)]"
+                >
+                  <div className="h-full overflow-y-auto overscroll-contain p-2">
+                    {artifact.content}
+                  </div>
+                </TiltCard>
+              </motion.div>
+            );
+          })
         )}
       </div>
       <div className="shrink-0 border-t border-white/10 bg-black/40 px-3 py-2.5">
-        <button
+        <motion.button
           type="button"
           onClick={advance}
           disabled={!top && mode === 'loop'}
-          className="w-full touch-manipulation rounded-md border border-white/15 bg-white/10 py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-white/80 active:bg-white/20"
+          whileTap={{ scale: 0.96, y: 1 }}
+          transition={{ type: 'spring', stiffness: 600, damping: 30 }}
+          className="flex w-full touch-manipulation items-center justify-center gap-2 rounded-md border border-white/15 bg-gradient-to-b from-white/[0.14] to-white/[0.06] py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_3px_0_rgba(0,0,0,0.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00ff66]"
         >
+          <span aria-hidden>↻</span>
           {mode === 'loop'
-            ? `Toss · ${top?.label ?? 'memory'}`
+            ? `Loop · ${top?.label ?? 'memory'}`
             : discarded >= artifacts.length
               ? 'Recall stack'
               : `Discard · ${top?.label ?? ''}`}
-        </button>
+        </motion.button>
       </div>
     </section>
   );
@@ -154,9 +288,11 @@ function LiteStack({
 function LiteAccordion({
   data,
   initialSide,
+  onAdvance,
 }: {
   data: XsoData;
   initialSide: number;
+  onAdvance?: () => void;
 }) {
   const [panel, setPanel] = useState(
     Math.max(0, Math.min(3, Math.round(initialSide))),
@@ -165,6 +301,7 @@ function LiteAccordion({
   const step = (dir: 1 | -1) => {
     playMechanicalCue('click');
     setPanel((value) => (value + dir + 4) % 4);
+    if (dir === 1) onAdvance?.();
   };
 
   return (
@@ -208,9 +345,11 @@ function LiteAccordion({
 function LiteScrapbook({
   data,
   initialSide,
+  onAdvance,
 }: {
   data: XsoData;
   initialSide: number;
+  onAdvance?: () => void;
 }) {
   const artifacts = useMemo(() => getScrapbookArtifacts(data), [data]);
   const [index, setIndex] = useState(
@@ -240,6 +379,7 @@ function LiteScrapbook({
           onClick={() => {
             playMechanicalCue('tack');
             setIndex((value) => (value + 1) % artifacts.length);
+            onAdvance?.();
           }}
           className="w-full touch-manipulation rounded-md border border-[#f0dcc0]/25 bg-[#3a2818] py-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[#f5e6d0]"
         >
@@ -253,9 +393,11 @@ function LiteScrapbook({
 function LiteMovieBox({
   data,
   initialSide,
+  onAdvance,
 }: {
   data: XsoData;
   initialSide: number;
+  onAdvance?: () => void;
 }) {
   const [turn, setTurn] = useState(Math.max(0, Math.round(initialSide)));
   const frame = ((turn % 4) + 4) % 4;
@@ -281,6 +423,7 @@ function LiteMovieBox({
           onClick={() => {
             playMechanicalCue('clack');
             setTurn((value) => value + 1);
+            onAdvance?.();
           }}
           whileTap={{ scale: 0.96 }}
           transition={SPRING}

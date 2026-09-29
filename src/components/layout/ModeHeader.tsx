@@ -22,23 +22,21 @@ export function ModeHeader({
   return (
     <header className="mode-header" data-mode={mode}>
       <div className="mode-header-inner">
-        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-          <p className="shrink-0 font-pixel text-[8px] uppercase tracking-[0.22em] text-phosphor/80 sm:tracking-[0.28em]">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <p className="shrink-0 font-pixel text-[8px] uppercase leading-none tracking-[0.2em] text-phosphor/80 sm:tracking-[0.28em]">
             {brand}
           </p>
           {meta ? (
             <>
-              <span
-                className="hidden h-3 w-px shrink-0 bg-white/15 sm:block"
-                aria-hidden
-              />
-              <div className="min-w-0 truncate font-arcade text-[11px] uppercase tracking-[0.14em] text-console-mist/80 sm:text-xs">
+              <span className="h-3 w-px shrink-0 bg-white/20" aria-hidden />
+              <div className="min-w-0 truncate font-pixel text-[8px] uppercase leading-none tracking-[0.18em] sm:font-arcade sm:text-xs sm:tracking-[0.14em]">
                 {meta}
               </div>
             </>
           ) : null}
         </div>
-        <Link href={actionHref} className="mode-nav-link" prefetch>
+        <Link href={actionHref} className="mode-nav-link gap-1.5" prefetch>
+          <span aria-hidden>←</span>
           {actionLabel}
         </Link>
       </div>

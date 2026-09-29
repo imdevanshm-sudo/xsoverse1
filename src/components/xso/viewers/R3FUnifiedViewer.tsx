@@ -104,6 +104,8 @@ export interface R3FUnifiedViewerProps {
   onPerfFallback?: () => void;
   /** Stop rendering frames entirely. */
   paused?: boolean;
+  onAdvance?: () => void;
+  scratchDock?: boolean;
 }
 
 const ACTION_LABELS: Record<GiftStyle, string> = {
@@ -120,6 +122,8 @@ export function R3FUnifiedViewer({
   onContextLost,
   onPerfFallback,
   paused = false,
+  onAdvance,
+  scratchDock = true,
 }: R3FUnifiedViewerProps) {
   const { quality, onDecline, onIncline, onFallback } =
     useAdaptiveCanvasQuality();
@@ -199,6 +203,7 @@ export function R3FUnifiedViewer({
     setAction((value) =>
       style === 'accordion' ? Math.min(3, value + 1) : value + 1,
     );
+    onAdvance?.();
   };
 
   const stepAccordion = (direction: -1 | 1) => {
@@ -214,7 +219,7 @@ export function R3FUnifiedViewer({
     (((action + initialSide) % 4) + 4) % 4 + 1;
   // Desk stack cycles 0→1→2→3; letter (scratch) is index 3.
   const topCardIndex = ((initialSide + action) % 4 + 4) % 4;
-  const showLetterScratch = isLoop && topCardIndex === 3;
+  const showLetterScratch = scratchDock && isLoop && topCardIndex === 3;
 
   const camcorderStamp = useMemo(() => {
     const raw = data.timestamp?.trim() || '08/15/2004';
@@ -469,7 +474,7 @@ export function R3FUnifiedViewer({
           {ACTION_LABELS[data.giftStyle]}
         </motion.button>
       )}
-      <p className="pointer-events-none absolute bottom-3 left-3 z-20 max-w-[55%] font-mono text-[8px] uppercase tracking-[0.16em] text-white/45 sm:bottom-6 sm:left-6 sm:tracking-[0.2em]">
+      <p className="pointer-events-none absolute bottom-3 left-3 z-20 max-w-[calc(100%-10rem)] font-mono text-[8px] uppercase tracking-[0.16em] text-white/45 sm:bottom-6 sm:left-6 sm:tracking-[0.2em]">
         {isRewind
           ? tapAdvancesStack
             ? 'Tap stack · rewind the memory'
