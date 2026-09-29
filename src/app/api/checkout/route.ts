@@ -7,7 +7,6 @@ import {
   getLemonConfig,
   isPreviewCheckoutAllowed,
 } from '@/lib/lemon';
-import { isDelivery, normalizeShipping, SHIPPING_LABELS, type ShippingAddress } from '@/lib/orders';
 import { isGiftStyle, pickXsoPayload } from '@/lib/xsoPayload';
 import type { XsoData } from '@/types/xso';
 
@@ -26,34 +25,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = JSON.parse(raw) as {
-      data?: XsoData;
-      delivery?: unknown;
-      shipping?: unknown;
-    };
+    const body = JSON.parse(raw) as { data?: XsoData };
     if (!body?.data || typeof body.data !== 'object') {
       return NextResponse.json({ error: 'Missing souvenir data' }, { status: 400 });
     }
 
     if (!isGiftStyle(body.data.giftStyle)) {
       return NextResponse.json({ error: 'Invalid giftStyle' }, { status: 400 });
-    }
-
-    const delivery = body.delivery === undefined ? 'digital' : body.delivery;
-    if (!isDelivery(delivery)) {
-      return NextResponse.json({ error: 'Invalid delivery option' }, { status: 400 });
-    }
-
-    let shipping: ShippingAddress | undefined;
-    if (delivery === 'physical') {
-      const result = normalizeShipping(body.shipping);
-      if (!result.ok) {
-        return NextResponse.json(
-          { error: `${SHIPPING_LABELS[result.field]} is required for printed delivery`, field: result.field },
-          { status: 400 },
-        );
-      }
-      shipping = result.value;
     }
 
     const lemon = getLemonConfig();
@@ -73,7 +51,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         mode: 'preview',
         giftId: gift.id,
-        checkoutUrl: `${appUrl}/checkout/success?giftId=${encodeURIComponent(gift.id)}&preview=1&delivery=${delivery}`,
+        checkoutUrl: `${appUrl}/checkout/success?giftId=${encodeURIComponent(gift.id)}&preview=1`,
         giftUrl: `${appUrl}/gift/${gift.id}`,
       });
     }
@@ -84,8 +62,6 @@ export async function POST(request: Request) {
       customerName: gift.data.customerName,
       billerName: gift.data.billerName,
       appUrl,
-      delivery,
-      shipping,
     });
 
     return NextResponse.json({ mode: 'lemon', checkoutUrl });

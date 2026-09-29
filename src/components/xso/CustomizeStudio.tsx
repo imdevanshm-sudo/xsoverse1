@@ -133,9 +133,8 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
         />
         <MatteCta
           href={`/checkout?${styleQuery(lockedStyle)}`}
-          label="Order physical + digital print"
-          narrowLabel="Order print + digital"
-          price={`from ${CARTRIDGE_PRICE}`}
+          label="Get your XSO"
+          price={CARTRIDGE_PRICE}
           loadingLabel="Opening the envelope…"
         />
       </DeskDock>

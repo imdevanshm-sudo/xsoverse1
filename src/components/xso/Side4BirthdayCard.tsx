@@ -24,6 +24,17 @@ export interface Side4BirthdayCardProps {
 
 export function Side4BirthdayCard({ data, bare = false }: Side4BirthdayCardProps) {
   const stamp = data.timestamp.split(/[\s/]/)[0] || '03.15';
+  const voice = (
+    <VoiceNotePlayer label={`${data.billerName} voice note`} src={data.voiceNoteUrl} />
+  );
+  const scratch = (
+    <div className="relative z-10">
+      <p className={`font-hand text-[13px] text-[#2a4a7a]/75 ${bare ? 'mb-1' : 'mb-2'}`}>
+        scratch the silver — a little secret
+      </p>
+      <ScratchReveal key={data.scratchOffReward} reward={data.scratchOffReward} compact={bare} />
+    </div>
+  );
 
   return (
     <article
@@ -61,11 +72,15 @@ export function Side4BirthdayCard({ data, bare = false }: Side4BirthdayCardProps
         aria-hidden
       />
 
-      <header className="relative z-10 mb-4 border-b border-[#e0d8c8] pb-3">
+      <header
+        className={`relative z-10 border-b border-[#e0d8c8] ${bare ? 'mb-2.5 pb-2' : 'mb-4 pb-3'}`}
+      >
         <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8a7e6e]">
           Warm letter · side 4
         </p>
-        <h2 className="mt-1 font-display text-xl font-extrabold tracking-tight text-ink">
+        <h2
+          className={`mt-1 font-display font-extrabold tracking-tight text-ink ${bare ? 'text-lg' : 'text-xl'}`}
+        >
           Birthday Letter
         </h2>
         <p className="text-sm text-ink/60">
@@ -73,26 +88,26 @@ export function Side4BirthdayCard({ data, bare = false }: Side4BirthdayCardProps
         </p>
       </header>
 
-      <p className="paper-fade-in relative z-10 mb-5 whitespace-pre-wrap font-sans text-[15px] leading-relaxed text-ink">
+      <p
+        className={`paper-fade-in relative z-10 whitespace-pre-wrap font-sans text-ink ${
+          bare ? 'mb-3 text-[14px] leading-snug' : 'mb-5 text-[15px] leading-relaxed'
+        }`}
+      >
         {data.birthdayMessage}
       </p>
 
-      <div className="relative z-10 mb-5">
-        <VoiceNotePlayer
-          label={`${data.billerName} voice note`}
-          src={data.voiceNoteUrl}
-        />
-      </div>
-
-      <div className="relative z-10">
-        <p className="mb-2 font-hand text-[13px] text-[#2a4a7a]/75">
-          scratch the silver — a little secret
-        </p>
-        <ScratchReveal
-          key={data.scratchOffReward}
-          reward={data.scratchOffReward}
-        />
-      </div>
+      {/* In the deck the foil comes first so it is visible without scrolling. */}
+      {bare ? (
+        <>
+          {scratch}
+          <div className="relative z-10 mt-3">{voice}</div>
+        </>
+      ) : (
+        <>
+          <div className="relative z-10 mb-5">{voice}</div>
+          {scratch}
+        </>
+      )}
     </article>
   );
 }

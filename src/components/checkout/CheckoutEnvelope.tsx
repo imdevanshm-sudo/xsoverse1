@@ -1,37 +1,16 @@
 'use client';
 
-import { useMemo, useRef, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Lock, Mail, Package } from 'lucide-react';
+import { Check, Lock, Sparkles } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
 import { pickXsoPayload } from '@/lib/xsoPayload';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
 import { getTheme, THEMES } from '@/lib/themes';
-import {
-  DELIVERY_OPTIONS,
-  EMPTY_SHIPPING,
-  SHIPPING_LABELS,
-  normalizeShipping,
-  type Delivery,
-  type ShippingAddress,
-} from '@/lib/orders';
+import { XSO_PRODUCT } from '@/lib/orders';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { MatteCta } from '@/components/desk/MatteCta';
 import type { GiftStyle } from '@/types/xso';
-
-const SHIPPING_LAYOUT: { key: keyof ShippingAddress; span: string; auto: string }[] = [
-  { key: 'name', span: 'sm:col-span-2', auto: 'name' },
-  { key: 'line1', span: 'sm:col-span-2', auto: 'address-line1' },
-  { key: 'line2', span: 'sm:col-span-2', auto: 'address-line2' },
-  { key: 'city', span: '', auto: 'address-level2' },
-  { key: 'region', span: '', auto: 'address-level1' },
-  { key: 'postalCode', span: '', auto: 'postal-code' },
-  { key: 'country', span: '', auto: 'country-name' },
-];
-
-function centsToPrice(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 /** Short, stable invoice number derived from the draft id. */
 function invoiceNo(id: string) {
@@ -49,36 +28,15 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const billerName = useXsoStore((s) => s.billerName);
   const occasion = useXsoStore((s) => s.occasion);
 
-  const [delivery, setDelivery] = useState<Delivery>('physical');
-  const [shipping, setShipping] = useState<ShippingAddress>(EMPTY_SHIPPING);
-  const [missing, setMissing] = useState<keyof ShippingAddress | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  const option = DELIVERY_OPTIONS[delivery];
-  const digital = DELIVERY_OPTIONS.digital;
-  const printExtra = option.priceCents - digital.priceCents;
+  const option = XSO_PRODUCT;
   const invoice = useMemo(() => invoiceNo(draftId), [draftId]);
 
   const pay = async (event?: FormEvent) => {
     event?.preventDefault();
     if (busy) return;
     setError(null);
-
-    let address: ShippingAddress | undefined;
-    if (delivery === 'physical') {
-      const result = normalizeShipping(shipping);
-      if (!result.ok) {
-        setMissing(result.field);
-        setError(`${SHIPPING_LABELS[result.field]} is required for printed delivery.`);
-        formRef.current
-          ?.querySelector<HTMLInputElement>(`[name="${result.field}"]`)
-          ?.focus();
-        return;
-      }
-      address = result.value;
-    }
 
     setBusy(true);
     try {
@@ -87,7 +45,7 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, delivery, shipping: address }),
+        body: JSON.stringify({ data }),
       });
       const json = (await response.json().catch(() => ({}))) as {
         checkoutUrl?: string;
@@ -142,15 +100,9 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
                 </dl>
                 <div className="space-y-1 border-t border-dashed border-[#cbbd9f] pt-3">
                   <p className="flex justify-between gap-3">
-                    <span>Souvenir deck · 4 memories</span>
-                    <span className="tabular-nums">{digital.price}</span>
+                    <span>XSO · 4 memories</span>
+                    <span className="tabular-nums">{option.price}</span>
                   </p>
-                  {printExtra > 0 ? (
-                    <p className="flex justify-between gap-3">
-                      <span>Printed box + shipping</span>
-                      <span className="tabular-nums">+{centsToPrice(printExtra)}</span>
-                    </p>
-                  ) : null}
                   <p className="mt-2 flex justify-between gap-3 border-t border-[#2b2825] pt-2 text-[15px] font-bold">
                     <span>Total</span>
                     <span className="tabular-nums text-[#c85a32]">{option.price}</span>
@@ -177,114 +129,34 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
           </div>
         </section>
 
-        <form ref={formRef} onSubmit={pay} noValidate className="space-y-6">
+        <form onSubmit={pay} noValidate className="space-y-6">
           <div>
             <h1 className="font-serif text-[30px] font-semibold leading-[1.1] text-[#f7f4eb]">
-              How should it <em className="font-normal text-[#e2b48f]">arrive?</em>
+              Seal your <em className="font-normal text-[#e2b48f]">XSO.</em>
             </h1>
             <p className="mt-2 text-[15px] text-[#b3a794]">
-              Every order includes the private digital link. Add the printed box for a keepsake they can hold.
+              One payment, and it&apos;s theirs to open, loop and keep.
             </p>
           </div>
 
-          <fieldset>
-            <legend className="sr-only">Delivery</legend>
-            <div className="grid gap-3">
-              {(['digital', 'physical'] as const).map((id) => {
-                const item = DELIVERY_OPTIONS[id];
-                const selected = delivery === id;
-                const Icon = id === 'digital' ? Mail : Package;
-                return (
-                  <label
-                    key={id}
-                    className={`delivery-option relative flex cursor-pointer items-start gap-3.5 rounded-2xl border p-4 transition-[background-color,border-color,transform] duration-150 active:scale-[0.99] ${
-                      selected
-                        ? 'border-[#c85a32] bg-[#f7f4eb] text-[#2b2825] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)]'
-                        : 'border-[#3a3632] bg-[#22201d] text-[#efe7d7] hover:border-[#5a534b]'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="delivery"
-                      value={id}
-                      checked={selected}
-                      onChange={() => {
-                        setDelivery(id);
-                        setError(null);
-                      }}
-                      className="sr-only"
-                    />
-                    <span
-                      aria-hidden
-                      className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
-                        selected ? 'bg-[#c85a32] text-[#f7f4eb]' : 'bg-[#2c2926] text-[#a89c8a]'
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-baseline justify-between gap-3">
-                        <span className="font-serif text-[18px] font-semibold leading-tight">{item.label}</span>
-                        <span
-                          className={`shrink-0 font-receipt text-[15px] font-bold tabular-nums ${
-                            selected ? 'text-[#c85a32]' : 'text-[#e2b48f]'
-                          }`}
-                        >
-                          {item.price}
-                        </span>
-                      </span>
-                      <span
-                        className={`mt-1 block text-[13px] leading-snug ${
-                          selected ? 'text-[#6b6257]' : 'text-[#a89c8a]'
-                        }`}
-                      >
-                        {item.blurb}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </fieldset>
-
-          {delivery === 'physical' ? (
-            <motion.fieldset
-              initial={reduce ? false : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="paper-panel p-4 sm:p-5"
+          <div className="flex items-start gap-3.5 rounded-2xl border border-[#c85a32] bg-[#f7f4eb] p-4 text-[#2b2825] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)]">
+            <span
+              aria-hidden
+              className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#c85a32] text-[#f7f4eb]"
             >
-              <legend className="sr-only">Shipping address</legend>
-              <p className="mb-3 font-serif text-[20px] font-semibold text-[#2b2825]">Ship the box to</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {SHIPPING_LAYOUT.map(({ key, span, auto }) => (
-                  <label key={key} className={`grid gap-1.5 ${span}`}>
-                    <span className="font-receipt text-[11px] uppercase tracking-[0.14em] text-[#7a6c58]">
-                      {SHIPPING_LABELS[key]}
-                    </span>
-                    <input
-                      name={key}
-                      autoComplete={`shipping ${auto}`}
-                      className="paper-field"
-                      value={shipping[key]}
-                      maxLength={120}
-                      aria-invalid={missing === key || undefined}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setShipping((prev) => ({ ...prev, [key]: value }));
-                        if (missing === key) {
-                          setMissing(null);
-                          setError(null);
-                        }
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
-              <p className="mt-3 text-[12px] text-[#7a6c58]">
-                Printed on linen card stock and shipped within 5–7 business days.
-              </p>
-            </motion.fieldset>
-          ) : null}
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="font-serif text-[18px] font-semibold leading-tight">{option.label}</span>
+                <span className="shrink-0 font-receipt text-[15px] font-bold tabular-nums text-[#c85a32]">
+                  {option.price}
+                </span>
+              </span>
+              <span className="mt-1 block text-[13px] leading-snug text-[#6b6257]">{option.blurb}</span>
+            </span>
+            <Check aria-hidden className="mt-1 h-4 w-4 shrink-0 text-[#6f8160]" strokeWidth={3} />
+          </div>
 
           <p className="flex items-center gap-2 font-receipt text-[11px] uppercase tracking-[0.14em] text-[#7d7264]">
             <Lock className="h-3.5 w-3.5" aria-hidden />
@@ -310,7 +182,7 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
           label="Pay & seal it"
           price={option.price}
           loadingLabel="Sealing the envelope…"
-          ariaLabel={`Pay ${option.price} for ${option.label}`}
+          ariaLabel={`Pay ${option.price} for your ${option.label}`}
         />
       </DeskDock>
     </>

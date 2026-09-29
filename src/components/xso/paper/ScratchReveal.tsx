@@ -60,6 +60,7 @@ export function ScratchReveal({
   label = 'Scratch to reveal',
   className = '',
   variant = 'silver',
+  compact = false,
   onReveal,
   children,
 }: {
@@ -67,6 +68,8 @@ export function ScratchReveal({
   label?: string;
   className?: string;
   variant?: 'silver' | 'holo';
+  /** Shorter foil for tight hosts like the Loop deck card. */
+  compact?: boolean;
   onReveal?: () => void;
   /** Custom content under the foil; defaults to the reward in handwriting. */
   children?: ReactNode;
@@ -297,7 +300,7 @@ export function ScratchReveal({
       }}
     >
       <div
-        className="flex min-h-[108px] items-center justify-center px-4 py-5 text-center transition-[opacity,transform] duration-300 ease-out"
+        className={`flex items-center justify-center px-4 text-center ${compact ? 'min-h-[80px] py-3' : 'min-h-[108px] py-5'} transition-[opacity,transform] duration-300 ease-out`}
         style={{
           opacity: revealed ? 1 : 0.35 + progress * 0.55,
           transform: `scale(${revealed ? 1 : 0.98 + progress * 0.02})`,

@@ -9,7 +9,6 @@ import {
   displayTitle,
   getCartridge,
 } from '@/lib/cartridges';
-import { PHYSICAL_PRICE } from '@/lib/orders';
 import { THEMES, type ThemeId } from '@/lib/themes';
 import { DeckBox } from '@/components/storefront/DeckBox';
 import type { GiftStyle } from '@/types/xso';
@@ -58,8 +57,7 @@ export function Store() {
           </h1>
           <p className="mt-4 max-w-lg text-[16px] leading-relaxed text-[#b3a794]">
             Four printed-feel memory cards — a receipt, an audit, a photo strip
-            and a letter — shuffled into one interactive souvenir. Digital from{' '}
-            {CARTRIDGE_PRICE}, or boxed and shipped for {PHYSICAL_PRICE}.
+            and a letter — shuffled into one interactive souvenir, for {CARTRIDGE_PRICE}.
           </p>
         </section>
 

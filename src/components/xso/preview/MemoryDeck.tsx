@@ -11,6 +11,7 @@ import {
 import {
   animate,
   motion,
+  useDragControls,
   useMotionValue,
   useReducedMotion,
   useSpring,
@@ -29,8 +30,8 @@ import {
 const TILT_MAX = 6;
 const SWIPE_DISTANCE = 70;
 const SWIPE_VELOCITY = 500;
-/** Taps on these stay with the card content (voice note, links). */
-const INTERACTIVE = 'button, a, input, audio, [role="slider"]';
+/** Presses on these stay with the card content (voice note, scratch foil, links). */
+const INTERACTIVE = 'button, a, input, audio, canvas, [role="slider"]';
 
 type Direction = 1 | -1;
 
@@ -326,6 +327,7 @@ function DeckCard({
   const material = MATERIALS[artifact.id];
   /** The click that trails a swipe must not loop a second time. */
   const dragEndedAt = useRef(0);
+  const dragControls = useDragControls();
   const dragX = useMotionValue(0);
   const dragRotate = useTransform(dragX, [-180, 0, 180], [-9, 0, 9]);
   const dragYaw = useTransform(dragX, [-180, 0, 180], [-16, 0, 16]);
@@ -340,6 +342,13 @@ function DeckCard({
       className="deck-drag relative h-full w-full"
       style={{ x: dragX, rotate: dragRotate, rotateY: dragYaw }}
       drag={active && !reduce ? 'x' : false}
+      dragControls={dragControls}
+      dragListener={false}
+      onPointerDown={(event) => {
+        if (!active || reduce) return;
+        if ((event.target as Element).closest(INTERACTIVE)) return;
+        dragControls.start(event);
+      }}
       dragSnapToOrigin
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.6}

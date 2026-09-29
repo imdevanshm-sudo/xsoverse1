@@ -16,7 +16,6 @@ function CheckoutSuccessInner() {
   const searchParams = useSearchParams();
   const giftId = searchParams.get('giftId');
   const preview = searchParams.get('preview') === '1';
-  const delivery = searchParams.get('delivery');
   const [phase, setPhase] = useState<Phase>('confirming');
   const [message, setMessage] = useState('Confirming your XSO…');
   const [error, setError] = useState<string | null>(null);
@@ -122,11 +121,6 @@ function CheckoutSuccessInner() {
               ? `Send this link to ${recipient}. It opens their one-of-one keepsake.`
               : 'Send this link to open the one-of-one keepsake.'}
           </p>
-          {delivery === 'physical' ? (
-            <p className="mt-2 font-receipt text-[12px] uppercase tracking-[0.12em] text-[#6f8160]">
-              Printed box ships in 5–7 business days
-            </p>
-          ) : null}
           <div className="mt-5">
             <ShareGiftLink giftId={giftId} recipientName={recipient} tone="paper" />
           </div>

@@ -60,7 +60,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: 'XSO · Experience Souvenir',
   description:
-    'Four printed-feel memory cards — a receipt, an audit, a photo strip and a letter — made into a one-of-one keepsake, digital or boxed.',
+    'Four printed-feel memory cards — a receipt, an audit, a photo strip and a letter — made into a one-of-one interactive keepsake.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

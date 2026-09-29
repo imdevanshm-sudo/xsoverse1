@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
 import { pickXsoPayload } from '@/lib/xsoPayload';
-import { DELIVERY_OPTIONS, type Delivery, type ShippingAddress } from '@/lib/orders';
+import { XSO_PRODUCT } from '@/lib/orders';
 import { markGiftPaid, saveGift, type StoredGift } from '@/lib/giftStore';
 import type { XsoData } from '@/types/xso';
 
@@ -72,9 +72,6 @@ export async function createLemonCheckout(options: {
   customerName: string;
   billerName: string;
   appUrl: string;
-  delivery: Delivery;
-  /** Required for physical orders; kept out of the public gift data. */
-  shipping?: ShippingAddress;
 }): Promise<{ checkoutUrl: string }> {
   const config = getLemonConfig();
   if (!config) {
@@ -82,20 +79,6 @@ export async function createLemonCheckout(options: {
   }
 
   const redirectUrl = `${options.appUrl}/checkout/success?giftId=${encodeURIComponent(options.giftId)}`;
-  const option = DELIVERY_OPTIONS[options.delivery];
-  const ship = options.shipping;
-  // Lemon rejects empty strings in custom data, so blank optional fields are dropped.
-  const shippingCustom = Object.fromEntries(
-    Object.entries({
-      ship_name: ship?.name,
-      ship_line1: ship?.line1,
-      ship_line2: ship?.line2,
-      ship_city: ship?.city,
-      ship_region: ship?.region,
-      ship_postal_code: ship?.postalCode,
-      ship_country: ship?.country,
-    }).filter(([, value]) => Boolean(value)),
-  );
 
   const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
     method: 'POST',
@@ -108,18 +91,16 @@ export async function createLemonCheckout(options: {
       data: {
         type: 'checkouts',
         attributes: {
-          custom_price: option.priceCents,
+          custom_price: XSO_PRODUCT.priceCents,
           checkout_data: {
             custom: {
               gift_id: options.giftId,
               gift_style: options.giftStyle,
-              delivery: options.delivery,
-              ...shippingCustom,
             },
             name: options.billerName || undefined,
           },
           product_options: {
-            name: `XSO Souvenir · ${options.giftStyle} · ${option.label}`,
+            name: `XSO Souvenir · ${options.giftStyle}`,
             description: `Custom XSO for ${options.customerName || 'someone special'}`,
             redirect_url: redirectUrl,
             receipt_button_text: 'Open your XSO',
