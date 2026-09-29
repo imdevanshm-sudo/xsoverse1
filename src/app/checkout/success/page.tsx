@@ -16,6 +16,7 @@ function CheckoutSuccessInner() {
   const searchParams = useSearchParams();
   const giftId = searchParams.get('giftId');
   const preview = searchParams.get('preview') === '1';
+  const delivery = searchParams.get('delivery');
   const [phase, setPhase] = useState<Phase>('confirming');
   const [message, setMessage] = useState('Confirming your XSO…');
   const [error, setError] = useState<string | null>(null);
@@ -103,60 +104,69 @@ function CheckoutSuccessInner() {
   }, [giftId, preview, run]);
 
   const title =
-    phase === 'ready' ? 'Gift Ready' : phase === 'error' ? 'Hold Up' : 'Almost There';
+    phase === 'ready' ? 'Sealed & sent.' : phase === 'error' ? 'Hold up.' : 'Almost there…';
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/40 p-6 text-center shadow-xl">
-      <p className="font-pixel text-[9px] uppercase tracking-[0.24em] text-phosphor/70">
-        XSO Checkout
+    <div className="paper-panel w-full max-w-md p-6 text-center sm:p-8">
+      <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#8a7b66]">
+        XSO · Receipt of delivery
       </p>
-      <h1 className="mt-3 font-arcade text-xl uppercase tracking-[0.12em] text-console-mist">
+      <h1 className="mt-2 font-serif text-[32px] font-semibold leading-tight text-[#2b2825]">
         {title}
       </h1>
 
       {phase === 'ready' && giftId ? (
         <>
-          <p className="mt-3 font-mono text-sm text-white/60">
+          <p className="mt-2 text-[15px] text-[#6b6257]">
             {recipient
-              ? `Send this link to ${recipient}. It opens their one-of-one gift.`
-              : 'Send this link to open the one-of-one gift.'}
+              ? `Send this link to ${recipient}. It opens their one-of-one keepsake.`
+              : 'Send this link to open the one-of-one keepsake.'}
           </p>
+          {delivery === 'physical' ? (
+            <p className="mt-2 font-receipt text-[12px] uppercase tracking-[0.12em] text-[#6f8160]">
+              Printed box ships in 5–7 business days
+            </p>
+          ) : null}
           <div className="mt-5">
-            <ShareGiftLink giftId={giftId} recipientName={recipient} />
+            <ShareGiftLink giftId={giftId} recipientName={recipient} tone="paper" />
           </div>
           <Link
             href={giftPath(giftId)}
-            className="mt-4 flex min-h-11 w-full items-center justify-center rounded-full bg-phosphor px-6 py-3 font-pixel text-[9px] uppercase tracking-[0.14em] text-[#0a120e] shadow-[0_8px_24px_rgba(157,255,176,0.25)]"
+            className="matte-cta mt-4 flex min-h-[3.25rem] w-full items-center justify-center rounded-2xl px-6 font-serif text-[17px] font-semibold"
           >
-            Open gift
+            Open the keepsake
           </Link>
         </>
       ) : (
-        <p className="mt-3 font-mono text-sm text-white/60" aria-live="polite">
+        <p className="mt-3 text-[15px] text-[#6b6257]" aria-live="polite">
           {error ?? message}
         </p>
       )}
+
+      {phase === 'confirming' ? (
+        <span
+          aria-hidden
+          className="mx-auto mt-5 block h-6 w-6 animate-spin rounded-full border-2 border-[#c85a32]/25 border-t-[#c85a32]"
+        />
+      ) : null}
 
       {phase === 'error' && giftId && (
         <div className="mt-5 flex flex-col gap-2">
           <button
             type="button"
             onClick={retry}
-            className="min-h-11 w-full touch-manipulation rounded-full bg-phosphor px-6 py-3 font-pixel text-[9px] uppercase tracking-[0.14em] text-[#0a120e]"
+            className="matte-cta min-h-12 w-full rounded-2xl font-serif text-[16px] font-semibold"
           >
-            Retry
+            Try again
           </button>
-          <Link
-            href={giftPath(giftId)}
-            className="flex min-h-11 w-full items-center justify-center rounded-full border border-white/15 px-6 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-white/70"
-          >
+          <Link href={giftPath(giftId)} className="paper-button flex items-center justify-center">
             Open gift anyway
           </Link>
         </div>
       )}
 
       {giftId && (
-        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-white/35">
+        <p className="mt-5 border-t border-dashed border-[#d9ccb4] pt-3 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#a3968a]">
           Gift · {giftId}
         </p>
       )}
@@ -166,11 +176,9 @@ function CheckoutSuccessInner() {
 
 export default function CheckoutSuccessPage() {
   return (
-    <main className="grid min-app-h place-items-center px-4">
+    <main className="desk grid min-app-h place-items-center px-4 py-10">
       <Suspense
-        fallback={
-          <p className="font-mono text-sm text-white/50">Loading checkout…</p>
-        }
+        fallback={<p className="font-receipt text-sm text-[#a89c8a]">Loading checkout…</p>}
       >
         <CheckoutSuccessInner />
       </Suspense>

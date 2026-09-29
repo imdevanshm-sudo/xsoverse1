@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import {
   motion,
   useMotionTemplate,
@@ -24,20 +24,26 @@ const INTERACTIVE = 'button, a, input, audio, [role="slider"]';
 
 /** Resting pose per depth — slightly fanned, like a hand-stacked deck. */
 const REST = [
-  { x: 0, y: 0, rotate: 0, rotateX: 0, scale: 1 },
-  { x: 5, y: 10, rotate: 2.6, rotateX: 0, scale: 0.965 },
-  { x: -4, y: 19, rotate: -2.2, rotateX: 0, scale: 0.93 },
-  { x: 2, y: 27, rotate: 1.3, rotateX: 0, scale: 0.9 },
+  { x: 0, y: 0, rotate: 0, rotateX: 0, rotateY: 0, scale: 1 },
+  { x: 5, y: 10, rotate: 2.6, rotateX: 0, rotateY: 0, scale: 0.965 },
+  { x: -4, y: 19, rotate: -2.2, rotateX: 0, rotateY: 0, scale: 0.93 },
+  { x: 2, y: 27, rotate: 1.3, rotateX: 0, rotateY: 0, scale: 0.9 },
 ];
-const LIFT = { x: 46, y: -70, rotate: 12, rotateX: 18, scale: 1.03 };
-const LIFT_TWEEN = { duration: 0.26, ease: [0.3, 0, 0.6, 1] as const };
+/** Lift, half-flip toward the viewer, then drop behind the deck. */
+const LIFT = { x: 46, y: -74, rotate: 12, rotateX: 18, rotateY: -38, scale: 1.03 };
+const LIFT_TWEEN = { duration: 0.28, ease: [0.3, 0, 0.6, 1] as const };
 const DROP_SPRING = { type: 'spring' as const, stiffness: 240, damping: 22, mass: 0.9 };
 
 export function MemoryDeck({
   data,
   onChange,
+  size = 'hero',
+  focusIndex,
 }: {
   data: XsoData;
+  size?: 'hero' | 'studio';
+  /** Brings this card to the top whenever it changes (studio tabs). */
+  focusIndex?: number;
   /** Fires with the new top card after each loop. */
   onChange?: (index: number, label: string) => void;
 }) {
@@ -45,6 +51,15 @@ export function MemoryDeck({
   const [order, setOrder] = useState(() => artifacts.map((_, i) => i));
   const [lifting, setLifting] = useState(false);
   const reduce = useReducedMotion();
+
+  useEffect(() => {
+    if (focusIndex === undefined) return;
+    setLifting(false);
+    setOrder((current) => {
+      const at = current.indexOf(focusIndex);
+      return at <= 0 ? current : [...current.slice(at), ...current.slice(0, at)];
+    });
+  }, [focusIndex]);
 
   const topIndex = order[0];
   const nextIndex = order[1];
@@ -71,7 +86,10 @@ export function MemoryDeck({
       aria-label="Memory deck"
       aria-roledescription="card deck"
     >
-      <div className="memory-deck relative w-full" style={{ perspective: 1200 }}>
+      <div
+        className={`relative w-full ${size === 'studio' ? 'memory-deck--studio' : 'memory-deck'}`}
+        style={{ perspective: 1200 }}
+      >
         {artifacts.map((artifact, index) => {
           const depth = order.indexOf(index);
           const isTop = depth === 0;
@@ -106,7 +124,7 @@ export function MemoryDeck({
             <span
               key={artifact.id}
               className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
-                index === topIndex ? 'w-5 bg-[#a3b48f]' : 'w-1.5 bg-[#f1e8d8]/20'
+                index === topIndex ? 'w-5 bg-[#9daf88]' : 'w-1.5 bg-[#efe7d7]/20'
               }`}
             />
           ))}
@@ -215,7 +233,7 @@ function DeckCard({
             <span className="truncate">
               No. {String(number).padStart(2, '0')} · {artifact.label}
             </span>
-            {active ? <span className="shrink-0 text-[#b8603e]">Tap · swipe</span> : null}
+            {active ? <span className="shrink-0 text-[#c85a32]">Tap · swipe</span> : null}
           </div>
         </div>
         {tilt ? (

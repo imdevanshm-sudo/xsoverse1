@@ -6,14 +6,16 @@ import {
   useEffect,
   useRef,
   useState,
+  type DragEvent,
   type ReactNode,
 } from 'react';
-import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ImagePlus, Mic, Plus, Trash2, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useXsoStore } from '@/store/useXsoStore';
-import type { AuditMetrics, LineItem } from '@/types/xso';
-import { StudioStylePicker } from '@/components/xso/StudioStylePicker';
-import { STUDIO_STEPS } from '@/lib/studioSteps';
+import { svgPhoto, type AuditMetrics, type LineItem } from '@/types/xso';
+import { STUDIO_STEPS, type StudioStepId } from '@/lib/studioSteps';
+import { compressImage, readAudio } from '@/lib/media';
+import { joinReward, splitReward } from '@/lib/reward';
 
 const METRIC_LABELS: Record<keyof AuditMetrics, string> = {
   chaos: 'Chaos',
@@ -24,6 +26,7 @@ const METRIC_LABELS: Record<keyof AuditMetrics, string> = {
 };
 
 const METRIC_KEYS = Object.keys(METRIC_LABELS) as (keyof AuditMetrics)[];
+const PHOTO_FRAMES = 4;
 
 type TextFieldKey =
   | 'billerName'
@@ -36,8 +39,7 @@ type TextFieldKey =
   | 'subtotal'
   | 'emotionalTax'
   | 'total'
-  | 'birthdayMessage'
-  | 'scratchOffReward';
+  | 'birthdayMessage';
 
 type FlagKind = 'greenFlags' | 'redFlags';
 
@@ -54,16 +56,14 @@ function useXsoActions() {
       addFlag: s.addFlag,
       updateFlag: s.updateFlag,
       removeFlag: s.removeFlag,
-      addPhoto: s.addPhoto,
-      updatePhoto: s.updatePhoto,
-      removePhoto: s.removePhoto,
+      setPhotoAt: s.setPhotoAt,
     })),
   );
 }
 
 /**
- * Stable React keys for plain string lists (flags, photos). Items are only
- * appended at the end or removed by index, so a parallel id list is enough.
+ * Stable React keys for plain string lists (flags). Items are only appended
+ * at the end or removed by index, so a parallel id list is enough.
  */
 function useStableKeys(length: number, prefix: string) {
   const keys = useRef<string[]>([]);
@@ -78,143 +78,104 @@ function useStableKeys(length: number, prefix: string) {
   return [keys.current, removeKey] as const;
 }
 
-interface XsoEditorProps {
-  showStylePicker?: boolean;
-  step: number;
-  onStepChange: (step: number) => void;
-}
-
+/** Tabbed editor for the four cards, styled as a paper worksheet. */
 export function XsoEditor({
-  showStylePicker = false,
-  step,
-  onStepChange,
-}: XsoEditorProps) {
-  const active = STUDIO_STEPS[step]?.id ?? 'lore';
-
-  return (
-    <div className="space-y-xso-4">
-      {showStylePicker ? <StudioStylePicker /> : null}
-
-      <StudioStepper step={step} onStepChange={onStepChange} />
-
-      <div
-        className="xso-panel"
-        role="tabpanel"
-        id={`studio-step-${active}`}
-        aria-labelledby={`studio-tab-${active}`}
-      >
-        {active === 'lore' && <LoreStep />}
-        {active === 'lines' && <LinesStep />}
-        {active === 'audit' && <AuditStep />}
-        {active === 'letter' && <LetterStep />}
-      </div>
-    </div>
-  );
-}
-
-const StudioStepper = memo(function StudioStepper({
-  step,
-  onStepChange,
+  tab,
+  onTabChange,
 }: {
-  step: number;
-  onStepChange: (step: number) => void;
+  tab: StudioStepId;
+  onTabChange: (tab: StudioStepId) => void;
 }) {
-  const progress = ((step + 1) / STUDIO_STEPS.length) * 100;
-
   return (
-    <div className="studio-stepper sticky top-[var(--xso-header-h,0px)] z-20 -mx-3.5 border-b border-white/10 bg-[#0b0f12] px-3.5 pb-2 pt-2 sm:-mx-5 sm:px-5">
-      <ol
-        className="m-0 grid list-none grid-cols-4 gap-1 p-0"
+    <div>
+      <div
         role="tablist"
-        aria-label="Customize steps"
+        aria-label="Souvenir cards"
+        className="sticky top-[var(--xso-header-h,0px)] z-20 -mx-4 -mt-4 mb-5 grid grid-cols-4 gap-1 rounded-t-[20px] border-b border-dashed border-[#d9ccb4] bg-[#f7f4eb]/95 p-2 sm:-mx-6 sm:-mt-6 sm:px-4"
       >
         {STUDIO_STEPS.map((item, index) => {
-          const current = index === step;
-          const done = index < step;
+          const selected = item.id === tab;
           return (
-            <li key={item.id} className="min-w-0">
-              <button
-                type="button"
-                role="tab"
-                id={`studio-tab-${item.id}`}
-                aria-selected={current}
-                aria-controls={`studio-step-${item.id}`}
-                aria-label={`Step ${index + 1}: ${item.label}`}
-                onClick={() => onStepChange(index)}
-                className={`studio-step flex w-full min-w-0 touch-manipulation items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-left transition-colors duration-150 ${
-                  current ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              id={`studio-tab-${item.id}`}
+              aria-selected={selected}
+              aria-controls={`studio-panel-${item.id}`}
+              onClick={() => onTabChange(item.id)}
+              className={`flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center rounded-xl px-1 transition-colors duration-150 ${
+                selected
+                  ? 'bg-[#2b2825] text-[#f7f4eb] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.6)]'
+                  : 'text-[#6b6257] hover:bg-[#2b2825]/[0.06]'
+              }`}
+            >
+              <span
+                className={`font-receipt text-[9px] tabular-nums tracking-[0.2em] ${
+                  selected ? 'text-[#e2b48f]' : 'text-[#a3968a]'
                 }`}
               >
-                <span
-                  className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border font-mono text-[10px] font-bold tabular-nums ${
-                    current
-                      ? 'border-[color:var(--accent)] bg-[color:var(--accent)] text-[#0b0f12]'
-                      : done
-                        ? 'border-[color:var(--accent)] text-[color:var(--accent)]'
-                        : 'border-white/20 text-white/45'
-                  }`}
-                  aria-hidden
-                >
-                  {done ? <Check className="h-3 w-3" strokeWidth={3} /> : index + 1}
-                </span>
-                <span
-                  className={`truncate font-mono text-[10px] uppercase tracking-[0.08em] sm:text-[11px] ${
-                    current ? 'text-white' : done ? 'text-white/70' : 'text-white/45'
-                  }`}
-                >
-                  <span className="sm:hidden lg:inline xl:hidden">{item.short}</span>
-                  <span className="hidden sm:inline lg:hidden xl:inline">
-                    {item.label}
-                  </span>
-                </span>
-              </button>
-            </li>
+                0{index + 1}
+              </span>
+              <span className="max-w-full truncate font-receipt text-[10px] font-bold uppercase tracking-[0.08em] sm:text-[11px]">
+                {item.id === 'letter' ? (
+                  <>
+                    <span className="sm:hidden">Letter</span>
+                    <span className="hidden sm:inline">{item.label}</span>
+                  </>
+                ) : (
+                  item.label
+                )}
+              </span>
+            </button>
           );
         })}
-      </ol>
-      <div
-        className="mt-2 h-[3px] overflow-hidden rounded-full bg-white/10"
-        role="progressbar"
-        aria-valuemin={1}
-        aria-valuemax={STUDIO_STEPS.length}
-        aria-valuenow={step + 1}
-        aria-label="Customize progress"
-      >
-        <div
-          className="h-full origin-left rounded-full bg-[color:var(--accent)] transition-transform duration-300 ease-out"
-          style={{ transform: `scaleX(${progress / 100})` }}
-        />
+      </div>
+
+      <div role="tabpanel" id={`studio-panel-${tab}`} aria-labelledby={`studio-tab-${tab}`}>
+        {tab === 'receipt' && <ReceiptSection />}
+        {tab === 'audit' && <AuditSection />}
+        {tab === 'photos' && <PhotosSection />}
+        {tab === 'letter' && <LetterSection />}
       </div>
     </div>
   );
-});
+}
 
 const StoreField = memo(function StoreField({
   field,
   label,
   className,
   multiline = false,
+  maxLength,
 }: {
   field: TextFieldKey;
   label: string;
   className?: string;
   multiline?: boolean;
+  maxLength?: number;
 }) {
   const value = useXsoStore((s) => s[field]);
   const setField = useXsoStore((s) => s.setField);
 
   return (
-    <Field label={label} className={className}>
+    <Field
+      label={label}
+      className={className}
+      hint={multiline && maxLength ? `${value.length}/${maxLength}` : undefined}
+    >
       {multiline ? (
         <textarea
-          className="field min-h-[120px] resize-y"
+          className="paper-field min-h-[150px] resize-y font-serif text-[16px] leading-relaxed"
           value={value}
+          maxLength={maxLength}
           onChange={(e) => setField(field, e.target.value)}
         />
       ) : (
         <input
-          className="field"
+          className="paper-field"
           value={value}
+          maxLength={maxLength}
           onChange={(e) => setField(field, e.target.value)}
         />
       )}
@@ -222,55 +183,47 @@ const StoreField = memo(function StoreField({
   );
 });
 
-function LoreStep() {
-  return (
-    <div className="space-y-3">
-      <SectionTitle>Lore & Names</SectionTitle>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <StoreField field="billerName" label="Biller Name" />
-        <StoreField field="customerName" label="Customer" />
-        <StoreField field="occasion" label="Occasion" />
-        <StoreField field="timestamp" label="Timestamp" />
-        <StoreField field="merchantName" label="Merchant Name" />
-        <StoreField field="cashier" label="Cashier" />
-        <StoreField
-          field="certifiedStampText"
-          label="Certified Stamp Text"
-          className="sm:col-span-2"
-        />
-      </div>
-    </div>
-  );
-}
-
-function LinesStep() {
+function ReceiptSection() {
   const lineItems = useXsoStore((s) => s.lineItems);
   const { addLineItem } = useXsoActions();
   const last = lineItems.length - 1;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <SectionTitle>Line Items</SectionTitle>
-        <AddButton onClick={addLineItem}>Add</AddButton>
-      </div>
+    <div className="space-y-6">
+      <Section title="Header" note="Printed at the top of the thermal receipt">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <StoreField field="merchantName" label="Store name" className="sm:col-span-2" />
+          <StoreField field="cashier" label="Cashier" />
+          <StoreField field="customerName" label="Customer" />
+          <StoreField field="billerName" label="From" />
+          <StoreField field="occasion" label="Occasion" />
+          <StoreField field="timestamp" label="Timestamp" className="sm:col-span-2" />
+        </div>
+      </Section>
 
-      <ul className="m-0 list-none space-y-3 p-0">
-        {lineItems.map((item, index) => (
-          <LineItemRow
-            key={item.id}
-            item={item}
-            isFirst={index === 0}
-            isLast={index === last}
-          />
-        ))}
-      </ul>
+      <Section
+        title="Line items"
+        action={<AddButton onClick={addLineItem}>Add item</AddButton>}
+      >
+        <ul className="m-0 list-none space-y-2.5 p-0">
+          {lineItems.map((item, index) => (
+            <LineItemRow
+              key={item.id}
+              item={item}
+              isFirst={index === 0}
+              isLast={index === last}
+            />
+          ))}
+        </ul>
+      </Section>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StoreField field="subtotal" label="Subtotal" />
-        <StoreField field="emotionalTax" label="Emotional Tax" />
-        <StoreField field="total" label="Total" />
-      </div>
+      <Section title="Totals">
+        <div className="grid grid-cols-3 gap-2.5">
+          <StoreField field="subtotal" label="Subtotal" />
+          <StoreField field="emotionalTax" label="Tax" />
+          <StoreField field="total" label="Total" />
+        </div>
+      </Section>
     </div>
   );
 }
@@ -288,44 +241,33 @@ const LineItemRow = memo(function LineItemRow({
   const { id } = item;
 
   return (
-    <li className="grid gap-2 rounded-lg border border-white/10 bg-black/20 p-3 sm:grid-cols-[4rem_1fr_5rem_auto]">
-      <Field label="Qty">
-        <input
-          className="field tabular-nums"
-          value={item.qty}
-          onChange={(e) => updateLineItem(id, { qty: e.target.value })}
-        />
-      </Field>
-      <Field label="Description">
-        <input
-          className="field"
-          value={item.description}
-          onChange={(e) => updateLineItem(id, { description: e.target.value })}
-        />
-      </Field>
-      <Field label="Price">
-        <input
-          className="field tabular-nums"
-          value={item.price}
-          onChange={(e) => updateLineItem(id, { price: e.target.value })}
-        />
-      </Field>
-      <div className="flex items-end gap-1">
-        <IconBtn
-          label="Move up"
-          disabled={isFirst}
-          onClick={() => moveLineItem(id, 'up')}
-        >
+    <li className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-2 rounded-xl border border-dashed border-[#d9ccb4] bg-white/40 p-2.5 sm:grid-cols-[4.25rem_minmax(0,1fr)_6rem_auto]">
+      <input
+        className="paper-field font-receipt tabular-nums"
+        value={item.qty}
+        aria-label="Quantity"
+        onChange={(e) => updateLineItem(id, { qty: e.target.value })}
+      />
+      <input
+        className="paper-field font-receipt uppercase"
+        value={item.description}
+        aria-label="Description"
+        onChange={(e) => updateLineItem(id, { description: e.target.value })}
+      />
+      <input
+        className="paper-field font-receipt tabular-nums max-sm:col-start-1 max-sm:col-end-2"
+        value={item.price}
+        aria-label="Amount"
+        onChange={(e) => updateLineItem(id, { price: e.target.value })}
+      />
+      <div className="flex items-center justify-end gap-1">
+        <IconBtn label="Move up" disabled={isFirst} onClick={() => moveLineItem(id, 'up')}>
           <ArrowUp className="h-3.5 w-3.5" />
         </IconBtn>
-        <IconBtn
-          label="Move down"
-          disabled={isLast}
-          onClick={() => moveLineItem(id, 'down')}
-        >
+        <IconBtn label="Move down" disabled={isLast} onClick={() => moveLineItem(id, 'down')}>
           <ArrowDown className="h-3.5 w-3.5" />
         </IconBtn>
-        <IconBtn label="Delete" onClick={() => removeLineItem(id)}>
+        <IconBtn label="Delete item" onClick={() => removeLineItem(id)}>
           <Trash2 className="h-3.5 w-3.5" />
         </IconBtn>
       </div>
@@ -333,18 +275,19 @@ const LineItemRow = memo(function LineItemRow({
   );
 });
 
-function AuditStep() {
+function AuditSection() {
   return (
-    <div className="space-y-5">
-      <SectionTitle>Audit Stats</SectionTitle>
-      <ul className="m-0 list-none space-y-3 p-0">
-        {METRIC_KEYS.map((key) => (
-          <AuditSlider key={key} metric={key} label={METRIC_LABELS[key]} />
-        ))}
-      </ul>
-
-      <FlagEditor title="Green Flags" kind="greenFlags" />
-      <FlagEditor title="Red Flags" kind="redFlags" />
+    <div className="space-y-6">
+      <Section title="Score meters" note="Drag to set each score out of 100">
+        <ul className="m-0 list-none space-y-4 p-0">
+          {METRIC_KEYS.map((key) => (
+            <AuditSlider key={key} metric={key} label={METRIC_LABELS[key]} />
+          ))}
+        </ul>
+      </Section>
+      <StoreField field="certifiedStampText" label="Certified stamp" />
+      <FlagEditor title="Green flags" kind="greenFlags" tone="#6f8160" />
+      <FlagEditor title="Red flags" kind="redFlags" tone="#c85a32" />
     </div>
   );
 }
@@ -402,9 +345,9 @@ const AuditSlider = memo(function AuditSlider({
 
   return (
     <li>
-      <div className="mb-1 flex justify-between font-mono text-[11px] uppercase tracking-wide text-white/70">
+      <div className="mb-1.5 flex items-baseline justify-between font-receipt text-[12px] uppercase tracking-[0.1em] text-[#4a4038]">
         <span>{label}</span>
-        <span className="tabular-nums text-[color:var(--accent)]">{value}</span>
+        <span className="font-bold tabular-nums text-[#c85a32]">{value}</span>
       </div>
       <input
         type="range"
@@ -418,14 +361,22 @@ const AuditSlider = memo(function AuditSlider({
         onPointerCancel={endDrag}
         onBlur={endDrag}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="studio-range w-full touch-pan-y"
+        className="paper-range w-full touch-pan-y"
         aria-label={label}
       />
     </li>
   );
 });
 
-function FlagEditor({ title, kind }: { title: string; kind: FlagKind }) {
+function FlagEditor({
+  title,
+  kind,
+  tone,
+}: {
+  title: string;
+  kind: FlagKind;
+  tone: string;
+}) {
   const items = useXsoStore((s) => s[kind]);
   const { addFlag, updateFlag, removeFlag } = useXsoActions();
   const [keys, removeKey] = useStableKeys(items.length, kind);
@@ -443,18 +394,11 @@ function FlagEditor({ title, kind }: { title: string; kind: FlagKind }) {
   );
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <SectionTitle>{title}</SectionTitle>
-        <button
-          type="button"
-          onClick={() => addFlag(kind)}
-          className="inline-flex items-center gap-1 text-xs text-[color:var(--accent)]"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add
-        </button>
-      </div>
+    <Section
+      title={title}
+      dot={tone}
+      action={<AddButton onClick={() => addFlag(kind)}>Add</AddButton>}
+    >
       <ul className="m-0 list-none space-y-2 p-0">
         {items.map((item, index) => (
           <FlagRow
@@ -467,7 +411,7 @@ function FlagEditor({ title, kind }: { title: string; kind: FlagKind }) {
           />
         ))}
       </ul>
-    </div>
+    </Section>
   );
 }
 
@@ -487,131 +431,320 @@ const FlagRow = memo(function FlagRow({
   return (
     <li className="flex gap-2">
       <input
-        className="field"
+        className="paper-field"
         value={value}
         aria-label={`${label} ${index + 1}`}
         onChange={(e) => onUpdate(index, e.target.value)}
       />
-      <IconBtn label={`Remove ${label}`} onClick={() => onRemove(index)}>
+      <IconBtn label={`Remove ${label} ${index + 1}`} onClick={() => onRemove(index)}>
         <Trash2 className="h-3.5 w-3.5" />
       </IconBtn>
     </li>
   );
 });
 
-function LetterStep() {
+function PhotosSection() {
   const photos = useXsoStore((s) => s.photos);
-  const voiceNoteUrl = useXsoStore((s) => s.voiceNoteUrl);
-  const { addPhoto, updatePhoto, removePhoto, setField } = useXsoActions();
-  const [keys, removeKey] = useStableKeys(photos.length, 'photo');
+  const { setPhotoAt } = useXsoActions();
 
-  const onRemovePhoto = useCallback(
-    (index: number) => {
-      removeKey(index);
-      removePhoto(index);
+  /** Multiple files dropped on one frame fill it and the frames after it. */
+  const placeFiles = useCallback(
+    async (start: number, files: File[]) => {
+      const images = files.filter((f) => f.type.startsWith('image/'));
+      if (images.length === 0) throw new Error('Please choose an image file');
+      for (let i = 0; i < images.length && start + i < PHOTO_FRAMES; i += 1) {
+        setPhotoAt(start + i, await compressImage(images[i]));
+      }
     },
-    [removeKey, removePhoto],
+    [setPhotoAt],
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <SectionTitle>Photos</SectionTitle>
-        <AddButton onClick={() => addPhoto()}>Add photo</AddButton>
-      </div>
-      <ul className="m-0 list-none space-y-2 p-0">
-        {photos.map((url, index) => (
-          <PhotoRow
-            key={keys[index]}
+    <Section
+      title="Purikura strip"
+      note="Drop photos onto a frame, or tap to choose. Portrait shots look best."
+    >
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: PHOTO_FRAMES }, (_, index) => (
+          <PhotoFrame
+            key={index}
             index={index}
-            url={url}
-            onUpdate={updatePhoto}
-            onRemove={onRemovePhoto}
+            url={photos[index] ?? ''}
+            onFiles={placeFiles}
+            onClear={() => setPhotoAt(index, svgPhoto(`FRAME ${index + 1}`, '#efe7d7', '#8a7b66'))}
           />
         ))}
-      </ul>
+      </div>
+    </Section>
+  );
+}
 
-      <StoreField field="birthdayMessage" label="Birthday Message" multiline />
-      <Field label="Voice Note URL (optional)">
+function PhotoFrame({
+  index,
+  url,
+  onFiles,
+  onClear,
+}: {
+  index: number;
+  url: string;
+  onFiles: (start: number, files: File[]) => Promise<void>;
+  onClear: () => void;
+}) {
+  const [over, setOver] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handle = async (files: File[]) => {
+    if (files.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onFiles(index, files);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setOver(false);
+    void handle(Array.from(e.dataTransfer.files));
+  };
+
+  return (
+    <div>
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setOver(true);
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={onDrop}
+        className={`relative aspect-[3/4] overflow-hidden rounded-xl border-2 border-dashed transition-colors duration-150 ${
+          over ? 'border-[#c85a32] bg-[#c85a32]/10' : 'border-[#d3c4aa] bg-white/40'
+        }`}
+      >
+        {url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={`Frame ${index + 1}`} className="h-full w-full object-cover" />
+        ) : null}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className={`absolute inset-0 flex touch-manipulation flex-col items-center justify-center gap-1.5 text-center font-receipt text-[10px] font-bold uppercase tracking-[0.14em] transition-opacity ${
+            url
+              ? 'bg-[#2b2825]/55 text-[#f7f4eb] opacity-0 hover:opacity-100 focus-visible:opacity-100'
+              : 'text-[#8a7b66]'
+          }`}
+          aria-label={url ? `Replace photo ${index + 1}` : `Add photo ${index + 1}`}
+        >
+          {busy ? (
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+          ) : (
+            <ImagePlus className="h-5 w-5" aria-hidden />
+          )}
+          {busy ? 'Developing…' : url ? 'Replace' : `Frame ${index + 1}`}
+        </button>
+        {url && !busy ? (
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label={`Remove photo ${index + 1}`}
+            className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-[#2b2825]/80 text-[#f7f4eb]"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
         <input
-          className="field"
-          value={voiceNoteUrl ?? ''}
-          onChange={(e) => setField('voiceNoteUrl', e.target.value || undefined)}
-          placeholder="https://..."
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="sr-only"
+          tabIndex={-1}
+          onChange={(e) => {
+            void handle(Array.from(e.target.files ?? []));
+            e.target.value = '';
+          }}
         />
-      </Field>
-      <StoreField field="scratchOffReward" label="Scratch-off Reward" />
+      </div>
+      {error ? (
+        <p role="alert" className="mt-1 text-[11px] text-[#b84e2a]">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-const PhotoRow = memo(function PhotoRow({
-  index,
-  url,
-  onUpdate,
-  onRemove,
-}: {
-  index: number;
-  url: string;
-  onUpdate: (index: number, url: string) => void;
-  onRemove: (index: number) => void;
-}) {
+function LetterSection() {
   return (
-    <li className="flex gap-2">
-      <input
-        className="field"
-        value={url}
-        aria-label={`Photo ${index + 1} URL`}
-        onChange={(e) => onUpdate(index, e.target.value)}
-        placeholder="Image URL or data URI"
-      />
-      <IconBtn label="Remove photo" onClick={() => onRemove(index)}>
-        <Trash2 className="h-3.5 w-3.5" />
-      </IconBtn>
-    </li>
+    <div className="space-y-6">
+      <StoreField field="birthdayMessage" label="Your letter" multiline maxLength={600} />
+      <VoiceNoteField />
+      <PromoFields />
+    </div>
   );
-});
+}
 
-function AddButton({
-  onClick,
+function VoiceNoteField() {
+  const voiceNoteUrl = useXsoStore((s) => s.voiceNoteUrl);
+  const { setField } = useXsoActions();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const choose = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setField('voiceNoteUrl', await readAudio(file));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section title="Voice note" note="Optional · MP3, M4A or WEBM up to 1.5 MB">
+      {voiceNoteUrl ? (
+        <div className="flex items-center gap-2 rounded-xl border border-dashed border-[#d9ccb4] bg-white/40 p-2.5">
+          <audio controls src={voiceNoteUrl} className="h-10 min-w-0 flex-1" />
+          <IconBtn label="Remove voice note" onClick={() => setField('voiceNoteUrl', undefined)}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </IconBtn>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className="flex w-full touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#d3c4aa] bg-white/40 px-4 py-4 font-receipt text-[12px] font-bold uppercase tracking-[0.12em] text-[#6b6257] transition-colors hover:border-[#c85a32] hover:text-[#c85a32] disabled:opacity-60"
+        >
+          <Mic className="h-4 w-4" aria-hidden />
+          {busy ? 'Pressing to tape…' : 'Upload a voice note'}
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="audio/*"
+        className="sr-only"
+        tabIndex={-1}
+        onChange={(e) => {
+          void choose(e.target.files?.[0]);
+          e.target.value = '';
+        }}
+      />
+      {error ? (
+        <p role="alert" className="mt-1.5 text-[12px] text-[#b84e2a]">
+          {error}
+        </p>
+      ) : null}
+    </Section>
+  );
+}
+
+function PromoFields() {
+  const reward = useXsoStore((s) => s.scratchOffReward);
+  const { setField } = useXsoActions();
+  const { code, perk } = splitReward(reward);
+
+  return (
+    <Section title="Secret offer" note="Printed on the ticket stub tucked inside the keep">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <Field label="Promo code">
+          <input
+            className="paper-field font-receipt font-bold uppercase tracking-[0.1em]"
+            value={code}
+            maxLength={24}
+            onChange={(e) =>
+              setField(
+                'scratchOffReward',
+                joinReward(e.target.value.toUpperCase().replace(/\s+/g, '-'), perk),
+              )
+            }
+          />
+        </Field>
+        <Field label="What it unlocks">
+          <input
+            className="paper-field"
+            value={perk}
+            maxLength={80}
+            onChange={(e) => setField('scratchOffReward', joinReward(code, e.target.value))}
+          />
+        </Field>
+      </div>
+    </Section>
+  );
+}
+
+function Section({
+  title,
+  note,
+  action,
+  dot,
   children,
 }: {
-  onClick: () => void;
+  title: string;
+  note?: string;
+  action?: ReactNode;
+  dot?: string;
   children: ReactNode;
 }) {
+  return (
+    <section>
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="flex items-center gap-2 font-serif text-[20px] font-semibold leading-tight text-[#2b2825]">
+            {dot ? (
+              <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: dot }} />
+            ) : null}
+            {title}
+          </h3>
+          {note ? <p className="mt-0.5 text-[13px] text-[#7a6c58]">{note}</p> : null}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function AddButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--accent-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--accent)] transition-colors hover:bg-white/[0.04]"
+      className="inline-flex shrink-0 touch-manipulation items-center gap-1 rounded-full border border-[#d3c4aa] bg-white/60 px-3 py-1.5 font-receipt text-[11px] font-bold uppercase tracking-[0.12em] text-[#2b2825] transition-colors hover:border-[#c85a32] hover:text-[#c85a32] active:scale-[0.97]"
     >
-      <Plus className="h-3.5 w-3.5" />
+      <Plus className="h-3.5 w-3.5" aria-hidden />
       {children}
     </button>
   );
 }
 
-function SectionTitle({ children }: { children: ReactNode }) {
-  return (
-    <h2 className="font-display text-lg font-bold uppercase tracking-tight text-white">
-      {children}
-    </h2>
-  );
-}
-
 function Field({
   label,
+  hint,
   children,
   className = '',
 }: {
   label: string;
+  hint?: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
     <label className={`grid gap-1.5 ${className}`}>
-      <span className="text-[11px] uppercase tracking-[0.14em] text-white/55">
+      <span className="flex items-baseline justify-between gap-2 font-receipt text-[11px] uppercase tracking-[0.14em] text-[#7a6c58]">
         {label}
+        {hint ? <span className="tabular-nums text-[#a3968a]">{hint}</span> : null}
       </span>
       {children}
     </label>
@@ -635,7 +768,7 @@ function IconBtn({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid h-10 w-10 place-items-center rounded-lg border border-white/15 text-white/70 disabled:opacity-30"
+      className="grid h-10 w-10 shrink-0 touch-manipulation place-items-center rounded-lg border border-[#d9ccb4] bg-white/50 text-[#4a4038] transition-colors hover:text-[#c85a32] disabled:opacity-30"
     >
       {children}
     </button>

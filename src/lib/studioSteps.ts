@@ -1,10 +1,8 @@
 export const STUDIO_STEPS = [
-  { id: 'lore', label: 'Lore & Names', short: 'Lore' },
-  { id: 'lines', label: 'Line Items', short: 'Items' },
-  { id: 'audit', label: 'Audit Stats', short: 'Audit' },
-  { id: 'letter', label: 'Photos & Letter', short: 'Letter' },
+  { id: 'receipt', label: 'Receipt', card: 0 },
+  { id: 'audit', label: 'Audit', card: 1 },
+  { id: 'photos', label: 'Photos', card: 2 },
+  { id: 'letter', label: 'Letter & offer', card: 3 },
 ] as const;
 
 export type StudioStepId = (typeof STUDIO_STEPS)[number]['id'];
-
-export const LAST_STUDIO_STEP = STUDIO_STEPS.length - 1;

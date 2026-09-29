@@ -3,12 +3,12 @@
 import { Suspense, useLayoutEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ModeHeader } from '@/components/layout/ModeHeader';
-import { PortraitStudio } from '@/components/xso/PortraitStudio';
-import { getCartridge } from '@/lib/cartridges';
+import { CheckoutEnvelope } from '@/components/checkout/CheckoutEnvelope';
+import { displayTitle, getCartridge } from '@/lib/cartridges';
 import { resolveLockedStyle, styleQuery } from '@/lib/styleLock';
 import { useXsoStore } from '@/store/useXsoStore';
 
-function StudioShell() {
+function CheckoutShell() {
   const searchParams = useSearchParams();
   const lockedStyle = resolveLockedStyle(searchParams.get('style'));
   const setField = useXsoStore((s) => s.setField);
@@ -16,35 +16,34 @@ function StudioShell() {
   const cart = getCartridge(lockedStyle);
 
   useLayoutEffect(() => {
-    if (storeStyle !== lockedStyle) {
-      setField('giftStyle', lockedStyle);
-    }
+    if (storeStyle !== lockedStyle) setField('giftStyle', lockedStyle);
   }, [lockedStyle, setField, storeStyle]);
 
   return (
-    <main className="min-app-h studio-portrait">
+    <main className="desk min-app-h">
       <ModeHeader
         mode="studio"
-        brand="XSO STUDIO"
-        meta={<span style={{ color: cart.accent }}>{cart.title}</span>}
-        actionHref={`/preview?${styleQuery(lockedStyle)}`}
-        actionLabel="Preview"
+        tone="paper"
+        brand="XSO Checkout"
+        meta={displayTitle(cart)}
+        actionHref={`/customize?${styleQuery(lockedStyle)}`}
+        actionLabel="Studio"
       />
-      <PortraitStudio lockedStyle={lockedStyle} />
+      <CheckoutEnvelope lockedStyle={lockedStyle} />
     </main>
   );
 }
 
-export default function StudioPage() {
+export default function CheckoutPage() {
   return (
     <Suspense
       fallback={
-        <main className="grid min-app-h place-items-center font-mono text-sm text-white/50">
-          Booting studio…
+        <main className="desk grid min-app-h place-items-center font-receipt text-sm text-[#a89c8a]">
+          Opening the envelope…
         </main>
       }
     >
-      <StudioShell />
+      <CheckoutShell />
     </Suspense>
   );
 }

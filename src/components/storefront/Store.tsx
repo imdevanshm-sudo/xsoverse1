@@ -1,218 +1,152 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useXsoStore } from '@/store/useXsoStore';
+import {
+  CARTRIDGE_PRICE,
+  CARTRIDGES,
+  displayTitle,
+  getCartridge,
+} from '@/lib/cartridges';
+import { PHYSICAL_PRICE } from '@/lib/orders';
+import { THEMES, type ThemeId } from '@/lib/themes';
+import { DeckBox } from '@/components/storefront/DeckBox';
 import type { GiftStyle } from '@/types/xso';
-import { CARTRIDGE_PRICE, CARTRIDGES, getCartridge } from '@/lib/cartridges';
-import { XSO_MOTION } from '@/lib/layout';
-import { CartridgeSelector } from '@/components/storefront/CartridgeSelector';
-import { ConversionBar } from '@/components/storefront/ConversionBar';
-import { CrtOverlay } from '@/components/storefront/CrtOverlay';
 
-function preferCrtOff(): boolean {
-  if (typeof window === 'undefined') return false;
-  return (
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-    window.matchMedia('(pointer: coarse)').matches ||
-    window.matchMedia('(max-width: 768px)').matches
-  );
-}
-
-function playSelectCue() {
-  try {
-    const Ctx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    const now = ctx.currentTime;
-    osc.frequency.setValueAtTime(280, now);
-    osc.frequency.exponentialRampToValueAtTime(160, now + 0.07);
-    gain.gain.setValueAtTime(0.04, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.1);
-    osc.addEventListener('ended', () => void ctx.close());
-  } catch {
-    /* ignore */
-  }
-}
-
-/**
- * Full-bleed mobile storefront — no handheld shell, D-pad, or A/B chrome.
- */
+/** Store & template gallery: pick a format, then tap a story deck. */
 export function Store() {
   const router = useRouter();
   const giftStyle = useXsoStore((s) => s.giftStyle);
   const setField = useXsoStore((s) => s.setField);
-  const [crtOn, setCrtOn] = useState(true);
-  const [booting, setBooting] = useState(false);
-  const [bootPhase, setBootPhase] = useState<
-    'idle' | 'insert' | 'checksum' | 'launch'
-  >('idle');
-  const [isPending, startTransition] = useTransition();
-  const bootTimers = useRef<number[]>([]);
+  const applyTheme = useXsoStore((s) => s.applyTheme);
+  const [pending, startTransition] = useTransition();
+  const format = getCartridge(giftStyle);
 
-  useEffect(() => {
-    if (preferCrtOff()) setCrtOn(false);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      bootTimers.current.forEach((id) => window.clearTimeout(id));
-    };
-  }, []);
-
-  const startBuild = useCallback(() => {
-    if (booting) return;
-    setBooting(true);
-    setBootPhase('insert');
-    playSelectCue();
-    const style = useXsoStore.getState().giftStyle as GiftStyle;
-
-    bootTimers.current.forEach((id) => window.clearTimeout(id));
-    bootTimers.current = [
-      window.setTimeout(() => setBootPhase('checksum'), 380),
-      window.setTimeout(() => setBootPhase('launch'), 820),
-      window.setTimeout(() => {
-        startTransition(() => {
-          router.push(`/preview?style=${encodeURIComponent(style)}`);
-        });
-      }, 1100),
-    ];
-  }, [booting, router, startTransition]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        startBuild();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [startBuild]);
-
-  const mounted = getCartridge(giftStyle);
-  const mountedIndex = Math.max(0, CARTRIDGES.findIndex((c) => c.id === mounted.id));
-  const controlsLocked = booting || isPending;
+  const openDeck = useCallback(
+    (id: ThemeId) => {
+      applyTheme(id);
+      const style = useXsoStore.getState().giftStyle;
+      startTransition(() => {
+        router.push(`/preview?style=${encodeURIComponent(style)}&theme=${id}`);
+      });
+    },
+    [applyTheme, router],
+  );
 
   return (
-    <div className="relative min-h-screen w-full bg-[#0b0f12] text-console-mist [min-height:100dvh] [min-height:var(--app-height,100dvh)]">
-      <CrtOverlay enabled={crtOn} />
-
-      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col md:max-w-4xl lg:max-w-5xl px-4 pb-36 pt-4 sm:px-6 sm:pb-40 sm:pt-6">
-        <header className="mb-8 mt-6 sm:mb-12 sm:mt-10">
-          <h1 className="font-arcade text-5xl font-bold uppercase tracking-[0.1em] text-white sm:text-6xl md:text-7xl">
-            XSO
-          </h1>
-          <p className="mt-3 max-w-md text-[15px] leading-relaxed text-white/55 sm:mt-4 sm:text-base">
-            A one-of-one digital time capsule. Pick a cartridge, then craft the
-            memory inside it.
+    <main className="desk min-app-h" aria-busy={pending}>
+      <div className="mx-auto w-full max-w-5xl px-5 pb-20 pt-6 sm:px-8 sm:pt-10">
+        <header className="flex items-center justify-between gap-4">
+          <p className="flex items-baseline gap-2">
+            <span className="font-serif text-2xl font-bold tracking-tight text-[#f7f4eb]">
+              XSO
+            </span>
+            <span className="font-receipt text-[11px] uppercase tracking-[0.2em] text-[#a89c8a]">
+              Experience Souvenir
+            </span>
           </p>
+          <span className="rotate-[-3deg] rounded-md border-2 border-[#c85a32]/70 px-2 py-0.5 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#e2b48f]">
+            Est. 2026
+          </span>
         </header>
 
-        <section aria-labelledby="style-bay-heading">
-          <div className="mb-1 flex items-baseline justify-between gap-3">
+        <section className="mt-10 max-w-2xl sm:mt-14">
+          <h1 className="font-serif text-[2.4rem] font-semibold leading-[1.04] tracking-tight text-[#f7f4eb] sm:text-6xl">
+            Keepsakes you can hold,{' '}
+            <em className="font-medium text-[#e2b48f]">even through a screen.</em>
+          </h1>
+          <p className="mt-4 max-w-lg text-[16px] leading-relaxed text-[#b3a794]">
+            Four printed-feel memory cards — a receipt, an audit, a photo strip
+            and a letter — shuffled into one interactive souvenir. Digital from{' '}
+            {CARTRIDGE_PRICE}, or boxed and shipped for {PHYSICAL_PRICE}.
+          </p>
+        </section>
+
+        <section className="mt-10" aria-labelledby="format-heading">
+          <div className="mb-3 flex items-baseline justify-between gap-3">
             <h2
-              id="style-bay-heading"
-              className="truncate whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.2em] text-white/45"
+              id="format-heading"
+              className="font-receipt text-[11px] uppercase tracking-[0.22em] text-[#a89c8a]"
             >
-              Slot A <span className="text-white/20">{"//"}</span> Select cartridge
+              <span className="text-[#e2b48f]">1</span> · Choose how it plays
             </h2>
-            <p
-              className="shrink-0 whitespace-nowrap font-mono text-[10px] tabular-nums tracking-[0.14em] text-white/30"
-              aria-label={`Cartridge ${mountedIndex + 1} of ${CARTRIDGES.length}`}
-            >
-              <span className="text-white/70">{String(mountedIndex + 1).padStart(2, '0')}</span>
-              {' / '}
-              {String(CARTRIDGES.length).padStart(2, '0')}
+            <p className="shrink-0 font-receipt text-[11px] tracking-[0.14em] text-[#7d7264]">
+              {format.code}
             </p>
           </div>
+          <div
+            role="radiogroup"
+            aria-label="Souvenir format"
+            className="-mx-5 flex snap-x gap-2.5 overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0"
+          >
+            {CARTRIDGES.map((cart) => {
+              const selected = cart.id === giftStyle;
+              return (
+                <button
+                  key={cart.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setField('giftStyle', cart.id as GiftStyle)}
+                  className={`min-w-[8.5rem] shrink-0 snap-start touch-manipulation rounded-2xl border px-3.5 py-3 text-left transition-[background-color,border-color,transform] duration-200 active:scale-[0.98] sm:min-w-0 ${
+                    selected
+                      ? 'border-[#e3d9c5] bg-[#f7f4eb] text-[#2b2825] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)]'
+                      : 'border-[#3a3632] bg-[#22201d] text-[#efe7d7] hover:border-[#5a534b]'
+                  }`}
+                >
+                  <span
+                    className={`block font-receipt text-[10px] uppercase tracking-[0.18em] ${
+                      selected ? 'text-[#c85a32]' : 'text-[#7d7264]'
+                    }`}
+                  >
+                    {cart.code}
+                  </span>
+                  <span className="mt-1 block font-serif text-[18px] font-semibold leading-tight">
+                    {displayTitle(cart)}
+                  </span>
+                  <span
+                    className={`mt-0.5 block truncate text-[12px] ${
+                      selected ? 'text-[#6b6257]' : 'text-[#8a7f70]'
+                    }`}
+                  >
+                    {cart.subtitle}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
-          <CartridgeSelector
-            selectedId={giftStyle}
-            onSelect={(id) => {
-              if (booting) return;
-              setField('giftStyle', id);
-              playSelectCue();
-            }}
-          />
+        <section className="mt-10" aria-labelledby="decks-heading">
+          <h2
+            id="decks-heading"
+            className="mb-3 font-receipt text-[11px] uppercase tracking-[0.22em] text-[#a89c8a]"
+          >
+            <span className="text-[#e2b48f]">2</span> · Pick a story deck
+          </h2>
+          <div className="felt px-4 pb-8 pt-10 sm:px-8">
+            <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible sm:px-0">
+              {THEMES.map((theme) => (
+                <div
+                  key={theme.id}
+                  className="w-[78%] max-w-[280px] shrink-0 snap-center sm:w-auto sm:max-w-none"
+                >
+                  <DeckBox
+                    theme={theme}
+                    styleLabel={displayTitle(format)}
+                    onOpen={() => openDeck(theme.id)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="mt-4 text-center font-receipt text-[11px] uppercase tracking-[0.16em] text-[#7d7264]">
+            Every deck is fully editable in the studio
+          </p>
         </section>
       </div>
-
-      <ConversionBar
-        onPress={startBuild}
-        disabled={controlsLocked}
-        styleTitle={mounted.title}
-        styleCode={mounted.code}
-        accent={mounted.accent}
-        price={CARTRIDGE_PRICE}
-        label={controlsLocked ? 'Loading…' : 'Build your XSO'}
-      />
-
-      <AnimatePresence>
-        {booting ? (
-          <motion.div
-            key="boot-overlay"
-            className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#0b0f12]/94 px-6 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={XSO_MOTION.fade}
-            aria-live="polite"
-          >
-            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-phosphor/70">
-              {mounted.code} <span className="text-white/25">→</span> Slot A
-            </p>
-            <p
-              className="mt-4 font-arcade text-2xl uppercase tracking-[0.14em] sm:text-3xl"
-              style={{ color: mounted.accent }}
-            >
-              {mounted.title}
-            </p>
-            <p className="mt-3 max-w-xs font-mono text-[12px] leading-relaxed text-white/55">
-              {bootPhase === 'insert' && 'Inserting cartridge…'}
-              {bootPhase === 'checksum' &&
-                'Gathering text · imagery · audio…'}
-              {bootPhase === 'launch' && 'Opening your studio…'}
-            </p>
-            <div className="mt-8 h-1 w-44 overflow-hidden rounded-full bg-white/10">
-              <motion.div
-                className="h-full origin-left rounded-full bg-phosphor"
-                initial={{ scaleX: 0.1 }}
-                animate={{
-                  scaleX:
-                    bootPhase === 'insert'
-                      ? 0.35
-                      : bootPhase === 'checksum'
-                        ? 0.7
-                        : 1,
-                }}
-                transition={{ duration: 0.25, ease: 'easeOut' }}
-              />
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
+    </main>
   );
 }
 

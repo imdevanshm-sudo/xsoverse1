@@ -3,14 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Copy } from 'lucide-react';
-
-/** "CODE: BESTIE-4-LIFE • One free emergency pep talk" → code + perk. */
-function splitReward(reward: string) {
-  const [first, ...rest] = reward.split('•');
-  const code = (first ?? '').replace(/^\s*code\s*:\s*/i, '').trim();
-  const perk = rest.join('•').trim();
-  return perk ? { code, perk } : { code: '', perk: reward.trim() };
-}
+import { splitReward } from '@/lib/reward';
 
 /** Must run synchronously inside the click so the user gesture is still live. */
 function execCopy(text: string): boolean {
@@ -82,7 +75,7 @@ export function SecretOffer({ reward }: { reward: string }) {
   return (
     <section className="paper-ticket-shadow w-full" aria-label="Secret offer">
       <div className="paper-ticket grid grid-cols-[2.5rem_minmax(0,1fr)]">
-        <div className="flex items-center justify-center border-r-2 border-dashed border-[#cdbfa6] bg-[#a65a3b]">
+        <div className="flex items-center justify-center border-r-2 border-dashed border-[#cdbfa6] bg-[#c85a32]">
           <p className="rotate-180 whitespace-nowrap font-receipt text-[10px] font-bold uppercase tracking-[0.3em] text-[#fbefe2] [writing-mode:vertical-rl]">
             Admit one · No. 0417
           </p>
@@ -90,7 +83,7 @@ export function SecretOffer({ reward }: { reward: string }) {
 
         <div className="min-w-0 px-3.5 pb-3.5 pt-3 sm:px-4">
           <header className="mb-3 flex items-center justify-between gap-3">
-            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[#a65a3b] px-2.5 py-1 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#fbefe2]">
+            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[#c85a32] px-2.5 py-1 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#fbefe2]">
               Secret offer
             </span>
             <span className="truncate font-receipt text-[10px] uppercase tracking-[0.16em] text-[#8a7b66]">

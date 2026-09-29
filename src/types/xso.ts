@@ -52,7 +52,7 @@ export const XSO_SIDES = [
   { index: 3 as const, emoji: '🎁', label: 'Letter & Scratch-off' },
 ] as const;
 
-function svgPhoto(label: string, bg: string, fg: string): string {
+export function svgPhoto(label: string, bg: string, fg: string): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="320" viewBox="0 0 240 320">
     <rect width="240" height="320" fill="${bg}"/>
     <rect x="16" y="16" width="208" height="248" fill="${fg}" opacity="0.15"/>

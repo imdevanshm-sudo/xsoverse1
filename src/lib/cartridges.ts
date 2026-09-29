@@ -83,3 +83,8 @@ export const CARTRIDGE_PRICE = `$${(CARTRIDGE_PRICE_CENTS / 100).toFixed(2)}`;
 export function getCartridge(id: GiftStyle): CartridgeSpec {
   return CARTRIDGES.find((c) => c.id === id) ?? CARTRIDGES[0];
 }
+
+/** "MOVIE BOX" → "Movie Box" for serif display. */
+export function displayTitle(cart: CartridgeSpec): string {
+  return cart.title.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}

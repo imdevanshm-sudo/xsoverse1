@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { newId } from '@/lib/constants';
+import { getTheme, type ThemeId } from '@/lib/themes';
 import {
   getMockXsoData,
   type AuditMetrics,
@@ -27,12 +28,36 @@ interface XsoActions {
   addPhoto: (url?: string) => void;
   updatePhoto: (index: number, url: string) => void;
   removePhoto: (index: number) => void;
+  /** Sets a photo-strip frame, padding empty frames when needed. */
+  setPhotoAt: (index: number, url: string) => void;
+  /** Replaces all editable content with a theme pack's copy. */
+  applyTheme: (id: ThemeId) => void;
 }
 
-export type XsoStore = XsoData & XsoActions;
+export type XsoStore = XsoData & XsoActions & { themeId: ThemeId };
 
 export const useXsoStore = create<XsoStore>((set) => ({
   ...getMockXsoData(),
+  themeId: 'bestie-roast',
+
+  applyTheme: (id) => {
+    const theme = getTheme(id);
+    if (!theme) return;
+    const content = theme.content();
+    set({
+      ...content,
+      lineItems: content.lineItems.map((item) => ({ ...item, id: newId() })),
+      themeId: id,
+    });
+  },
+
+  setPhotoAt: (index, url) =>
+    set((state) => {
+      const photos = [...state.photos];
+      while (photos.length <= index) photos.push('');
+      photos[index] = url;
+      return { photos };
+    }),
 
   setField: (key, value) => set({ [key]: value } as Partial<XsoData>),
 

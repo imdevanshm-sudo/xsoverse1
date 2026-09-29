@@ -58,9 +58,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: 'XSO · Retro Souvenir Console',
+  title: 'XSO · Experience Souvenir',
   description:
-    'Choose your cartridge and build a one-of-one XSO souvenir — Loop, Rewind, Scrapbook, Accordion, or Movie Box.',
+    'Four printed-feel memory cards — a receipt, an audit, a photo strip and a letter — made into a one-of-one keepsake, digital or boxed.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

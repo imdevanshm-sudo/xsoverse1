@@ -6,13 +6,20 @@ interface ShareGiftLinkProps {
   giftId: string;
   recipientName?: string;
   compact?: boolean;
+  tone?: 'console' | 'paper';
 }
 
 export function giftPath(giftId: string) {
   return `/gift/${encodeURIComponent(giftId)}`;
 }
 
-export function ShareGiftLink({ giftId, recipientName, compact = false }: ShareGiftLinkProps) {
+export function ShareGiftLink({
+  giftId,
+  recipientName,
+  compact = false,
+  tone = 'console',
+}: ShareGiftLinkProps) {
+  const paper = tone === 'paper';
   const [url, setUrl] = useState(giftPath(giftId));
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
@@ -51,7 +58,7 @@ export function ShareGiftLink({ giftId, recipientName, compact = false }: ShareG
   };
 
   const buttonClass =
-    'min-h-11 flex-1 touch-manipulation rounded-full border px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-[transform,opacity] active:scale-[0.98]';
+    'min-h-11 flex-1 touch-manipulation rounded-full border px-4 py-2.5 text-[11px] uppercase tracking-[0.14em] transition-[transform,opacity] active:scale-[0.98]';
 
   return (
     <div className={compact ? 'w-full' : 'w-full space-y-3'}>
@@ -62,23 +69,35 @@ export function ShareGiftLink({ giftId, recipientName, compact = false }: ShareG
           value={url}
           onFocus={(event) => event.currentTarget.select()}
           aria-label="Shareable gift link"
-          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 font-mono text-xs text-white/75 outline-none focus:border-phosphor/50"
+          className={
+            paper
+              ? 'paper-field font-receipt text-[13px]'
+              : 'w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 font-mono text-xs text-white/75 outline-none focus:border-phosphor/50'
+          }
         />
       )}
       <div className="flex gap-2">
         <button
           type="button"
           onClick={copy}
-          className={`${buttonClass} border-white/15 bg-white/5 text-white/80`}
+          className={
+            paper
+              ? `${buttonClass} border-[#d8ccb6] bg-white/60 font-receipt font-bold text-[#2b2825]`
+              : `${buttonClass} border-white/15 bg-white/5 font-mono text-white/80`
+          }
           aria-live="polite"
         >
-          {copied ? 'Copied' : 'Copy link'}
+          {copied ? 'Copied ✓' : 'Copy link'}
         </button>
         {canShare && (
           <button
             type="button"
             onClick={share}
-            className={`${buttonClass} border-phosphor/40 bg-phosphor/10 text-phosphor`}
+            className={
+              paper
+                ? `${buttonClass} border-[#c85a32]/50 bg-[#c85a32]/10 font-receipt font-bold text-[#9e4424]`
+                : `${buttonClass} border-phosphor/40 bg-phosphor/10 font-mono text-phosphor`
+            }
           >
             Share
           </button>

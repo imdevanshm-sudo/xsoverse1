@@ -3,52 +3,47 @@
 import { Suspense, useLayoutEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ModeHeader } from '@/components/layout/ModeHeader';
-import { ImmersivePreview } from '@/components/xso/ImmersivePreview';
+import { CustomizeStudio } from '@/components/xso/CustomizeStudio';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
-import { resolveLockedStyle } from '@/lib/styleLock';
-import { isThemeId } from '@/lib/themes';
+import { resolveLockedStyle, styleQuery } from '@/lib/styleLock';
 import { useXsoStore } from '@/store/useXsoStore';
 
-function PreviewShell() {
+function CustomizeShell() {
   const searchParams = useSearchParams();
   const lockedStyle = resolveLockedStyle(searchParams.get('style'));
-  const theme = searchParams.get('theme');
   const setField = useXsoStore((s) => s.setField);
-  const applyTheme = useXsoStore((s) => s.applyTheme);
   const storeStyle = useXsoStore((s) => s.giftStyle);
-  const storeTheme = useXsoStore((s) => s.themeId);
   const cart = getCartridge(lockedStyle);
 
   useLayoutEffect(() => {
-    if (isThemeId(theme) && theme !== storeTheme) applyTheme(theme);
     if (storeStyle !== lockedStyle) setField('giftStyle', lockedStyle);
-  }, [applyTheme, lockedStyle, setField, storeStyle, storeTheme, theme]);
+  }, [lockedStyle, setField, storeStyle]);
 
   return (
-    <main className="min-app-h desk">
+    <main className="desk min-app-h">
       <ModeHeader
-        mode="preview"
+        mode="studio"
         tone="paper"
-        brand="XSO Preview"
+        brand="XSO Studio"
         meta={displayTitle(cart)}
-        actionHref="/store"
-        actionLabel="Store"
+        actionHref={`/preview?${styleQuery(lockedStyle)}`}
+        actionLabel="Preview"
       />
-      <ImmersivePreview lockedStyle={lockedStyle} />
+      <CustomizeStudio lockedStyle={lockedStyle} />
     </main>
   );
 }
 
-export default function PreviewPage() {
+export default function CustomizePage() {
   return (
     <Suspense
       fallback={
         <main className="desk grid min-app-h place-items-center font-receipt text-sm text-[#a89c8a]">
-          Loading preview…
+          Setting up the studio…
         </main>
       }
     >
-      <PreviewShell />
+      <CustomizeShell />
     </Suspense>
   );
 }
