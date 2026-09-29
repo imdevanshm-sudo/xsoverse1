@@ -88,6 +88,8 @@ export function ScratchReveal({
   const frame = useRef<number | null>(null);
   const lastSample = useRef(0);
   const revealedRef = useRef(false);
+  const paintedSize = useRef('');
+  const scratched = useRef(false);
   const sparkEls = useRef<(HTMLSpanElement | null)[]>([]);
   const sparkCursor = useRef(0);
   const [progress, setProgress] = useState(0);
@@ -101,15 +103,16 @@ export function ScratchReveal({
     ctxRef.current = ctx;
 
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
-    const rect = canvas.getBoundingClientRect();
-    rectRef.current = rect;
-    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    // Layout size, not the on-screen box: hosts may be scaled, tilted or hidden.
+    const w = canvas.offsetWidth;
+    const h = canvas.offsetHeight;
+    if (w === 0 || h === 0) return;
+    rectRef.current = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.floor(w * dpr));
+    canvas.height = Math.max(1, Math.floor(h * dpr));
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     brushRef.current = createBrush(dpr);
-
-    const w = rect.width;
-    const h = rect.height;
+    paintedSize.current = `${w}x${h}`;
 
     ctx.globalCompositeOperation = 'source-over';
     const base = ctx.createLinearGradient(0, 0, w, h);
@@ -143,20 +146,20 @@ export function ScratchReveal({
   }, [label, variant]);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
     paintFoil();
-    let resizeFrame: number | null = null;
-    const onResize = () => {
-      if (revealedRef.current || resizeFrame !== null) return;
-      resizeFrame = requestAnimationFrame(() => {
-        resizeFrame = null;
-        paintFoil();
-      });
-    };
-    window.addEventListener('resize', onResize, { passive: true });
-    return () => {
-      window.removeEventListener('resize', onResize);
-      if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
-    };
+    if (!canvas || typeof ResizeObserver === 'undefined') return;
+    // Repaint when the foil first gets a real size (e.g. a hidden tab is shown)
+    // or resizes before anyone has scratched it.
+    const observer = new ResizeObserver(() => {
+      if (revealedRef.current) return;
+      const size = `${canvas.offsetWidth}x${canvas.offsetHeight}`;
+      if (size === paintedSize.current) return;
+      if (scratched.current && paintedSize.current !== '') return;
+      paintFoil();
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
   }, [paintFoil]);
 
   useEffect(
@@ -260,8 +263,12 @@ export function ScratchReveal({
 
   const queue = (clientX: number, clientY: number) => {
     const rect = rectRef.current;
-    if (!rect || revealedRef.current) return;
-    pending.current.push({ x: clientX - rect.left, y: clientY - rect.top });
+    const canvas = canvasRef.current;
+    if (!rect || !canvas || revealedRef.current || rect.width === 0) return;
+    // Map screen coordinates back to layout space when the host is scaled.
+    const sx = canvas.offsetWidth / rect.width;
+    const sy = canvas.offsetHeight / rect.height;
+    pending.current.push({ x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy });
     if (frame.current === null) {
       frame.current = requestAnimationFrame(flush);
     }
@@ -270,7 +277,9 @@ export function ScratchReveal({
   const onPointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     e.stopPropagation();
     e.preventDefault();
+    if (!paintedSize.current) paintFoil();
     rectRef.current = e.currentTarget.getBoundingClientRect();
+    scratched.current = true;
     drawing.current = true;
     last.current = null;
     e.currentTarget.setPointerCapture(e.pointerId);
