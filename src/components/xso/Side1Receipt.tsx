@@ -12,6 +12,8 @@ import { formatReceiptQty } from '@/lib/receiptFormat';
 
 export interface Side1ReceiptProps {
   data: XsoData;
+  /** Drop the paper, tilt and shadow when the host card is the paper. */
+  bare?: boolean;
 }
 
 const PAPER = '#fcfaf2';
@@ -21,13 +23,14 @@ const MUTED = '#4a4a4a';
 const CLIP_RECEIPT =
   'polygon(0% 8px, 4% 0, 8% 8px, 12% 0, 16% 8px, 20% 0, 24% 8px, 28% 0, 32% 8px, 36% 0, 40% 8px, 44% 0, 48% 8px, 52% 0, 56% 8px, 60% 0, 64% 8px, 68% 0, 72% 8px, 76% 0, 80% 8px, 84% 0, 88% 8px, 92% 0, 96% 8px, 100% 0, 100% calc(100% - 8px), 96% 100%, 92% calc(100% - 8px), 88% 100%, 84% calc(100% - 8px), 80% 100%, 76% calc(100% - 8px), 72% 100%, 68% calc(100% - 8px), 64% 100%, 60% calc(100% - 8px), 56% 100%, 52% calc(100% - 8px), 48% 100%, 44% calc(100% - 8px), 40% 100%, 36% calc(100% - 8px), 32% 100%, 28% calc(100% - 8px), 24% 100%, 20% calc(100% - 8px), 16% 100%, 12% calc(100% - 8px), 8% 100%, 4% calc(100% - 8px), 0% 100%)';
 
-export function Side1Receipt({ data }: Side1ReceiptProps) {
+export function Side1Receipt({ data, bare = false }: Side1ReceiptProps) {
   return (
     <div
       className="relative mx-auto w-full max-w-[320px]"
-      style={{ transform: 'rotate(-2deg)' }}
+      style={bare ? undefined : { transform: 'rotate(-2deg)' }}
     >
       {/* clip-path swallows box-shadow, so the paper shadow is its own layer */}
+      {bare ? null : (
       <div
         className="pointer-events-none absolute inset-x-1 inset-y-2"
         style={{
@@ -36,17 +39,22 @@ export function Side1Receipt({ data }: Side1ReceiptProps) {
         }}
         aria-hidden
       />
+      )}
       <article
         className="relative px-4 pb-6 pt-6 font-receipt text-[11.5px] uppercase leading-[1.4] tabular-nums"
-        style={{
-          color: INK,
-          background: `linear-gradient(180deg, rgba(255,255,255,0.5), transparent 16%, transparent 84%, rgba(0,0,0,0.035)), ${PAPER}`,
-          clipPath: CLIP_RECEIPT,
-          WebkitClipPath: CLIP_RECEIPT,
-        }}
+        style={
+          bare
+            ? { color: INK }
+            : {
+                color: INK,
+                background: `linear-gradient(180deg, rgba(255,255,255,0.5), transparent 16%, transparent 84%, rgba(0,0,0,0.035)), ${PAPER}`,
+                clipPath: CLIP_RECEIPT,
+                WebkitClipPath: CLIP_RECEIPT,
+              }
+        }
         aria-label="Thermal receipt"
       >
-        <PaperGrain opacity={0.18} />
+        {bare ? null : <PaperGrain opacity={0.18} />}
         <CoffeeStain className="bottom-16 left-4" />
         <HandNote className="bottom-8 right-3 normal-case" rotate={-8}>
           lol remember this??

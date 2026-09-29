@@ -131,7 +131,7 @@ export function DateStamp({
       aria-hidden
     >
       <div
-        className="flex h-[4.5rem] w-[4.5rem] rotate-[-14deg] items-center justify-center rounded-full border-[2.5px] border-[#8b3a3a]/55 px-1 text-center font-mono text-[7px] font-bold uppercase leading-tight tracking-[0.12em] text-[#8b3a3a]/70"
+        className="ink-ring flex h-[4.5rem] w-[4.5rem] rotate-[-14deg] items-center justify-center rounded-full border-[2.5px] border-[#8b3a3a]/55 px-1 text-center font-mono text-[7px] font-bold uppercase leading-tight tracking-[0.12em] text-[#8b3a3a]/70"
         style={{
           boxShadow: 'inset 0 0 0 1px rgba(139,58,58,0.25)',
         }}

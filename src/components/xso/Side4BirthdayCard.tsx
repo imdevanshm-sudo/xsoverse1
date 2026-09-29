@@ -18,23 +18,33 @@ import { ScratchReveal } from '@/components/xso/paper/ScratchReveal';
 
 export interface Side4BirthdayCardProps {
   data: XsoData;
+  /** Drop the paper, tilt and shadow when the host card is the paper. */
+  bare?: boolean;
 }
 
-export function Side4BirthdayCard({ data }: Side4BirthdayCardProps) {
+export function Side4BirthdayCard({ data, bare = false }: Side4BirthdayCardProps) {
   const stamp = data.timestamp.split(/[\s/]/)[0] || '03.15';
 
   return (
     <article
-      className="relative mx-auto w-full max-w-[340px] overflow-hidden rounded-sm border border-[#e0d8c8] p-5 shadow-2xl"
-      style={{
-        background: '#fcfaf2',
-        boxShadow:
-          '0 28px 50px rgba(0,0,0,0.28), 0 12px 22px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.7)',
-        transform: 'rotate(2deg)',
-      }}
+      className={
+        bare
+          ? 'relative mx-auto w-full max-w-[340px] p-3'
+          : 'relative mx-auto w-full max-w-[340px] overflow-hidden rounded-sm border border-[#e0d8c8] p-5 shadow-2xl'
+      }
+      style={
+        bare
+          ? undefined
+          : {
+              background: '#fcfaf2',
+              boxShadow:
+                '0 28px 50px rgba(0,0,0,0.28), 0 12px 22px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.7)',
+              transform: 'rotate(2deg)',
+            }
+      }
       aria-label="Birthday letter and scratch-off"
     >
-      <PaperGrain opacity={0.32} />
+      {bare ? null : <PaperGrain opacity={0.32} />}
       <CoffeeStain className="right-3 top-6" />
       <DateStamp label={`${stamp} · LOVE`} className="bottom-28 right-3" />
       <HandNote className="right-4 top-[42%]" rotate={8}>
