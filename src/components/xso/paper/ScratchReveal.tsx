@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { playFoley } from '@/lib/foley';
 
 const BRUSH = 26;
 const REVEAL_RATIO = 0.48;
@@ -90,6 +91,7 @@ export function ScratchReveal({
   const revealedRef = useRef(false);
   const paintedSize = useRef('');
   const scratched = useRef(false);
+  const lastGrain = useRef(0);
   const sparkEls = useRef<(HTMLSpanElement | null)[]>([]);
   const sparkCursor = useRef(0);
   const [progress, setProgress] = useState(0);
@@ -255,6 +257,11 @@ export function ScratchReveal({
 
     const tail = points[points.length - 1];
     if (tail && Math.random() > 0.6) emitSpark(tail);
+    const now = performance.now();
+    if (now - lastGrain.current > 70) {
+      lastGrain.current = now;
+      playFoley('scratch', 0.9);
+    }
 
     if (performance.now() - lastSample.current >= SAMPLE_INTERVAL_MS) {
       checkProgress();

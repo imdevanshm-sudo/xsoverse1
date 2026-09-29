@@ -19,6 +19,7 @@ import {
   type MotionValue,
 } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
+import { playFoley } from '@/lib/foley';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
 import {
@@ -129,6 +130,7 @@ export function MemoryDeck({
   const nextIndex = order[1];
 
   const commit = () => {
+    if (!reduce) playFoley('land', 0.8);
     setFling(null);
     setOrder((current) => [...current.slice(1), current[0]]);
     onChange?.(nextIndex, artifacts[nextIndex].label);

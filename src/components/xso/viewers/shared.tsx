@@ -14,6 +14,7 @@ import { Side2Audit } from '@/components/xso/Side2Audit';
 import { Side3PhotoStrip } from '@/components/xso/Side3PhotoStrip';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
 import type { XsoData } from '@/types/xso';
+import { playFoley, type FoleyCue } from '@/lib/foley';
 
 export const SPRING = {
   type: 'spring' as const,
@@ -92,36 +93,14 @@ export function seededOffset(seed: string, index: number, amount: number): numbe
   return ((((hash >>> 0) % 1000) / 999) * 2 - 1) * amount;
 }
 
-export function playMechanicalCue(kind: 'click' | 'clack' | 'tack') {
-  try {
-    const AudioContextCtor =
-      window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioContextCtor) return;
-    const context = new AudioContextCtor();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const now = context.currentTime;
-    const frequency = kind === 'click' ? 260 : kind === 'clack' ? 110 : 420;
-    const duration = kind === 'clack' ? 0.12 : 0.07;
+const CUE_TO_FOLEY: Record<'click' | 'clack' | 'tack', FoleyCue> = {
+  click: 'flip',
+  clack: 'thunk',
+  tack: 'tap',
+};
 
-    oscillator.type = kind === 'clack' ? 'square' : 'triangle';
-    oscillator.frequency.setValueAtTime(frequency, now);
-    oscillator.frequency.exponentialRampToValueAtTime(
-      Math.max(45, frequency * 0.45),
-      now + duration,
-    );
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(now);
-    oscillator.stop(now + duration);
-    oscillator.addEventListener('ended', () => void context.close());
-  } catch {
-    // Audio feedback is progressive enhancement.
-  }
+export function playMechanicalCue(kind: 'click' | 'clack' | 'tack') {
+  playFoley(CUE_TO_FOLEY[kind]);
 }
 
 export function ArtifactSurface({

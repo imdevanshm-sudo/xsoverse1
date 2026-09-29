@@ -54,6 +54,7 @@ import {
   FilmFrameCounter,
   ProjectorBeamOverlay,
 } from '@/components/xso/paper/MovieBoxChrome';
+import { playFoley, type FoleyCue } from '@/lib/foley';
 
 const UI_SPRING = {
   type: 'spring' as const,
@@ -2151,120 +2152,16 @@ function rotateIndices(length: number, start: number) {
   return [...values.slice(safe), ...values.slice(0, safe)];
 }
 
+const CUE_TO_FOLEY: Record<'click' | 'clack' | 'rewind' | 'shuffle' | 'crank', FoleyCue> = {
+  click: 'flip',
+  clack: 'thunk',
+  rewind: 'whir',
+  shuffle: 'shuffle',
+  crank: 'crank',
+};
+
 function playCue(kind: 'click' | 'clack' | 'rewind' | 'shuffle' | 'crank') {
-  try {
-    const AudioContextCtor =
-      window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioContextCtor) return;
-
-    const context = new AudioContextCtor();
-    const now = context.currentTime;
-
-    if (kind === 'rewind') {
-      const thunk = context.createOscillator();
-      const whir = context.createOscillator();
-      const gain = context.createGain();
-      const whirGain = context.createGain();
-      thunk.type = 'square';
-      thunk.frequency.setValueAtTime(85, now);
-      thunk.frequency.exponentialRampToValueAtTime(42, now + 0.09);
-      gain.gain.setValueAtTime(0.09, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-      whir.type = 'sawtooth';
-      whir.frequency.setValueAtTime(190, now);
-      whir.frequency.linearRampToValueAtTime(320, now + 0.14);
-      whirGain.gain.setValueAtTime(0.025, now);
-      whirGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
-      thunk.connect(gain);
-      whir.connect(whirGain);
-      gain.connect(context.destination);
-      whirGain.connect(context.destination);
-      thunk.start(now);
-      whir.start(now);
-      thunk.stop(now + 0.11);
-      whir.stop(now + 0.17);
-      whir.addEventListener('ended', () => void context.close());
-      return;
-    }
-
-    if (kind === 'crank') {
-      const clack = context.createOscillator();
-      const ratchet = context.createOscillator();
-      const gain = context.createGain();
-      const ratchetGain = context.createGain();
-      clack.type = 'square';
-      clack.frequency.setValueAtTime(95, now);
-      clack.frequency.exponentialRampToValueAtTime(55, now + 0.08);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-      ratchet.type = 'triangle';
-      ratchet.frequency.setValueAtTime(240, now);
-      ratchet.frequency.linearRampToValueAtTime(120, now + 0.14);
-      ratchetGain.gain.setValueAtTime(0.04, now);
-      ratchetGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-      clack.connect(gain);
-      ratchet.connect(ratchetGain);
-      gain.connect(context.destination);
-      ratchetGain.connect(context.destination);
-      clack.start(now);
-      ratchet.start(now);
-      clack.stop(now + 0.1);
-      ratchet.stop(now + 0.16);
-      clack.addEventListener('ended', () => void context.close());
-      return;
-    }
-
-    if (kind === 'shuffle') {
-      // Soft paper-slide whisper
-      const slide = context.createOscillator();
-      const rustle = context.createOscillator();
-      const gain = context.createGain();
-      const rustleGain = context.createGain();
-      slide.type = 'triangle';
-      slide.frequency.setValueAtTime(140, now);
-      slide.frequency.exponentialRampToValueAtTime(70, now + 0.18);
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-      rustle.type = 'sawtooth';
-      rustle.frequency.setValueAtTime(420, now);
-      rustle.frequency.linearRampToValueAtTime(180, now + 0.12);
-      rustleGain.gain.setValueAtTime(0.018, now);
-      rustleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-      slide.connect(gain);
-      rustle.connect(rustleGain);
-      gain.connect(context.destination);
-      rustleGain.connect(context.destination);
-      slide.start(now);
-      rustle.start(now);
-      slide.stop(now + 0.22);
-      rustle.stop(now + 0.15);
-      slide.addEventListener('ended', () => void context.close());
-      return;
-    }
-
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const frequency = kind === 'click' ? 260 : 110;
-    const duration = kind === 'clack' ? 0.12 : 0.07;
-
-    oscillator.type = kind === 'clack' ? 'square' : 'triangle';
-    oscillator.frequency.setValueAtTime(frequency, now);
-    oscillator.frequency.exponentialRampToValueAtTime(
-      Math.max(45, frequency * 0.45),
-      now + duration,
-    );
-    gain.gain.setValueAtTime(0.07, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(now);
-    oscillator.stop(now + duration);
-    oscillator.addEventListener('ended', () => void context.close());
-  } catch {
-    // Audio is optional tactile feedback.
-  }
+  playFoley(CUE_TO_FOLEY[kind]);
 }
 
 export default R3FUnifiedViewer;
