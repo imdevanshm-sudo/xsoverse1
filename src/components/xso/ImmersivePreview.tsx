@@ -135,7 +135,7 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
           }
           caption={memory.label ? `Holding · ${memory.label}` : undefined}
         />
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <div className="grid">
           <MatteCta
             onClick={create}
             label="Create Your XSO"
@@ -143,14 +143,6 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
             loadingLabel="Opening…"
             ariaLabel={`Create your XSO, ${CARTRIDGE_PRICE}`}
           />
-          <button
-            type="button"
-            onClick={create}
-            className="paper-button flex min-h-[3.25rem] touch-manipulation items-center justify-center rounded-full px-4 font-receipt text-[11px] font-bold uppercase tracking-[0.14em] transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.98]"
-            aria-label="Customize: pick the cards and write it with AI"
-          >
-            Customize
-          </button>
         </div>
       </DeskDock>
       <XSOCustomizerHost />

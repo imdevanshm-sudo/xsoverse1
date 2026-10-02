@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, ChevronDown, Lock, X } from 'lucide-react';
+import { ArrowLeft, Lock, X } from 'lucide-react';
 import {
   CRAFT_LIMITS,
   storyToPatch,
@@ -12,7 +12,6 @@ import {
 } from '@/lib/aiCraft';
 import {
   AdjustBar,
-  CraftBadge,
   CraftStatus,
   GenerateButton,
   MemorySpark,
@@ -32,7 +31,8 @@ import { compressPhotoForStyle } from '@/lib/media';
 import { startCheckout } from '@/lib/startCheckout';
 import { pickXsoPayload } from '@/lib/xsoPayload';
 import { MatteCta } from '@/components/desk/MatteCta';
-import { FormatEditor, type FormatPatch } from '@/components/xso/FormatEditor';
+import { CardDetailsEditor, type FormatPatch } from '@/components/xso/FormatEditor';
+import { personalize } from '@/lib/personalize';
 import { CardChecklist, FormatStep } from '@/components/storefront/customizer/steps';
 import { FormatThumb } from '@/components/storefront/customizer/FormatThumb';
 import { MAX_PHOTOS, PhotoPicker } from '@/components/storefront/customizer/PhotoPicker';
@@ -48,11 +48,14 @@ import { LOOP_CARDS, type LoopCard, type XsoData } from '@/types/xso';
 const STEPS = [
   { title: 'Choose a format', next: 'Next: choose cards' },
   { title: 'Pick the cards', next: 'Next: add the vibe' },
-  { title: 'Vibe & Memory Spark', next: 'Next: add photos' },
-  { title: 'Photos & magic', next: '' },
-  { title: 'Preview & checkout', next: '' },
+  { title: 'Vibe & Memory Spark', next: '✨ Write my story' },
+  { title: 'Edit & refine details', next: 'Generate Final Preview' },
+  { title: 'Final preview', next: 'Proceed to Checkout' },
 ] as const;
+const DETAILS = 3;
 const LAST = STEPS.length - 1;
+/** Signs the letter when the sender leaves their name blank. */
+const ANONYMOUS_SENDER = 'Me';
 const FOCUSABLE =
   'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const LABEL = 'font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]';
@@ -78,6 +81,7 @@ function seedDraft(id: ThemeId): Draft {
 
 const EMPTY_VIBE: OrderVibe = {
   recipientName: '',
+  senderName: '',
   relationship: null,
   tone: null,
   question: null,
@@ -116,14 +120,12 @@ export function XSOCustomizerModal() {
   const [crafting, setCrafting] = useState<'generate' | Adjustment | null>(null);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
   const [focusCard, setFocusCard] = useState<number | undefined>(undefined);
   const busy = paying || crafting !== null;
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const editorRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const setVibe = useCallback(
@@ -144,7 +146,6 @@ export function XSOCustomizerModal() {
         selectedCards: selectedCards({ ...draft, id: '', giftStyle: next }, next),
       }));
       setCrafted(null);
-      setEditorOpen(false);
     },
     [config.format, draft],
   );
@@ -254,6 +255,20 @@ export function XSOCustomizerModal() {
   }, [prompts.questions, question, setVibe]);
 
   const name = vibe.recipientName.trim();
+  const names = useMemo(
+    () => ({ recipient: name, sender: vibe.senderName.trim() || ANONYMOUS_SENDER }),
+    [name, vibe.senderName],
+  );
+  /** What the current story was written from; unchanged answers keep step-4 edits. */
+  const craftKey = JSON.stringify([
+    config.format,
+    cards,
+    vibe.relationship,
+    vibe.tone,
+    question,
+    vibe.answer.trim(),
+  ]);
+  const craftedFrom = useRef<string | null>(null);
   const vibeDone =
     name.length > 0 &&
     vibe.relationship !== null &&
@@ -282,9 +297,10 @@ export function XSOCustomizerModal() {
           },
           controller.signal,
         );
-        setDraft((d) => ({ ...d, ...storyToPatch(result.story, d) }));
+        setDraft((d) => personalize({ ...d, ...storyToPatch(result.story, d) }, names));
         setCrafted(result.source);
-        setStep(LAST);
+        craftedFrom.current = craftKey;
+        if (!adjust) setStep(DETAILS);
       } catch (err) {
         if (controller.signal.aborted) return;
         setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
@@ -292,8 +308,17 @@ export function XSOCustomizerModal() {
         if (abortRef.current === controller) setCrafting(null);
       }
     },
-    [cards, crafting, name, question, style, vibe],
+    [cards, craftKey, crafting, name, names, question, style, vibe],
   );
+  /** Step 3 → 4: write the story, unless these exact answers already did. */
+  const writeStory = useCallback(() => {
+    if (crafted && craftedFrom.current === craftKey) {
+      setDraft((d) => personalize(d, names));
+      setStep(DETAILS);
+      return;
+    }
+    void generate();
+  }, [craftKey, crafted, generate, names]);
 
   const patchDraft = useCallback((patch: FormatPatch) => setDraft((d) => ({ ...d, ...patch })), []);
   /** The editor's own card toggles (loop cards, scrapbook pieces) stay in sync with the checklist. */
@@ -307,24 +332,6 @@ export function XSOCustomizerModal() {
     },
     [style],
   );
-  const themeRef = useRef(theme);
-  themeRef.current = theme;
-  const resetStory = useCallback(
-    () =>
-      setDraft((d) => ({
-        ...packContent(themeRef.current),
-        customerName: d.customerName,
-        billerName: d.billerName,
-        voiceNoteUrl: d.voiceNoteUrl,
-      })),
-    [],
-  );
-  const openEditor = useCallback(() => {
-    setEditorOpen(true);
-    requestAnimationFrame(() =>
-      editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-    );
-  }, []);
 
   const scrapbook = style === 'scrapbook';
   const withCards = useMemo(
@@ -375,7 +382,7 @@ export function XSOCustomizerModal() {
   }, [busy, commit, style]);
 
   const pack = getTheme(theme) ?? THEMES[0];
-  const canNext = step === 0 || step === 1 || (step === 2 && vibeDone);
+  const canNext = step === 0 || step === 1;
   const photoPicker = (
     <PhotoPicker
       photos={photos}
@@ -456,7 +463,7 @@ export function XSOCustomizerModal() {
 
         <div
           ref={bodyRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-4"
+          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-4 ${step === LAST ? 'pb-32' : 'pb-6'}`}
         >
           {step === 0 ? <FormatStep format={config.format} onFormat={pickFormat} /> : null}
 
@@ -472,6 +479,8 @@ export function XSOCustomizerModal() {
               <VibeFields
                 name={vibe.recipientName}
                 onName={(recipientName) => setVibe({ recipientName })}
+                senderName={vibe.senderName}
+                onSenderName={(senderName) => setVibe({ senderName })}
                 relationship={vibe.relationship}
                 onRelationship={(relationship: Relationship) => setVibe({ relationship })}
                 vibe={vibe.tone}
@@ -489,7 +498,7 @@ export function XSOCustomizerModal() {
                     onQuestion={(q) => setVibe({ question: q })}
                     answer={vibe.answer}
                     onAnswer={(answer) => setVibe({ answer })}
-                    onSubmit={() => setStep(3)}
+                    onSubmit={() => vibeDone && !busy && writeStory()}
                   />
                 </div>
               ) : (
@@ -501,88 +510,38 @@ export function XSOCustomizerModal() {
             </div>
           ) : null}
 
-          {step === 3 ? (
-            <div className="grid gap-4">
-              <p className="text-[14px] leading-relaxed text-[#e0b4c6]">
-                Photos are optional. Skip them and we&apos;ll use the {pack.title} pack&apos;s
-                placeholders, which you can swap any time before checkout.
+          {step === DETAILS ? (
+            <div className="grid gap-5">
+              <FormatThumb data={previewData} style={style} focus={focusCard} />
+              {crafted ? <CraftStatus source={crafted} name={name} /> : null}
+              <p className="text-[13px] leading-snug text-[#c99aae]">
+                Open any card to change its words. Photos are optional: without them we use the
+                placeholders from {pack.title}.
               </p>
-              <div>{photoPicker}</div>
-              {crafted ? (
-                <button
-                  type="button"
-                  onClick={() => setStep(LAST)}
-                  disabled={busy}
-                  className="justify-self-center text-[13px] font-semibold text-[#f9a8d4] underline underline-offset-2"
-                >
-                  Keep my current story and go to the preview
-                </button>
-              ) : null}
+              <CardDetailsEditor
+                key={style}
+                style={style}
+                cards={cards}
+                fields={withCards}
+                onPatch={patchDraft}
+                onFormat={patchFormat}
+                photoSlot={photoPicker}
+                onFocusCard={setFocusCard}
+              />
             </div>
           ) : null}
 
           {step === LAST ? (
             <div className="grid gap-5" aria-live="polite">
-              <FormatThumb
-                data={previewData}
-                style={style}
-                focus={focusCard}
-                large
-                onEdit={openEditor}
-                badge={crafted ? <CraftBadge source={crafted} /> : null}
-              />
-              {crafted ? <CraftStatus source={crafted} name={name} /> : null}
+              <FormatThumb data={previewData} style={style} focus={focusCard} fit />
               <section>
                 <p className={`mb-2 ${LABEL}`}>Quick adjustments</p>
-                <AdjustBar
-                  busy={crafting}
-                  onAdjust={(a) => void generate(a)}
-                  onChangeAnswers={() => setStep(2)}
-                />
+                <AdjustBar busy={crafting} onAdjust={(a) => void generate(a)} />
+                <p className="mt-2 text-[12px] leading-snug text-[#9a6a7e]">
+                  Rewrites the story in a new direction. Your photos stay; to change single lines,
+                  go back a step.
+                </p>
               </section>
-              <section>
-                <p className={`mb-2 ${LABEL}`}>Cards in your XSO</p>
-                <CardChecklist
-                  format={config.format}
-                  cards={cards}
-                  onCards={setCards}
-                  variant="chips"
-                />
-              </section>
-              <div ref={editorRef} className="scroll-mt-2">
-                <button
-                  type="button"
-                  aria-expanded={editorOpen}
-                  onClick={() => setEditorOpen((o) => !o)}
-                  className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-white/10 bg-[#21131b] px-4 text-left text-[15px] font-semibold text-[#fdf2f8]"
-                >
-                  <span>
-                    Edit every detail
-                    <span className="block text-[12.5px] font-normal text-[#c99aae]">
-                      Optional: photos, line items, scores and the letter
-                    </span>
-                  </span>
-                  <ChevronDown
-                    className={`h-5 w-5 text-[#c99aae] transition-transform ${editorOpen ? 'rotate-180' : ''}`}
-                    aria-hidden
-                  />
-                </button>
-                {editorOpen ? (
-                  <div className="mt-4">
-                    <FormatEditor
-                      key={style}
-                      style={style}
-                      fields={withCards}
-                      onPatch={patchDraft}
-                      onFormat={patchFormat}
-                      photoSlot={photoPicker}
-                      packTitle={pack.title}
-                      onReset={resetStory}
-                      onFocusCard={setFocusCard}
-                    />
-                  </div>
-                ) : null}
-              </div>
             </div>
           ) : null}
 
@@ -597,7 +556,7 @@ export function XSOCustomizerModal() {
         </div>
 
         <footer className="border-t border-white/10 px-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-3">
-          {step < 3 ? (
+          {step < 2 ? (
             <button
               type="button"
               onClick={() => canNext && setStep((s) => s + 1)}
@@ -606,19 +565,26 @@ export function XSOCustomizerModal() {
             >
               {STEPS[step].next}
             </button>
-          ) : step === 3 ? (
+          ) : step === 2 ? (
             <GenerateButton
               busy={crafting === 'generate'}
+              disabled={!vibeDone || busy}
+              onClick={writeStory}
+              label={STEPS[2].next}
+            />
+          ) : step === DETAILS ? (
+            <GenerateButton
+              busy={false}
               disabled={busy || processing > 0}
-              onClick={() => void generate()}
-              label={crafted ? '✨ Regenerate Keepsake' : '✨ Generate Keepsake'}
+              onClick={() => setStep(LAST)}
+              label={STEPS[DETAILS].next}
             />
           ) : (
             <MatteCta
               onClick={checkout}
               loading={paying}
               disabled={crafting !== null}
-              label="Proceed to Checkout"
+              label={STEPS[LAST].next}
               price={CARTRIDGE_PRICE}
               loadingLabel="Opening secure checkout…"
               ariaLabel={`Proceed to checkout, ${CARTRIDGE_PRICE}`}

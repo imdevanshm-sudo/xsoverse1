@@ -1,6 +1,14 @@
 'use client';
 
-import { memo, useCallback, useDeferredValue, type ReactNode } from 'react';
+import {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { FormatPreview } from '@/components/xso/preview/FormatPreview';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
@@ -8,6 +16,22 @@ import type { GiftStyle, XsoData } from '@/types/xso';
 const DESK_W = 380;
 const DESK_H = 470;
 const SCALE = { small: 0.45, large: 0.78 } as const;
+
+/** Scale that makes the desk fill its container's width (never above 1:1). */
+function useFitScale(enabled: boolean, fallback: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(fallback);
+  useEffect(() => {
+    const node = ref.current;
+    if (!enabled || !node) return;
+    const measure = () => setScale(Math.min(1, node.clientWidth / DESK_W) || fallback);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [enabled, fallback]);
+  return [ref, scale] as const;
+}
 
 const THUMB_COPY: Record<GiftStyle, string> = {
   scrapbook: 'Every piece you check lands on their desk. Uncheck one and it’s cleared away.',
@@ -23,6 +47,7 @@ export const FormatThumb = memo(function FormatThumb({
   style,
   focus,
   large = false,
+  fit = false,
   onEdit,
   badge,
 }: {
@@ -30,6 +55,8 @@ export const FormatThumb = memo(function FormatThumb({
   style: GiftStyle;
   focus?: number;
   large?: boolean;
+  /** Full width of the container, for the final preview. */
+  fit?: boolean;
   onEdit?: () => void;
   badge?: ReactNode;
 }) {
@@ -37,10 +64,11 @@ export const FormatThumb = memo(function FormatThumb({
   const makeInert = useCallback((node: HTMLDivElement | null) => {
     node?.setAttribute('inert', '');
   }, []);
-  const scale = SCALE[large ? 'large' : 'small'];
+  const [fitRef, fitScale] = useFitScale(fit, SCALE.large);
+  const scale = fit ? fitScale : SCALE[large ? 'large' : 'small'];
   const Frame = onEdit ? 'button' : 'div';
   return (
-    <div className={`flex items-center gap-4 ${large ? 'flex-col' : ''}`}>
+    <div ref={fitRef} className={`flex items-center gap-4 ${large || fit ? 'flex-col' : ''}`}>
       <Frame
         {...(onEdit
           ? { type: 'button' as const, onClick: onEdit, 'aria-label': 'Edit every detail' }
@@ -66,7 +94,7 @@ export const FormatThumb = memo(function FormatThumb({
           />
         </div>
       </Frame>
-      {large ? null : (
+      {large || fit ? null : (
         <div className="min-w-0">
           <p className="flex items-center gap-2 font-receipt text-[10px] uppercase tracking-[0.2em] text-[#fdba74]">
             <span aria-hidden className="led-peach" />

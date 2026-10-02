@@ -157,10 +157,15 @@ export function VibeFields({
   onRelationship,
   vibe,
   onVibe,
+  senderName,
+  onSenderName,
 }: {
   tone?: ToneName;
   name: string;
   onName: (name: string) => void;
+  /** Shown when the host wants the sign-off name too. */
+  senderName?: string;
+  onSenderName?: (name: string) => void;
   relationship: Relationship | null;
   onRelationship: (r: Relationship) => void;
   vibe: CraftTone | null;
@@ -170,7 +175,24 @@ export function VibeFields({
   const p = PILL[tone];
   return (
     <div className="grid gap-5">
-      <NameInput t={t} name={name} onName={onName} />
+      {onSenderName ? (
+        <div className="grid gap-3 min-[400px]:grid-cols-2">
+          <NameInput t={t} name={name} onName={onName} />
+          <label className="grid gap-1.5">
+            <span className={t.field}>Your name</span>
+            <input
+              value={senderName ?? ''}
+              onChange={(e) => onSenderName(e.target.value.slice(0, CRAFT_LIMITS.name))}
+              placeholder="Signs the letter"
+              autoComplete="given-name"
+              enterKeyHint="next"
+              className={t.input}
+            />
+          </label>
+        </div>
+      ) : (
+        <NameInput t={t} name={name} onName={onName} />
+      )}
       <fieldset>
         <legend className={t.field}>You are their…</legend>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -335,7 +357,7 @@ export function AdjustBar({
   tone?: ToneName;
   busy: Adjustment | 'generate' | null;
   onAdjust: (adjust: Adjustment) => void;
-  onChangeAnswers: () => void;
+  onChangeAnswers?: () => void;
   error?: string | null;
 }) {
   const t = TONES[tone];
@@ -360,10 +382,12 @@ export function AdjustBar({
             {a.label}
           </button>
         ))}
-        <button type="button" onClick={onChangeAnswers} disabled={busy !== null} className={chip}>
-          <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-          Change my answers
-        </button>
+        {onChangeAnswers ? (
+          <button type="button" onClick={onChangeAnswers} disabled={busy !== null} className={chip}>
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+            Change my answers
+          </button>
+        ) : null}
       </div>
       {busy && busy !== 'generate' ? (
         <p className={`mt-2 text-[12.5px] ${p.hint}`} role="status">

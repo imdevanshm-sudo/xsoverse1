@@ -68,6 +68,17 @@ async function generateJson(
   return JSON.parse(raw) as unknown;
 }
 
+let warnedNoKey = false;
+/** Server-only; the Google SDK's own name is accepted too. */
+function geminiKey() {
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!key && !warnedNoKey) {
+    warnedNoKey = true;
+    console.warn('[generate-xso] GEMINI_API_KEY is not set; using the offline story template.');
+  }
+  return key;
+}
+
 export async function POST(req: NextRequest) {
   const text = await req.text().catch(() => '');
   if (text.length > MAX_BODY) {
@@ -89,7 +100,7 @@ export async function POST(req: NextRequest) {
       { status: 429 },
     );
   }
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = geminiKey();
 
   if (mode === 'questions') {
     const input = parseQuestionsInput(body);

@@ -24,7 +24,7 @@ const RECEIPT: CardMeta = {
 };
 const AUDIT: CardMeta = {
   id: 'audit',
-  label: 'Audit Card',
+  label: 'Audit / Roast Card',
   detail: 'Scores, red flags, green flags and the stamp',
 };
 const PHOTOS: CardMeta = { id: 'photos', label: 'Photo Card', detail: 'A strip of your photos' };
@@ -47,17 +47,21 @@ export const FORMAT_CARDS: Record<GiftStyle, CardMeta[]> = {
   ],
   scrapbook: [
     RECEIPT,
-    { id: 'polaroids', label: 'Polaroid Card', detail: 'Your photos with a handwritten caption' },
+    {
+      id: 'polaroids',
+      label: 'Photo Card · Polaroids',
+      detail: 'Your photos with a handwritten caption',
+    },
     { id: 'sticky', label: 'Sticky Note', detail: 'A secret message they peel to read' },
     { id: 'letter', label: 'Letter Card', detail: 'A folded note with the unspoken words' },
     { id: 'ticket', label: 'Ticket Stub', detail: 'Where and when it all happened' },
   ],
   accordion: STACK,
   moviebox: [
-    { ...RECEIPT, label: 'Opening Scene', detail: 'The receipt, as the first frame' },
-    { ...AUDIT, label: 'Audit Scene', detail: 'Scores and flags, on the reel' },
-    { ...PHOTOS, label: 'Faces Scene', detail: 'Your photos, frame by frame' },
-    { ...LETTER, label: 'Final Scene', detail: 'The letter that rolls the credits' },
+    { ...RECEIPT, detail: 'Scene 1 · the receipt opens the reel' },
+    { ...AUDIT, detail: 'Scene 2 · scores, flags and the star rating' },
+    { ...PHOTOS, detail: 'Scene 3 · your photos, frame by frame' },
+    { ...LETTER, detail: 'Scene 4 · the letter that rolls the credits' },
   ],
 };
 

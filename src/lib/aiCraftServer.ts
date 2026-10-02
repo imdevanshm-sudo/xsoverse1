@@ -279,17 +279,75 @@ const TEMPLATE: Record<
   },
 };
 
-function memoryBits(text: string) {
+/** Filler before a memory's subject: "the", "that time", "remember when". */
+const LEAD = /^((the|a|an|our|my|her|his|their|that|this|those|when|remember|time)\s+)+/i;
+const SUBJECT = /^(she|he|they|we|i)\s+((?:always|just|still|never|once)\s+)?/i;
+/** Words a short title shouldn't end on ("run where", "cried over"). */
+const TAIL =
+  /\s+(the|a|an|of|to|with|and|or|but|in|on|at|for|over|from|my|our|your|her|his|their|she|he|we|i|they|it|was|were|is|got|had)$/i;
+/** Where a memory's subject ends and its story begins. */
+const CLAUSE =
+  /\s+(?:where|when|while|because|cause|that|who|which|after|before|until|so|then)\s+/i;
+
+function trimTail(text: string) {
+  let out = text;
+  for (let prev = ''; prev !== out;) {
+    prev = out;
+    out = out.replace(TAIL, '');
+  }
+  return out;
+}
+
+interface MemoryBit {
+  /** Receipt line and tape-label material: "3am waffle house run". */
+  title: string;
+  /** Reads after "I still think about": "the 3am waffle house run", "how Maya steals my fries". */
+  prose: string;
+  /** A thing, not an action, so it takes "the" / "another". */
+  noun: boolean;
+}
+
+/** Splits the memory into short, grammatical pieces instead of raw fragments. */
+function memoryBits(text: string, name: string): MemoryBit[] {
   return text
     .split(/[\n,.;!?]+|\band\b|\s&\s/i)
-    .map((s) =>
-      s
-        .trim()
-        .replace(/^((the|our|we|i|my|her|his|their|she|he|they|always|just)\s+)+/i, '')
-        .trim(),
-    )
-    .filter((s) => s.length > 2)
+    .map((part) => {
+      const clause = part.split(CLAUSE)[0].trim().replace(LEAD, '').trim();
+      const subject = clause.match(SUBJECT);
+      const title = trimTail(words(clause.slice(subject?.[0].length ?? 0), 32))
+        .replace(/["“”()[\]{}*#@<>~^|\\]/g, '')
+        .trim();
+      if (title.length <= 2) return null;
+      if (subject) {
+        const who = subject[1].toLowerCase();
+        const pronoun = who === 'i' ? 'I' : who === 'we' ? 'we' : name;
+        return { title, prose: `how ${pronoun} ${subject[2] ?? ''}${title}`, noun: false };
+      }
+      const gerund = /^\w+ing\b/i.test(title);
+      return { title, prose: gerund ? title : `the ${title}`, noun: !gerund };
+    })
+    .filter((bit): bit is MemoryBit => bit !== null)
     .slice(0, 4);
+}
+
+const SMALL = new Set(['a', 'an', 'the', 'of', 'and', 'or', 'in', 'on', 'at', 'to', 'for', 'with']);
+function titleCase(text: string) {
+  return text
+    .split(' ')
+    .map((w, i) =>
+      i > 0 && SMALL.has(w.toLowerCase()) ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1),
+    )
+    .join(' ');
+}
+
+function capitalize(text: string) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** "a", "b" and "c" as prose. */
+function listOf(items: string[]) {
+  if (items.length < 2) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
 /** Clips at a word boundary so receipt lines never end mid-word. */
@@ -317,10 +375,16 @@ export function templateStory(craft: CraftInput): CraftedStory {
         : craft.tone;
   const input = { ...craft, tone };
   const t = TEMPLATE[tone];
-  const bits = memoryBits(input.memoryText);
-  const lore = [...bits, 'shared brain cell', 'unpaid therapy', 'group chat chaos', 'snack theft'];
+  const name = input.recipientName.trim();
+  const bits = memoryBits(input.memoryText, name);
+  const filler = ['shared brain cell', 'unpaid therapy', 'group chat chaos', 'snack theft'].map(
+    (title) => ({ title, prose: `the ${title}`, noun: true }),
+  );
+  const lore = [...bits, ...filler].map((b) => b.title);
   const first = lore[0];
-  const name = input.recipientName;
+  const title = titleCase(first);
+  const nouns = [...bits.filter((b) => b.noun), ...filler];
+  const shared = bits.length ? bits.slice(0, 2).map((b) => b.prose) : ['every late-night call'];
   const prices = ['$40.00', 'UNPAID', 'LORE', '∞'];
   const qtys = ['42x', '3h', '7x', '∞'];
   const story: CraftedStory = {
@@ -330,7 +394,7 @@ export function templateStory(craft: CraftInput): CraftedStory {
     receiptDate: today(),
     lineItems: lore.slice(0, 4).map((bit, i) => ({
       qty: qtys[i],
-      description: words(bit, 28).toUpperCase(),
+      description: trimTail(words(bit, 22)).toUpperCase(),
       price: prices[i],
     })),
     total: t.total,
@@ -342,17 +406,19 @@ export function templateStory(craft: CraftInput): CraftedStory {
       support: { label: 'Emotional Support', stars: 5 },
     },
     greenFlags: [
-      `Always down for ${lore[0]}`.slice(0, 60),
+      `Always down for another ${nouns[0].title}`.slice(0, 60),
       'Remembers every inside joke',
       'Shows up without being asked',
     ],
     redFlags: [
-      `Will never let ${lore[1]} go`.slice(0, 60),
+      `Will never let ${nouns[1].prose} go`.slice(0, 60),
       'Says "5 minutes away" from home',
       'Steals fries, denies it',
     ],
     stampText: t.stamp,
-    letter: `${name}, ${t.open} Like ${first}. Like ${lore[1]}. Somehow those are my favorite memories.\n\n${t.close}`.slice(0, 420),
+    letter: `${name},\n\n${t.open} I still think about ${listOf(shared)}. ${
+      shared.length > 1 ? 'Somehow those are' : 'Somehow that is still one of'
+    } my favorite memories.\n\n${t.close}`.slice(0, 420),
     scratchOffReward: `CODE: ${first
       .toUpperCase()
       .replace(/[^A-Z0-9]+/g, '-')
@@ -362,9 +428,9 @@ export function templateStory(craft: CraftInput): CraftedStory {
   const formats = [input.format];
   if (formats.includes('scrapbook')) {
     story.scrapbook = {
-      secretNote: `psst. ${first} > everything.`.slice(0, LIMITS.secretNote),
-      polaroidCaption: `the ${first} era.`.slice(0, LIMITS.polaroidCaption),
-      ticketTitle: words(first, LIMITS.ticketTitle),
+      secretNote: `psst. ${shared[0]} > everything.`.slice(0, LIMITS.secretNote),
+      polaroidCaption: `the ${first.toLowerCase()} era.`.slice(0, LIMITS.polaroidCaption),
+      ticketTitle: words(title, LIMITS.ticketTitle),
       ticketPlace: 'wherever we ended up',
       ticketWhen: 'way past bedtime',
     };
@@ -374,9 +440,9 @@ export function templateStory(craft: CraftInput): CraftedStory {
   }
   if (formats.includes('rewind')) {
     story.rewind = {
-      sideA: words(first, FORMAT_LIMITS.sideA),
+      sideA: words(title, FORMAT_LIMITS.sideA),
       sideB: 'The ones we replay',
-      review: `★★★★★ ${name} delivers a career-best performance in "${first}". ${t.close}`.slice(
+      review: `★★★★★ ${name} delivers a career-best performance in “${title}.” ${t.close}`.slice(
         0,
         FORMAT_LIMITS.review,
       ),
@@ -385,9 +451,17 @@ export function templateStory(craft: CraftInput): CraftedStory {
   if (formats.includes('moviebox')) {
     story.moviebox = {
       scenes: [
-        { title: 'Opening night', timestamp: '02:47 AM', description: `It started with ${first}.` },
+        {
+          title: 'Opening night',
+          timestamp: '02:47 AM',
+          description: `It started with ${shared[0]}.`,
+        },
         { title: 'The audit', timestamp: 'Act II', description: 'The numbers do not lie.' },
-        { title: 'Our faces', timestamp: 'Montage', description: `${lore[1]}, in slow motion.` },
+        {
+          title: 'Our faces',
+          timestamp: 'Montage',
+          description: `${capitalize([...bits, ...filler][1].prose)}, in slow motion.`,
+        },
         { title: 'The last line', timestamp: 'Fin', description: t.close },
       ].map((s) => ({ ...s, description: s.description.slice(0, 115) })),
       verdict: `A ${input.relationship.toLowerCase()} story for the ages.`,

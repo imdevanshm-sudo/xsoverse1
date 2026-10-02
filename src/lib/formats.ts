@@ -37,10 +37,10 @@ export function overallStars(metrics: AuditMetrics): number {
 }
 
 export const LOOP_CARD_META = {
-  receipt: { label: 'Card 1 · The Receipt', detail: 'Title, timestamp & what it cost' },
-  audit: { label: 'Card 2 · The Roast', detail: 'Red flags, green flags & the stamp' },
-  photos: { label: 'Card 3 · The Faces', detail: 'Your photo strip' },
-  letter: { label: 'Card 4 · The Closer', detail: 'Closing letter & voice note' },
+  receipt: { label: 'Receipt Card', detail: 'Title, timestamp & what it cost' },
+  audit: { label: 'Audit / Roast Card', detail: 'Red flags, green flags & the stamp' },
+  photos: { label: 'Photo Card', detail: 'Your photo strip' },
+  letter: { label: 'Letter Card', detail: 'Closing letter & voice note' },
 } as const;
 
 /** The deck needs two cards to have something to loop to. */
@@ -183,10 +183,7 @@ const REWIND_CARDS = [...LOOP_CARDS, 'liner'] as const;
 const MIN_STACK_CARDS = 2;
 
 /** Optional `cards` list: absent (show everything) unless a valid subset was sent. */
-function stackCardsField<T extends string>(
-  raw: unknown,
-  allowed: readonly T[],
-): { cards?: T[] } {
+function stackCardsField<T extends string>(raw: unknown, allowed: readonly T[]): { cards?: T[] } {
   if (!Array.isArray(raw)) return {};
   const cards = allowed.filter((id) => raw.includes(id));
   return cards.length >= MIN_STACK_CARDS ? { cards } : {};

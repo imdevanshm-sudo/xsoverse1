@@ -7,10 +7,10 @@ import {
 } from '@/types/xso';
 
 export const ELEMENT_META: Record<ScrapbookElement, { label: string; detail: string }> = {
-  receipt: { label: 'Itemized Receipt', detail: 'Custom store name, date, line items & pricing' },
-  polaroids: { label: 'Polaroid Photographs', detail: 'Upload photos + handwritten caption' },
+  receipt: { label: 'Receipt Card', detail: 'Custom store name, date, line items & pricing' },
+  polaroids: { label: 'Photo Card · Polaroids', detail: 'Upload photos + handwritten caption' },
   sticky: { label: 'Sticky Note · Secret Message', detail: 'Custom text revealed on tap / peel' },
-  letter: { label: 'Folded Letter · Unspoken Words', detail: 'Full written note' },
+  letter: { label: 'Letter Card', detail: 'Full written note' },
   ticket: { label: 'Ticket Stub · Memory Coordinates', detail: 'Event title, location, timestamp' },
   voice: { label: 'Voice Note · Song Memory', detail: 'Audio upload or Spotify link' },
 };

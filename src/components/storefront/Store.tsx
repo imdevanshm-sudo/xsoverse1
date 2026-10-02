@@ -28,7 +28,7 @@ import { DeckBox } from '@/components/storefront/DeckBox';
 import { StyleDemo } from '@/components/storefront/StyleDemo';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { HeroMarquee } from '@/components/storefront/HeroMarquee';
-import { StickyExpressBar } from '@/components/storefront/StickyExpressBar';
+import { StickyCreateBar } from '@/components/storefront/StickyCreateBar';
 import { XSOCustomizerHost } from '@/components/storefront/XSOCustomizerHost';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { CINEMATIC, FORMAT_SWAP } from '@/lib/motion';
@@ -329,13 +329,6 @@ export function Store() {
                     loadingLabel="Opening…"
                     ariaLabel={`Create your XSO as ${displayTitle(format)} with ${activeTheme.title}, ${CARTRIDGE_PRICE}`}
                   />
-                  <button
-                    type="button"
-                    onClick={createXso}
-                    className="flex min-h-[44px] touch-manipulation items-center justify-center rounded-full px-5 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#c99aae] underline decoration-[#6b3f4f] underline-offset-4 transition-colors hover:text-[#fdf2f8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
-                  >
-                    Customize first →
-                  </button>
                 </div>
               </div>
             </div>
@@ -377,7 +370,7 @@ export function Store() {
           </p>
         </section>
       </div>
-      <StickyExpressBar />
+      <StickyCreateBar />
       <XSOCustomizerHost />
     </main>
   );

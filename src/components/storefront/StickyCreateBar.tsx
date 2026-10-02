@@ -9,7 +9,7 @@ import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { socialProofLine } from '@/lib/socialProof';
 
 /** Mobile-only buy bar pinned to the bottom of the store. */
-export const StickyExpressBar = memo(function StickyExpressBar() {
+export const StickyCreateBar = memo(function StickyCreateBar() {
   const giftStyle = useXsoStore((s) => s.giftStyle);
   const openCustomizer = useCustomizerModal((s) => s.open);
   const open = useCallback(

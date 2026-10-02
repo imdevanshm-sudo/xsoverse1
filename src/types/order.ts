@@ -15,6 +15,8 @@ export const ORDER_FORMATS: OrderFormat[] = [
 
 export interface OrderVibe {
   recipientName: string;
+  /** Signs the letter; replaces the pack's placeholder sender. */
+  senderName: string;
   relationship: Relationship | null;
   tone: CraftTone | null;
   /** The AI question they chose to answer. */

@@ -34,6 +34,7 @@ import {
   type Tone,
   type ToneName,
 } from '@/components/xso/editors/kit';
+import { FORMAT_CARDS, type CardId } from '@/lib/formatCards';
 
 export type FormatFields = Omit<XsoData, 'id' | 'giftStyle' | FormatKey> & FormatLayers;
 export type FormatPatch = Partial<Omit<XsoData, 'id' | 'giftStyle' | FormatKey>>;
@@ -345,7 +346,6 @@ const REWIND_FOCUS: Record<RewindSection, number> = { tape: 0, audit: 1, faces: 
 
 function RewindEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard }: EditorProps) {
   const [open, setOpen] = useOpenSet<RewindSection>(['faces']);
-  const tape = fields.rewind;
   const expand = (id: RewindSection) => {
     if (!open.has(id)) onFocusCard?.(REWIND_FOCUS[id]);
     setOpen(id);
@@ -359,32 +359,7 @@ function RewindEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard }: 
         open={open.has('tape')}
         onExpand={() => expand('tape')}
       >
-        <div className="grid gap-3 min-[420px]:grid-cols-2">
-          <Labeled t={t} label="Side A title">
-            <input
-              className={`${t.input} font-hand !text-[19px]`}
-              value={tape.sideA}
-              maxLength={FORMAT_LIMITS.sideA}
-              onChange={(e) => onFormat('rewind', { sideA: e.target.value })}
-            />
-          </Labeled>
-          <Labeled t={t} label="Side B title">
-            <input
-              className={`${t.input} font-hand !text-[19px]`}
-              value={tape.sideB}
-              maxLength={FORMAT_LIMITS.sideB}
-              onChange={(e) => onFormat('rewind', { sideB: e.target.value })}
-            />
-          </Labeled>
-          <Labeled t={t} label="Date" className="min-[420px]:col-span-2">
-            <input
-              className={t.input}
-              value={tape.tapeDate}
-              maxLength={FORMAT_LIMITS.tapeDate}
-              onChange={(e) => onFormat('rewind', { tapeDate: e.target.value })}
-            />
-          </Labeled>
-        </div>
+        <TapeFields t={t} fields={fields} onFormat={onFormat} />
       </EditorRow>
       <EditorRow
         t={t}
@@ -423,18 +398,7 @@ function RewindEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard }: 
         open={open.has('review')}
         onExpand={() => expand('review')}
       >
-        <Labeled
-          t={t}
-          label="Review · leave empty to skip the card"
-          hint={`${tape.review.length}/${FORMAT_LIMITS.review}`}
-        >
-          <textarea
-            className={`${t.input} min-h-[130px] resize-y font-hand !text-[20px] leading-[1.2]`}
-            value={tape.review}
-            maxLength={FORMAT_LIMITS.review}
-            onChange={(e) => onFormat('rewind', { review: e.target.value })}
-          />
-        </Labeled>
+        <ReviewField t={t} fields={fields} onFormat={onFormat} />
       </EditorRow>
     </ul>
   );
@@ -457,7 +421,6 @@ function AccordionEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard 
     if (!open.has(id)) onFocusCard?.(ACCORDION_FOCUS[id]);
     setOpen(id);
   };
-  const sum = sumPrices(fields);
   return (
     <ul className="m-0 grid list-none gap-2 p-0">
       <EditorRow
@@ -490,40 +453,7 @@ function AccordionEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard 
         open={open.has('total')}
         onExpand={() => expand('total')}
       >
-        <div className="grid gap-3">
-          <Labeled t={t} label="Total">
-            <input
-              className={`${t.input} font-receipt uppercase`}
-              value={fields.total}
-              maxLength={16}
-              onChange={(e) => onPatch({ total: e.target.value })}
-            />
-          </Labeled>
-          <div className="flex flex-wrap gap-2">
-            {TOTAL_PRESETS.map((preset) => (
-              <SmallButton key={preset} t={t} onClick={() => onPatch({ total: preset })}>
-                {preset}
-              </SmallButton>
-            ))}
-            {sum ? (
-              <SmallButton t={t} onClick={() => onPatch({ total: sum })}>
-                Add it up · {sum}
-              </SmallButton>
-            ) : null}
-          </div>
-          <Labeled
-            t={t}
-            label="Sentiment under the total"
-            hint={`${fields.accordion.sentiment.length}/${FORMAT_LIMITS.sentiment}`}
-          >
-            <input
-              className={`${t.input} font-hand !text-[19px]`}
-              value={fields.accordion.sentiment}
-              maxLength={FORMAT_LIMITS.sentiment}
-              onChange={(e) => onFormat('accordion', { sentiment: e.target.value })}
-            />
-          </Labeled>
-        </div>
+        <TotalFields t={t} fields={fields} onPatch={onPatch} onFormat={onFormat} />
       </EditorRow>
       <FacesRow
         t={t}
@@ -554,15 +484,11 @@ type MovieSection = 'rating' | 'faces' | `scene-${number}`;
 
 function MovieEditor({ t, fields, onFormat, photoSlot, onFocusCard }: EditorProps) {
   const [open, setOpen] = useOpenSet<MovieSection>(['faces']);
-  const { scenes, stars } = fields.moviebox;
+  const { scenes } = fields.moviebox;
   const expand = (id: MovieSection, focus: number) => {
     if (!open.has(id)) onFocusCard?.(focus);
     setOpen(id);
   };
-  const setScene = (index: number, patch: Partial<MovieScene>) =>
-    onFormat('moviebox', {
-      scenes: scenes.map((scene, i) => (i === index ? { ...scene, ...patch } : scene)),
-    });
 
   return (
     <ul className="m-0 grid list-none gap-2 p-0">
@@ -573,20 +499,7 @@ function MovieEditor({ t, fields, onFormat, photoSlot, onFocusCard }: EditorProp
         open={open.has('rating')}
         onExpand={() => expand('rating', 1)}
       >
-        <StarPicker
-          t={t}
-          label="Star score"
-          value={stars}
-          onChange={(next) =>
-            onFormat('moviebox', {
-              stars: next,
-              scenes: scenes.map((scene) => ({
-                ...scene,
-                caption: scene.caption.replace(RATED, `Rated ${next} out of 5`),
-              })),
-            })
-          }
-        />
+        <RatingField t={t} fields={fields} onFormat={onFormat} />
       </EditorRow>
       {scenes.map((scene, i) => {
         const id: MovieSection = `scene-${i}`;
@@ -599,35 +512,7 @@ function MovieEditor({ t, fields, onFormat, photoSlot, onFocusCard }: EditorProp
             open={open.has(id)}
             onExpand={() => expand(id, i)}
           >
-            <div className="grid gap-3">
-              <Labeled t={t} label="Scene title">
-                <input
-                  className={t.input}
-                  value={scene.title}
-                  maxLength={FORMAT_LIMITS.sceneTitle}
-                  onChange={(e) => setScene(i, { title: e.target.value })}
-                />
-              </Labeled>
-              <Labeled
-                t={t}
-                label="Subtitle"
-                hint={`${scene.caption.length}/${FORMAT_LIMITS.sceneCaption}`}
-              >
-                <textarea
-                  className={`${t.input} min-h-[72px] resize-none italic`}
-                  value={scene.caption}
-                  rows={2}
-                  maxLength={FORMAT_LIMITS.sceneCaption}
-                  onChange={(e) => setScene(i, { caption: e.target.value })}
-                />
-              </Labeled>
-              <ImageField
-                t={t}
-                label={i === 2 ? 'Still · replaces the photo strip' : 'Still · optional backdrop'}
-                value={scene.image}
-                onChange={(image) => setScene(i, { image })}
-              />
-            </div>
+            <SceneFields t={t} fields={fields} onFormat={onFormat} index={i} />
           </EditorRow>
         );
       })}
@@ -641,3 +526,285 @@ function MovieEditor({ t, fields, onFormat, photoSlot, onFocusCard }: EditorProp
     </ul>
   );
 }
+
+type FieldProps = Pick<EditorProps, 't' | 'fields' | 'onFormat'>;
+
+function TapeFields({ t, fields, onFormat }: FieldProps) {
+  const tape = fields.rewind;
+  return (
+    <div className="grid gap-3 min-[420px]:grid-cols-2">
+      <Labeled t={t} label="Side A title">
+        <input
+          className={`${t.input} font-hand !text-[19px]`}
+          value={tape.sideA}
+          maxLength={FORMAT_LIMITS.sideA}
+          onChange={(e) => onFormat('rewind', { sideA: e.target.value })}
+        />
+      </Labeled>
+      <Labeled t={t} label="Side B title">
+        <input
+          className={`${t.input} font-hand !text-[19px]`}
+          value={tape.sideB}
+          maxLength={FORMAT_LIMITS.sideB}
+          onChange={(e) => onFormat('rewind', { sideB: e.target.value })}
+        />
+      </Labeled>
+      <Labeled t={t} label="Date" className="min-[420px]:col-span-2">
+        <input
+          className={t.input}
+          value={tape.tapeDate}
+          maxLength={FORMAT_LIMITS.tapeDate}
+          onChange={(e) => onFormat('rewind', { tapeDate: e.target.value })}
+        />
+      </Labeled>
+    </div>
+  );
+}
+
+function ReviewField({ t, fields, onFormat }: FieldProps) {
+  const { review } = fields.rewind;
+  return (
+    <Labeled
+      t={t}
+      label="Review · leave empty to skip the card"
+      hint={`${review.length}/${FORMAT_LIMITS.review}`}
+    >
+      <textarea
+        className={`${t.input} min-h-[130px] resize-y font-hand !text-[20px] leading-[1.2]`}
+        value={review}
+        maxLength={FORMAT_LIMITS.review}
+        onChange={(e) => onFormat('rewind', { review: e.target.value })}
+      />
+    </Labeled>
+  );
+}
+
+function TotalFields({ t, fields, onPatch, onFormat }: FieldProps & Pick<EditorProps, 'onPatch'>) {
+  const sum = sumPrices(fields);
+  return (
+    <div className="grid gap-3">
+      <Labeled t={t} label="Total">
+        <input
+          className={`${t.input} font-receipt uppercase`}
+          value={fields.total}
+          maxLength={16}
+          onChange={(e) => onPatch({ total: e.target.value })}
+        />
+      </Labeled>
+      <div className="flex flex-wrap gap-2">
+        {TOTAL_PRESETS.map((preset) => (
+          <SmallButton key={preset} t={t} onClick={() => onPatch({ total: preset })}>
+            {preset}
+          </SmallButton>
+        ))}
+        {sum ? (
+          <SmallButton t={t} onClick={() => onPatch({ total: sum })}>
+            Add it up · {sum}
+          </SmallButton>
+        ) : null}
+      </div>
+      <Labeled
+        t={t}
+        label="Sentiment under the total"
+        hint={`${fields.accordion.sentiment.length}/${FORMAT_LIMITS.sentiment}`}
+      >
+        <input
+          className={`${t.input} font-hand !text-[19px]`}
+          value={fields.accordion.sentiment}
+          maxLength={FORMAT_LIMITS.sentiment}
+          onChange={(e) => onFormat('accordion', { sentiment: e.target.value })}
+        />
+      </Labeled>
+    </div>
+  );
+}
+
+function RatingField({ t, fields, onFormat }: FieldProps) {
+  const { scenes, stars } = fields.moviebox;
+  return (
+    <StarPicker
+      t={t}
+      label="Star score"
+      value={stars}
+      onChange={(next) =>
+        onFormat('moviebox', {
+          stars: next,
+          scenes: scenes.map((scene) => ({
+            ...scene,
+            caption: scene.caption.replace(RATED, `Rated ${next} out of 5`),
+          })),
+        })
+      }
+    />
+  );
+}
+
+function SceneFields({ t, fields, onFormat, index }: FieldProps & { index: number }) {
+  const { scenes } = fields.moviebox;
+  const scene = scenes[index];
+  if (!scene) return null;
+  const setScene = (patch: Partial<MovieScene>) =>
+    onFormat('moviebox', {
+      scenes: scenes.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    });
+  return (
+    <div className="grid gap-3">
+      <Labeled t={t} label="Scene title">
+        <input
+          className={t.input}
+          value={scene.title}
+          maxLength={FORMAT_LIMITS.sceneTitle}
+          onChange={(e) => setScene({ title: e.target.value })}
+        />
+      </Labeled>
+      <Labeled
+        t={t}
+        label="Subtitle"
+        hint={`${scene.caption.length}/${FORMAT_LIMITS.sceneCaption}`}
+      >
+        <textarea
+          className={`${t.input} min-h-[72px] resize-none italic`}
+          value={scene.caption}
+          rows={2}
+          maxLength={FORMAT_LIMITS.sceneCaption}
+          onChange={(e) => setScene({ caption: e.target.value })}
+        />
+      </Labeled>
+      <ImageField
+        t={t}
+        label={index === 2 ? 'Still · replaces the photo strip' : 'Still · optional backdrop'}
+        value={scene.image}
+        onChange={(image) => setScene({ image })}
+      />
+    </div>
+  );
+}
+
+const CARD_EDIT_DETAIL: Record<CardId, string> = {
+  receipt: 'Store name, timestamp and the itemized bill',
+  audit: 'Scores, red flags, green flags and the stamp',
+  photos: 'Upload up to 3 photos',
+  letter: 'The closing letter, sign-off and an audio snippet',
+  liner: 'Tape label and your review',
+  polaroids: '',
+  sticky: '',
+  ticket: '',
+  voice: '',
+};
+
+/**
+ * The customizer's detail step: one section per card the sender kept, in the
+ * order the format deals them, under the shared card names.
+ */
+export const CardDetailsEditor = memo(function CardDetailsEditor({
+  style,
+  cards,
+  fields,
+  onPatch,
+  onFormat,
+  photoSlot,
+  onFocusCard,
+  tone = 'dark',
+}: {
+  style: GiftStyle;
+  cards: CardId[];
+  fields: FormatFields;
+  onPatch: (patch: FormatPatch) => void;
+  onFormat: OnFormat;
+  photoSlot: ReactNode;
+  onFocusCard?: (index: number) => void;
+  tone?: ToneName;
+}) {
+  const t = TONES[tone];
+  const [open, setOpen] = useOpenSet<CardId>(cards.slice(0, 1));
+  const onScrapbook = useCallback(
+    (patch: Partial<ScrapbookLayers>) => onFormat('scrapbook', patch),
+    [onFormat],
+  );
+  if (style === 'scrapbook') {
+    return (
+      <ScrapbookElements
+        tone={tone}
+        fields={fields}
+        onPatch={onPatch}
+        onLayers={onScrapbook}
+        photoSlot={photoSlot}
+        defaultOpen={cards.slice(0, 1) as ScrapbookElement[]}
+        onFocusCard={onFocusCard}
+      />
+    );
+  }
+  const props = { t, fields, onPatch, onFormat };
+  const movie = style === 'moviebox';
+  const fieldsFor = (id: CardId) => {
+    switch (id) {
+      case 'receipt':
+        return (
+          <div className="grid gap-4">
+            <LoopCardFields id="receipt" photoSlot={photoSlot} {...props} />
+            {style === 'accordion' ? <TotalFields {...props} /> : null}
+            {movie ? <SceneFields {...props} index={0} /> : null}
+          </div>
+        );
+      case 'audit':
+        return (
+          <div className="grid gap-4">
+            {movie ? <RatingField {...props} /> : null}
+            <MetricSliders
+              t={t}
+              metrics={fields.auditMetrics}
+              onChange={(auditMetrics) => onPatch({ auditMetrics })}
+            />
+            <LoopCardFields id="audit" photoSlot={photoSlot} {...props} />
+            {movie ? <SceneFields {...props} index={1} /> : null}
+          </div>
+        );
+      case 'photos':
+        return (
+          <div className="grid gap-4">
+            {photoSlot}
+            {movie ? <SceneFields {...props} index={2} /> : null}
+          </div>
+        );
+      case 'letter':
+        return (
+          <div className="grid gap-4">
+            <LoopCardFields id="letter" photoSlot={photoSlot} {...props} />
+            {movie ? <SceneFields {...props} index={3} /> : null}
+          </div>
+        );
+      case 'liner':
+        return (
+          <div className="grid gap-4">
+            <TapeFields {...props} />
+            <ReviewField {...props} />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+  return (
+    <ul className="m-0 grid list-none gap-2 p-0">
+      {FORMAT_CARDS[style]
+        .filter((card) => cards.includes(card.id))
+        .map((card) => (
+          <EditorRow
+            key={card.id}
+            t={t}
+            label={card.label}
+            detail={CARD_EDIT_DETAIL[card.id] || card.detail}
+            open={open.has(card.id)}
+            onExpand={() => {
+              if (!open.has(card.id)) {
+                onFocusCard?.(card.id === 'liner' ? 4 : LOOP_CARDS.indexOf(card.id as LoopCard));
+              }
+              setOpen(card.id);
+            }}
+          >
+            {fieldsFor(card.id)}
+          </EditorRow>
+        ))}
+    </ul>
+  );
+});
