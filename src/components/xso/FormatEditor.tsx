@@ -101,16 +101,17 @@ export const FormatEditor = memo(function FormatEditor({
       <div className="mb-2.5 flex items-start justify-between gap-3">
         <div className="min-w-0">
           {heading ? (
-            <h3 className={`font-receipt text-[11px] uppercase tracking-[0.18em] ${t.detail}`}>
+            <h3 className={`font-serif text-[16px] font-semibold leading-tight ${t.label}`}>
               {style === 'scrapbook'
-                ? 'Build your scrapbook elements'
+                ? 'Build Your Scrapbook'
                 : style === 'custom'
-                  ? 'Build your own stack'
-                  : `Customize your ${FORMAT_NAMES[style]}`}
+                  ? 'Build Your Own Stack'
+                  : `Customize Your ${FORMAT_NAMES[style]}`}
             </h3>
           ) : null}
-          <p className={`mt-1 text-[12.5px] leading-snug ${t.detail} opacity-80`}>
-            Pre-filled from {packTitle}. Edit any piece, or just add photos and go.
+          <p className={`mt-1 text-[13px] leading-snug ${t.detail}`}>
+            We&apos;ve pre-filled everything from {packTitle}. Edit any piece, or just add what you
+            need.
           </p>
         </div>
         <ResetButton t={t} onReset={onReset} />

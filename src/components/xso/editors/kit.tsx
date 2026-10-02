@@ -17,7 +17,7 @@ export const TONES = {
     label: 'text-[#fdf2f8]',
     detail: 'text-[#c99aae]',
     divider: 'border-white/10',
-    field: 'font-receipt text-[10px] uppercase tracking-[0.16em] text-[#c99aae]',
+    field: 'font-receipt text-[11px] uppercase tracking-[0.14em] text-[#c99aae]',
     input:
       'w-full rounded-xl border border-white/15 bg-[#180e15] px-3 py-2.5 text-[16px] text-[#fdf2f8] placeholder:text-[#7f5466] focus:border-[#ec4899] focus:outline-none',
     button:

@@ -288,7 +288,7 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
           <Sparkles className="mr-1.5 inline h-3.5 w-3.5 align-[-2px]" aria-hidden />
           {source === 'ai'
             ? `Crafted for ${trimmedName}. Every line is editable below.`
-            : `Our AI writer is offline right now, so we assembled ${trimmedName}'s story from your answers. Every line is editable below.`}
+            : `Our AI writer is offline right now, so we've generated a placeholder story from your answers. Every line is editable below.`}
         </p>
         <div>
           <p className={t.field}>Regenerate tone</p>

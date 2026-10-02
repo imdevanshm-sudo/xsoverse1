@@ -294,7 +294,7 @@ export function Store() {
                       <h3 className="mt-1.5 font-serif text-[1.75rem] font-semibold leading-none tracking-[-0.015em] text-[#fdf2f8] sm:mt-2 sm:text-[1.9rem]">
                         {displayTitle(format)}
                       </h3>
-                      <p className="mt-1.5 font-hand text-[20px] leading-tight text-[#f9a8d4] sm:mt-2 sm:text-[21px]">
+                      <p className="mt-1.5 font-serif text-[17px] italic leading-snug text-[#f9a8d4] sm:mt-2 sm:text-[18px]">
                         {format.tagline}
                       </p>
                       <p className="mt-2.5 text-pretty text-[14.5px] leading-[1.6] text-[#e0b4c6] sm:mt-3 sm:text-[15px]">

@@ -106,7 +106,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
     title: 'CUSTOM HYBRID',
     subtitle: 'Build Your Own',
     caption: 'Your own stack',
-    tagline: 'Built exactly the way you two are.',
+    tagline: 'Built exactly the way you want it.',
     description:
       'Pick the pieces: a receipt, a cassette, an unfolding bill, a polaroid desk, a film reel. They open one layer after another, in a stack only you could have built.',
     year: '2026',
