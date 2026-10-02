@@ -123,8 +123,8 @@ const FORMAT_GUIDE: Record<BaseStyle, string> = {
 
 export function craftPrompt(input: CraftInput) {
   const adjust =
-    input.adjust === 'funnier'
-      ? '\nRE-ROLL: make this version about 20% funnier than a typical one: sharper punchlines, more absurd specifics.'
+    input.adjust === 'familiar'
+      ? '\nRE-ROLL: make this version more familiar: write like their closest person, reuse the exact names, places and phrases from the memory, and reference inside jokes as if both already know them. No generic lines.'
       : input.adjust === 'sweeter'
         ? '\nRE-ROLL: make this version noticeably sweeter and more heartfelt, while keeping a little humor.'
         : '';
@@ -317,14 +317,8 @@ function today() {
 }
 
 export function templateStory(craft: CraftInput): CraftedStory {
-  const tone =
-    craft.adjust === 'sweeter'
-      ? 'soft'
-      : craft.adjust === 'funnier'
-        ? craft.tone === 'roast'
-          ? 'chaos'
-          : 'roast'
-        : craft.tone;
+  const tone = craft.adjust === 'sweeter' ? 'soft' : craft.tone;
+  const familiar = craft.adjust === 'familiar';
   const input = { ...craft, tone };
   const t = TEMPLATE[tone];
   const bits = memoryBits(input.memoryText);
@@ -362,11 +356,10 @@ export function templateStory(craft: CraftInput): CraftedStory {
       'Steals fries, denies it',
     ],
     stampText: t.stamp,
-    letter:
-      `${name}, ${t.open} Like ${first}. Like ${lore[1]}. Somehow those are my favorite memories.\n\n${t.close}`.slice(
-        0,
-        420,
-      ),
+    letter: (familiar
+      ? `${name}. You know exactly what I mean when I say ${first}. And ${lore[1]}. Nobody else gets those, and that's the point.\n\n${t.close}`
+      : `${name}, ${t.open} Like ${first}. Like ${lore[1]}. Somehow those are my favorite memories.\n\n${t.close}`
+    ).slice(0, 420),
     scratchOffReward: `CODE: ${first
       .toUpperCase()
       .replace(/[^A-Z0-9]+/g, '-')

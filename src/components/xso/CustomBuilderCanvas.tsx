@@ -63,6 +63,7 @@ export const CustomBuilderCanvas = memo(function CustomBuilderCanvas({
   tone = 'dark',
   renderEditor,
   onFocusLayer,
+  canvas = true,
 }: {
   modules: CustomModule[];
   onModules: (modules: CustomModule[]) => void;
@@ -70,6 +71,8 @@ export const CustomBuilderCanvas = memo(function CustomBuilderCanvas({
   renderEditor?: (module: CustomModule) => ReactNode;
   /** Index into `CUSTOM_MODULES` of the layer being edited, for the live preview. */
   onFocusLayer?: (index: number) => void;
+  /** Off when a live preview of the stack already sits above the checklist. */
+  canvas?: boolean;
 }) {
   const t = TONES[tone];
   const [open, setOpen] = useOpenSet<CustomModule>();
@@ -77,7 +80,7 @@ export const CustomBuilderCanvas = memo(function CustomBuilderCanvas({
 
   return (
     <div className="grid gap-3">
-      <StackCanvas modules={modules} />
+      {canvas ? <StackCanvas modules={modules} /> : null}
       <ul className="m-0 grid list-none gap-2 p-0" aria-label="Keepsake layers">
         {CUSTOM_MODULES.map((m) => {
           const meta = CUSTOM_MODULE_META[m];

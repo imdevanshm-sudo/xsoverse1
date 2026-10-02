@@ -14,7 +14,7 @@ export const CRAFT_TONES = [
 export type CraftTone = (typeof CRAFT_TONES)[number]['id'];
 
 export const ADJUSTMENTS = [
-  { id: 'funnier', label: 'Make it 20% funnier', emoji: '😂' },
+  { id: 'familiar', label: 'Make it more familiar', emoji: '🫶' },
   { id: 'sweeter', label: 'Make it sweeter', emoji: '🥹' },
 ] as const;
 export type Adjustment = (typeof ADJUSTMENTS)[number]['id'];

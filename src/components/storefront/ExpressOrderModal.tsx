@@ -43,9 +43,11 @@ import { MatteCta } from '@/components/desk/MatteCta';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { FormatEditor, type FormatPatch } from '@/components/xso/FormatEditor';
 import { FormatPreview } from '@/components/xso/preview/FormatPreview';
-import type { CustomModule, GiftStyle, XsoData } from '@/types/xso';
+import { CUSTOM_MODULES, type CustomModule, type GiftStyle, type XsoData } from '@/types/xso';
 
 const MAX_PHOTOS = 3;
+/** Every hybrid layer gets crafted copy, so ticking one on after generating never shows pack filler. */
+const CRAFT_MODULES: CustomModule[] = [...CUSTOM_MODULES];
 const STEPS = ['Style', 'Photos', 'Pay'] as const;
 const FOCUSABLE =
   'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -271,7 +273,10 @@ export function ExpressOrderModal() {
   const custom = draft.custom;
   const modules = useMemo(() => resolveCustom({ custom }).modules, [custom]);
   const setModules = useCallback(
-    (next: CustomModule[]) => patchFormat('custom', { modules: next }),
+    (next: CustomModule[]) => {
+      patchFormat('custom', { modules: next });
+      setFocusCard(undefined);
+    },
     [patchFormat],
   );
   const needsPhotos = scrapbook
@@ -390,33 +395,37 @@ export function ExpressOrderModal() {
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-4"
         >
           {step === 0 ? (
-            <StylePicker
-              style={style}
-              theme={theme}
-              onStyle={pickStyle}
-              onTheme={pickTheme}
-              builder={
-                style === 'custom' ? (
-                  <CustomBuilderCanvas modules={modules} onModules={setModules} />
-                ) : null
-              }
-            />
+            <StylePicker style={style} theme={theme} onStyle={pickStyle} onTheme={pickTheme} />
           ) : null}
           {step === 1 && craftPhase !== 'quiz' ? (
             <FormatThumb
               data={previewData}
               style={style}
               focus={focusCard}
-              large={craftPhase === 'crafted'}
+              large
               onEdit={openEditor}
               badge={craftSource ? <CraftBadge source={craftSource} /> : null}
             />
+          ) : null}
+          {step === 1 && craftPhase !== 'quiz' && style === 'custom' ? (
+            <div className="mb-5">
+              <p className="mb-2 font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">
+                Layers in your stack
+              </p>
+              <CustomBuilderCanvas
+                modules={modules}
+                onModules={setModules}
+                onFocusLayer={setFocusCard}
+                canvas={false}
+              />
+            </div>
           ) : null}
           {/* Stays mounted across steps so going back never loses the answers. */}
           <div hidden={step !== 1}>
             <AIQuizCustomizer
               style={style}
-              modules={modules}
+              modules={CRAFT_MODULES}
+              allowManual={false}
               name={name}
               onName={setName}
               photoSlot={photoPicker}
@@ -533,14 +542,11 @@ const StylePicker = memo(function StylePicker({
   theme,
   onStyle,
   onTheme,
-  builder,
 }: {
   style: GiftStyle;
   theme: ThemeId;
   onStyle: (style: GiftStyle) => void;
   onTheme: (theme: ThemeId) => void;
-  /** Custom Hybrid's layer builder, shown under the formats when it's picked. */
-  builder?: ReactNode;
 }) {
   return (
     <>
@@ -570,13 +576,10 @@ const StylePicker = memo(function StylePicker({
           );
         })}
       </div>
-      {builder ? (
-        <div className="mt-4">
-          <p className="mb-2 font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">
-            Build your stack
-          </p>
-          {builder}
-        </div>
+      {style === 'custom' ? (
+        <p className="mt-2.5 text-[12.5px] leading-snug text-[#c99aae]">
+          You&apos;ll pick which layers go in the stack right under the live preview.
+        </p>
       ) : null}
 
       <p className="mt-5 font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">

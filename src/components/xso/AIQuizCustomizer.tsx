@@ -21,10 +21,7 @@ import type { CustomModule, GiftStyle } from '@/types/xso';
 export type CraftPhase = 'quiz' | 'crafted' | 'manual';
 export type CraftSource = CraftResponse['source'];
 
-const MEMORY_PROMPT =
-  'Tell us 1 or 2 memories, inside jokes, or habits you two share (e.g., 3 AM boba runs, bad driving, shared brain cells):';
-const SPARKS = ['3 AM boba runs', 'bad driving', 'shared brain cell', 'voice notes at 2am'];
-const QUESTIONS = ['Vibe & relationship', 'The memory spark', 'Photos & generate'];
+const QUESTIONS = ['Vibe & relationship', 'Memory Spark', 'Photos & generate'];
 
 const PILL = {
   dark: {
@@ -192,19 +189,22 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
   const [vibe, setVibe] = useState<CraftTone | null>(null);
   const [memory, setMemory] = useState('');
   const [question, setQuestion] = useState<string | null>(null);
-  const [ownWords, setOwnWords] = useState(false);
   const [busy, setBusy] = useState<'generate' | Adjustment | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const answerRef = useRef<HTMLTextAreaElement>(null);
+  const answerRef = useRef<HTMLInputElement>(null);
   const prompts = useMemoryQuestions(
-    phase === 'quiz' && !ownWords && relationship !== null && vibe !== null,
+    phase === 'quiz' && relationship !== null && vibe !== null,
     relationship,
     vibe,
     name,
   );
+  const asked = question && prompts.questions.includes(question) ? question : null;
 
   useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => {
+    if (!asked && prompts.questions.length) setQuestion(prompts.questions[0]);
+  }, [asked, prompts.questions]);
 
   const setPhase = onPhase;
   const setStep = useCallback(
@@ -235,7 +235,7 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
             relationship,
             tone: vibe,
             memoryText: memory.trim(),
-            question: ownWords ? undefined : (question ?? undefined),
+            question: question ?? undefined,
             format: style,
             modules: style === 'custom' ? modules : undefined,
             adjust,
@@ -251,31 +251,13 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
         if (abortRef.current === controller) setBusy(null);
       }
     },
-    [
-      busy,
-      memory,
-      modules,
-      onCrafted,
-      ownWords,
-      question,
-      relationship,
-      setPhase,
-      style,
-      trimmedName,
-      vibe,
-    ],
+    [busy, memory, modules, onCrafted, question, relationship, setPhase, style, trimmedName, vibe],
   );
 
   const pickQuestion = (q: string) => {
     setQuestion(q);
     answerRef.current?.focus({ preventScroll: true });
   };
-
-  const appendSpark = (spark: string) =>
-    setMemory((m) => {
-      const base = m.trim().replace(/[,.]$/, '');
-      return (base ? `${base}, ${spark}` : spark).slice(0, CRAFT_LIMITS.memory);
-    });
 
   const errorLine = error ? (
     <p role="alert" className={`mt-3 text-[13px] ${t.error}`}>
@@ -412,125 +394,75 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
         </div>
       ) : step === 1 ? (
         <div className="mt-4">
-          {ownWords ? (
-            <>
-              <label className="grid gap-2">
-                <span className={`text-[14px] leading-snug ${p.heading}`}>{MEMORY_PROMPT}</span>
-                <textarea
-                  ref={answerRef}
-                  value={memory}
-                  onChange={(e) => setMemory(e.target.value.slice(0, CRAFT_LIMITS.memory))}
-                  rows={5}
-                  data-step-focus
-                  placeholder="She always says she's 5 min away (she's at home). Our 3 AM boba runs. The time we got lost going to IKEA…"
-                  className={`${t.input} min-h-[8.5rem] resize-y leading-relaxed`}
-                />
-              </label>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <span className={`text-[12px] ${p.hint}`}>Need a spark?</span>
-                {SPARKS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => appendSpark(s)}
-                    className={`min-h-8 rounded-full border px-2.5 text-[12px] ${p.off}`}
-                  >
-                    + {s}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center justify-between gap-2">
-                <p className={t.field}>
-                  {prompts.source === 'ai' ? '✨ AI questions' : 'Questions'} for your{' '}
-                  {relationship?.toLowerCase()}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void prompts.refresh()}
-                  disabled={prompts.loading}
-                  aria-busy={prompts.loading}
-                  className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${p.off}`}
-                >
-                  <RefreshCw
-                    className={`h-3.5 w-3.5 ${prompts.loading ? 'animate-spin' : ''}`}
-                    aria-hidden
-                  />
-                  ✨ Refresh Questions
-                </button>
-              </div>
-              <div
-                role="radiogroup"
-                aria-label="Pick a question to answer"
-                aria-busy={prompts.loading}
-                tabIndex={-1}
-                data-step-focus
-                className="mt-2 grid gap-2 focus:outline-none"
-              >
-                {prompts.questions.length === 0 && prompts.loading
-                  ? Array.from({ length: 3 }, (_, i) => (
-                      <span
-                        key={i}
-                        aria-hidden
-                        className={`block h-12 animate-pulse rounded-2xl ${tone === 'dark' ? 'bg-white/[0.06]' : 'bg-[#f6dce7]'}`}
-                      />
-                    ))
-                  : prompts.questions.map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        role="radio"
-                        aria-checked={question === q}
-                        onClick={() => pickQuestion(q)}
-                        className={`min-h-12 rounded-2xl border px-4 py-2.5 text-left text-[14px] font-medium leading-snug transition-[colors,opacity] ${question === q ? p.on : p.off} ${prompts.loading ? 'opacity-50' : ''}`}
-                      >
-                        {q}
-                      </button>
-                    ))}
-              </div>
-              {prompts.error ? (
-                <p role="alert" className={`mt-2 text-[12.5px] ${t.error}`}>
-                  {prompts.error}
-                </p>
-              ) : null}
-              <label className="mt-4 grid gap-2">
-                <span className={`text-[14px] font-semibold leading-snug ${p.heading}`}>
-                  {question ?? 'Pick a question, then answer it here'}
-                </span>
-                <textarea
-                  ref={answerRef}
-                  value={memory}
-                  onChange={(e) => setMemory(e.target.value.slice(0, CRAFT_LIMITS.memory))}
-                  rows={4}
-                  placeholder="The more specific the better: names, places, what they always say…"
-                  className={`${t.input} min-h-[7rem] resize-y leading-relaxed`}
-                />
-              </label>
-            </>
-          )}
-          <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className={t.field}>
+              {prompts.source === 'ai' ? '✨ AI questions' : 'Questions'} for your{' '}
+              {relationship?.toLowerCase()}
+            </p>
             <button
               type="button"
-              aria-pressed={ownWords}
-              onClick={() => setOwnWords((v) => !v)}
-              className={`inline-flex min-h-9 items-center gap-1.5 text-[13px] font-semibold underline underline-offset-2 ${p.hint}`}
+              onClick={() => void prompts.refresh()}
+              disabled={prompts.loading}
+              aria-busy={prompts.loading}
+              className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${p.off}`}
             >
-              {ownWords ? (
-                <>
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden /> Answer an AI question instead
-                </>
-              ) : (
-                <>
-                  <PencilLine className="h-3.5 w-3.5" aria-hidden /> Type your own
-                </>
-              )}
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${prompts.loading ? 'animate-spin' : ''}`}
+                aria-hidden
+              />
+              ✨ Refresh Questions
             </button>
-            <p className={`text-[11px] tabular-nums ${p.hint}`}>
-              {memory.length}/{CRAFT_LIMITS.memory}
-            </p>
           </div>
+          <div
+            role="radiogroup"
+            aria-label="Pick a question to answer"
+            aria-busy={prompts.loading}
+            tabIndex={-1}
+            data-step-focus
+            className="mt-2 grid gap-2 focus:outline-none"
+          >
+            {prompts.questions.length === 0 && prompts.loading
+              ? Array.from({ length: 3 }, (_, i) => (
+                  <span
+                    key={i}
+                    aria-hidden
+                    className={`block h-12 animate-pulse rounded-2xl ${tone === 'dark' ? 'bg-white/[0.06]' : 'bg-[#f6dce7]'}`}
+                  />
+                ))
+              : prompts.questions.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    role="radio"
+                    aria-checked={asked === q}
+                    onClick={() => pickQuestion(q)}
+                    className={`min-h-12 rounded-2xl border px-4 py-2.5 text-left text-[14px] font-medium leading-snug transition-[colors,opacity] ${asked === q ? p.on : p.off} ${prompts.loading ? 'opacity-50' : ''}`}
+                  >
+                    {q}
+                  </button>
+                ))}
+          </div>
+          {prompts.error ? (
+            <p role="alert" className={`mt-2 text-[12.5px] ${t.error}`}>
+              {prompts.error}
+            </p>
+          ) : null}
+          <label className="mt-4 grid gap-1.5">
+            <span className={t.field}>Your answer</span>
+            <input
+              ref={answerRef}
+              value={memory}
+              onChange={(e) => setMemory(e.target.value.slice(0, CRAFT_LIMITS.memory))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && step2Done) setStep(2);
+              }}
+              aria-label={asked ? `Your answer to: ${asked}` : undefined}
+              placeholder="One line is enough: a name, a place, what they always say"
+              autoComplete="off"
+              enterKeyHint="next"
+              className={t.input}
+            />
+          </label>
         </div>
       ) : (
         <div className="mt-4 grid gap-4">

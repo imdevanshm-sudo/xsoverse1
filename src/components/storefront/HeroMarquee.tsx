@@ -21,6 +21,9 @@ const REEL: { style: BaseStyle; name: string; caption: string }[] = [
 ];
 
 const MARQUEE = { duration: 30, ease: 'linear', repeat: Infinity } as const;
+/** Enough copies that the track is always wider than the viewport plus one copy, so it never shows a gap. */
+const COPIES = 3;
+const LOOP_SHIFT = `${-100 / COPIES}%`;
 const BEAT = { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } as const;
 
 type Pose = { animate: TargetAndTransition; kind: number; className?: string };
@@ -116,7 +119,7 @@ const MotionPreview = memo(function MotionPreview({
                     Object.entries(pose.animate).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]),
                   )
             }
-            transition={looping ? { ...BEAT, delay: i * 0.12 } : { duration: 0 }}
+            transition={looping ? BEAT : { duration: 0 }}
           >
             <MiniFace kind={pose.kind} />
           </motion.div>
@@ -183,9 +186,9 @@ export const HeroMarquee = memo(function HeroMarquee({
   }, [playing]);
 
   useEffect(() => {
-    if (reduce || !scope.current) return;
-    const groups = scope.current.querySelectorAll<HTMLElement>('[data-marquee-group]');
-    const c = animate(groups, { x: ['0%', '-100%'] }, MARQUEE);
+    const track = scope.current?.querySelector<HTMLElement>('[data-marquee-track]');
+    if (reduce || !track) return;
+    const c = animate(track, { x: ['0%', LOOP_SHIFT] }, MARQUEE);
     controls.current = c;
     return () => {
       c.stop();
@@ -222,13 +225,21 @@ export const HeroMarquee = memo(function HeroMarquee({
         reduce ? 'overflow-x-auto px-5 [scrollbar-width:none]' : 'overflow-hidden'
       }`}
     >
-      {(reduce ? [false] : [false, true]).map((copy) => (
-        <div key={String(copy)} data-marquee-group className="flex shrink-0">
-          {REEL.map((item) => (
-            <ReelCard key={item.style} item={item} playing={playing} onPick={onPick} copy={copy} />
-          ))}
-        </div>
-      ))}
+      <div data-marquee-track className="flex w-max shrink-0 will-change-transform">
+        {Array.from({ length: reduce ? 1 : COPIES }, (_, copy) => (
+          <div key={copy} data-marquee-group className="flex shrink-0">
+            {REEL.map((item) => (
+              <ReelCard
+                key={item.style}
+                item={item}
+                playing={playing}
+                onPick={onPick}
+                copy={copy > 0}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 });
