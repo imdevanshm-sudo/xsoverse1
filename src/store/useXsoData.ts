@@ -21,6 +21,7 @@ export function useXsoData(): XsoData {
       emotionalTax: s.emotionalTax,
       total: s.total,
       auditMetrics: s.auditMetrics,
+      auditLabels: s.auditLabels,
       greenFlags: s.greenFlags,
       redFlags: s.redFlags,
       certifiedStampText: s.certifiedStampText,

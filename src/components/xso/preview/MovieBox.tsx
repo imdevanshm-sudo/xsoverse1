@@ -22,11 +22,11 @@ import {
   type AnimationPlaybackControls,
   type MotionValue,
 } from 'framer-motion';
-import type { MovieLayers, MovieScene, XsoData } from '@/types/xso';
+import type { AuditMetrics, MovieLayers, MovieScene, XsoData } from '@/types/xso';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { useProjectorFx } from '@/hooks/useProjectorFx';
 import { CINEMA_EASE, CINEMATIC, SOFT_SPRING } from '@/lib/motion';
-import { resolveMovie } from '@/lib/formats';
+import { auditLabel, resolveMovie } from '@/lib/formats';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { getArtifacts } from '@/components/xso/viewers/shared';
 
@@ -648,10 +648,10 @@ function FrameBody({
           {stars.toFixed(1)} ★ friendship audit
         </p>
         <div className="mt-2 space-y-1.5">
-          {Object.entries(data.auditMetrics).map(([label, score]) => (
-            <div key={label} className="flex items-center gap-2">
-              <span className="w-16 font-receipt text-[9px] uppercase tracking-[0.14em] text-[#fffaf0]/75">
-                {label}
+          {Object.entries(data.auditMetrics).map(([key, score]) => (
+            <div key={key} className="flex items-center gap-2">
+              <span className="w-16 truncate font-receipt text-[9px] uppercase tracking-[0.14em] text-[#fffaf0]/75">
+                {auditLabel(data, key as keyof AuditMetrics)}
               </span>
               <span className="h-1 flex-1 overflow-hidden rounded-full bg-[#fffaf0]/10">
                 <span

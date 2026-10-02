@@ -89,6 +89,8 @@ export interface XsoData {
   emotionalTax: string;
   total: string;
   auditMetrics: AuditMetrics;
+  /** Custom names for the audit categories (e.g. from the AI craft); absent means the defaults. */
+  auditLabels?: Partial<Record<keyof AuditMetrics, string>>;
   greenFlags: string[];
   redFlags: string[];
   certifiedStampText: string;

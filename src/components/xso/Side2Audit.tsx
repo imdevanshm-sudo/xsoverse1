@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import type { AuditMetrics, XsoData } from '@/types/xso';
-import { overallStars } from '@/lib/formats';
+import { auditLabel, overallStars } from '@/lib/formats';
 import { InkStamp, PaperGrain } from '@/components/xso/paper/PaperCraft';
 
 export interface Side2AuditProps {
@@ -28,13 +28,7 @@ function clampScore(n: number) {
 
 export { overallStars };
 
-function polarPoint(
-  cx: number,
-  cy: number,
-  radius: number,
-  angleIndex: number,
-  total: number,
-) {
+function polarPoint(cx: number, cy: number, radius: number, angleIndex: number, total: number) {
   const angle = -Math.PI / 2 + (angleIndex * (2 * Math.PI)) / total;
   return {
     x: cx + radius * Math.cos(angle),
@@ -42,12 +36,7 @@ function polarPoint(
   };
 }
 
-function radarPolygon(
-  metrics: AuditMetrics,
-  cx: number,
-  cy: number,
-  maxR: number,
-) {
+function radarPolygon(metrics: AuditMetrics, cx: number, cy: number, maxR: number) {
   return AXES.map(({ key }, i) => {
     const r = (clampScore(metrics[key]) / 100) * maxR;
     return polarPoint(cx, cy, r, i, AXES.length);
@@ -68,8 +57,7 @@ export function Side2Audit({ data }: Side2AuditProps) {
       style={{
         background: `linear-gradient(160deg, ${YELLOW} 0%, ${YELLOW_DEEP} 100%)`,
         transform: 'rotate(3deg)',
-        boxShadow:
-          '6px 6px 0 0 #000, 0 28px 50px rgba(0,0,0,0.28), 0 12px 22px rgba(0,0,0,0.16)',
+        boxShadow: '6px 6px 0 0 #000, 0 28px 50px rgba(0,0,0,0.28), 0 12px 22px rgba(0,0,0,0.16)',
       }}
       aria-label="Friendship audit report card"
     >
@@ -115,11 +103,7 @@ export function Side2Audit({ data }: Side2AuditProps) {
                 style={{ '--i': i } as CSSProperties}
                 aria-hidden
               >
-                <StarIcon
-                  filled={isFull}
-                  half={isHalf}
-                  gradId={`star-half-${i}`}
-                />
+                <StarIcon filled={isFull} half={isHalf} gradId={`star-half-${i}`} />
               </span>
             );
           })}
@@ -130,22 +114,15 @@ export function Side2Audit({ data }: Side2AuditProps) {
       </header>
 
       <div className="relative z-10 mb-4 flex justify-center">
-        <RadarChart metrics={data.auditMetrics} />
+        <RadarChart
+          metrics={data.auditMetrics}
+          labels={AXES.map(({ key, label }) => auditLabel(data, key, label))}
+        />
       </div>
 
       <div className="relative z-10 grid gap-3 sm:grid-cols-2">
-        <FlagColumn
-          title="Green Flags"
-          emoji="🟢"
-          items={data.greenFlags}
-          accent="#0f7a3a"
-        />
-        <FlagColumn
-          title="Red Flags"
-          emoji="🔴"
-          items={data.redFlags}
-          accent="#c11a1a"
-        />
+        <FlagColumn title="Green Flags" emoji="🟢" items={data.greenFlags} accent="#0f7a3a" />
+        <FlagColumn title="Red Flags" emoji="🔴" items={data.redFlags} accent="#c11a1a" />
       </div>
 
       <div
@@ -160,15 +137,7 @@ export function Side2Audit({ data }: Side2AuditProps) {
   );
 }
 
-function StarIcon({
-  filled,
-  half,
-  gradId,
-}: {
-  filled: boolean;
-  half: boolean;
-  gradId: string;
-}) {
+function StarIcon({ filled, half, gradId }: { filled: boolean; half: boolean; gradId: string }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
       {half ? (
@@ -190,7 +159,7 @@ function StarIcon({
   );
 }
 
-function RadarChart({ metrics }: { metrics: AuditMetrics }) {
+function RadarChart({ metrics, labels }: { metrics: AuditMetrics; labels: string[] }) {
   const size = 220;
   const cx = size / 2;
   const cy = size / 2;
@@ -205,9 +174,7 @@ function RadarChart({ metrics }: { metrics: AuditMetrics }) {
       aria-label="Audit metrics radar chart"
     >
       {rings.map((t) => {
-        const pts = AXES.map((_, i) =>
-          polarPoint(cx, cy, maxR * t, i, AXES.length),
-        )
+        const pts = AXES.map((_, i) => polarPoint(cx, cy, maxR * t, i, AXES.length))
           .map((p) => `${p.x},${p.y}`)
           .join(' ');
         return (
@@ -247,7 +214,8 @@ function RadarChart({ metrics }: { metrics: AuditMetrics }) {
         style={{ transformOrigin: `${cx}px ${cy}px` }}
       />
 
-      {AXES.map(({ key, label }, i) => {
+      {AXES.map(({ key }, i) => {
+        const label = labels[i];
         const tip = polarPoint(cx, cy, maxR + 22, i, AXES.length);
         return (
           <g key={key}>
@@ -308,10 +276,7 @@ function FlagColumn({
       </h3>
       <ul className="m-0 list-none space-y-1.5 p-0">
         {items.map((item) => (
-          <li
-            key={item}
-            className="flex gap-1.5 font-mono text-[10px] leading-snug text-black/85"
-          >
+          <li key={item} className="flex gap-1.5 font-mono text-[10px] leading-snug text-black/85">
             <span aria-hidden className="mt-0.5 shrink-0">
               •
             </span>

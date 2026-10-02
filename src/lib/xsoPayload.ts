@@ -1,6 +1,6 @@
 import type { GiftStyle, XsoData } from '@/types/xso';
 import { sanitizeScrapbook } from '@/lib/scrapbook';
-import { sanitizeFormat } from '@/lib/formats';
+import { sanitizeAuditLabels, sanitizeFormat } from '@/lib/formats';
 
 export const GIFT_STYLES: GiftStyle[] = ['loop', 'scrapbook', 'rewind', 'accordion', 'moviebox'];
 
@@ -30,6 +30,7 @@ export function pickXsoPayload(data: XsoData): XsoData {
     emotionalTax: data.emotionalTax,
     total: data.total,
     auditMetrics: data.auditMetrics,
+    auditLabels: sanitizeAuditLabels(data.auditLabels),
     greenFlags: data.greenFlags,
     redFlags: data.redFlags,
     certifiedStampText: data.certifiedStampText,

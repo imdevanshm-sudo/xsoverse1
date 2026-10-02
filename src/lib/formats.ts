@@ -12,6 +12,24 @@ import {
 } from '@/types/xso';
 import { scrapbookDefaults } from '@/lib/scrapbook';
 
+export const AUDIT_KEYS = ['chaos', 'loyalty', 'snacking', 'advice', 'support'] as const;
+export const AUDIT_LABEL_MAX = 20;
+
+export function auditLabel(data: XsoData, key: keyof AuditMetrics, fallback: string = key) {
+  return data.auditLabels?.[key]?.trim() || fallback;
+}
+
+export function sanitizeAuditLabels(value: unknown): XsoData['auditLabels'] {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, unknown>;
+  const labels: NonNullable<XsoData['auditLabels']> = {};
+  for (const key of AUDIT_KEYS) {
+    const label = typeof raw[key] === 'string' ? (raw[key] as string).trim() : '';
+    if (label) labels[key] = label.slice(0, AUDIT_LABEL_MAX);
+  }
+  return Object.keys(labels).length ? labels : undefined;
+}
+
 export function overallStars(metrics: AuditMetrics): number {
   const values = Object.values(metrics);
   const avg = values.reduce((a, b) => a + b, 0) / values.length;
@@ -105,12 +123,11 @@ export function resolveLoop(data: XsoData): LoopLayers {
 }
 
 export function resolveMovie(data: XsoData): MovieLayers {
-  return (
-    data.moviebox ?? movieDefaults(data, LEGACY_MOVIE_TITLES, overallStars(data.auditMetrics))
-  );
+  return data.moviebox ?? movieDefaults(data, LEGACY_MOVIE_TITLES, overallStars(data.auditMetrics));
 }
 
-const clip = (value: unknown, max: number) => (typeof value === 'string' ? value.slice(0, max) : '');
+const clip = (value: unknown, max: number) =>
+  typeof value === 'string' ? value.slice(0, max) : '';
 const isObject = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object';
 const STILL = /^data:image\/(?:webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/;

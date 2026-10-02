@@ -8,6 +8,10 @@ import { XsoEditor } from '@/components/xso/XsoEditor';
 import { Eye } from 'lucide-react';
 import { FormatEditorPanel } from '@/components/xso/FormatEditorPanel';
 import { ReceiverPreview } from '@/components/xso/ReceiverPreview';
+import { AICraftPanel } from '@/components/xso/AICraftPanel';
+import { CraftBadge, type CraftPhase, type CraftSource } from '@/components/xso/AIQuizCustomizer';
+import { useXsoStore } from '@/store/useXsoStore';
+import { storyToPatch, type CraftedStory } from '@/lib/aiCraft';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
@@ -97,6 +101,17 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const [visited, setVisited] = useState<Set<StudioStepId>>(
     () => new Set<StudioStepId>(['receipt']),
   );
+  const [craftPhase, setCraftPhase] = useState<CraftPhase>('quiz');
+  const [craftSource, setCraftSource] = useState<CraftSource | null>(null);
+  const applyStory = useCallback((story: CraftedStory, source: CraftSource) => {
+    useXsoStore.setState((s) => storyToPatch(story, s));
+    setCraftSource(source);
+  }, []);
+  const toEditor = useCallback(() => {
+    document
+      .getElementById('format-editor')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
   const [receiver, setReceiver] = useState(false);
   const openReceiver = useCallback(() => setReceiver(true), []);
   const closeReceiver = useCallback(() => setReceiver(false), []);
@@ -149,10 +164,28 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
               </p>
               <SeeReceiverButton onOpen={openReceiver} className="!min-h-9 !px-3 text-[11px]" />
             </div>
-            {desktop ? <LivePreview lockedStyle={lockedStyle} focusIndex={focusIndex} /> : null}
+            <div className="relative">
+              {craftPhase === 'crafted' && craftSource ? (
+                <button
+                  type="button"
+                  onClick={toEditor}
+                  className="absolute inset-x-0 top-2 z-30 mx-auto flex w-fit max-w-[calc(100%-1rem)] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]"
+                >
+                  <CraftBadge source={craftSource} />
+                </button>
+              ) : null}
+              {desktop ? <LivePreview lockedStyle={lockedStyle} focusIndex={focusIndex} /> : null}
+            </div>
           </aside>
 
           <div className="grid gap-6">
+            <AICraftPanel
+              style={lockedStyle}
+              phase={craftPhase}
+              onPhase={setCraftPhase}
+              source={craftSource}
+              onCrafted={applyStory}
+            />
             <FormatEditorPanel style={lockedStyle} onFocusCard={setPanelFocus} />
             <section
               ref={editorRef}

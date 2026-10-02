@@ -15,7 +15,7 @@ import {
 
 type ScalarField = Exclude<
   keyof XsoData,
-  'lineItems' | 'auditMetrics' | 'greenFlags' | 'redFlags' | 'photos' | FormatKey
+  'lineItems' | 'auditMetrics' | 'auditLabels' | 'greenFlags' | 'redFlags' | 'photos' | FormatKey
 >;
 
 export type PackContent = ThemeContent & FormatLayers;
@@ -26,6 +26,7 @@ export function packContent(id: ThemeId): PackContent {
   return {
     ...content,
     lineItems: content.lineItems.map((item) => ({ ...item, id: newId() })),
+    auditLabels: undefined,
     ...formatDefaults(content),
   };
 }

@@ -10,7 +10,8 @@ import {
   useTransform,
   type MotionValue,
 } from 'framer-motion';
-import type { XsoData } from '@/types/xso';
+import type { AuditMetrics, XsoData } from '@/types/xso';
+import { auditLabel } from '@/lib/formats';
 import { playFoley } from '@/lib/foley';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { SOFT_SPRING_VALUE } from '@/lib/motion';
@@ -495,10 +496,10 @@ const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; inde
           {overallStars(data.auditMetrics).toFixed(1)} / 5 stars
         </p>
         <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-hidden">
-          {Object.entries(data.auditMetrics).map(([label, score]) => (
-            <div key={label}>
-              <p className="flex justify-between font-receipt text-[9px] uppercase tracking-[0.14em]">
-                <span>{label}</span>
+          {Object.entries(data.auditMetrics).map(([key, score]) => (
+            <div key={key}>
+              <p className="flex justify-between gap-2 font-receipt text-[9px] uppercase tracking-[0.14em]">
+                <span className="truncate">{auditLabel(data, key as keyof AuditMetrics)}</span>
                 <strong>{score}</strong>
               </p>
               <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-[#2d1b22]/10">

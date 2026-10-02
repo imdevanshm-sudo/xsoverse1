@@ -12,9 +12,17 @@ import {
   type ChangeEvent,
   type DragEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, Camera, Lock, X, Zap } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronDown, Lock, X, Zap } from 'lucide-react';
+import { storyToPatch, type CraftedStory } from '@/lib/aiCraft';
+import {
+  AIQuizCustomizer,
+  CraftBadge,
+  type CraftPhase,
+  type CraftSource,
+} from '@/components/xso/AIQuizCustomizer';
 import { packContent, useXsoStore, type PackContent } from '@/store/useXsoStore';
 import { useExpressOrder } from '@/store/useExpressOrder';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
@@ -36,7 +44,6 @@ import { MovieBox } from '@/components/xso/preview/MovieBox';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
 const MAX_PHOTOS = 3;
-const MAX_NAME = 40;
 const STEPS = ['Style', 'Photos', 'Pay'] as const;
 const FOCUSABLE =
   'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -73,10 +80,42 @@ export function ExpressOrderModal() {
   const [draft, setDraft] = useState<Draft>(() => seedDraft(theme));
   const [photos, setPhotos] = useState<string[]>([]);
   const [name, setName] = useState('');
+  const [craftPhase, setCraftPhase] = useState<CraftPhase>('quiz');
+  const [craftSource, setCraftSource] = useState<CraftSource | null>(null);
+  const [quizStep, setQuizStep] = useState(0);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
 
-  const pickTheme = useCallback((id: ThemeId) => {
-    setTheme(id);
-    setDraft(seedDraft(id));
+  /** A crafted story belongs to one pack + format; changing either sends the quiz back (answers kept). */
+  const uncraft = useCallback(() => {
+    setCraftPhase((p) => (p === 'crafted' ? 'quiz' : p));
+    setCraftSource(null);
+    setEditorOpen(false);
+  }, []);
+  const pickTheme = useCallback(
+    (id: ThemeId) => {
+      setTheme(id);
+      setDraft(seedDraft(id));
+      uncraft();
+    },
+    [uncraft],
+  );
+  const pickStyle = useCallback(
+    (next: GiftStyle) => {
+      setStyle(next);
+      uncraft();
+    },
+    [uncraft],
+  );
+  const applyStory = useCallback((story: CraftedStory, source: CraftSource) => {
+    setDraft((d) => ({ ...d, ...storyToPatch(story, d) }));
+    setCraftSource(source);
+  }, []);
+  const openEditor = useCallback(() => {
+    setEditorOpen(true);
+    requestAnimationFrame(() =>
+      editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
   }, []);
   const patchDraft = useCallback((patch: FormatPatch) => setDraft((d) => ({ ...d, ...patch })), []);
   const patchFormat = useCallback(
@@ -106,7 +145,7 @@ export function ExpressOrderModal() {
   useEffect(() => {
     setFocusCard(undefined);
     bodyRef.current?.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
-  }, [step, style, reduce]);
+  }, [step, style, quizStep, craftPhase, reduce]);
 
   useBodyScrollLock();
   useEffect(() => {
@@ -116,10 +155,11 @@ export function ExpressOrderModal() {
   }, []);
 
   useEffect(() => {
-    dialogRef.current?.querySelector<HTMLElement>('[data-step-focus]')?.focus({
-      preventScroll: true,
-    });
-  }, [step]);
+    const targets = dialogRef.current?.querySelectorAll<HTMLElement>('[data-step-focus]') ?? [];
+    Array.from(targets)
+      .find((el) => el.getClientRects().length > 0)
+      ?.focus({ preventScroll: true });
+  }, [step, quizStep]);
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
@@ -227,9 +267,12 @@ export function ExpressOrderModal() {
   const needsPhotos = scrapbook
     ? elements.includes('polaroids')
     : style !== 'loop' || draft.loop.cards.includes('photos');
+  const quizzing = step === 1 && craftPhase === 'quiz';
+  const photosReady = processing === 0 && (!needsPhotos || photos.length > 0);
   const canContinue =
     step === 0 ||
-    (name.trim().length > 0 &&
+    (craftPhase !== 'quiz' &&
+      name.trim().length > 0 &&
       processing === 0 &&
       (!needsPhotos || photos.length > 0) &&
       (!scrapbook || elements.length > 0));
@@ -337,26 +380,72 @@ export function ExpressOrderModal() {
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-4"
         >
           {step === 0 ? (
-            <StylePicker style={style} theme={theme} onStyle={setStyle} onTheme={pickTheme} />
-          ) : step === 1 ? (
-            <>
-              <FormatThumb data={previewData} style={style} focus={focusCard} />
-              <NameField name={name} onName={setName} />
-              <div className="mt-5">
-                <FormatEditor
-                  key={style}
-                  style={style}
-                  fields={draft}
-                  onPatch={patchDraft}
-                  onFormat={patchFormat}
-                  photoSlot={photoPicker}
-                  packTitle={pack.title}
-                  onReset={resetStory}
-                  onFocusCard={setFocusCard}
-                />
-              </div>
-            </>
-          ) : (
+            <StylePicker style={style} theme={theme} onStyle={pickStyle} onTheme={pickTheme} />
+          ) : null}
+          {step === 1 && craftPhase !== 'quiz' ? (
+            <FormatThumb
+              data={previewData}
+              style={style}
+              focus={focusCard}
+              large={craftPhase === 'crafted'}
+              onEdit={openEditor}
+              badge={craftSource ? <CraftBadge source={craftSource} /> : null}
+            />
+          ) : null}
+          {/* Stays mounted across steps so going back never loses the answers. */}
+          <div hidden={step !== 1}>
+            <AIQuizCustomizer
+              style={style}
+              name={name}
+              onName={setName}
+              photoSlot={photoPicker}
+              photosReady={photosReady}
+              phase={craftPhase}
+              onPhase={setCraftPhase}
+              source={craftSource}
+              onCrafted={applyStory}
+              onStep={setQuizStep}
+            />
+          </div>
+          {step === 1 && craftPhase !== 'quiz' ? (
+            <div ref={editorRef} className="mt-5 scroll-mt-2">
+              {craftPhase === 'crafted' ? (
+                <button
+                  type="button"
+                  aria-expanded={editorOpen}
+                  onClick={() => setEditorOpen((o) => !o)}
+                  className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-white/10 bg-[#21131b] px-4 text-left text-[15px] font-semibold text-[#fdf2f8]"
+                >
+                  <span>
+                    Edit every detail
+                    <span className="block text-[12.5px] font-normal text-[#c99aae]">
+                      Photos, line items, scores and the letter
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={`h-5 w-5 text-[#c99aae] transition-transform ${editorOpen ? 'rotate-180' : ''}`}
+                    aria-hidden
+                  />
+                </button>
+              ) : null}
+              {craftPhase === 'manual' || editorOpen ? (
+                <div className={craftPhase === 'crafted' ? 'mt-4' : ''}>
+                  <FormatEditor
+                    key={style}
+                    style={style}
+                    fields={draft}
+                    onPatch={patchDraft}
+                    onFormat={patchFormat}
+                    photoSlot={photoPicker}
+                    packTitle={pack.title}
+                    onReset={resetStory}
+                    onFocusCard={setFocusCard}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {step === 2 ? (
             <Review
               style={style}
               styleTitle={displayTitle(cart)}
@@ -372,7 +461,7 @@ export function ExpressOrderModal() {
               }
               onCustomize={customizeFirst}
             />
-          )}
+          ) : null}
           {error ? (
             <p
               role="alert"
@@ -384,7 +473,7 @@ export function ExpressOrderModal() {
         </div>
 
         <footer className="border-t border-white/10 px-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-3">
-          {step < 2 ? (
+          {quizzing ? null : step < 2 ? (
             <button
               type="button"
               onClick={() => canContinue && setStep((s) => s + 1)}
@@ -492,35 +581,6 @@ const StylePicker = memo(function StylePicker({
           );
         })}
       </div>
-    </>
-  );
-});
-
-const NameField = memo(function NameField({
-  name,
-  onName,
-}: {
-  name: string;
-  onName: (name: string) => void;
-}) {
-  return (
-    <>
-      <label
-        htmlFor="express-name"
-        className="font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]"
-      >
-        Their name
-      </label>
-      <input
-        id="express-name"
-        data-step-focus
-        value={name}
-        onChange={(e) => onName(e.target.value.slice(0, MAX_NAME))}
-        autoComplete="off"
-        enterKeyHint="next"
-        placeholder="e.g. Alex"
-        className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-[#21131b] px-4 text-[16px] text-[#fdf2f8] placeholder:text-[#7f5466] focus:border-[#ec4899] focus:outline-none"
-      />
     </>
   );
 });
@@ -662,30 +722,47 @@ const THUMB_COPY: Record<GiftStyle, string> = {
   moviebox: 'Scene titles, stills and your rating play on the reel as you edit.',
 };
 
+const LARGE_SCALE = 0.78;
+
+/** Small beside the copy while editing by hand; large and tappable once the AI has filled it. */
 const FormatThumb = memo(function FormatThumb({
   data,
   style,
   focus,
+  large = false,
+  onEdit,
+  badge,
 }: {
   data: XsoData;
   style: GiftStyle;
   focus?: number;
+  large?: boolean;
+  onEdit?: () => void;
+  badge?: ReactNode;
 }) {
   const deferred = useDeferredValue(data);
   const makeInert = useCallback((node: HTMLDivElement | null) => {
     node?.setAttribute('inert', '');
   }, []);
+  const scale = large ? LARGE_SCALE : THUMB_SCALE;
+  const Frame = onEdit ? 'button' : 'div';
   return (
-    <div className="mb-5 flex items-center gap-4">
-      <div
-        aria-hidden
-        className="relative shrink-0 overflow-hidden rounded-2xl"
-        style={{ width: DESK_W * THUMB_SCALE, height: DESK_H * THUMB_SCALE }}
+    <div className={`mb-5 flex items-center gap-4 ${large ? 'flex-col' : ''}`}>
+      <Frame
+        {...(onEdit
+          ? { type: 'button' as const, onClick: onEdit, 'aria-label': 'Edit the story' }
+          : {})}
+        className={`relative shrink-0 overflow-hidden rounded-2xl ${onEdit ? 'cursor-pointer ring-[#ec4899]/60 transition-shadow hover:ring-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]' : ''}`}
+        style={{ width: DESK_W * scale, height: DESK_H * scale }}
       >
+        {badge ? (
+          <span className="absolute inset-x-2 top-2 z-10 flex justify-center">{badge}</span>
+        ) : null}
         <div
           ref={makeInert}
+          aria-hidden
           className="pointer-events-none absolute left-0 top-0 origin-top-left"
-          style={{ width: DESK_W, height: DESK_H, transform: `scale(${THUMB_SCALE})` }}
+          style={{ width: DESK_W, height: DESK_H, transform: `scale(${scale})` }}
         >
           {style === 'scrapbook' ? (
             <ScrapbookDesk data={deferred} size="fill" chrome={false} focusIndex={focus} />
@@ -699,14 +776,16 @@ const FormatThumb = memo(function FormatThumb({
             <MovieBox data={deferred} size="fill" focusIndex={focus} />
           )}
         </div>
-      </div>
-      <div className="min-w-0">
-        <p className="flex items-center gap-2 font-receipt text-[10px] uppercase tracking-[0.2em] text-[#fdba74]">
-          <span aria-hidden className="led-peach" />
-          Live preview
-        </p>
-        <p className="mt-1.5 text-[13px] leading-snug text-[#e0b4c6]">{THUMB_COPY[style]}</p>
-      </div>
+      </Frame>
+      {large ? null : (
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 font-receipt text-[10px] uppercase tracking-[0.2em] text-[#fdba74]">
+            <span aria-hidden className="led-peach" />
+            Live preview
+          </p>
+          <p className="mt-1.5 text-[13px] leading-snug text-[#e0b4c6]">{THUMB_COPY[style]}</p>
+        </div>
+      )}
     </div>
   );
 });
