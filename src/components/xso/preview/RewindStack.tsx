@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AnimatePresence,
   motion,
@@ -72,7 +72,7 @@ interface Pile {
   direction: Direction;
 }
 
-export function RewindStack({
+export const RewindStack = memo(function RewindStack({
   data,
   onChange,
   size = 'hero',
@@ -126,17 +126,34 @@ export function RewindStack({
   const front = order[0];
   const next = order[1];
 
-  const rewind = (towards: Direction = -1) => {
-    playMechanicalCue('click');
-    if (!reduce) playFoley('land', 0.55);
-    setPile((current) => {
-      const [top, ...rest] = current.order;
-      const bumped = [...current.passes];
-      bumped[top] += 1;
-      return { order: [...rest, top], passes: bumped, turn: current.turn + 1, direction: towards };
-    });
-    onChange?.(next, artifacts[next].label);
-  };
+  /** Mirrors the pile synchronously so back-to-back pulls report the sheet that's really on top. */
+  const orderRef = useRef(order);
+  useEffect(() => {
+    orderRef.current = order;
+  }, [order]);
+
+  const rewind = useCallback(
+    (towards: Direction = -1) => {
+      playMechanicalCue('click');
+      if (!reduce) playFoley('land', 0.55);
+      const [first, ...others] = orderRef.current;
+      orderRef.current = [...others, first];
+      setPile((current) => {
+        const [top, ...rest] = current.order;
+        const bumped = [...current.passes];
+        bumped[top] += 1;
+        return {
+          order: [...rest, top],
+          passes: bumped,
+          turn: current.turn + 1,
+          direction: towards,
+        };
+      });
+      const shown = orderRef.current[0];
+      onChange?.(shown, artifacts[shown].label);
+    },
+    [artifacts, reduce, onChange],
+  );
 
   return (
     <section
@@ -221,7 +238,7 @@ export function RewindStack({
       </p>
     </section>
   );
-}
+});
 
 /**
  * Room light falling on the desk: a slow resting heartbeat in the CTA's
@@ -289,7 +306,7 @@ const LIFT_SHADOW: Variants = {
   lift: { opacity: 1 },
 };
 
-function RewindCard({
+const RewindCard = memo(function RewindCard({
   artifact,
   face,
   number,
@@ -370,4 +387,4 @@ function RewindCard({
       </div>
     </motion.div>
   );
-}
+});

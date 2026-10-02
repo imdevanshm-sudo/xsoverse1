@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -84,7 +85,7 @@ function buildItems(data: XsoData): DeskItemSpec[] {
   ];
 }
 
-export function ScrapbookDesk({
+export const ScrapbookDesk = memo(function ScrapbookDesk({
   data,
   size = 'hero',
   focusIndex,
@@ -266,7 +267,7 @@ export function ScrapbookDesk({
       </div>
     </section>
   );
-}
+});
 
 /** Picking a print up off the desk: it rises, straightens a touch and its shadow spreads. */
 const HANDLED: Variants = {
@@ -386,7 +387,7 @@ function Tape({ style, className = '' }: { style?: CSSProperties; className?: st
   );
 }
 
-function MiniReceipt({ data }: { data: XsoData }) {
+const MiniReceipt = memo(function MiniReceipt({ data }: { data: XsoData }) {
   return (
     <article className="desk-paper desk-paper--receipt relative px-3 pb-4 pt-4 font-receipt text-[#2d1b22]">
       <Tape style={{ left: '30%', top: -9, transform: 'rotate(-4deg)' }} />
@@ -413,10 +414,10 @@ function MiniReceipt({ data }: { data: XsoData }) {
         <span>{data.total}</span>
       </p>
       <p className="mt-2 font-hand text-[15px] leading-none text-[#b4234a]">worth every cent ♡</p>
-      <CoffeeRing className="pointer-events-none absolute -bottom-4 -right-5 w-[62%] opacity-[0.22] mix-blend-multiply" />
+      <CoffeeRing className="pointer-events-none absolute -bottom-4 -right-5 w-[62%] opacity-[0.18]" />
     </article>
   );
-}
+});
 
 const GLOSS: Variants = {
   rest: { opacity: 0.22, x: '-12%' },
@@ -424,7 +425,7 @@ const GLOSS: Variants = {
   lift: { opacity: 0.5, x: '14%' },
 };
 
-function Polaroid({
+const Polaroid = memo(function Polaroid({
   data,
   photo,
   flipped,
@@ -499,7 +500,7 @@ function Polaroid({
       </motion.div>
     </div>
   );
-}
+});
 
 /**
  * Peel stages: flat, a hover-lifted corner, and swung aside on its top-right
@@ -512,7 +513,15 @@ const PEEL = [
 ];
 const PEEL_SHADOW = [0, 0.5, 1];
 
-function StickyNote({ data, peel, reduce }: { data: XsoData; peel: 0 | 1 | 2; reduce: boolean }) {
+const StickyNote = memo(function StickyNote({
+  data,
+  peel,
+  reduce,
+}: {
+  data: XsoData;
+  peel: 0 | 1 | 2;
+  reduce: boolean;
+}) {
   const spring = useTouchSpring({ type: 'spring' as const, stiffness: 220, damping: 24 });
   const transition = reduce ? INSTANT : spring;
   const score = overallStars(data.auditMetrics).toFixed(1);
@@ -553,7 +562,7 @@ function StickyNote({ data, peel, reduce }: { data: XsoData; peel: 0 | 1 | 2; re
       </motion.div>
     </div>
   );
-}
+});
 
 const WAVE = [6, 11, 17, 9, 20, 13, 7, 16, 10, 18, 8, 14];
 
@@ -628,7 +637,15 @@ function VoiceSnippet({ data, live }: { data: XsoData; live: boolean }) {
   );
 }
 
-function TicketStub({ data, torn, reduce }: { data: XsoData; torn: boolean; reduce: boolean }) {
+const TicketStub = memo(function TicketStub({
+  data,
+  torn,
+  reduce,
+}: {
+  data: XsoData;
+  torn: boolean;
+  reduce: boolean;
+}) {
   return (
     <article className="desk-paper desk-paper--ticket relative px-3 py-2.5 text-[#2d1b22]">
       <div className="flex items-baseline justify-between gap-2 font-receipt text-[8px] uppercase tracking-[0.2em] text-[#9a6a7e]">
@@ -661,9 +678,9 @@ function TicketStub({ data, torn, reduce }: { data: XsoData; torn: boolean; redu
       </div>
     </article>
   );
-}
+});
 
-function FoldedLetter({ data }: { data: XsoData }) {
+const FoldedLetter = memo(function FoldedLetter({ data }: { data: XsoData }) {
   return (
     <article className="desk-paper desk-paper--letter relative aspect-[5/4] px-3 pt-2.5">
       <Tape style={{ left: '-8%', top: 8, transform: 'rotate(-32deg)', width: '38%' }} />
@@ -678,7 +695,7 @@ function FoldedLetter({ data }: { data: XsoData }) {
       </span>
     </article>
   );
-}
+});
 
 const UNFOLD = { type: 'spring' as const, stiffness: 120, damping: 18 };
 
@@ -727,7 +744,7 @@ function OpenLetter({
         tabIndex={-1}
         aria-hidden
         onClick={onClose}
-        className="absolute inset-0 rounded-[inherit] bg-[#180e15]/90 md:bg-[#180e15]/70 md:backdrop-blur-[3px]"
+        className="absolute inset-0 rounded-[inherit] bg-[#180e15]/90"
       />
       <motion.div
         className="relative w-full max-w-[340px]"

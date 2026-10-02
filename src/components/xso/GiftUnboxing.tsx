@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { XsoViewer } from '@/components/xso/XsoViewer';
+import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { PhoneFrame } from '@/components/xso/PhoneFrame';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
@@ -11,13 +11,7 @@ import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
-export function GiftUnboxing({
-  giftId,
-  initialData,
-}: {
-  giftId: string;
-  initialData: XsoData;
-}) {
+export function GiftUnboxing({ giftId, initialData }: { giftId: string; initialData: XsoData }) {
   const data = initialData;
   const [isUnwrapped, setIsUnwrapped] = useState(false);
   const note = useMemo(() => giftTagNote(data, giftId), [data, giftId]);
@@ -60,7 +54,9 @@ export function GiftUnboxing({
                   <MovieBox data={data} size="fill" />
                 </div>
               ) : (
-                <XsoViewer data={data} contained={false} />
+                <div className="flex h-full justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
+                  <MemoryDeck data={data} size="fill" />
+                </div>
               )}
               <motion.p
                 className="pointer-events-none absolute bottom-16 left-4 z-30 rounded-full border border-white/10 bg-black/80 px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-white/60"
@@ -72,13 +68,7 @@ export function GiftUnboxing({
               </motion.p>
             </motion.div>
           ) : (
-            <GiftWrap
-              key="gift-wrap"
-              data={data}
-              giftId={giftId}
-              note={note}
-              onUnwrap={unwrap}
-            />
+            <GiftWrap key="gift-wrap" data={data} giftId={giftId} note={note} onUnwrap={unwrap} />
           )}
         </AnimatePresence>
       </PhoneFrame>
@@ -107,9 +97,7 @@ function GiftWrap({
   return (
     <motion.section
       className={`absolute inset-0 z-40 overflow-hidden rounded-3xl border ${
-        matte
-          ? 'border-rose-200/10 bg-[#180b10]'
-          : 'border-[#c8a97c]/35 bg-[#ad8153]'
+        matte ? 'border-rose-200/10 bg-[#180b10]' : 'border-[#c8a97c]/35 bg-[#ad8153]'
       }`}
       style={{ perspective: 1100 }}
       initial={{ opacity: 0, scale: 0.96 }}
@@ -202,8 +190,7 @@ function GiftTag({
       style={{
         clipPath:
           'polygon(0 2%,6% 0,13% 2%,20% 0,28% 2%,36% 0,44% 2%,52% 0,60% 2%,68% 0,76% 2%,84% 0,92% 2%,100% 0,100% 98%,94% 100%,87% 98%,79% 100%,71% 98%,63% 100%,55% 98%,47% 100%,39% 98%,31% 100%,23% 98%,15% 100%,7% 98%,0 100%)',
-        backgroundImage:
-          'radial-gradient(rgba(77,57,37,.1) .6px, transparent .8px)',
+        backgroundImage: 'radial-gradient(rgba(77,57,37,.1) .6px, transparent .8px)',
         backgroundSize: '5px 5px',
       }}
     >
@@ -243,9 +230,7 @@ function StyleStamp({ style, date }: { style: GiftStyle; date: string }) {
       }`}
     >
       {style} edition
-      <span className="mt-1 block border-t border-current pt-1 text-center">
-        {date}
-      </span>
+      <span className="mt-1 block border-t border-current pt-1 text-center">{date}</span>
     </div>
   );
 }
@@ -301,8 +286,7 @@ function wrapSurface(matte: boolean): CSSProperties {
   }
 
   return {
-    background:
-      'linear-gradient(145deg, rgba(255,255,255,.1), transparent 32%), #ad8153',
+    background: 'linear-gradient(145deg, rgba(255,255,255,.1), transparent 32%), #ad8153',
     boxShadow: 'inset 0 0 42px rgba(66,39,18,.25)',
   };
 }
@@ -327,15 +311,17 @@ function hashString(value: string) {
 }
 
 function shortCode(value: string) {
-  return (value || 'xso-gift').replace(/[^a-z0-9]/gi, '').slice(-8).toUpperCase();
+  return (value || 'xso-gift')
+    .replace(/[^a-z0-9]/gi, '')
+    .slice(-8)
+    .toUpperCase();
 }
 
 function playPaperUnwrap() {
   try {
     const AudioContextCtor =
       window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextCtor) return;
 
     const context = new AudioContextCtor();

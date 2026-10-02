@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useXsoData } from '@/store/useXsoData';
-import { XsoViewer } from '@/components/xso/XsoViewer';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
@@ -37,10 +36,7 @@ function countBits(n: number) {
 export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const cart = getCartridge(lockedStyle);
   const data = useXsoData();
-  const previewData = useMemo(
-    () => ({ ...data, giftStyle: lockedStyle }),
-    [data, lockedStyle],
-  );
+  const previewData = useMemo(() => ({ ...data, giftStyle: lockedStyle }), [data, lockedStyle]);
 
   const router = useRouter();
   const customizeHref = `/customize?${styleQuery(lockedStyle)}`;
@@ -52,14 +48,7 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const goTo = useCallback((index: number, label: string) => {
     setMemory((m) => ({ current: index, seen: m.seen | (1 << index), label }));
   }, []);
-  const onAdvance = useCallback(() => {
-    setMemory((m) => {
-      const next = (m.current + 1) % MEMORY_COUNT;
-      return { current: next, seen: m.seen | (1 << next), label: '' };
-    });
-  }, []);
   const explored = countBits(memory.seen);
-  const isLoop = lockedStyle === 'loop';
 
   return (
     <div>
@@ -74,9 +63,7 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
             </p>
           </div>
 
-          {isLoop ? (
-            <MemoryDeck data={previewData} onChange={goTo} />
-          ) : lockedStyle === 'rewind' ? (
+          {lockedStyle === 'rewind' ? (
             <RewindStack data={previewData} onChange={goTo} />
           ) : lockedStyle === 'scrapbook' ? (
             <ScrapbookDesk data={previewData} onChange={goTo} />
@@ -85,14 +72,7 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
           ) : lockedStyle === 'moviebox' ? (
             <MovieBox data={previewData} onChange={goTo} />
           ) : (
-            <div className="paper-frame w-full max-w-[400px]">
-              <XsoViewer
-                data={previewData}
-                frameSize="hero"
-                scratchDock={false}
-                onAdvance={onAdvance}
-              />
-            </div>
+            <MemoryDeck data={previewData} onChange={goTo} />
           )}
 
           <div className="mt-7 w-full max-w-[400px]">
@@ -108,8 +88,8 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
             {cart.tagline}
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-[#e0b4c6]">
-            This is what they&apos;ll hold. Turn each keepsake over, scratch the ticket, then
-            fill every line with the things you never quite found the words for.
+            This is what they&apos;ll hold. Turn each keepsake over, scratch the ticket, then fill
+            every line with the things you never quite found the words for.
           </p>
         </aside>
       </div>

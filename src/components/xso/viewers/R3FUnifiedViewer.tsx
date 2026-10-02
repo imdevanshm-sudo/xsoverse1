@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
   Center,
@@ -17,25 +10,12 @@ import {
   PresentationControls,
 } from '@react-three/drei';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  AdditiveBlending,
-  Group,
-  MathUtils,
-  SRGBColorSpace,
-  Texture,
-  TextureLoader,
-} from 'three';
+import { AdditiveBlending, Group, MathUtils, SRGBColorSpace, Texture, TextureLoader } from 'three';
 import type { GiftStyle, XsoData } from '@/types/xso';
 import { buildMemoryTextureUrls } from '@/lib/loopTextures';
-import {
-  useAdaptiveCanvasQuality,
-  useDeviceQuality,
-} from '@/hooks/useDeviceQuality';
+import { useAdaptiveCanvasQuality, useDeviceQuality } from '@/hooks/useDeviceQuality';
 import { clampDpr, DPR_RANGE } from '@/lib/deviceQuality';
-import {
-  QualityProvider,
-  useQuality,
-} from '@/components/xso/viewers/QualityContext';
+import { QualityProvider, useQuality } from '@/components/xso/viewers/QualityContext';
 import { ScratchReveal } from '@/components/xso/paper/ScratchReveal';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import {
@@ -126,8 +106,7 @@ export function R3FUnifiedViewer({
   onAdvance,
   scratchDock = true,
 }: R3FUnifiedViewerProps) {
-  const { quality, onDecline, onIncline, onFallback } =
-    useAdaptiveCanvasQuality();
+  const { quality, onDecline, onIncline, onFallback } = useAdaptiveCanvasQuality();
   const atQualityFloor = quality.degradeSteps >= 2;
   const mountedAt = useRef(0);
   const floorDeclines = useRef(0);
@@ -149,9 +128,7 @@ export function R3FUnifiedViewer({
   const sectionRef = useRef<HTMLElement>(null);
   const renderVisible = useRenderVisible(sectionRef);
   const [action, setAction] = useState(0);
-  const [inspectedScrapbook, setInspectedScrapbook] = useState<number | null>(
-    null,
-  );
+  const [inspectedScrapbook, setInspectedScrapbook] = useState<number | null>(null);
   const [pressing, setPressing] = useState(false);
   const [rewindGlitch, setRewindGlitch] = useState(false);
   const [reshuffleCue, setReshuffleCue] = useState(false);
@@ -201,9 +178,7 @@ export function R3FUnifiedViewer({
     } else {
       playCue('click');
     }
-    setAction((value) =>
-      style === 'accordion' ? Math.min(3, value + 1) : value + 1,
-    );
+    setAction((value) => (style === 'accordion' ? Math.min(3, value + 1) : value + 1));
     onAdvance?.();
   };
 
@@ -216,10 +191,9 @@ export function R3FUnifiedViewer({
   const isScrapbook = data.giftStyle === 'scrapbook';
   const isAccordion = data.giftStyle === 'accordion';
   const isMoviebox = data.giftStyle === 'moviebox';
-  const movieFrame =
-    (((action + initialSide) % 4) + 4) % 4 + 1;
+  const movieFrame = ((((action + initialSide) % 4) + 4) % 4) + 1;
   // Desk stack cycles 0→1→2→3; letter (scratch) is index 3.
-  const topCardIndex = ((initialSide + action) % 4 + 4) % 4;
+  const topCardIndex = (((initialSide + action) % 4) + 4) % 4;
   const showLetterScratch = scratchDock && isLoop && topCardIndex === 3;
 
   const camcorderStamp = useMemo(() => {
@@ -245,13 +219,11 @@ export function R3FUnifiedViewer({
         ? months[monthNum - 1]
         : parts[0]?.slice(0, 3).toUpperCase() || 'AUG';
     const year =
-      parts.find((p) => /^\d{4}$/.test(p)) ||
-      (parts[2]?.length === 4 ? parts[2] : '2004');
+      parts.find((p) => /^\d{4}$/.test(p)) || (parts[2]?.length === 4 ? parts[2] : '2004');
     return `${month} ${year}`;
   }, [data.timestamp]);
 
-  const tapAdvancesStack =
-    !quality.presentationControls && (isLoop || isRewind);
+  const tapAdvancesStack = !quality.presentationControls && (isLoop || isRewind);
 
   return (
     <section
@@ -293,9 +265,7 @@ export function R3FUnifiedViewer({
           />
           <WebGlContextGuard onContextLost={onContextLost} />
           <color attach="background" args={['#0d0f12']} />
-          {quality.fog ? (
-            <fog attach="fog" args={['#0d0f12', 10, 18]} />
-          ) : null}
+          {quality.fog ? <fog attach="fog" args={['#0d0f12', 10, 18]} /> : null}
           <StudioLights />
           <DeskSurface />
 
@@ -333,10 +303,7 @@ export function R3FUnifiedViewer({
 
       {isRewind ? (
         <>
-          <CamcorderTimestamp
-            label={`${camcorderStamp} — REWIND`}
-            active={rewindGlitch}
-          />
+          <CamcorderTimestamp label={`${camcorderStamp} — REWIND`} active={rewindGlitch} />
           <RewindGlitchBurst active={rewindGlitch} />
         </>
       ) : null}
@@ -348,15 +315,11 @@ export function R3FUnifiedViewer({
           Postcard {Math.min(4, action + 1)} of 4
         </p>
       )}
-      {isMoviebox && quality.softOverlays ? (
-        <ProjectorBeamOverlay />
-      ) : null}
+      {isMoviebox && quality.softOverlays ? <ProjectorBeamOverlay /> : null}
       {isMoviebox ? <FilmFrameCounter frame={movieFrame} /> : null}
       {isAccordion && (
         <motion.div
-          className={`absolute right-3 top-[42%] z-20 flex h-36 w-9 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-full border border-[#c4a882]/25 bg-[#2a221c]/90 active:cursor-grabbing ${
-            quality.softOverlays ? 'md:backdrop-blur-sm' : ''
-          }`}
+          className={`absolute right-3 top-[42%] z-20 flex h-36 w-9 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-full border border-[#c4a882]/25 bg-[#2a221c]/90 active:cursor-grabbing ${''}`}
           drag="y"
           dragConstraints={{ top: 0, bottom: 0 }}
           dragElastic={0.7}
@@ -404,10 +367,7 @@ export function R3FUnifiedViewer({
             <p className="mb-1.5 text-center font-hand text-[12px] text-[#d8cfc0]/80">
               a little secret under the foil ↓
             </p>
-            <ScratchReveal
-              key={data.scratchOffReward}
-              reward={data.scratchOffReward}
-            />
+            <ScratchReveal key={data.scratchOffReward} reward={data.scratchOffReward} />
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -420,11 +380,7 @@ export function R3FUnifiedViewer({
           label={ACTION_LABELS.rewind}
         />
       ) : isScrapbook ? (
-        <ReshuffleCollageButton
-          onPress={trigger}
-          pressing={pressing}
-          setPressing={setPressing}
-        />
+        <ReshuffleCollageButton onPress={trigger} pressing={pressing} setPressing={setPressing} />
       ) : isAccordion ? (
         <AccordionPullTab
           onPress={trigger}
@@ -455,15 +411,12 @@ export function R3FUnifiedViewer({
               ? `absolute bottom-3 right-3 z-20 flex min-h-12 min-w-[7.5rem] touch-manipulation select-none items-center justify-center rounded-[14px] border border-white/20 px-5 py-3 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[#f2efe8] sm:bottom-4 sm:right-4 ${
                   pressing ? 'translate-y-1' : ''
                 }`
-              : `absolute bottom-3 right-3 z-20 flex min-h-12 min-w-12 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/85 px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_24px_rgba(0,0,0,.45)] sm:bottom-4 sm:right-4 ${
-                  quality.softOverlays ? 'md:backdrop-blur-md' : ''
-                }`
+              : `absolute bottom-3 right-3 z-20 flex min-h-12 min-w-12 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/85 px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_24px_rgba(0,0,0,.45)] sm:bottom-4 sm:right-4 ${''}`
           }
           style={
             isLoop
               ? {
-                  background:
-                    'linear-gradient(180deg, #4a515c 0%, #2a2f38 42%, #181b20 100%)',
+                  background: 'linear-gradient(180deg, #4a515c 0%, #2a2f38 42%, #181b20 100%)',
                   boxShadow: pressing
                     ? 'inset 0 3px 8px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 0 #0a0a0a'
                     : 'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -2px 0 rgba(0,0,0,0.45), 0 8px 0 #0a0a0a, 0 14px 28px rgba(0,0,0,0.55)',
@@ -511,8 +464,7 @@ function useRenderVisible(ref: RefObject<HTMLElement>) {
   const [tabVisible, setTabVisible] = useState(true);
 
   useEffect(() => {
-    const onVisibility = () =>
-      setTabVisible(document.visibilityState !== 'hidden');
+    const onVisibility = () => setTabVisible(document.visibilityState !== 'hidden');
     onVisibility();
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
@@ -646,13 +598,7 @@ function SouvenirScene({
         />
       );
     case 'scrapbook':
-      return (
-        <ScrapbookScene
-          textures={textures}
-          action={action}
-          onInspect={onInspectScrapbook}
-        />
-      );
+      return <ScrapbookScene textures={textures} action={action} onInspect={onInspectScrapbook} />;
     case 'accordion':
       return <AccordionScene textures={textures} panel={action % 4} />;
     case 'moviebox':
@@ -667,11 +613,7 @@ function StudioLights() {
       <>
         <ambientLight intensity={1.05} />
         <hemisphereLight args={['#fff4df', '#17202a', 1.35]} />
-        <directionalLight
-          position={[4.5, 6.5, 8]}
-          intensity={2.8}
-          color="#fff0db"
-        />
+        <directionalLight position={[4.5, 6.5, 8]} intensity={2.8} color="#fff0db" />
       </>
     );
   }
@@ -689,13 +631,7 @@ function StudioLights() {
         shadow-mapSize-height={quality.shadowMapSize}
         shadow-bias={-0.0004}
       />
-      <spotLight
-        position={[-4, 3, 7]}
-        intensity={18}
-        angle={0.48}
-        penumbra={0.9}
-        color="#aec8d8"
-      />
+      <spotLight position={[-4, 3, 7]} intensity={18} angle={0.48} penumbra={0.9} color="#aec8d8" />
       <pointLight position={[4, -2, 4]} intensity={8} color="#d18d68" />
     </>
   );
@@ -710,11 +646,7 @@ function DeskSurface() {
         <meshStandardMaterial color="#17191c" roughness={0.92} metalness={0.02} />
       </mesh>
       {Array.from({ length: quality.deskStripes }).map((_, index) => (
-        <mesh
-          key={index}
-          position={[-8.5 + index, 0, 0.012]}
-          scale={[0.012, 6.5, 1]}
-        >
+        <mesh key={index} position={[-8.5 + index, 0, 0.012]} scale={[0.012, 6.5, 1]}>
           <planeGeometry args={[1, 1]} />
           <meshBasicMaterial color={index % 2 ? '#24272b' : '#101215'} />
         </mesh>
@@ -723,20 +655,14 @@ function DeskSurface() {
   );
 }
 
-function stackRestPose(
-  depth: number,
-  textureIndex: number,
-  isRewind: boolean,
-) {
+function stackRestPose(depth: number, textureIndex: number, isRewind: boolean) {
   const top = depth === 0;
   const tilt = CARD_TILTS[textureIndex] ?? 0;
   const mess = isRewind
-    ? REWIND_MESS[textureIndex] ?? REWIND_MESS[0]
+    ? (REWIND_MESS[textureIndex] ?? REWIND_MESS[0])
     : { x: 0, y: 0, z: 0, rz: 0 };
   return {
-    x:
-      depth * (isRewind ? 0.12 : 0.1) +
-      (top ? mess.x * 0.35 : depth * 0.02 + mess.x),
+    x: depth * (isRewind ? 0.12 : 0.1) + (top ? mess.x * 0.35 : depth * 0.02 + mess.x),
     y: -depth * (isRewind ? 0.1 : 0.09) + mess.y * (top ? 0.2 : 1),
     z: depth * (isRewind ? 0.16 : 0.14) + mess.z,
     rx: 0.01 * depth,
@@ -745,11 +671,7 @@ function stackRestPose(
   };
 }
 
-function applyStackRestPoses(
-  order: number[],
-  cardRefs: Array<Group | null>,
-  isRewind: boolean,
-) {
+function applyStackRestPoses(order: number[], cardRefs: Array<Group | null>, isRewind: boolean) {
   order.forEach((textureIndex, depth) => {
     const card = cardRefs[textureIndex];
     if (!card) return;
@@ -797,13 +719,9 @@ function DeskStack({
       const logical = isRewind
         ? rotateIndices(
             textures.length,
-            (((initialSide - action) % textures.length) + textures.length) %
-              textures.length,
+            (((initialSide - action) % textures.length) + textures.length) % textures.length,
           )
-        : rotateIndices(
-            textures.length,
-            (initialSide + action) % textures.length,
-          );
+        : rotateIndices(textures.length, (initialSide + action) % textures.length);
       orderRef.current = logical;
       phase.current = 1;
       orderFlipped.current = true;
@@ -821,13 +739,9 @@ function DeskStack({
     const logical = isRewind
       ? rotateIndices(
           textures.length,
-          (((initialSide - action) % textures.length) + textures.length) %
-            textures.length,
+          (((initialSide - action) % textures.length) + textures.length) % textures.length,
         )
-      : rotateIndices(
-          textures.length,
-          (initialSide + action) % textures.length,
-        );
+      : rotateIndices(textures.length, (initialSide + action) % textures.length);
     orderRef.current = logical;
     phase.current = 1;
     orderFlipped.current = true;
@@ -850,11 +764,7 @@ function DeskStack({
           const card = cardRefs.current[textureIndex];
           if (!card) return;
           const boom = REWIND_BURST[textureIndex] ?? REWIND_BURST[0];
-          const rest = stackRestPose(
-            orderRef.current.indexOf(textureIndex),
-            textureIndex,
-            true,
-          );
+          const rest = stackRestPose(orderRef.current.indexOf(textureIndex), textureIndex, true);
           card.position.set(
             rest.x + boom.x * burst,
             rest.y + boom.y * burst,
@@ -869,15 +779,11 @@ function DeskStack({
       } else {
         if (!orderFlipped.current) {
           const current = orderRef.current;
-          orderRef.current = [
-            current[current.length - 1],
-            ...current.slice(0, -1),
-          ];
+          orderRef.current = [current[current.length - 1], ...current.slice(0, -1)];
           orderFlipped.current = true;
         }
         const u = (t - explodeEnd) / (1 - explodeEnd);
-        const spring =
-          1 - Math.pow(2, -9 * u) * Math.cos((u * 5.5 * Math.PI) / 2);
+        const spring = 1 - Math.pow(2, -9 * u) * Math.cos((u * 5.5 * Math.PI) / 2);
         const settle = Math.min(1.12, Math.max(0, spring));
 
         orderRef.current.forEach((textureIndex, depth) => {
@@ -914,13 +820,7 @@ function DeskStack({
     phase.current = Math.min(1, phase.current + delta * speed);
     const t = phase.current;
     const e = elastic
-      ? Math.min(
-          1.08,
-          Math.max(
-            0,
-            1 - Math.pow(2, -10 * t) * Math.cos((t * Math.PI * 4.5) / 2),
-          ),
-        )
+      ? Math.min(1.08, Math.max(0, 1 - Math.pow(2, -10 * t) * Math.cos((t * Math.PI * 4.5) / 2)))
       : t;
     const lift = Math.sin(Math.min(1, e) * Math.PI);
 
@@ -947,12 +847,7 @@ function DeskStack({
             cardRefs.current[textureIndex] = node;
           }}
         >
-          <CardMesh
-            texture={texture}
-            kind={textureIndex}
-            elevated={false}
-            aged={isRewind}
-          />
+          <CardMesh texture={texture} kind={textureIndex} elevated={false} aged={isRewind} />
         </group>
       ))}
     </group>
@@ -1014,10 +909,7 @@ function CardMesh({
             />
           </mesh>
         ) : null}
-        <mesh
-          position={[aged ? 0.14 : 0.08, -0.12, -0.1]}
-          rotation={[-0.02, 0, 0.01]}
-        >
+        <mesh position={[aged ? 0.14 : 0.08, -0.12, -0.1]} rotation={[-0.02, 0, 0.01]}>
           <planeGeometry args={[3.55, 4.9]} />
           <meshBasicMaterial color="#000" transparent opacity={shadowOpacity} />
         </mesh>
@@ -1038,11 +930,7 @@ function CardMesh({
       </mesh>
       <mesh position={[0, 0, -0.05]} castShadow>
         <boxGeometry args={[3.3, 4.55, 0.025]} />
-        <meshStandardMaterial
-          color={aged ? '#d4c9b0' : '#e4ddd0'}
-          roughness={0.95}
-          metalness={0}
-        />
+        <meshStandardMaterial color={aged ? '#d4c9b0' : '#e4ddd0'} roughness={0.95} metalness={0} />
       </mesh>
       {aged ? (
         <mesh position={[1.45, 2.05, 0.055]} rotation={[0, 0, Math.PI / 4]}>
@@ -1226,11 +1114,7 @@ function PaperFibers() {
       {Array.from({ length: count }).map((_, index) => (
         <mesh
           key={index}
-          position={[
-            ((index * 37) % 43) / 10 - 2.15,
-            ((index * 23) % 69) / 10 - 3.4,
-            0,
-          ]}
+          position={[((index * 37) % 43) / 10 - 2.15, ((index * 23) % 69) / 10 - 3.4, 0]}
           rotation={[0, 0, (index % 5) * 0.22]}
           scale={[0.12 + (index % 3) * 0.05, 0.008, 1]}
         >
@@ -1376,18 +1260,11 @@ function ScrapbookInspection({
   onClose: () => void;
 }) {
   const quality = useDeviceQuality({ clientOnly: true });
-  const titles = [
-    'Receipt of Lore',
-    'Friendship Field Note',
-    'Core Memory',
-    'A Note for You',
-  ];
+  const titles = ['Receipt of Lore', 'Friendship Field Note', 'Core Memory', 'A Note for You'];
 
   return (
     <motion.div
-      className={`fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/90 p-4 md:bg-black/80 ${
-        quality.softOverlays ? 'md:backdrop-blur-md' : ''
-      }`}
+      className={`fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/90 p-4 md:bg-black/80 ${''}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -1406,12 +1283,11 @@ function ScrapbookInspection({
         onClick={(event) => event.stopPropagation()}
       >
         <div
-          className={`pointer-events-none absolute inset-0 opacity-[0.22] mix-blend-multiply max-md:hidden ${
+          className={`pointer-events-none absolute inset-0 opacity-[0.14] max-md:hidden ${
             quality.softOverlays ? '' : 'hidden'
           }`}
           style={{
-            backgroundImage:
-              "url('/textures/noise-mono.png')",
+            backgroundImage: "url('/textures/noise-mono.png')",
             backgroundSize: '128px 128px',
           }}
           aria-hidden
@@ -1499,13 +1375,7 @@ function ScrapbookInspection({
   );
 }
 
-function AccordionScene({
-  textures,
-  panel,
-}: {
-  textures: Texture[];
-  panel: number;
-}) {
+function AccordionScene({ textures, panel }: { textures: Texture[]; panel: number }) {
   const ribbon = useRef<Group>(null);
   const darkCreases = useRef<Array<{ opacity: number } | null>>([]);
   const softCreases = useRef<Array<{ opacity: number } | null>>([]);
@@ -1546,20 +1416,12 @@ function AccordionScene({
         {textures.map((texture, index) => (
           <group
             key={texture.uuid}
-            position={[
-              0,
-              -index * panelHeight,
-              index % 2 === 0 ? 0.05 : -0.1,
-            ]}
+            position={[0, -index * panelHeight, index % 2 === 0 ? 0.05 : -0.1]}
             rotation={[(index % 2 === 0 ? 1 : -1) * 0.055, 0, 0]}
           >
             <mesh castShadow receiveShadow>
               <boxGeometry args={[3.15, panelHeight - 0.08, 0.1]} />
-              <meshStandardMaterial
-                color="#fdf2f8"
-                roughness={0.92}
-                metalness={0}
-              />
+              <meshStandardMaterial color="#fdf2f8" roughness={0.92} metalness={0} />
             </mesh>
             <mesh position={[0, 0.02, 0.056]}>
               <planeGeometry args={[2.82, panelHeight - 0.42]} />
@@ -1577,10 +1439,7 @@ function AccordionScene({
               <planeGeometry args={[3.05, 0.16]} />
               <meshBasicMaterial color="#fdf2f8" />
             </mesh>
-            <mesh
-              position={[0, -panelHeight / 2 + 0.04, 0.072]}
-              scale={[3.05, 0.085, 1]}
-            >
+            <mesh position={[0, -panelHeight / 2 + 0.04, 0.072]} scale={[3.05, 0.085, 1]}>
               <planeGeometry args={[1, 1]} />
               <meshBasicMaterial
                 color="#2a2018"
@@ -1591,10 +1450,7 @@ function AccordionScene({
                 }}
               />
             </mesh>
-            <mesh
-              position={[0, -panelHeight / 2 + 0.12, 0.065]}
-              scale={[3.05, 0.18, 1]}
-            >
+            <mesh position={[0, -panelHeight / 2 + 0.12, 0.065]} scale={[3.05, 0.18, 1]}>
               <planeGeometry args={[1, 1]} />
               <meshBasicMaterial
                 color="#6b5744"
@@ -1605,10 +1461,7 @@ function AccordionScene({
                 }}
               />
             </mesh>
-            <mesh
-              position={[0, -panelHeight / 2 + 0.22, 0.06]}
-              scale={[2.9, 0.1, 1]}
-            >
+            <mesh position={[0, -panelHeight / 2 + 0.22, 0.06]} scale={[2.9, 0.1, 1]}>
               <planeGeometry args={[1, 1]} />
               <meshBasicMaterial color="#fff8ee" transparent opacity={0.12} />
             </mesh>
@@ -1616,10 +1469,7 @@ function AccordionScene({
               <>
                 <Grommet position={[-0.7, panelHeight / 2 - 0.28, 0.1]} />
                 <Grommet position={[0.7, panelHeight / 2 - 0.28, 0.1]} />
-                <mesh
-                  position={[0, panelHeight / 2 - 0.28, 0.07]}
-                  scale={[1.2, 0.07, 1]}
-                >
+                <mesh position={[0, panelHeight / 2 - 0.28, 0.07]} scale={[1.2, 0.07, 1]}>
                   <planeGeometry args={[1, 1]} />
                   <meshStandardMaterial color="#6f5140" roughness={0.72} />
                 </mesh>
@@ -1651,8 +1501,7 @@ function MovieBoxScene({ textures, turn }: { textures: Texture[]; turn: number }
   const stripY = useRef(0);
   const stripVelocity = useRef(0);
   const previousTurn = useRef(turn);
-  const current =
-    ((turn % textures.length) + textures.length) % textures.length;
+  const current = ((turn % textures.length) + textures.length) % textures.length;
 
   useEffect(() => {
     if (previousTurn.current === turn) return;
@@ -1673,12 +1522,7 @@ function MovieBoxScene({ textures, turn }: { textures: Texture[]; turn: number }
       stripVelocity.current = 0;
     }
     strip.current.position.y = stripY.current;
-    strip.current.rotation.x = MathUtils.damp(
-      strip.current.rotation.x,
-      0,
-      9,
-      delta,
-    );
+    strip.current.rotation.x = MathUtils.damp(strip.current.rotation.x, 0, 9, delta);
   });
 
   return (
@@ -1698,11 +1542,7 @@ function MovieBoxScene({ textures, turn }: { textures: Texture[]; turn: number }
           castShadow={quality.shadows}
         />
       ) : (
-        <directionalLight
-          position={[0.5, 1.2, 2.5]}
-          intensity={4.5}
-          color="#ffb870"
-        />
+        <directionalLight position={[0.5, 1.2, 2.5]} intensity={4.5} color="#ffb870" />
       )}
       {/* Projector housing */}
       <mesh
@@ -1712,19 +1552,11 @@ function MovieBoxScene({ textures, turn }: { textures: Texture[]; turn: number }
         scale={[2.52, 3.78, 0.9]}
       >
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial
-          color="#351018"
-          roughness={0.22}
-          metalness={0.78}
-        />
+        <meshStandardMaterial color="#351018" roughness={0.22} metalness={0.78} />
       </mesh>
       <mesh position={[0, 0, -0.35]} scale={[2.35, 3.55, 0.15]}>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial
-          color="#4a2030"
-          roughness={0.35}
-          metalness={0.65}
-        />
+        <meshStandardMaterial color="#4a2030" roughness={0.35} metalness={0.65} />
       </mesh>
       {/* Lens viewport recess — fixed gate (no jitter) */}
       <mesh position={[0, 0, 0.12]} scale={[2.28, 1.68, 0.24]}>
@@ -1784,19 +1616,11 @@ function FilmFrame({ texture }: { texture: Texture }) {
       {/* Perforations — both edges */}
       {[-1.95, 1.95].flatMap((x) =>
         sprocketY.flatMap((y, hole) => [
-          <mesh
-            key={`${x}-hole-${hole}`}
-            position={[x, y, 0.038]}
-            scale={[0.11, 0.085, 1]}
-          >
+          <mesh key={`${x}-hole-${hole}`} position={[x, y, 0.038]} scale={[0.11, 0.085, 1]}>
             <planeGeometry args={[1, 1]} />
             <meshBasicMaterial color="#080604" />
           </mesh>,
-          <mesh
-            key={`${x}-rim-${hole}`}
-            position={[x, y, 0.036]}
-            scale={[0.14, 0.11, 1]}
-          >
+          <mesh key={`${x}-rim-${hole}`} position={[x, y, 0.036]} scale={[0.14, 0.11, 1]}>
             <planeGeometry args={[1, 1]} />
             <meshBasicMaterial color="#c9a86a" />
           </mesh>,
@@ -1852,31 +1676,15 @@ function BronzeCrankWheel({ turn }: { turn: number }) {
         </mesh>
         <mesh position={[0, 0, 0.07]}>
           <circleGeometry args={[0.32, segments]} />
-          <meshStandardMaterial
-            color="#e8b878"
-            metalness={0.75}
-            roughness={0.22}
-          />
+          <meshStandardMaterial color="#e8b878" metalness={0.75} roughness={0.22} />
         </mesh>
-        <mesh
-          position={[0.52, 0, 0.1]}
-          rotation={[0, 0, Math.PI / 2]}
-          castShadow={false}
-        >
+        <mesh position={[0.52, 0, 0.1]} rotation={[0, 0, Math.PI / 2]} castShadow={false}>
           <cylinderGeometry args={[0.06, 0.06, 0.55, Math.max(8, segments / 2)]} />
-          <meshStandardMaterial
-            color="#8b5a32"
-            metalness={0.82}
-            roughness={0.25}
-          />
+          <meshStandardMaterial color="#8b5a32" metalness={0.82} roughness={0.25} />
         </mesh>
         <mesh position={[0.78, 0, 0.1]} castShadow={false}>
           <sphereGeometry args={[0.11, Math.max(8, segments / 2), Math.max(8, segments / 2)]} />
-          <meshStandardMaterial
-            color="#6b4423"
-            metalness={0.85}
-            roughness={0.3}
-          />
+          <meshStandardMaterial color="#6b4423" metalness={0.85} roughness={0.3} />
         </mesh>
       </group>
     </group>
@@ -1895,11 +1703,7 @@ function ProjectorBezel() {
       ].map((bar, index) => (
         <mesh key={index} position={bar.position} scale={bar.scale} castShadow>
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial
-            color="#4a1621"
-            metalness={0.82}
-            roughness={0.2}
-          />
+          <meshStandardMaterial color="#4a1621" metalness={0.82} roughness={0.2} />
         </mesh>
       ))}
       <mesh position={[0, 0, 0.04]} scale={[2.05, 1.28, 0.08]}>
@@ -1914,17 +1718,11 @@ function ProjectorBezel() {
           </mesh>
           {gateY.map((y, index) => (
             <group key={index}>
-              <mesh
-                position={[x, y, 0.17]}
-                scale={[0.15, 0.1, 1]}
-              >
+              <mesh position={[x, y, 0.17]} scale={[0.15, 0.1, 1]}>
                 <planeGeometry args={[1, 1]} />
                 <meshBasicMaterial color="#c9a86a" />
               </mesh>
-              <mesh
-                position={[x, y, 0.19]}
-                scale={[0.1, 0.065, 1]}
-              >
+              <mesh position={[x, y, 0.19]} scale={[0.1, 0.065, 1]}>
                 <planeGeometry args={[1, 1]} />
                 <meshBasicMaterial color="#050403" />
               </mesh>
@@ -1980,37 +1778,21 @@ function SpoolMesh() {
       </mesh>
       <mesh castShadow>
         <torusGeometry args={[0.52, 0.085, 12, 40]} />
-        <meshStandardMaterial
-          color="#c9925a"
-          metalness={0.88}
-          roughness={0.24}
-        />
+        <meshStandardMaterial color="#c9925a" metalness={0.88} roughness={0.24} />
       </mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.38, 0.04, 8, 32]} />
-        <meshStandardMaterial
-          color="#e8b878"
-          metalness={0.7}
-          roughness={0.3}
-        />
+        <meshStandardMaterial color="#e8b878" metalness={0.7} roughness={0.3} />
       </mesh>
       {[0, Math.PI / 3, (Math.PI * 2) / 3].map((rotation) => (
         <mesh key={rotation} rotation={[0, 0, rotation]} scale={[1, 0.07, 0.07]}>
           <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial
-            color="#8a6447"
-            metalness={0.82}
-            roughness={0.22}
-          />
+          <meshStandardMaterial color="#8a6447" metalness={0.82} roughness={0.22} />
         </mesh>
       ))}
       <mesh position={[0, 0, 0.04]}>
         <circleGeometry args={[0.13, 24]} />
-        <meshStandardMaterial
-          color="#4a2818"
-          metalness={0.75}
-          roughness={0.28}
-        />
+        <meshStandardMaterial color="#4a2818" metalness={0.75} roughness={0.28} />
       </mesh>
     </group>
   );
@@ -2021,19 +1803,11 @@ function ProjectionCone() {
     <group position={[1.75, -3.05, 0.1]} rotation={[0, -0.38, Math.PI / 2]}>
       <mesh castShadow>
         <cylinderGeometry args={[0.38, 0.62, 1.35, 36]} />
-        <meshStandardMaterial
-          color="#35141a"
-          metalness={0.78}
-          roughness={0.2}
-        />
+        <meshStandardMaterial color="#35141a" metalness={0.78} roughness={0.2} />
       </mesh>
       <mesh position={[0, 0.7, 0]}>
         <cylinderGeometry args={[0.35, 0.35, 0.09, 36]} />
-        <meshStandardMaterial
-          color="#78b7c8"
-          metalness={0.45}
-          roughness={0.05}
-        />
+        <meshStandardMaterial color="#78b7c8" metalness={0.45} roughness={0.05} />
       </mesh>
     </group>
   );
@@ -2131,10 +1905,7 @@ function useMemoryTextures(data: XsoData): Texture[] | null {
     if (!textures) return;
     const mipmaps = quality.tier === 'high';
     textures.forEach((texture) => {
-      if (
-        texture.anisotropy === quality.anisotropy &&
-        texture.generateMipmaps === mipmaps
-      ) {
+      if (texture.anisotropy === quality.anisotropy && texture.generateMipmaps === mipmaps) {
         return;
       }
       texture.anisotropy = quality.anisotropy;

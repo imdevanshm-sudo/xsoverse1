@@ -80,12 +80,6 @@ body {
   height: var(--app-height, 100vh);
 }
 
-@media (min-width: 1024px) {
-  body {
-    background-attachment: fixed;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -177,8 +171,7 @@ body {
     @apply relative overflow-hidden border border-black/70;
     border-radius: var(--xso-radius-shell);
     height: auto;
-    background:
-      linear-gradient(160deg, #5a616b 0%, #3a414a 28%, #2c323a 58%, #22272e 100%);
+    background: linear-gradient(160deg, #5a616b 0%, #3a414a 28%, #2c323a 58%, #22272e 100%);
     box-shadow:
       0 28px 60px rgba(0, 0, 0, 0.55),
       0 8px 18px rgba(0, 0, 0, 0.4),
@@ -188,8 +181,7 @@ body {
   }
 
   .console-chassis--matte {
-    background:
-      linear-gradient(165deg, #2a2c30 0%, #181a1d 32%, #101214 68%, #0a0b0d 100%);
+    background: linear-gradient(165deg, #2a2c30 0%, #181a1d 32%, #101214 68%, #0a0b0d 100%);
     border-color: rgba(0, 0, 0, 0.85);
     box-shadow:
       0 32px 70px rgba(0, 0, 0, 0.65),
@@ -213,7 +205,6 @@ body {
     border-radius: inherit;
     opacity: 0.28;
     background-image: url('/textures/noise-mono.png');
-    mix-blend-mode: overlay;
   }
 
   .console-chassis--matte::before {
@@ -331,8 +322,7 @@ body {
 
   @media (min-width: 1024px) {
     .mode-header {
-      @apply bg-[#12161b]/90;
-      backdrop-filter: blur(12px);
+      @apply bg-[#12161b]/95;
     }
   }
 
@@ -437,12 +427,7 @@ body {
 }
 
 .vhs-scanlines {
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.18) 0 1px,
-    transparent 1px 3px
-  );
-  mix-blend-mode: multiply;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 1px, transparent 1px 3px);
   animation: vhs-scan-jitter 300ms steps(2, end) forwards;
 }
 
@@ -463,7 +448,6 @@ body {
     rgba(255, 40, 60, 0.22) 48%,
     transparent 62%
   );
-  mix-blend-mode: screen;
   animation: vhs-chroma-r 300ms ease-out forwards;
 }
 
@@ -474,19 +458,12 @@ body {
     rgba(40, 220, 255, 0.2) 52%,
     transparent 68%
   );
-  mix-blend-mode: screen;
   animation: vhs-chroma-c 300ms ease-out forwards;
 }
 
 .vhs-tracking {
   height: 14%;
-  background: linear-gradient(
-    180deg,
-    transparent,
-    rgba(255, 255, 255, 0.12),
-    transparent
-  );
-  mix-blend-mode: overlay;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.12), transparent);
   animation: vhs-tracking 300ms linear forwards;
 }
 
@@ -538,7 +515,6 @@ body {
     rgba(255, 140, 50, 0.08) 45%,
     transparent 72%
   );
-  mix-blend-mode: screen;
 }
 
 .projector-beam-flicker {
@@ -548,34 +524,17 @@ body {
     transparent 65%
   );
   animation: projector-flicker 3.2s ease-in-out infinite;
-  mix-blend-mode: soft-light;
 }
 
 .projector-dust {
-  background-image: radial-gradient(
-      circle at 20% 30%,
-      rgba(255, 230, 180, 0.35) 0 1px,
-      transparent 2px
-    ),
-    radial-gradient(
-      circle at 55% 45%,
-      rgba(255, 210, 140, 0.3) 0 1px,
-      transparent 2px
-    ),
-    radial-gradient(
-      circle at 78% 35%,
-      rgba(255, 240, 200, 0.28) 0 1px,
-      transparent 2px
-    ),
-    radial-gradient(
-      circle at 35% 62%,
-      rgba(255, 200, 120, 0.25) 0 1px,
-      transparent 2px
-    );
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 230, 180, 0.35) 0 1px, transparent 2px),
+    radial-gradient(circle at 55% 45%, rgba(255, 210, 140, 0.3) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 35%, rgba(255, 240, 200, 0.28) 0 1px, transparent 2px),
+    radial-gradient(circle at 35% 62%, rgba(255, 200, 120, 0.25) 0 1px, transparent 2px);
   background-size: 100% 100%;
   animation: projector-dust 6s linear infinite;
   opacity: 0.5;
-  mix-blend-mode: screen;
 }
 
 /* Cartridge label title scales to the label width; px fallback for older browsers. */
@@ -599,13 +558,6 @@ body {
     linear-gradient(180deg, rgba(210, 225, 235, 0.06), rgba(210, 225, 235, 0) 40%),
     linear-gradient(180deg, rgba(14, 17, 21, 0.42), rgba(9, 11, 14, 0.6));
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-}
-
-@media (min-width: 768px) and (pointer: fine) {
-  .cart-veil {
-    backdrop-filter: saturate(0.55);
-    -webkit-backdrop-filter: saturate(0.55);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -971,31 +923,47 @@ html.is-landscape .xso-dock {
   --sunset-cta: linear-gradient(100deg, #ec4899 0%, #f43f5e 48%, #fb923c 100%);
   --sunset-glow: 0 0 15px rgba(236, 72, 153, 0.4);
   --paper-shadow: 0 12px 32px -8px rgba(20, 4, 12, 0.55);
-  --paper-shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.25), 0 12px 32px -8px rgba(0, 0, 0, 0.5),
+  --paper-shadow-lift:
+    0 2px 4px rgba(0, 0, 0, 0.25), 0 12px 32px -8px rgba(0, 0, 0, 0.5),
     0 30px 60px -24px rgba(0, 0, 0, 0.55);
 }
 
 .desk,
 .preview-paper {
+  position: relative;
+  isolation: isolate;
   color: var(--paper-cream);
   background-color: var(--desk-900);
+}
+
+/* Painted once on a fixed compositor layer; `background-attachment: fixed` repaints every scroll frame. */
+.desk::before,
+.preview-paper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image:
     var(--stone-noise),
     radial-gradient(ellipse 70% 42% at 50% 0%, rgba(251, 146, 60, 0.13), transparent 70%),
     radial-gradient(ellipse 55% 45% at 92% 100%, rgba(236, 72, 153, 0.12), transparent 70%),
     radial-gradient(ellipse 50% 40% at 0% 85%, rgba(147, 51, 234, 0.08), transparent 70%),
     linear-gradient(180deg, var(--desk-800) 0%, var(--desk-900) 100%);
-  background-size: 200px 200px, auto, auto, auto, auto;
-  background-attachment: fixed;
+  background-size:
+    200px 200px,
+    auto,
+    auto,
+    auto,
+    auto;
+  transform: translateZ(0);
 }
 
 /* Warm glass: frosted plum that picks up the sunset light behind it */
 .mode-header[data-tone='paper'] {
-  background: rgba(36, 20, 25, 0.78);
+  background: rgba(30, 17, 22, 0.96);
   border-bottom: 1px solid rgba(249, 168, 212, 0.12);
   box-shadow: 0 10px 24px -16px rgba(20, 4, 12, 0.8);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  backdrop-filter: blur(14px) saturate(1.3);
 }
 
 .mode-header[data-tone='paper'] .mode-nav-link {
@@ -1009,8 +977,12 @@ html.is-landscape .xso-dock {
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--paper-cream);
-  box-shadow: inset 0 1px 0 rgba(255, 245, 230, 0.06), 0 2px 6px -2px rgba(0, 0, 0, 0.5);
-  transition: transform 160ms var(--xso-ease), background-color 160ms;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 230, 0.06),
+    0 2px 6px -2px rgba(0, 0, 0, 0.5);
+  transition:
+    transform 160ms var(--xso-ease),
+    background-color 160ms;
 }
 
 .mode-header[data-tone='paper'] .mode-nav-link:hover {
@@ -1037,7 +1009,9 @@ html.is-landscape .xso-dock {
   background:
     linear-gradient(var(--ring-fill, #fdf2f8), var(--ring-fill, #fdf2f8)) padding-box,
     var(--sunset) border-box;
-  box-shadow: var(--sunset-glow), 0 12px 28px -10px rgba(20, 4, 12, 0.6);
+  box-shadow:
+    var(--sunset-glow),
+    0 12px 28px -10px rgba(20, 4, 12, 0.6);
 }
 
 .sunset-text {
@@ -1118,12 +1092,16 @@ html.is-landscape .xso-dock {
 
 .paper-card {
   border-radius: 16px;
-  box-shadow: var(--paper-shadow-lift), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-shadow:
+    var(--paper-shadow-lift),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .paper-panel {
   border-radius: 20px;
-  box-shadow: var(--paper-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-shadow:
+    var(--paper-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .paper-frame {
@@ -1143,17 +1121,23 @@ html.is-landscape .xso-dock {
     var(--stone-noise),
     radial-gradient(ellipse 80% 60% at 50% 25%, rgba(251, 146, 60, 0.16), transparent 70%),
     radial-gradient(ellipse 60% 50% at 80% 100%, rgba(236, 72, 153, 0.12), transparent 70%);
-  background-size: 160px 160px, auto, auto;
-  box-shadow: inset 0 2px 18px rgba(20, 4, 12, 0.6), inset 0 0 0 1px rgba(249, 168, 212, 0.06);
+  background-size:
+    160px 160px,
+    auto,
+    auto;
+  box-shadow:
+    inset 0 2px 18px rgba(20, 4, 12, 0.6),
+    inset 0 0 0 1px rgba(249, 168, 212, 0.06);
 }
 
 /* Checkout: kraft paper envelope */
 .kraft {
   background-color: #a8706a;
   background-image:
-    var(--paper-noise),
-    linear-gradient(180deg, rgba(255, 235, 200, 0.12), rgba(0, 0, 0, 0.08));
-  background-size: 200px 200px, auto;
+    var(--paper-noise), linear-gradient(180deg, rgba(255, 235, 200, 0.12), rgba(0, 0, 0, 0.08));
+  background-size:
+    200px 200px,
+    auto;
   box-shadow: var(--paper-shadow-lift);
 }
 
@@ -1213,7 +1197,9 @@ html.is-landscape .xso-dock {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--paper-ink);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 0 #d9a5bb,
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 0 #d9a5bb,
     0 8px 16px -6px rgba(0, 0, 0, 0.55);
 }
 
@@ -1255,14 +1241,20 @@ html.is-landscape .xso-dock {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #fff1f6;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 16px -6px rgba(236, 72, 153, 0.55);
-  transition: transform 160ms var(--xso-ease), filter 160ms;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 6px 16px -6px rgba(236, 72, 153, 0.55);
+  transition:
+    transform 160ms var(--xso-ease),
+    filter 160ms;
 }
 
 .paper-chip.is-copied {
   background: linear-gradient(100deg, #fdba74 0%, #fb923c 100%);
   border-color: #ea7a2c;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 0 4px rgba(253, 186, 116, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 0 0 4px rgba(253, 186, 116, 0.28);
 }
 
 /* Segmented tabs on dark desk */
@@ -1276,7 +1268,9 @@ html.is-landscape .xso-dock {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #e0b4c6;
-  transition: background-color 180ms, color 180ms;
+  transition:
+    background-color 180ms,
+    color 180ms;
 }
 
 .desk-tab[aria-selected='true'],
@@ -1287,11 +1281,9 @@ html.is-landscape .xso-dock {
 }
 
 .paper-dock {
-  background: rgba(30, 16, 22, 0.8);
+  background: rgba(26, 14, 19, 0.96);
   border-top: 1px solid rgba(249, 168, 212, 0.12);
   box-shadow: 0 -14px 32px -12px rgba(20, 4, 12, 0.8);
-  -webkit-backdrop-filter: blur(16px) saturate(1.3);
-  backdrop-filter: blur(16px) saturate(1.3);
 }
 
 /* Sunset CTA pill: pink → orange · hover · active · focus · loading */
@@ -1356,9 +1348,12 @@ html.is-landscape .xso-dock {
   background:
     radial-gradient(ellipse 58% 42% at 50% 6%, rgba(255, 230, 196, 0.17), transparent 72%),
     radial-gradient(ellipse 46% 34% at 50% 52%, rgba(255, 238, 214, 0.05), transparent 70%),
-    var(--stone-noise),
-    linear-gradient(180deg, #2a161d 0%, #1d1016 70%, #150b10 100%);
-  background-size: auto, auto, 180px 180px, auto;
+    var(--stone-noise), linear-gradient(180deg, #2a161d 0%, #1d1016 70%, #150b10 100%);
+  background-size:
+    auto,
+    auto,
+    180px 180px,
+    auto;
   -webkit-mask-image: radial-gradient(ellipse 70% 66% at 50% 44%, #000 52%, transparent 100%);
   mask-image: radial-gradient(ellipse 70% 66% at 50% 44%, #000 52%, transparent 100%);
 }
@@ -1368,7 +1363,11 @@ html.is-landscape .xso-dock {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(ellipse 80% 70% at 50% 38%, transparent 45%, rgba(0, 0, 0, 0.55) 100%);
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 38%,
+    transparent 45%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
 }
 
 .deck-stage,
@@ -1549,7 +1548,12 @@ html.is-landscape .xso-dock {
 }
 
 .accordion-panel__light--sheen {
-  background: linear-gradient(180deg, rgba(255, 247, 236, 0.7), rgba(255, 236, 220, 0.12) 62%, transparent);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 247, 236, 0.7),
+    rgba(255, 236, 220, 0.12) 62%,
+    transparent
+  );
 }
 
 .accordion-panel__light--shade {
@@ -1567,11 +1571,8 @@ html.is-landscape .xso-dock {
   z-index: 5;
   width: 64px;
   height: 18px;
-  background: repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.18) 0 4px,
-      transparent 4px 8px
-    ),
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0 4px, transparent 4px 8px),
     rgba(244, 114, 182, 0.42);
   pointer-events: none;
 }
@@ -1625,8 +1626,8 @@ html.is-landscape .xso-dock {
   height: 30px;
   width: 30px;
   background:
-    repeating-linear-gradient(transparent 0 3px, rgba(253, 242, 248, 0.75) 3px 6px) 5px 0 / 1px
-      100% no-repeat,
+    repeating-linear-gradient(transparent 0 3px, rgba(253, 242, 248, 0.75) 3px 6px) 5px 0 / 1px 100%
+      no-repeat,
     repeating-linear-gradient(transparent 0 3px, rgba(253, 242, 248, 0.75) 3px 6px) calc(100% - 5px)
       0 / 1px 100% no-repeat,
     linear-gradient(#f43f5e, #ec4899 60%, #fb923c);
@@ -1762,16 +1763,7 @@ html.is-landscape .xso-dock {
   background-image: url('/textures/noise-mono.png');
   background-size: 160px;
   opacity: 0.16;
-  mix-blend-mode: overlay;
   animation: film-grain 0.5s steps(4) infinite;
-}
-
-@media (min-width: 768px) {
-  .film-grain {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .92 0 0 0 0 .8 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
-    background-size: 180px;
-    opacity: 0.2;
-  }
 }
 
 @keyframes film-grain {
@@ -1864,7 +1856,12 @@ html.is-landscape .xso-dock {
 .celluloid__backlight {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 60% 120% at 50% 50%, rgba(255, 228, 190, 0.85), rgba(253, 186, 116, 0.35) 60%, rgba(244, 114, 182, 0.15));
+  background: radial-gradient(
+    ellipse 60% 120% at 50% 50%,
+    rgba(255, 228, 190, 0.85),
+    rgba(253, 186, 116, 0.35) 60%,
+    rgba(244, 114, 182, 0.15)
+  );
 }
 
 .celluloid__track {
@@ -1882,8 +1879,10 @@ html.is-landscape .xso-dock {
   flex-shrink: 0;
   padding: 12px 4px;
   background:
-    radial-gradient(circle at 50% 50%, transparent 3px, rgba(146, 64, 14, 0.62) 3.5px) 0 0 / 17px 12px repeat-x,
-    radial-gradient(circle at 50% 50%, transparent 3px, rgba(146, 64, 14, 0.62) 3.5px) 0 100% / 17px 12px repeat-x,
+    radial-gradient(circle at 50% 50%, transparent 3px, rgba(146, 64, 14, 0.62) 3.5px) 0 0 / 17px
+      12px repeat-x,
+    radial-gradient(circle at 50% 50%, transparent 3px, rgba(146, 64, 14, 0.62) 3.5px) 0 100% / 17px
+      12px repeat-x,
     linear-gradient(90deg, rgba(120, 53, 15, 0.7) 0 2px, rgba(180, 83, 9, 0.42) 2px);
 }
 
@@ -1978,6 +1977,11 @@ html.is-landscape .xso-dock {
   box-shadow: 0 0 10px rgba(244, 114, 182, 0.6);
 }
 
+.moviebox.is-paused *,
+.moviebox.is-paused *::before {
+  animation-play-state: paused !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .projector-beam,
   .dust-mote,
@@ -1994,8 +1998,7 @@ html.is-landscape .xso-dock {
     radial-gradient(ellipse 70% 55% at 32% 16%, rgba(253, 186, 116, 0.2), transparent 62%),
     radial-gradient(ellipse 60% 50% at 72% 88%, rgba(236, 72, 153, 0.11), transparent 66%),
     repeating-linear-gradient(91deg, rgba(255, 222, 196, 0.022) 0 2px, transparent 2px 9px),
-    repeating-linear-gradient(88.5deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 27px),
-    #180e15;
+    repeating-linear-gradient(88.5deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 27px), #180e15;
   box-shadow:
     inset 0 0 0 1px rgba(253, 186, 116, 0.06),
     inset 0 -40px 80px -30px rgba(0, 0, 0, 0.6);
@@ -2055,9 +2058,16 @@ html.is-landscape .xso-dock {
   color: #2d1b22;
   background-color: #fdfbf7;
   background-image:
-    linear-gradient(168deg, rgba(255, 255, 255, 0.5), transparent 38%, rgba(120, 80, 50, 0.05) 100%),
+    linear-gradient(
+      168deg,
+      rgba(255, 255, 255, 0.5),
+      transparent 38%,
+      rgba(120, 80, 50, 0.05) 100%
+    ),
     var(--paper-noise);
-  background-size: auto, 128px 128px;
+  background-size:
+    auto,
+    128px 128px;
   box-shadow:
     0 1px 1px rgba(0, 0, 0, 0.35),
     0 3px 6px -1px rgba(0, 0, 0, 0.32),
@@ -2072,7 +2082,10 @@ html.is-landscape .xso-dock {
     linear-gradient(180deg, transparent 31%, rgba(90, 60, 40, 0.07) 32%, transparent 34%),
     linear-gradient(180deg, transparent 64%, rgba(90, 60, 40, 0.06) 65%, transparent 67%),
     var(--paper-noise);
-  background-size: auto, auto, 128px 128px;
+  background-size:
+    auto,
+    auto,
+    128px 128px;
 }
 
 .desk-paper--polaroid,
@@ -2110,10 +2123,25 @@ html.is-landscape .xso-dock {
 /* The fold creases of a letter that has lived in a pocket. */
 .desk-paper--letter {
   background-image:
-    linear-gradient(180deg, transparent 49.4%, rgba(90, 60, 40, 0.12) 50%, rgba(255, 255, 255, 0.6) 50.6%, transparent 52%),
-    linear-gradient(90deg, transparent 49.4%, rgba(90, 60, 40, 0.08) 50%, rgba(255, 255, 255, 0.5) 50.6%, transparent 52%),
+    linear-gradient(
+      180deg,
+      transparent 49.4%,
+      rgba(90, 60, 40, 0.12) 50%,
+      rgba(255, 255, 255, 0.6) 50.6%,
+      transparent 52%
+    ),
+    linear-gradient(
+      90deg,
+      transparent 49.4%,
+      rgba(90, 60, 40, 0.08) 50%,
+      rgba(255, 255, 255, 0.5) 50.6%,
+      transparent 52%
+    ),
     var(--paper-noise);
-  background-size: auto, auto, 128px 128px;
+  background-size:
+    auto,
+    auto,
+    128px 128px;
 }
 
 .letter-panel {
@@ -2132,19 +2160,39 @@ html.is-landscape .xso-dock {
   height: 16px;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.25), transparent 30%, rgba(255, 255, 255, 0.2) 70%, transparent),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.25),
+      transparent 30%,
+      rgba(255, 255, 255, 0.2) 70%,
+      transparent
+    ),
     rgba(244, 228, 200, 0.75);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0 2px, #000 2px calc(100% - 2px), transparent calc(100% - 2px));
-  mask-image: linear-gradient(90deg, transparent 0 2px, #000 2px calc(100% - 2px), transparent calc(100% - 2px));
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0 2px,
+    #000 2px calc(100% - 2px),
+    transparent calc(100% - 2px)
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0 2px,
+    #000 2px calc(100% - 2px),
+    transparent calc(100% - 2px)
+  );
 }
 
 .polaroid-gloss {
   position: absolute;
   inset: -10% -30%;
   pointer-events: none;
-  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.55) 46%, transparent 60%);
-  mix-blend-mode: screen;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.55) 46%,
+    transparent 60%
+  );
 }
 
 .wax-seal {
@@ -2168,8 +2216,7 @@ html.is-landscape .xso-dock {
   border-top: 1px dashed rgba(45, 27, 34, 0.35);
   border-bottom: 1px dashed rgba(45, 27, 34, 0.35);
   background:
-    repeating-linear-gradient(135deg, rgba(138, 106, 82, 0.08) 0 4px, transparent 4px 8px),
-    #efe6d8;
+    repeating-linear-gradient(135deg, rgba(138, 106, 82, 0.08) 0 4px, transparent 4px 8px), #efe6d8;
 }
 
 .desk-hint {
@@ -2250,7 +2297,6 @@ html.is-landscape .xso-dock {
 
 .rewind-card__grain {
   opacity: 0.55;
-  mix-blend-mode: multiply;
   background-size: 128px 128px;
   background-image: var(--paper-noise);
 }
@@ -2275,8 +2321,16 @@ html.is-landscape .xso-dock {
 
 /* Top-down key light: bright leading edge, falloff toward the bottom. */
 .deck-card__light {
-  background: linear-gradient(180deg, rgba(255, 248, 236, 0.16), transparent 32%, transparent 72%, rgba(0, 0, 0, 0.07));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), inset 0 0 0 1px rgba(60, 45, 30, 0.06);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 248, 236, 0.16),
+    transparent 32%,
+    transparent 72%,
+    rgba(0, 0, 0, 0.07)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 0 0 1px rgba(60, 45, 30, 0.06);
 }
 
 .deck-card__dim {
@@ -2327,7 +2381,9 @@ html.is-landscape .xso-dock {
   background-image:
     var(--paper-noise),
     repeating-linear-gradient(0deg, rgba(120, 96, 64, 0.035) 0 1px, transparent 1px 4px);
-  background-size: 160px 160px, auto;
+  background-size:
+    160px 160px,
+    auto;
 }
 
 .deck-card__creases {
@@ -2363,13 +2419,17 @@ html.is-landscape .xso-dock {
   background-image:
     var(--paper-noise),
     repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.014) 0 1px, transparent 1px 3px);
-  background-size: 140px 140px, auto;
+  background-size:
+    140px 140px,
+    auto;
   -webkit-mask:
     conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / 14px 51% repeat-x,
-    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 14px 51% repeat-x;
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 14px 51%
+      repeat-x;
   mask:
     conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / 14px 51% repeat-x,
-    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 14px 51% repeat-x;
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 14px 51%
+      repeat-x;
 }
 
 .mat-receipt::before,
@@ -2381,7 +2441,8 @@ html.is-landscape .xso-dock {
   height: 3px;
   z-index: 6;
   pointer-events: none;
-  background: radial-gradient(circle, rgba(40, 34, 28, 0.3) 1px, transparent 1.5px) 0 50% / 7px 3px repeat-x;
+  background: radial-gradient(circle, rgba(40, 34, 28, 0.3) 1px, transparent 1.5px) 0 50% / 7px 3px
+    repeat-x;
 }
 
 .mat-receipt::before {
@@ -2405,7 +2466,13 @@ html.is-landscape .xso-dock {
 
 .deck-card__thermal-fade {
   background:
-    linear-gradient(90deg, rgba(247, 245, 240, 0.45), transparent 20%, transparent 80%, rgba(247, 245, 240, 0.4)),
+    linear-gradient(
+      90deg,
+      rgba(247, 245, 240, 0.45),
+      transparent 20%,
+      transparent 80%,
+      rgba(247, 245, 240, 0.4)
+    ),
     linear-gradient(180deg, transparent 62%, rgba(247, 245, 240, 0.32));
 }
 
@@ -2434,13 +2501,6 @@ html.is-landscape .xso-dock {
     0 0 0.5px currentColor,
     0 0 1.2px currentColor,
     0 0 3.5px var(--stamp-halo, rgba(139, 58, 58, 0.35));
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .deck-card .ink-stamp,
-  .deck-card .ink-ring {
-    filter: url(#xso-ink-bleed);
-  }
 }
 
 /* Promote moving cards to their own compositor layer before they move. */
@@ -2475,12 +2535,6 @@ html.is-landscape .xso-dock {
   :root {
     --paper-shadow: 0 8px 16px -6px rgba(20, 4, 12, 0.5);
     --paper-shadow-lift: 0 10px 18px -6px rgba(0, 0, 0, 0.45);
-  }
-
-  .mode-header[data-tone='paper'],
-  .paper-dock {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
   }
 
   .mode-header[data-tone='paper'] {

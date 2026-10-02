@@ -7,15 +7,27 @@ import { useEffect } from 'react';
  * - old WebViews without `dvh`
  * - Instagram / Facebook in-app browsers with shifting chrome
  * - portrait ↔ landscape flips on any vintage or modern phone
+ *
+ * Writes are coalesced to one per frame and skipped when nothing changed:
+ * every `--app-height` write restyles every element sized from it.
  */
 export function OrientationRoot() {
   useEffect(() => {
     const root = document.documentElement;
+    let frame = 0;
+    let lastW = -1;
+    let lastH = -1;
 
     const apply = () => {
+      frame = 0;
       const vv = window.visualViewport;
       const height = Math.round(vv?.height ?? window.innerHeight);
       const width = Math.round(vv?.width ?? window.innerWidth);
+      // Browser toolbars sliding in/out while scrolling only nudge the height; resizing every deck
+      // mid-scroll for that is pure layout churn. Keyboards and rotations still get through.
+      if (width === lastW && Math.abs(height - lastH) < 120) return;
+      lastW = width;
+      lastH = height;
       root.style.setProperty('--app-height', `${height}px`);
       root.style.setProperty('--app-width', `${width}px`);
 
@@ -28,24 +40,28 @@ export function OrientationRoot() {
       root.classList.toggle('is-short-viewport', short);
     };
 
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(apply);
+    };
+
     apply();
 
     const vv = window.visualViewport;
-    vv?.addEventListener('resize', apply);
-    vv?.addEventListener('scroll', apply);
-    window.addEventListener('resize', apply);
+    vv?.addEventListener('resize', schedule);
+    window.addEventListener('resize', schedule);
 
+    const timers: number[] = [];
     const onOrient = () => {
-      apply();
-      window.setTimeout(apply, 60);
-      window.setTimeout(apply, 280);
+      schedule();
+      timers.push(window.setTimeout(schedule, 60), window.setTimeout(schedule, 280));
     };
     window.addEventListener('orientationchange', onOrient);
 
     return () => {
-      vv?.removeEventListener('resize', apply);
-      vv?.removeEventListener('scroll', apply);
-      window.removeEventListener('resize', apply);
+      cancelAnimationFrame(frame);
+      timers.forEach((id) => window.clearTimeout(id));
+      vv?.removeEventListener('resize', schedule);
+      window.removeEventListener('resize', schedule);
       window.removeEventListener('orientationchange', onOrient);
     };
   }, []);

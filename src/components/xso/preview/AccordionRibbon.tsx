@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   motion,
   useInView,
@@ -91,7 +91,7 @@ function foldRibbon(travel: number, crease: number, open: number, count: number,
   };
 }
 
-export function AccordionRibbon({
+export const AccordionRibbon = memo(function AccordionRibbon({
   data,
   onChange,
   size = 'hero',
@@ -311,7 +311,7 @@ export function AccordionRibbon({
       </p>
     </section>
   );
-}
+});
 
 function Aura({ open }: { open: MotionValue<number> }) {
   const opacity = useTransform(open, [0, 1], [0.45, 1]);
@@ -428,7 +428,7 @@ function PullTab({
   );
 }
 
-function PanelFace({ data, index }: { data: XsoData; index: number }) {
+const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; index: number }) {
   if (index === 0) {
     return (
       <div className="flex h-full flex-col font-receipt text-[11px] leading-snug">
@@ -538,4 +538,4 @@ function PanelFace({ data, index }: { data: XsoData; index: number }) {
       </p>
     </div>
   );
-}
+});

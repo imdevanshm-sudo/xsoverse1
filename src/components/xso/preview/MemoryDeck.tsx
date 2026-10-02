@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
 import {
   animate,
   AnimatePresence,
@@ -75,14 +83,15 @@ interface Tilt {
   y: MotionValue<number>;
 }
 
-export function MemoryDeck({
+export const MemoryDeck = memo(function MemoryDeck({
   data,
   onChange,
   size = 'hero',
   focusIndex,
 }: {
   data: XsoData;
-  size?: 'hero' | 'studio';
+  /** `fill` stretches to its container, e.g. inside the gift phone frame. */
+  size?: 'hero' | 'studio' | 'fill';
   /** Brings this card to the top whenever it changes (studio tabs). */
   focusIndex?: number;
   /** Fires with the new top card after each loop. */
@@ -158,15 +167,14 @@ export function MemoryDeck({
 
   return (
     <section
-      className="relative isolate flex w-full max-w-[400px] touch-pan-y flex-col items-center"
+      className={`relative isolate flex w-full max-w-[400px] touch-pan-y flex-col items-center ${size === 'fill' ? 'h-full' : ''}`}
       aria-label="Memory deck"
       aria-roledescription="card deck"
     >
       <div aria-hidden className="deck-desk" />
-      <InkBleedFilter />
 
       <motion.div
-        className={`deck-stage relative w-full ${size === 'studio' ? 'memory-deck--studio' : 'memory-deck'}`}
+        className={`deck-stage relative w-full ${size === 'studio' ? 'memory-deck--studio' : size === 'fill' ? 'min-h-0 flex-1' : 'memory-deck'}`}
         style={
           lean3d ? { rotateX: tilt.x, rotateY: tilt.y, transformPerspective: 1200 } : undefined
         }
@@ -249,7 +257,7 @@ export function MemoryDeck({
       </p>
     </section>
   );
-}
+});
 
 /** Positions one sheet in the pile and gives it depth parallax against the stage tilt. */
 function DeckSlot({
@@ -418,18 +426,5 @@ function ReceiptTelemetry({ number }: { number: number }) {
       <span>TERM 03 · TXN 0041{number}7</span>
       <span className="receipt-telemetry__bars">▮▮▯▮▯▮▮▯▮</span>
     </div>
-  );
-}
-
-/** Roughens stamp edges so ink looks pressed into fibres rather than printed. */
-function InkBleedFilter() {
-  return (
-    <svg aria-hidden width="0" height="0" className="absolute">
-      <filter id="xso-ink-bleed" x="-10%" y="-10%" width="120%" height="120%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" />
-        <feDisplacementMap in="SourceGraphic" scale="1.8" />
-        <feGaussianBlur stdDeviation="0.25" />
-      </filter>
-    </svg>
   );
 }

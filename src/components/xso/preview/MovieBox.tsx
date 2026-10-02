@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import {
   AnimatePresence,
   animate,
   motion,
   useMotionValue,
+  useInView,
   useMotionValueEvent,
   useReducedMotion,
   useTransform,
@@ -68,7 +69,7 @@ function storyFor(data: XsoData) {
   };
 }
 
-export function MovieBox({
+export const MovieBox = memo(function MovieBox({
   data,
   onChange,
   size = 'hero',
@@ -86,6 +87,9 @@ export function MovieBox({
   const reduce = Boolean(useReducedMotion());
   const coarse = useCoarsePointer();
   const fx = useProjectorFx();
+  const unit = useRef<HTMLElement>(null);
+  /** The beam, dust and grain loop forever; park them whenever the projector is off-screen. */
+  const live = useInView(unit, { margin: '80px' });
 
   /** Total crank rotation in degrees; the film strip and the gate both read from it. */
   const crank = useMotionValue(0);
@@ -114,41 +118,58 @@ export function MovieBox({
     onChange?.(index, artifacts[index].label);
   });
 
-  const stop = () => {
+  const stop = useCallback(() => {
     motion$.current?.stop();
     motion$.current = null;
-  };
+  }, []);
+
+  const grab = useCallback(() => {
+    stop();
+    fx.humStart();
+  }, [stop, fx]);
 
   /** Let go of the crank: it coasts on its own momentum and the claw catches the nearest frame. */
-  const coast = (velocity: number) => {
-    stop();
-    if (reduce) {
-      goal.current = Math.round(crank.get() / STEP);
-      crank.set(goal.current * STEP);
-      fx.humStop();
-      return;
-    }
-    const v = clamp(velocity, -1600, 1600);
-    goal.current = Math.round((crank.get() + v * 0.2) / STEP);
-    motion$.current = animate(crank, goal.current * STEP, {
-      type: 'spring',
-      velocity: v,
-      stiffness: 90,
-      damping: 16,
-      onComplete: fx.humStop,
-    });
-  };
+  const coast = useCallback(
+    (velocity: number) => {
+      stop();
+      if (reduce) {
+        goal.current = Math.round(crank.get() / STEP);
+        crank.set(goal.current * STEP);
+        fx.humStop();
+        return;
+      }
+      const v = clamp(velocity, -1600, 1600);
+      goal.current = Math.round((crank.get() + v * 0.2) / STEP);
+      motion$.current = animate(crank, goal.current * STEP, {
+        type: 'spring',
+        velocity: v,
+        stiffness: 90,
+        damping: 16,
+        onComplete: fx.humStop,
+      });
+    },
+    [stop, reduce, crank, fx],
+  );
 
-  const advance = (direction: 1 | -1) => {
-    stop();
-    goal.current += direction;
-    const target = goal.current * STEP;
-    if (reduce) {
-      crank.set(target);
-      return;
-    }
-    motion$.current = animate(crank, target, { type: 'spring', stiffness: 110, damping: 17 });
-  };
+  const advance = useCallback(
+    (direction: 1 | -1) => {
+      stop();
+      goal.current += direction;
+      const target = goal.current * STEP;
+      if (reduce) {
+        crank.set(target);
+        return;
+      }
+      motion$.current = animate(crank, target, { type: 'spring', stiffness: 110, damping: 17 });
+    },
+    [stop, reduce, crank],
+  );
+
+  const tapCrank = useCallback(() => {
+    fx.humStop();
+    advance(1);
+  }, [fx, advance]);
+  const labels = useMemo(() => artifacts.map((a) => a.label), [artifacts]);
 
   useEffect(() => {
     if (focusIndex === undefined) return;
@@ -172,7 +193,8 @@ export function MovieBox({
 
   return (
     <section
-      className={`moviebox relative isolate flex w-full max-w-[400px] flex-col items-center ${size === 'fill' ? 'h-full' : ''}`}
+      ref={unit}
+      className={`moviebox ${live ? '' : 'is-paused'} relative isolate flex w-full max-w-[400px] flex-col items-center ${size === 'fill' ? 'h-full' : ''}`}
       aria-label="8mm projector"
       aria-roledescription="film reel"
     >
@@ -276,11 +298,8 @@ export function MovieBox({
         data={data}
         crank={crank}
         count={count}
-        labels={artifacts.map((a) => a.label)}
-        onGrab={() => {
-          stop();
-          fx.humStart();
-        }}
+        labels={labels}
+        onGrab={grab}
         onRelease={coast}
       />
 
@@ -305,15 +324,9 @@ export function MovieBox({
           <CrankWheel
             crank={crank}
             reduce={reduce}
-            onGrab={() => {
-              stop();
-              fx.humStart();
-            }}
+            onGrab={grab}
             onRelease={coast}
-            onTap={() => {
-              fx.humStop();
-              advance(1);
-            }}
+            onTap={tapCrank}
             onKey={advance}
           />
           <button
@@ -331,7 +344,7 @@ export function MovieBox({
       </p>
     </section>
   );
-}
+});
 
 function DirectorNote({
   className,
@@ -357,7 +370,7 @@ function DirectorNote({
 }
 
 /** Hand crank: turn it like the real thing (any circular drag), or tap for one frame. */
-function CrankWheel({
+const CrankWheel = memo(function CrankWheel({
   crank,
   reduce,
   onGrab,
@@ -440,10 +453,10 @@ function CrankWheel({
       </motion.span>
     </motion.button>
   );
-}
+});
 
 /** Celluloid running through the gate; drag it sideways to scrub. */
-function FilmStrip({
+const FilmStrip = memo(function FilmStrip({
   data,
   crank,
   count,
@@ -499,9 +512,9 @@ function FilmStrip({
       <span className="celluloid__gate" />
     </motion.div>
   );
-}
+});
 
-function FrameFace({ data, index }: { data: XsoData; index: number }) {
+const FrameFace = memo(function FrameFace({ data, index }: { data: XsoData; index: number }) {
   const scene = (
     <p className="font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80">
       Scene {String(index + 1).padStart(2, '0')}
@@ -582,4 +595,4 @@ function FrameFace({ data, index }: { data: XsoData; index: number }) {
       </p>
     </div>
   );
-}
+});

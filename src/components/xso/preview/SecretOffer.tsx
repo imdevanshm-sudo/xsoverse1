@@ -127,10 +127,10 @@ export function SecretOffer({ reward }: { reward: string }) {
               {!revealed
                 ? 'Scratch the foil. Something’s waiting underneath.'
                 : copyState === 'copied'
-                ? 'Copied to clipboard.'
-                : copyState === 'failed'
-                  ? 'Copy blocked — long-press the code.'
-                  : 'Keep it. Cash it in together.'}
+                  ? 'Copied to clipboard.'
+                  : copyState === 'failed'
+                    ? 'Copy blocked — long-press the code.'
+                    : 'Keep it. Cash it in together.'}
             </p>
             <motion.button
               type="button"
@@ -140,7 +140,11 @@ export function SecretOffer({ reward }: { reward: string }) {
               whileTap={reduce ? undefined : { scale: 0.95 }}
               transition={{ duration: 0.34, ease: 'easeOut' }}
               aria-label={
-                !revealed ? 'Scratch the foil first' : copied ? 'Code copied' : `Copy code ${copyValue}`
+                !revealed
+                  ? 'Scratch the foil first'
+                  : copied
+                    ? 'Code copied'
+                    : `Copy code ${copyValue}`
               }
               className={`paper-chip inline-flex min-w-[8.25rem] shrink-0 touch-manipulation items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-45 ${
                 copied ? 'is-copied' : ''

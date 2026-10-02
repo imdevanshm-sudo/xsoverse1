@@ -130,9 +130,7 @@ export function ArtifactSurface({
       <div
         className="pointer-events-none absolute inset-0 rounded-xl"
         style={{
-          background:
-            'radial-gradient(circle at 28% 12%, rgba(255,255,255,.24), transparent 38%)',
-          mixBlendMode: 'overlay',
+          background: 'radial-gradient(circle at 28% 12%, rgba(255,255,255,.14), transparent 38%)',
         }}
         aria-hidden
       />
@@ -170,8 +168,7 @@ export function TossCard({
 
   const handleDragEnd = async (_: unknown, info: PanInfo) => {
     const direction: -1 | 1 = info.offset.x >= 0 ? 1 : -1;
-    const dismiss =
-      Math.abs(info.offset.x) > 100 || Math.abs(info.velocity.x) > 550;
+    const dismiss = Math.abs(info.offset.x) > 100 || Math.abs(info.velocity.x) > 550;
 
     if (!dismiss) {
       setLifted(false);
@@ -206,9 +203,7 @@ export function TossCard({
       onDragEnd={handleDragEnd}
       aria-label={`${artifact.label} souvenir`}
     >
-      <ArtifactSurface contentScale={contentScale}>
-        {artifact.content}
-      </ArtifactSurface>
+      <ArtifactSurface contentScale={contentScale}>{artifact.content}</ArtifactSurface>
     </motion.div>
   );
 }

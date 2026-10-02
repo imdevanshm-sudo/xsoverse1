@@ -2,9 +2,9 @@
 
 import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useMediaQuery } from '@/hooks/useTouchSpring';
 import { useXsoData } from '@/store/useXsoData';
 import { XsoEditor } from '@/components/xso/XsoEditor';
-import { XsoViewer } from '@/components/xso/XsoViewer';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
@@ -33,13 +33,6 @@ const LivePreview = memo(function LivePreview({
     [settled, lockedStyle],
   );
 
-  if (lockedStyle === 'loop') {
-    return (
-      <div className="flex justify-center">
-        <MemoryDeck data={previewData} size="studio" focusIndex={focusIndex} />
-      </div>
-    );
-  }
   if (lockedStyle === 'rewind') {
     return (
       <div className="flex justify-center">
@@ -69,8 +62,8 @@ const LivePreview = memo(function LivePreview({
     );
   }
   return (
-    <div className="paper-frame mx-auto max-w-[320px] p-2">
-      <XsoViewer data={previewData} frameSize="compact" />
+    <div className="flex justify-center">
+      <MemoryDeck data={previewData} size="studio" focusIndex={focusIndex} />
     </div>
   );
 });
@@ -81,9 +74,14 @@ type MobileView = 'edit' | 'preview';
 export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const cart = getCartridge(lockedStyle);
   const [tab, setTab] = useState<StudioStepId>('receipt');
-  const [visited, setVisited] = useState<Set<StudioStepId>>(() => new Set<StudioStepId>(['receipt']));
+  const [visited, setVisited] = useState<Set<StudioStepId>>(
+    () => new Set<StudioStepId>(['receipt']),
+  );
   const [view, setView] = useState<MobileView>('edit');
   const editorRef = useRef<HTMLElement>(null);
+  /** Hidden previews still re-render and animate, so phones only mount it on the See it tab. */
+  const desktop = useMediaQuery('(min-width: 1024px)');
+  const showPreview = desktop || view === 'preview';
 
   const changeTab = useCallback((next: StudioStepId) => {
     setTab(next);
@@ -140,7 +138,7 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
               <span aria-hidden className="led-peach" />
               Live · every word lands as you type
             </p>
-            <LivePreview lockedStyle={lockedStyle} focusIndex={focusIndex} />
+            {showPreview ? <LivePreview lockedStyle={lockedStyle} focusIndex={focusIndex} /> : null}
           </aside>
 
           <section

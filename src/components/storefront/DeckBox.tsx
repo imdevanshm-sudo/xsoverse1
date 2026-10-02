@@ -113,7 +113,7 @@ export function DeckBox({
           >
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 opacity-60 mix-blend-multiply"
+              className="pointer-events-none absolute inset-0 opacity-40"
               style={{
                 backgroundImage: 'var(--paper-noise)',
                 backgroundSize: '200px 200px',
