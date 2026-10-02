@@ -345,9 +345,10 @@ function DeckCard({
 
   return (
     <motion.div
-      className="deck-drag relative h-full w-full"
+      className="deck-drag relative h-full w-full touch-pan-y"
       style={{ x: dragX, rotate: dragRotate, rotateY: dragYaw }}
       drag={active && !reduce ? 'x' : false}
+      dragDirectionLock
       dragControls={dragControls}
       dragListener={false}
       onPointerDown={(event) => {

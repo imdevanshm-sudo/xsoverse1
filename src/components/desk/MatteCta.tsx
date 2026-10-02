@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import { ArrowRight } from 'lucide-react';
 
 interface CommonProps {
@@ -24,7 +24,7 @@ type ButtonProps = CommonProps & {
  * Matte terracotta primary action. Presses in on tap (scale 0.98), shows a
  * cream focus ring, and swaps to a spinner while navigating or submitting.
  */
-export function MatteCta(props: LinkProps | ButtonProps) {
+export const MatteCta = memo(function MatteCta(props: LinkProps | ButtonProps) {
   const [navigating, setNavigating] = useState(false);
   const isLink = 'href' in props;
   const loading = isLink ? navigating : Boolean(props.loading);
@@ -92,4 +92,4 @@ export function MatteCta(props: LinkProps | ButtonProps) {
       {body}
     </button>
   );
-}
+});

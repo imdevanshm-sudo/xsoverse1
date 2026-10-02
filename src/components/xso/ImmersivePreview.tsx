@@ -1,8 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useXsoData } from '@/store/useXsoData';
+import { useXsoStore } from '@/store/useXsoStore';
+import { useExpressOrder } from '@/store/useExpressOrder';
+import { ExpressOrderHost } from '@/components/storefront/ExpressOrderHost';
+import type { ThemeId } from '@/lib/themes';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
@@ -49,6 +54,11 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
     setMemory((m) => ({ current: index, seen: m.seen | (1 << index), label }));
   }, []);
   const explored = countBits(memory.seen);
+  const openWith = useExpressOrder((s) => s.openWith);
+  const openExpress = useCallback(
+    () => openWith({ style: lockedStyle, theme: useXsoStore.getState().themeId as ThemeId }),
+    [openWith, lockedStyle],
+  );
 
   return (
     <div>
@@ -109,14 +119,25 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
           }
           caption={memory.label ? `Holding · ${memory.label}` : undefined}
         />
-        <MatteCta
-          href={customizeHref}
-          label="Build your XSO"
-          price={CARTRIDGE_PRICE}
-          loadingLabel="Clearing the desk…"
-          ariaLabel={`Build your XSO, ${CARTRIDGE_PRICE}`}
-        />
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+          <MatteCta
+            onClick={openExpress}
+            label="Express Buy"
+            price={CARTRIDGE_PRICE}
+            loadingLabel="Opening…"
+            ariaLabel={`Express buy, ${CARTRIDGE_PRICE}`}
+          />
+          <Link
+            href={customizeHref}
+            prefetch
+            className="paper-button flex min-h-[3.25rem] touch-manipulation items-center justify-center rounded-full px-4 font-receipt text-[11px] font-bold uppercase tracking-[0.14em] transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.98]"
+            aria-label="Customize first: build your XSO line by line"
+          >
+            Customize
+          </Link>
+        </div>
       </DeskDock>
+      <ExpressOrderHost />
     </div>
   );
 }

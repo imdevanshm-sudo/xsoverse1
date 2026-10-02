@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
 import { MiniFace } from '@/components/storefront/DeckBox';
 import { useTouchSpring } from '@/hooks/useTouchSpring';
@@ -100,7 +100,13 @@ function poseFor(style: GiftStyle, i: number, step: number): Pose {
 }
 
 /** Looping miniature of how each format plays, so switching styles is felt instantly. */
-export function StyleDemo({ style, glow }: { style: GiftStyle; glow: string }) {
+export const StyleDemo = memo(function StyleDemo({
+  style,
+  glow,
+}: {
+  style: GiftStyle;
+  glow: string;
+}) {
   const reduce = useReducedMotion();
   const spring = useTouchSpring(SPRING);
   const stage = useRef<HTMLDivElement>(null);
@@ -166,7 +172,7 @@ export function StyleDemo({ style, glow }: { style: GiftStyle; glow: string }) {
       )}
     </div>
   );
-}
+});
 
 function FilmStrip({ reduce, playing }: { reduce: boolean; playing: boolean }) {
   const frames = [0, 1, 2, 3, 0, 1, 2, 3];

@@ -26,6 +26,8 @@ const STEP = 180;
 const CELL = 68;
 const COPIES = 3;
 const RATCHET = 30;
+/** Minimum horizontal travel for a touch swipe to count as "next frame". */
+const SWIPE_PX = 40;
 
 const SCREEN_SIZE = {
   hero: 'aspect-[4/3] w-full',
@@ -169,6 +171,17 @@ export const MovieBox = memo(function MovieBox({
     fx.humStop();
     advance(1);
   }, [fx, advance]);
+
+  /** Touch screens: a horizontal flick moves exactly one frame; vertical stays with the page. */
+  const swipedAt = useRef(0);
+  const swipe = useCallback(
+    (offsetX: number) => {
+      if (Math.abs(offsetX) < SWIPE_PX) return;
+      swipedAt.current = performance.now();
+      advance(offsetX < 0 ? 1 : -1);
+    },
+    [advance],
+  );
   const labels = useMemo(() => artifacts.map((a) => a.label), [artifacts]);
 
   useEffect(() => {
@@ -216,10 +229,12 @@ export const MovieBox = memo(function MovieBox({
           ))}
         </div>
 
-        <button
+        <motion.button
           type="button"
-          className="film-screen group"
+          className={`film-screen group ${coarse ? 'touch-pan-y' : ''}`}
+          onPanEnd={coarse ? (_, info) => swipe(info.offset.x) : undefined}
           onClick={() => {
+            if (performance.now() - swipedAt.current < 350) return;
             setNotes((open) => !open);
             fx.note();
           }}
@@ -267,7 +282,7 @@ export const MovieBox = memo(function MovieBox({
             {story.subtitles[frame]}
           </motion.p>
           <span className="film-screen__hint">{notes ? 'hide notes' : "director's notes"}</span>
-        </button>
+        </motion.button>
 
         <AnimatePresence>
           {notes ? (
@@ -301,6 +316,7 @@ export const MovieBox = memo(function MovieBox({
         labels={labels}
         onGrab={grab}
         onRelease={coast}
+        onSwipe={coarse ? swipe : undefined}
       />
 
       <div className="relative z-10 mt-3 flex w-full items-center justify-between gap-3">
@@ -309,7 +325,7 @@ export const MovieBox = memo(function MovieBox({
             Reel {String(frame + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
           </p>
           <p className="truncate font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6a7e]">
-            {artifacts[frame].label} · tap the frame
+            {artifacts[frame].label} · {coarse ? 'swipe to next frame' : 'tap the frame'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -324,6 +340,7 @@ export const MovieBox = memo(function MovieBox({
           <CrankWheel
             crank={crank}
             reduce={reduce}
+            tapOnly={coarse}
             onGrab={grab}
             onRelease={coast}
             onTap={tapCrank}
@@ -373,6 +390,7 @@ function DirectorNote({
 const CrankWheel = memo(function CrankWheel({
   crank,
   reduce,
+  tapOnly,
   onGrab,
   onRelease,
   onTap,
@@ -380,6 +398,8 @@ const CrankWheel = memo(function CrankWheel({
 }: {
   crank: MotionValue<number>;
   reduce: boolean;
+  /** Touch screens: no circular dragging, each tap winds one frame. */
+  tapOnly: boolean;
   onGrab: () => void;
   onRelease: (velocity: number) => void;
   onTap: () => void;
@@ -395,9 +415,10 @@ const CrankWheel = memo(function CrankWheel({
   return (
     <motion.button
       type="button"
-      className="crank-wheel touch-none"
+      className={`crank-wheel ${tapOnly ? 'touch-manipulation' : 'touch-none'}`}
       whileTap={reduce ? undefined : { scale: 0.96 }}
       onPointerDown={(event) => {
+        if (tapOnly) return;
         try {
           event.currentTarget.setPointerCapture(event.pointerId);
         } catch {
@@ -428,6 +449,7 @@ const CrankWheel = memo(function CrankWheel({
         onRelease(crank.getVelocity());
       }}
       onPointerCancel={() => {
+        if (!grip.current) return;
         grip.current = null;
         onRelease(0);
       }}
@@ -444,7 +466,7 @@ const CrankWheel = memo(function CrankWheel({
         if (performance.now() - turnedAt.current < 250) return;
         onTap();
       }}
-      aria-label="Turn the projector crank"
+      aria-label={tapOnly ? 'Wind the projector one frame' : 'Turn the projector crank'}
     >
       <motion.span aria-hidden className="crank-wheel__disc gpu-layer" style={{ rotate: crank }}>
         <span className="crank-wheel__spoke" />
@@ -463,6 +485,7 @@ const FilmStrip = memo(function FilmStrip({
   labels,
   onGrab,
   onRelease,
+  onSwipe,
 }: {
   data: XsoData;
   crank: MotionValue<number>;
@@ -470,6 +493,8 @@ const FilmStrip = memo(function FilmStrip({
   labels: string[];
   onGrab: () => void;
   onRelease: (velocity: number) => void;
+  /** When set, the strip only takes discrete one-frame swipes instead of free scrubbing. */
+  onSwipe?: (offsetX: number) => void;
 }) {
   const x = useTransform(crank, (deg) => -(count + wrap(deg / STEP, count)) * CELL);
   const start = useRef(0);
@@ -478,12 +503,22 @@ const FilmStrip = memo(function FilmStrip({
   return (
     <motion.div
       className="celluloid relative mt-4 w-full touch-pan-y select-none"
-      onPanStart={() => {
-        start.current = crank.get();
-        onGrab();
-      }}
-      onPan={(_, info) => crank.set(start.current - (info.offset.x / CELL) * STEP)}
-      onPanEnd={(_, info) => onRelease((-info.velocity.x / CELL) * STEP)}
+      onPanStart={
+        onSwipe
+          ? undefined
+          : () => {
+              start.current = crank.get();
+              onGrab();
+            }
+      }
+      onPan={
+        onSwipe ? undefined : (_, info) => crank.set(start.current - (info.offset.x / CELL) * STEP)
+      }
+      onPanEnd={
+        onSwipe
+          ? (_, info) => onSwipe(info.offset.x)
+          : (_, info) => onRelease((-info.velocity.x / CELL) * STEP)
+      }
       aria-hidden
     >
       <span className="celluloid__backlight" />

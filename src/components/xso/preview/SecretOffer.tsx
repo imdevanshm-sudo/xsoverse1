@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Copy } from 'lucide-react';
 import { splitReward } from '@/lib/reward';
@@ -51,7 +51,7 @@ async function copyText(text: string): Promise<boolean> {
 type CopyState = 'idle' | 'copied' | 'failed';
 
 /** Perforated paper coupon; the code sits under a scratch-off foil until revealed. */
-export function SecretOffer({ reward }: { reward: string }) {
+export const SecretOffer = memo(function SecretOffer({ reward }: { reward: string }) {
   const reduce = useReducedMotion();
   const [copyState, setCopyState] = useState<CopyState>('idle');
   const [revealed, setRevealed] = useState(false);
@@ -169,4 +169,4 @@ export function SecretOffer({ reward }: { reward: string }) {
       </div>
     </section>
   );
-}
+});

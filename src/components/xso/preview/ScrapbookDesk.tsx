@@ -22,7 +22,7 @@ import {
 import { Pause, Play } from 'lucide-react';
 import type { XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
-import { useTouchSpring } from '@/hooks/useTouchSpring';
+import { useCoarsePointer, useTouchSpring } from '@/hooks/useTouchSpring';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { seededOffset } from '@/components/xso/viewers/shared';
@@ -101,6 +101,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const letterItem = useRef<HTMLDivElement>(null);
   const items = useMemo(() => buildItems(data), [data]);
   const reduce = Boolean(useReducedMotion());
+  const coarse = useCoarsePointer();
   const [stack, setStack] = useState<string[]>(() => items.map((item) => item.id));
   const [tidy, setTidy] = useState(0);
   const [flipped, setFlipped] = useState<Record<string, boolean>>({});
@@ -152,6 +153,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
             z,
             desk,
             reduce,
+            tactile: !coarse,
             onPickUp: () => pickUp(item),
           };
           switch (item.kind) {
@@ -161,7 +163,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
                   key={`${item.id}:${tidy}`}
                   {...common}
                   label="Receipt"
-                  hint="Drag me around"
+                  hint={coarse ? 'Tap to bring forward' : 'Drag me around'}
                 >
                   <MiniReceipt data={data} />
                 </DeskItem>
@@ -173,7 +175,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
                   key={`${item.id}:${tidy}`}
                   {...common}
                   label={`Polaroid ${item.photo!.index + 1} — ${isFlipped ? 'turn back to the photo' : 'flip to read the back'}`}
-                  hint={isFlipped ? 'Turn it back' : 'Flip me over'}
+                  hint={isFlipped ? 'Turn it back' : coarse ? 'Tap to flip' : 'Flip me over'}
                   onActivate={() => {
                     playFoley('flip', 0.6);
                     setFlipped((f) => ({ ...f, [item.id]: !f[item.id] }));
@@ -233,7 +235,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
                   {...common}
                   itemRef={letterItem}
                   label={`Folded letter for ${data.customerName} — unfold it`}
-                  hint="Unfold letter"
+                  hint={coarse ? 'Tap to unfold' : 'Unfold letter'}
                   onActivate={() => {
                     playFoley('flip', 0.8);
                     setLetterOpen(true);
@@ -254,7 +256,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
 
       <div className="mt-3 flex items-center justify-between gap-3 px-1">
         <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
-          Pick anything up · flip, peel, unfold
+          {coarse ? 'Tap anything · flip, peel, unfold' : 'Pick anything up · flip, peel, unfold'}
         </p>
         <button
           type="button"
@@ -292,6 +294,7 @@ function DeskItem({
   z,
   desk,
   reduce,
+  tactile,
   label,
   hint,
   itemRef,
@@ -304,6 +307,8 @@ function DeskItem({
   z: number;
   desk: RefObject<HTMLDivElement>;
   reduce: boolean;
+  /** Free 2D dragging (fine pointers only); touch screens get tap-only items. */
+  tactile: boolean;
   label: string;
   hint?: string;
   itemRef?: RefObject<HTMLDivElement>;
@@ -327,7 +332,9 @@ function DeskItem({
   return (
     <motion.div
       ref={itemRef}
-      className="desk-item gpu-layer group absolute touch-none select-none outline-none"
+      className={`desk-item gpu-layer group absolute select-none outline-none ${
+        tactile ? 'touch-none' : 'touch-pan-y'
+      }`}
       style={{ left: spec.left, top: spec.top, width: spec.width, zIndex: z }}
       custom={spec.tilt}
       variants={HANDLED}
@@ -337,14 +344,14 @@ function DeskItem({
       whileTap="lift"
       whileDrag="lift"
       transition={reduce ? INSTANT : pickUp}
-      drag
+      drag={tactile}
       dragControls={dragControls}
       dragListener={false}
       dragConstraints={desk}
       dragElastic={0.1}
       dragTransition={{ power: 0.18, timeConstant: 200 }}
       onPointerDown={(event) => {
-        if ((event.target as Element).closest(INTERACTIVE)) return;
+        if (!tactile || (event.target as Element).closest(INTERACTIVE)) return;
         onPickUp();
         playFoley('tap', 0.35);
         dragControls.start(event);
@@ -354,8 +361,14 @@ function DeskItem({
         playFoley('land', 0.45);
       }}
       onClick={(event) => {
-        if (!onActivate || performance.now() - droppedAt.current < 220) return;
         if ((event.target as Element).closest(INTERACTIVE)) return;
+        if (!tactile) {
+          onPickUp();
+          if (onActivate) onActivate();
+          else playFoley('tap', 0.35);
+          return;
+        }
+        if (!onActivate || performance.now() - droppedAt.current < 220) return;
         onActivate();
       }}
       onHoverStart={() => onHover?.(true)}

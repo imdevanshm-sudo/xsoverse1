@@ -4,7 +4,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Check, Lock, Sparkles } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
-import { pickXsoPayload } from '@/lib/xsoPayload';
+import { startCheckout } from '@/lib/startCheckout';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
 import { getTheme, THEMES } from '@/lib/themes';
 import { XSO_PRODUCT } from '@/lib/orders';
@@ -40,21 +40,7 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
 
     setBusy(true);
     try {
-      const snapshot = useXsoStore.getState();
-      const data = pickXsoPayload({ ...snapshot, giftStyle: lockedStyle });
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data }),
-      });
-      const json = (await response.json().catch(() => ({}))) as {
-        checkoutUrl?: string;
-        error?: string;
-      };
-      if (!response.ok || !json.checkoutUrl) {
-        throw new Error(json.error || 'Checkout failed');
-      }
-      window.location.assign(json.checkoutUrl);
+      await startCheckout(lockedStyle);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Checkout failed');
       setBusy(false);
@@ -79,8 +65,12 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
               <div className="paper-card rotate-[-1.2deg] px-5 pb-28 pt-5 font-receipt text-[13px] text-[#2d1b22]">
                 <div className="flex items-start justify-between gap-3 border-b border-dashed border-[#e8bfd0] pb-3">
                   <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-[#9a6b7b]">Invoice</p>
-                    <p className="font-serif text-[22px] font-semibold leading-tight">{theme.title}</p>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-[#9a6b7b]">
+                      Invoice
+                    </p>
+                    <p className="font-serif text-[22px] font-semibold leading-tight">
+                      {theme.title}
+                    </p>
                   </div>
                   <p className="shrink-0 text-right text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#9a6b7b]">
                     No. {invoice}
@@ -135,7 +125,8 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
               Seal your <em className="font-normal text-[#f9a8d4]">XSO.</em>
             </h1>
             <p className="mt-2 text-[15px] text-[#e0b4c6]">
-              Once it&apos;s sealed, it&apos;s theirs: something to open, hold and come back to long after the moment passes.
+              Once it&apos;s sealed, it&apos;s theirs: something to open, hold and come back to long
+              after the moment passes.
             </p>
           </div>
 
@@ -148,12 +139,16 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-baseline justify-between gap-3">
-                <span className="font-serif text-[18px] font-semibold leading-tight">{option.label}</span>
+                <span className="font-serif text-[18px] font-semibold leading-tight">
+                  {option.label}
+                </span>
                 <span className="shrink-0 font-receipt text-[15px] font-bold tabular-nums text-[#ec4899]">
                   {option.price}
                 </span>
               </span>
-              <span className="mt-1 block text-[13px] leading-snug text-[#7a5563]">{option.blurb}</span>
+              <span className="mt-1 block text-[13px] leading-snug text-[#7a5563]">
+                {option.blurb}
+              </span>
             </span>
             <Check aria-hidden className="mt-1 h-4 w-4 shrink-0 text-[#a8557e]" strokeWidth={3} />
           </div>

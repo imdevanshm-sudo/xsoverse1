@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import {
+  memo,
   useCallback,
   useEffect,
   useRef,
@@ -11,11 +12,24 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Play, Zap } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
-import { CARTRIDGE_PRICE, CARTRIDGES, displayTitle, getCartridge } from '@/lib/cartridges';
+import { useExpressOrder } from '@/store/useExpressOrder';
+import { useMediaQuery } from '@/hooks/useTouchSpring';
+import {
+  CARTRIDGE_PRICE,
+  CARTRIDGES,
+  displayTitle,
+  getCartridge,
+  type CartridgeSpec,
+} from '@/lib/cartridges';
 import { THEMES, getTheme, type ThemeId } from '@/lib/themes';
 import { DeckBox } from '@/components/storefront/DeckBox';
 import { StyleDemo } from '@/components/storefront/StyleDemo';
+import { StyleThumb } from '@/components/storefront/StyleThumb';
+import { HeroReel } from '@/components/storefront/HeroReel';
+import { StickyExpressBar } from '@/components/storefront/StickyExpressBar';
+import { ExpressOrderHost } from '@/components/storefront/ExpressOrderHost';
 import { MatteCta } from '@/components/desk/MatteCta';
 import type { GiftStyle } from '@/types/xso';
 
@@ -32,6 +46,8 @@ export function Store() {
   const themeId = useXsoStore((s) => s.themeId);
   const setField = useXsoStore((s) => s.setField);
   const applyTheme = useXsoStore((s) => s.applyTheme);
+  const openExpress = useExpressOrder((s) => s.openWith);
+  const desktop = useMediaQuery('(min-width: 768px)');
   const [pending, startTransition] = useTransition();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const format = getCartridge(giftStyle);
@@ -45,22 +61,38 @@ export function Store() {
 
   const selectStyle = useCallback((style: GiftStyle) => setField('giftStyle', style), [setField]);
 
-  const onTabKey = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const count = CARTRIDGES.length;
-    const moves: Record<string, number> = {
-      ArrowRight: (index + 1) % count,
-      ArrowDown: (index + 1) % count,
-      ArrowLeft: (index - 1 + count) % count,
-      ArrowUp: (index - 1 + count) % count,
-      Home: 0,
-      End: count - 1,
-    };
-    const next = moves[e.key];
-    if (next === undefined) return;
-    e.preventDefault();
-    selectStyle(CARTRIDGES[next].id as GiftStyle);
-    tabRefs.current[next]?.focus({ preventScroll: true });
-  };
+  const onTabKey = useCallback(
+    (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+      const count = CARTRIDGES.length;
+      const moves: Record<string, number> = {
+        ArrowRight: (index + 1) % count,
+        ArrowDown: (index + 1) % count,
+        ArrowLeft: (index - 1 + count) % count,
+        ArrowUp: (index - 1 + count) % count,
+        Home: 0,
+        End: count - 1,
+      };
+      const next = moves[e.key];
+      if (next === undefined) return;
+      e.preventDefault();
+      selectStyle(CARTRIDGES[next].id as GiftStyle);
+      tabRefs.current[next]?.focus({ preventScroll: true });
+    },
+    [selectStyle],
+  );
+
+  const setTabRef = useCallback((index: number, el: HTMLButtonElement | null) => {
+    tabRefs.current[index] = el;
+  }, []);
+
+  const expressStyle = useCallback(
+    () => openExpress({ style: useXsoStore.getState().giftStyle }),
+    [openExpress],
+  );
+  const expressDeck = useCallback(
+    (id: ThemeId) => openExpress({ style: useXsoStore.getState().giftStyle, theme: id }),
+    [openExpress],
+  );
 
   // Keep the selected format visible inside the horizontally scrolling tab row (mobile),
   // without scrolling the page itself.
@@ -85,10 +117,12 @@ export function Store() {
     },
     [applyTheme, router],
   );
+  const openDeck = useCallback((id: ThemeId) => goWithDeck(id, 'preview'), [goWithDeck]);
+  const customizeDeck = useCallback((id: ThemeId) => goWithDeck(id, 'customize'), [goWithDeck]);
 
   return (
     <main className="desk min-app-h" aria-busy={pending}>
-      <div className="mx-auto w-full max-w-5xl px-5 pb-20 pt-5 sm:px-8 sm:pt-8">
+      <div className="mx-auto w-full max-w-5xl px-5 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-8 sm:pt-8 md:pb-20">
         <header className="flex items-center justify-between gap-4 border-b border-[#4a2a35]/70 pb-4">
           <Link
             href="/"
@@ -110,7 +144,40 @@ export function Store() {
           </span>
         </header>
 
-        <section className="mt-6 max-w-2xl sm:mt-12">
+        <section className="mt-4 max-md:block md:hidden" aria-labelledby="hook-heading">
+          <h1
+            id="hook-heading"
+            className="text-balance font-serif text-[1.9rem] font-semibold leading-[1.02] tracking-[-0.02em] text-[#fdf2f8]"
+          >
+            Your story, turned into a gift{' '}
+            <em className="font-medium text-[#f9a8d4]">they can play.</em>
+          </h1>
+          <div className="mt-3 [&>div]:max-w-[min(360px,46svh)]">
+            {desktop ? null : <HeroReel />}
+          </div>
+          <p className="mt-3 text-pretty text-[15px] leading-snug text-[#e0b4c6]">
+            A digital keepsake of your story: receipts, photos and a letter, sent as a link they
+            open and play.
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={expressStyle}
+              className="matte-cta flex min-h-[3.25rem] flex-1 touch-manipulation items-center justify-center gap-2 rounded-full px-5 font-serif text-[17px] font-semibold"
+            >
+              <Zap className="h-4 w-4" aria-hidden />
+              Express Order
+            </button>
+            <span className="shrink-0 rounded-full border border-[#fdba74]/40 px-3 py-1.5 font-receipt text-[13px] font-bold tabular-nums text-[#fdba74]">
+              {CARTRIDGE_PRICE}
+            </span>
+          </div>
+          <p className="mt-2 text-center font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6a7e]">
+            60 seconds · 3 steps · ready to send
+          </p>
+        </section>
+
+        <section className="mt-6 hidden max-w-2xl sm:mt-12 md:block">
           <p className="mb-2.5 font-receipt text-[10px] uppercase tracking-[0.22em] text-[#fdba74] sm:mb-4 sm:text-[11px]">
             Experience + Souvenir <span className="text-[#7f5466]">=</span> XSO
           </p>
@@ -141,46 +208,17 @@ export function Store() {
             aria-label="Souvenir format"
             className="relative -mx-5 flex snap-x scroll-px-5 gap-2.5 overflow-x-auto px-5 pb-2 pt-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0"
           >
-            {CARTRIDGES.map((cart, index) => {
-              const selected = cart.id === giftStyle;
-              return (
-                <button
-                  key={cart.id}
-                  ref={(el) => {
-                    tabRefs.current[index] = el;
-                  }}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  tabIndex={selected ? 0 : -1}
-                  onClick={() => selectStyle(cart.id as GiftStyle)}
-                  onKeyDown={(e) => onTabKey(e, index)}
-                  className={`min-h-[76px] min-w-[8.5rem] shrink-0 snap-start touch-manipulation rounded-2xl border px-3.5 py-3 text-left transition-transform duration-200 ease-out will-change-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.97] sm:min-w-0 ${
-                    selected
-                      ? 'sunset-ring text-[#2d1b22]'
-                      : 'border-[#4a2a35] bg-[#241419] text-[#fce7f3] hover:-translate-y-0.5 hover:border-[#7d4a5c] hover:bg-[#2e1a21]'
-                  }`}
-                >
-                  <span
-                    className={`block font-receipt text-[10px] uppercase tracking-[0.18em] ${
-                      selected ? 'text-[#ec4899]' : 'text-[#9a6a7e]'
-                    }`}
-                  >
-                    {cart.code}
-                  </span>
-                  <span className="mt-1 block font-serif text-[18px] font-semibold leading-tight">
-                    {displayTitle(cart)}
-                  </span>
-                  <span
-                    className={`mt-0.5 block text-[12px] leading-snug ${
-                      selected ? 'text-[#7a5563]' : 'text-[#a8798c]'
-                    }`}
-                  >
-                    {cart.caption}
-                  </span>
-                </button>
-              );
-            })}
+            {CARTRIDGES.map((cart, index) => (
+              <StyleChip
+                key={cart.id}
+                cart={cart}
+                index={index}
+                selected={cart.id === giftStyle}
+                onSelect={selectStyle}
+                onKey={onTabKey}
+                setRef={setTabRef}
+              />
+            ))}
           </div>
 
           <div className="relative mt-3 sm:mt-4">
@@ -200,7 +238,20 @@ export function Store() {
               className="relative grid overflow-hidden rounded-3xl border border-[#4a2a35] bg-[#211218] md:grid-cols-[1.1fr_1fr]"
               aria-live="polite"
             >
-              <StyleDemo style={giftStyle} glow={format.glow} />
+              {desktop ? (
+                <StyleDemo style={giftStyle} glow={format.glow} />
+              ) : (
+                <Link
+                  href={previewHref(giftStyle, themeId)}
+                  className="felt group relative block h-[220px] overflow-hidden"
+                  aria-label={`Watch ${displayTitle(format)} in motion`}
+                >
+                  <StyleThumb style={giftStyle} sizes="(max-width: 768px) 100vw, 480px" />
+                  <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-[#180e15]/90 px-3 py-1.5 font-receipt text-[11px] font-bold uppercase tracking-[0.14em] text-[#fdf2f8]">
+                    <Play className="h-3 w-3" aria-hidden /> Watch it
+                  </span>
+                </Link>
+              )}
               <div className="relative flex flex-col p-4 sm:p-7 md:min-h-[260px]">
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
@@ -227,7 +278,10 @@ export function Store() {
                       {format.description}
                     </p>
                     <p className="mt-3.5 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#a8798c] sm:mt-4 sm:text-[11px]">
-                      <span className="inline-flex items-center gap-1.5 text-[#fdba74]"><span className="led-peach" aria-hidden />Slot A · Ready</span>
+                      <span className="inline-flex items-center gap-1.5 text-[#fdba74]">
+                        <span className="led-peach" aria-hidden />
+                        Slot A · Ready
+                      </span>
                       <span className="text-[#6b3f4f]"> / </span>
                       <span className="font-bold text-[#fce7f3]">{activeTheme.title}</span>
                     </p>
@@ -239,20 +293,19 @@ export function Store() {
 
                 <div className="mt-4 grid gap-2 sm:mt-5 sm:gap-2.5">
                   <MatteCta
-                    key={`preview-${giftStyle}-${themeId}`}
-                    href={previewHref(giftStyle, themeId)}
-                    label={`Experience this ${displayTitle(format)}`}
-                    narrowLabel="Experience it"
+                    onClick={expressStyle}
+                    label={`Express Order · ${displayTitle(format)}`}
+                    narrowLabel="Express Order"
                     price={CARTRIDGE_PRICE}
-                    loadingLabel="Inserting the cartridge…"
-                    ariaLabel={`Preview ${displayTitle(format)} with ${activeTheme.title}, ${CARTRIDGE_PRICE}`}
+                    loadingLabel="Opening…"
+                    ariaLabel={`Express order ${displayTitle(format)} with ${activeTheme.title}, ${CARTRIDGE_PRICE}`}
                   />
                   <Link
-                    href={customizeHref(giftStyle)}
+                    href={previewHref(giftStyle, themeId)}
                     prefetch
-                    className="paper-button flex min-h-[48px] touch-manipulation items-center justify-center rounded-full px-5 font-receipt text-[12px] font-bold uppercase tracking-[0.16em] transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.98]"
+                    className="flex min-h-[44px] touch-manipulation items-center justify-center rounded-full px-5 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#c99aae] underline decoration-[#6b3f4f] underline-offset-4 transition-colors hover:text-[#fdf2f8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
                   >
-                    Craft this {displayTitle(format)} XSO →
+                    Customize first →
                   </Link>
                 </div>
               </div>
@@ -283,8 +336,9 @@ export function Store() {
                     theme={theme}
                     styleLabel={displayTitle(format)}
                     loaded={theme.id === themeId}
-                    onOpen={() => goWithDeck(theme.id, 'preview')}
-                    onCustomize={() => goWithDeck(theme.id, 'customize')}
+                    onOpen={openDeck}
+                    onExpress={expressDeck}
+                    onCustomize={customizeDeck}
                   />
                 </div>
               ))}
@@ -295,9 +349,62 @@ export function Store() {
           </p>
         </section>
       </div>
+      <StickyExpressBar />
+      <ExpressOrderHost />
     </main>
   );
 }
+
+const StyleChip = memo(function StyleChip({
+  cart,
+  index,
+  selected,
+  onSelect,
+  onKey,
+  setRef,
+}: {
+  cart: CartridgeSpec;
+  index: number;
+  selected: boolean;
+  onSelect: (style: GiftStyle) => void;
+  onKey: (e: KeyboardEvent<HTMLButtonElement>, index: number) => void;
+  setRef: (index: number, el: HTMLButtonElement | null) => void;
+}) {
+  return (
+    <button
+      ref={(el) => setRef(index, el)}
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      tabIndex={selected ? 0 : -1}
+      onClick={() => onSelect(cart.id as GiftStyle)}
+      onKeyDown={(e) => onKey(e, index)}
+      className={`min-h-[76px] min-w-[8.5rem] shrink-0 snap-start touch-manipulation rounded-2xl border px-3.5 py-3 text-left transition-transform duration-200 ease-out will-change-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.97] sm:min-w-0 ${
+        selected
+          ? 'sunset-ring text-[#2d1b22]'
+          : 'border-[#4a2a35] bg-[#241419] text-[#fce7f3] hover:-translate-y-0.5 hover:border-[#7d4a5c] hover:bg-[#2e1a21]'
+      }`}
+    >
+      <span
+        className={`block font-receipt text-[10px] uppercase tracking-[0.18em] ${
+          selected ? 'text-[#ec4899]' : 'text-[#9a6a7e]'
+        }`}
+      >
+        {cart.code}
+      </span>
+      <span className="mt-1 block font-serif text-[18px] font-semibold leading-tight">
+        {displayTitle(cart)}
+      </span>
+      <span
+        className={`mt-0.5 block text-[12px] leading-snug ${
+          selected ? 'text-[#7a5563]' : 'text-[#a8798c]'
+        }`}
+      >
+        {cart.caption}
+      </span>
+    </button>
+  );
+});
 
 /** @deprecated Prefer `Store`. */
 export const RetroStorefront = Store;

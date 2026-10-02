@@ -1,0 +1,42 @@
+'use client';
+
+import { memo, useCallback } from 'react';
+import { Zap } from 'lucide-react';
+import { useXsoStore } from '@/store/useXsoStore';
+import { useExpressOrder } from '@/store/useExpressOrder';
+import { CARTRIDGE_PRICE, displayTitle, getCartridge } from '@/lib/cartridges';
+import { StyleThumb } from '@/components/storefront/StyleThumb';
+
+/** Mobile-only buy bar pinned to the bottom of the store. */
+export const StickyExpressBar = memo(function StickyExpressBar() {
+  const giftStyle = useXsoStore((s) => s.giftStyle);
+  const openWith = useExpressOrder((s) => s.openWith);
+  const open = useCallback(() => openWith({ style: giftStyle }), [openWith, giftStyle]);
+  const cart = getCartridge(giftStyle);
+
+  return (
+    <div className="fixed bottom-0 z-50 w-full border-t border-white/10 bg-[#180e15]/95 backdrop-blur-none md:hidden">
+      <div className="mx-auto flex max-w-xl items-center gap-3 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3">
+        <span className="relative h-11 w-9 shrink-0 overflow-hidden rounded-md bg-[#1a0f14]">
+          <StyleThumb style={giftStyle} sizes="36px" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-serif text-[15px] font-semibold leading-tight text-[#fdf2f8]">
+            {displayTitle(cart)}
+          </span>
+          <span className="block font-receipt text-[12px] font-bold tabular-nums text-[#fdba74]">
+            {CARTRIDGE_PRICE}
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={open}
+          className="matte-cta flex min-h-[48px] shrink-0 touch-manipulation items-center gap-2 rounded-full px-5 font-serif text-[16px] font-semibold"
+        >
+          <Zap className="h-4 w-4" aria-hidden />
+          Express Buy
+        </button>
+      </div>
+    </div>
+  );
+});

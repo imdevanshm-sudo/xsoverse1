@@ -71,6 +71,27 @@ const LivePreview = memo(function LivePreview({
 type MobileView = 'edit' | 'preview';
 
 /** Step 2: live deck beside a paper worksheet (tabbed on mobile). */
+const ViewTab = memo(function ViewTab({
+  id,
+  pressed,
+  onSelect,
+}: {
+  id: MobileView;
+  pressed: boolean;
+  onSelect: (id: MobileView) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={() => onSelect(id)}
+      className="desk-tab min-h-11 px-5"
+    >
+      {id === 'edit' ? 'Write' : 'See it'}
+    </button>
+  );
+});
+
 export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const cart = getCartridge(lockedStyle);
   const [tab, setTab] = useState<StudioStepId>('receipt');
@@ -114,15 +135,7 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
             className="grid w-full grid-cols-2 gap-1 rounded-2xl border border-[#4a2a35] bg-[#241419] p-1 sm:w-auto lg:hidden"
           >
             {(['edit', 'preview'] as const).map((id) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={view === id}
-                onClick={() => setView(id)}
-                className="desk-tab min-h-11 px-5"
-              >
-                {id === 'edit' ? 'Write' : 'See it'}
-              </button>
+              <ViewTab key={id} id={id} pressed={view === id} onSelect={setView} />
             ))}
           </div>
         </div>

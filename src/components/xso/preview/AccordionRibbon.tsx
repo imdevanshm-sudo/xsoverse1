@@ -12,7 +12,7 @@ import {
 } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
-import { useTouchSpring } from '@/hooks/useTouchSpring';
+import { useCoarsePointer, useTouchSpring } from '@/hooks/useTouchSpring';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { getArtifacts, playMechanicalCue } from '@/components/xso/viewers/shared';
@@ -107,6 +107,7 @@ export const AccordionRibbon = memo(function AccordionRibbon({
   const count = artifacts.length;
   const last = count - 1;
   const reduce = Boolean(useReducedMotion());
+  const coarse = useCoarsePointer();
   const travelSpring = useTouchSpring(TRAVEL);
 
   const stage = useRef<HTMLDivElement>(null);
@@ -217,24 +218,38 @@ export const AccordionRibbon = memo(function AccordionRibbon({
       <motion.div
         ref={stage}
         tabIndex={0}
-        className={`accordion-stage relative w-full touch-none select-none outline-none ${RIBBON_HEIGHT[size]}`}
-        onPanStart={() => {
-          panStart.current = target.get();
-        }}
-        onPan={(_, info) => {
-          if (openTarget.get() < 0.5) return;
-          const raw = panStart.current - info.offset.y / (panelH * 0.8);
-          const give = raw < 0 ? raw * 0.35 : raw > last ? last + (raw - last) * 0.35 : raw;
-          target.set(give);
-        }}
-        onPanEnd={(_, info) => {
-          pannedAt.current = performance.now();
-          if (openTarget.get() < 0.5) {
-            if (info.offset.y > 40) setOpen(true);
-            return;
-          }
-          settle(target.get() - (info.velocity.y / (panelH * 0.8)) * 0.18);
-        }}
+        className={`accordion-stage relative w-full select-none outline-none ${
+          coarse ? 'touch-pan-y' : 'touch-none'
+        } ${RIBBON_HEIGHT[size]}`}
+        onPanStart={
+          coarse
+            ? undefined
+            : () => {
+                panStart.current = target.get();
+              }
+        }
+        onPan={
+          coarse
+            ? undefined
+            : (_, info) => {
+                if (openTarget.get() < 0.5) return;
+                const raw = panStart.current - info.offset.y / (panelH * 0.8);
+                const give = raw < 0 ? raw * 0.35 : raw > last ? last + (raw - last) * 0.35 : raw;
+                target.set(give);
+              }
+        }
+        onPanEnd={
+          coarse
+            ? undefined
+            : (_, info) => {
+                pannedAt.current = performance.now();
+                if (openTarget.get() < 0.5) {
+                  if (info.offset.y > 40) setOpen(true);
+                  return;
+                }
+                settle(target.get() - (info.velocity.y / (panelH * 0.8)) * 0.18);
+              }
+        }
         onKeyDown={(event) => {
           const keys: Record<string, number> = {
             ArrowDown: active + 1,
@@ -249,7 +264,9 @@ export const AccordionRibbon = memo(function AccordionRibbon({
           if (!opened) setOpen(true);
           settle(keys[event.key]);
         }}
-        aria-label={`Accordion letter, panel ${active + 1} of ${count}. Drag or use arrow keys to unfold.`}
+        aria-label={`Accordion letter, panel ${active + 1} of ${count}. ${
+          coarse ? 'Tap a fold to unfold it.' : 'Drag or use arrow keys to unfold.'
+        }`}
       >
         <div
           className="absolute left-1/2 top-1/2"
@@ -269,6 +286,7 @@ export const AccordionRibbon = memo(function AccordionRibbon({
                 if (performance.now() - pannedAt.current < 250) return;
                 if (!opened) setOpen(true);
                 else if (index !== active) settle(index);
+                else if (coarse) settle(active === last ? 0 : active + 1);
               }}
             >
               <PanelFace data={data} index={index} />
@@ -282,7 +300,12 @@ export const AccordionRibbon = memo(function AccordionRibbon({
           {String(active + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
           <span className="block truncate text-[#9a6a7e]">{artifacts[active].label}</span>
         </p>
-        <PullTab opened={opened} reduce={reduce} openTarget={openTarget} onSet={setOpen} />
+        <PullTab
+          opened={opened}
+          reduce={reduce || coarse}
+          openTarget={openTarget}
+          onSet={setOpen}
+        />
         <div className="flex w-24 justify-end gap-1.5">
           <button
             type="button"
@@ -304,6 +327,11 @@ export const AccordionRibbon = memo(function AccordionRibbon({
           </button>
         </div>
       </div>
+      {coarse ? (
+        <p className="mt-2 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#c99aae]">
+          {opened ? 'Tap a fold to unfold it' : 'Tap to unfold'}
+        </p>
+      ) : null}
       <p className="sr-only" aria-live="polite">
         {opened
           ? `Panel ${active + 1} of ${count}: ${artifacts[active].label}`
@@ -398,7 +426,7 @@ function PullTab({
   return (
     <motion.button
       type="button"
-      className="accordion-tab gpu-layer touch-none"
+      className={`accordion-tab gpu-layer ${reduce ? 'touch-manipulation' : 'touch-none'}`}
       drag={reduce ? false : 'y'}
       dragConstraints={{ top: 0, bottom: 0 }}
       dragElastic={0.45}

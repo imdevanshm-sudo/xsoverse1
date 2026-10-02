@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
-import type { ThemePack } from '@/lib/themes';
+import { Zap } from 'lucide-react';
+import type { ThemeId, ThemePack } from '@/lib/themes';
 import { useTouchSpring } from '@/hooks/useTouchSpring';
 
 const CARD_COUNT = 4;
@@ -31,18 +32,20 @@ const OPEN_DELAY_MS = 320;
 const REARM_MS = 2500;
 
 /** Physical deck box: four mini cards peek out and fan open on hover/tap. */
-export function DeckBox({
+export const DeckBox = memo(function DeckBox({
   theme,
   styleLabel,
   loaded,
   onOpen,
+  onExpress,
   onCustomize,
 }: {
   theme: ThemePack;
   styleLabel: string;
   loaded: boolean;
-  onOpen: () => void;
-  onCustomize: () => void;
+  onOpen: (id: ThemeId) => void;
+  onExpress: (id: ThemeId) => void;
+  onCustomize: (id: ThemeId) => void;
 }) {
   const reduce = useReducedMotion();
   const spring = useTouchSpring(SPRING);
@@ -57,12 +60,12 @@ export function DeckBox({
   const open = () => {
     if (opening) return;
     if (reduce) {
-      onOpen();
+      onOpen(theme.id);
       return;
     }
     setOpening(true);
     timers.current.push(
-      window.setTimeout(onOpen, OPEN_DELAY_MS),
+      window.setTimeout(() => onOpen(theme.id), OPEN_DELAY_MS),
       window.setTimeout(() => setOpening(false), REARM_MS),
     );
   };
@@ -142,18 +145,27 @@ export function DeckBox({
       </motion.button>
       <button
         type="button"
-        onClick={onCustomize}
-        className="mt-2 inline-flex min-h-[44px] touch-manipulation items-center gap-1.5 rounded-xl px-4 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#c99aae] underline decoration-[#6b3f4f] underline-offset-4 transition-colors hover:text-[#fdf2f8] hover:decoration-[#f9a8d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.98]"
-        aria-label={`Start from ${theme.title} and write your own`}
+        onClick={() => onExpress(theme.id)}
+        className="matte-cta mt-3 flex min-h-[48px] w-full max-w-[250px] touch-manipulation items-center justify-center gap-2 rounded-full px-5 font-serif text-[16px] font-semibold"
+        aria-label={`Express order ${theme.title} as ${styleLabel}`}
       >
-        Write your own
+        <Zap className="h-4 w-4" aria-hidden />
+        Express Order
+      </button>
+      <button
+        type="button"
+        onClick={() => onCustomize(theme.id)}
+        className="mt-1 inline-flex min-h-[44px] touch-manipulation items-center gap-1.5 rounded-xl px-4 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#c99aae] underline decoration-[#6b3f4f] underline-offset-4 transition-colors hover:text-[#fdf2f8] hover:decoration-[#f9a8d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.98]"
+        aria-label={`Start from ${theme.title} and customize every line first`}
+      >
+        Customize first
       </button>
     </div>
   );
-}
+});
 
 /** Tiny stand-ins for receipt, audit, photo strip and letter. */
-export function MiniFace({ kind }: { kind: number }) {
+export const MiniFace = memo(function MiniFace({ kind }: { kind: number }) {
   if (kind === 0) {
     return (
       <div className="flex h-full flex-col gap-1 font-receipt text-[6px] uppercase text-[#7a5563]">
@@ -211,4 +223,4 @@ export function MiniFace({ kind }: { kind: number }) {
       <p className="mt-auto text-right font-hand text-[11px] text-[#ec4899]">♥</p>
     </div>
   );
-}
+});

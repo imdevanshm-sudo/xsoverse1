@@ -2592,3 +2592,16 @@ html.is-landscape .xso-dock {
     box-shadow: 0 10px 16px -8px rgba(0, 0, 0, 0.65);
   }
 }
+
+/* Touch screens: card surfaces never claim vertical swipes, so the page always scrolls. */
+@media (pointer: coarse) {
+  .deck-drag,
+  .scrap-desk,
+  .desk-item,
+  .accordion-stage,
+  .film-screen,
+  .celluloid,
+  .deck-box {
+    touch-action: pan-y;
+  }
+}

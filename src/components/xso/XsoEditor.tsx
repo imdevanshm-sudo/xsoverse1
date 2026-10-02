@@ -80,7 +80,7 @@ function useStableKeys(length: number, prefix: string) {
 }
 
 /** Tabbed editor for the four cards, styled as a paper worksheet. */
-export function XsoEditor({
+export const XsoEditor = memo(function XsoEditor({
   tab,
   onTabChange,
 }: {
@@ -137,7 +137,7 @@ export function XsoEditor({
       </div>
     </div>
   );
-}
+});
 
 const StoreField = memo(function StoreField({
   field,
@@ -205,12 +205,7 @@ function ReceiptSection() {
       >
         <ul className="m-0 list-none space-y-2.5 p-0">
           {lineItems.map((item, index) => (
-            <LineItemRow
-              key={item.id}
-              item={item}
-              isFirst={index === 0}
-              isLast={index === last}
-            />
+            <LineItemRow key={item.id} item={item} isFirst={index === 0} isLast={index === last} />
           ))}
         </ul>
       </Section>
@@ -366,15 +361,7 @@ const AuditSlider = memo(function AuditSlider({
   );
 });
 
-function FlagEditor({
-  title,
-  kind,
-  tone,
-}: {
-  title: string;
-  kind: FlagKind;
-  tone: string;
-}) {
+function FlagEditor({ title, kind, tone }: { title: string; kind: FlagKind; tone: string }) {
   const items = useXsoStore((s) => s[kind]);
   const { addFlag, updateFlag, removeFlag } = useXsoActions();
   const [keys, removeKey] = useStableKeys(items.length, kind);
@@ -623,7 +610,12 @@ function PhotoFrame({
 function LetterSection() {
   return (
     <div className="space-y-6">
-      <StoreField field="birthdayMessage" label="The part you never said out loud" multiline maxLength={600} />
+      <StoreField
+        field="birthdayMessage"
+        label="The part you never said out loud"
+        multiline
+        maxLength={600}
+      />
       <VoiceNoteField />
       <PromoFields />
     </div>
@@ -651,7 +643,10 @@ function VoiceNoteField() {
   };
 
   return (
-    <Section title="Voice note" note="Optional · let them hear it in your voice. MP3, M4A or WEBM up to 1.5 MB">
+    <Section
+      title="Voice note"
+      note="Optional · let them hear it in your voice. MP3, M4A or WEBM up to 1.5 MB"
+    >
       {voiceNoteUrl ? (
         <div className="flex items-center gap-2 rounded-xl border border-dashed border-[#f0cfdc] bg-white/40 p-2.5">
           <audio controls src={voiceNoteUrl} className="h-10 min-w-0 flex-1" />
@@ -696,7 +691,10 @@ function PromoFields() {
   const { code, perk } = splitReward(reward);
 
   return (
-    <Section title="Secret promise" note="A small promise under the foil, for them to scratch, keep and cash in with you.">
+    <Section
+      title="Secret promise"
+      note="A small promise under the foil, for them to scratch, keep and cash in with you."
+    >
       <div className="grid gap-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <Field label="Secret code">
           <input

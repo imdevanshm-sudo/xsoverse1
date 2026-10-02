@@ -345,6 +345,7 @@ const RewindCard = memo(function RewindCard({
       whileHover={tactile ? 'lift' : undefined}
       transition={{ type: 'spring', stiffness: 260, damping: 24 }}
       drag={tactile ? 'x' : false}
+      dragDirectionLock
       dragControls={dragControls}
       dragListener={false}
       onPointerDown={(event) => {
