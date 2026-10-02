@@ -1,5 +1,5 @@
 /** Gift payloads are stored inline, so uploads are shrunk client-side. */
-export const MAX_PHOTO_EDGE = 900;
+export const MAX_PHOTO_EDGE = 720;
 export const MAX_AUDIO_BYTES = 1_500_000;
 
 export function readAsDataUrl(file: Blob): Promise<string> {
@@ -20,7 +20,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Downscales to MAX_PHOTO_EDGE and re-encodes as JPEG (~100–200 KB). */
+/** Downscales to MAX_PHOTO_EDGE and re-encodes as JPEG (~80–150 KB). */
 export async function compressImage(file: File): Promise<string> {
   if (!file.type.startsWith('image/')) {
     throw new Error('Please choose an image file');

@@ -12,10 +12,11 @@ import {
 import { ArrowDown, ArrowUp, ImagePlus, Mic, Plus, Trash2, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useXsoStore } from '@/store/useXsoStore';
-import { svgPhoto, type AuditMetrics, type LineItem } from '@/types/xso';
+import type { AuditMetrics, LineItem } from '@/types/xso';
 import { STUDIO_STEPS, type StudioStepId } from '@/lib/studioSteps';
 import { compressImage, readAudio } from '@/lib/media';
 import { joinReward, splitReward } from '@/lib/reward';
+import { FRAMES_PER_STRIP, MAX_STRIPS, blankFrame, stripCount } from '@/lib/photoStrips';
 
 const METRIC_LABELS: Record<keyof AuditMetrics, string> = {
   chaos: 'Chaos',
@@ -26,8 +27,6 @@ const METRIC_LABELS: Record<keyof AuditMetrics, string> = {
 };
 
 const METRIC_KEYS = Object.keys(METRIC_LABELS) as (keyof AuditMetrics)[];
-const PHOTO_FRAMES = 4;
-
 type TextFieldKey =
   | 'billerName'
   | 'customerName'
@@ -57,6 +56,8 @@ function useXsoActions() {
       updateFlag: s.updateFlag,
       removeFlag: s.removeFlag,
       setPhotoAt: s.setPhotoAt,
+      addPhotoStrip: s.addPhotoStrip,
+      removePhotoStrip: s.removePhotoStrip,
     })),
   );
 }
@@ -445,35 +446,77 @@ const FlagRow = memo(function FlagRow({
 
 function PhotosSection() {
   const photos = useXsoStore((s) => s.photos);
-  const { setPhotoAt } = useXsoActions();
+  const { setPhotoAt, addPhotoStrip, removePhotoStrip } = useXsoActions();
+  const strips = stripCount(photos);
+  const frames = strips * FRAMES_PER_STRIP;
 
   /** Multiple files dropped on one frame fill it and the frames after it. */
   const placeFiles = useCallback(
     async (start: number, files: File[]) => {
       const images = files.filter((f) => f.type.startsWith('image/'));
       if (images.length === 0) throw new Error('Please choose an image file');
-      for (let i = 0; i < images.length && start + i < PHOTO_FRAMES; i += 1) {
+      for (let i = 0; i < images.length && start + i < frames; i += 1) {
         setPhotoAt(start + i, await compressImage(images[i]));
       }
     },
-    [setPhotoAt],
+    [frames, setPhotoAt],
   );
 
   return (
     <Section
-      title="Purikura strip"
-      note="Drop photos onto a frame, or tap to choose. Portrait shots look best."
+      title={strips > 1 ? `Purikura strips (${strips})` : 'Purikura strip'}
+      note={`Drop photos onto a frame, or tap to choose. Portrait shots look best. Up to ${MAX_STRIPS} strips of ${FRAMES_PER_STRIP}.`}
     >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {Array.from({ length: PHOTO_FRAMES }, (_, index) => (
-          <PhotoFrame
-            key={index}
-            index={index}
-            url={photos[index] ?? ''}
-            onFiles={placeFiles}
-            onClear={() => setPhotoAt(index, svgPhoto(`FRAME ${index + 1}`, '#efe7d7', '#8a7b66'))}
-          />
+      <div className="space-y-5">
+        {Array.from({ length: strips }, (_, strip) => (
+          <div key={strip}>
+            {strips > 1 ? (
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a7b66]">
+                  Strip {strip + 1}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => removePhotoStrip(strip)}
+                  className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2 font-receipt text-[11px] font-bold uppercase tracking-[0.12em] text-[#b84e2a] hover:bg-[#b84e2a]/10"
+                  aria-label={`Remove strip ${strip + 1}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  Remove
+                </button>
+              </div>
+            ) : null}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {Array.from({ length: FRAMES_PER_STRIP }, (_, frame) => {
+                const index = strip * FRAMES_PER_STRIP + frame;
+                return (
+                  <PhotoFrame
+                    key={index}
+                    index={index}
+                    url={photos[index] ?? ''}
+                    onFiles={placeFiles}
+                    onClear={() => setPhotoAt(index, blankFrame(index))}
+                  />
+                );
+              })}
+            </div>
+          </div>
         ))}
+
+        {strips < MAX_STRIPS ? (
+          <button
+            type="button"
+            onClick={addPhotoStrip}
+            className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#d3c4aa] font-receipt text-[12px] font-bold uppercase tracking-[0.14em] text-[#8a7b66] transition-colors hover:border-[#c85a32] hover:text-[#c85a32] active:scale-[0.99]"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Add another strip
+          </button>
+        ) : (
+          <p className="text-center font-receipt text-[11px] uppercase tracking-[0.14em] text-[#8a7b66]">
+            Max {MAX_STRIPS} strips
+          </p>
+        )}
       </div>
     </Section>
   );

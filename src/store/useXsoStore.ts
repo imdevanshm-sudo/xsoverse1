@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { newId } from '@/lib/constants';
 import { getTheme, type ThemeId } from '@/lib/themes';
+import { FRAMES_PER_STRIP, MAX_STRIPS, blankFrame, stripCount } from '@/lib/photoStrips';
 import {
   getMockXsoData,
   type AuditMetrics,
@@ -30,6 +31,9 @@ interface XsoActions {
   removePhoto: (index: number) => void;
   /** Sets a photo-strip frame, padding empty frames when needed. */
   setPhotoAt: (index: number, url: string) => void;
+  /** Appends four blank frames as a new purikura strip (up to MAX_STRIPS). */
+  addPhotoStrip: () => void;
+  removePhotoStrip: (strip: number) => void;
   /** Replaces all editable content with a theme pack's copy. */
   applyTheme: (id: ThemeId) => void;
 }
@@ -134,4 +138,22 @@ export const useXsoStore = create<XsoStore>((set) => ({
     set((state) => ({
       photos: state.photos.filter((_, i) => i !== index),
     })),
+
+  addPhotoStrip: () =>
+    set((state) => {
+      const strips = stripCount(state.photos);
+      if (strips >= MAX_STRIPS) return {};
+      const photos = state.photos.slice(0, strips * FRAMES_PER_STRIP);
+      while (photos.length < strips * FRAMES_PER_STRIP) photos.push(blankFrame(photos.length));
+      for (let i = 0; i < FRAMES_PER_STRIP; i += 1) photos.push(blankFrame(photos.length));
+      return { photos };
+    }),
+
+  removePhotoStrip: (strip) =>
+    set((state) => {
+      if (stripCount(state.photos) <= 1) return {};
+      const photos = [...state.photos];
+      photos.splice(strip * FRAMES_PER_STRIP, FRAMES_PER_STRIP);
+      return { photos };
+    }),
 }));

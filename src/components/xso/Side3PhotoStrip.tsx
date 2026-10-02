@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
+import { FRAMES_PER_STRIP, toStrips } from '@/lib/photoStrips';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { LIGHT_TWEEN } from '@/components/xso/viewers/shared';
 
@@ -28,41 +29,88 @@ const STICKERS: Array<{
   { text: 'ベスト', bottom: '6%', right: '2%', rotate: 6, color: '#fff', badge: true },
 ];
 
+/** Alternating tilt so several strips read as a loose hand of photo-booth prints. */
+const STRIP_TILT = [-2, 1.6, -1.2];
+
 export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
-  const panels = data.photos.slice(0, 4);
-  const reducedMotion = useReducedMotion();
+  const strips = toStrips(data.photos);
+  const multi = strips.length > 1;
 
   return (
     <article
-      className="relative mx-auto w-full max-w-[230px]"
-      aria-label="Y2K Purikura photo strip"
+      className={`relative mx-auto flex w-full items-start justify-center ${
+        multi ? 'max-w-[460px] gap-4 px-2 pt-2' : 'max-w-[230px]'
+      }`}
+      aria-label={multi ? `${strips.length} Y2K Purikura photo strips` : 'Y2K Purikura photo strip'}
     >
+      {strips.map((panels, s) => (
+        <div
+          key={s}
+          className="min-w-0 flex-1"
+          style={multi ? { transform: `rotate(${STRIP_TILT[s] ?? 0}deg)` } : undefined}
+        >
+          <Strip
+            data={data}
+            panels={panels}
+            offset={s * FRAMES_PER_STRIP}
+            decorated={s === 0}
+            compact={multi}
+          />
+        </div>
+      ))}
+    </article>
+  );
+}
+
+function Strip({
+  data,
+  panels,
+  offset,
+  decorated,
+  compact,
+}: {
+  data: XsoData;
+  panels: string[];
+  offset: number;
+  decorated: boolean;
+  compact: boolean;
+}) {
+  const reducedMotion = useReducedMotion();
+
+  return (
+    <>
       <div
-        className="relative overflow-hidden px-2.5 pb-4 pt-3 mobile-flat-shadow shadow-[0_20px_44px_rgba(0,0,0,0.5)]"
+        className={`relative overflow-hidden mobile-flat-shadow shadow-[0_20px_44px_rgba(0,0,0,0.5)] ${
+          compact ? 'px-1.5 pb-2.5 pt-2' : 'px-2.5 pb-4 pt-3'
+        }`}
         style={{
-          background:
-            'linear-gradient(180deg, #ffd6ec 0%, #ffe4f1 18%, #1a1218 18%, #1a1218 100%)',
+          background: 'linear-gradient(180deg, #ffd6ec 0%, #ffe4f1 18%, #1a1218 18%, #1a1218 100%)',
           borderRadius: '4px 4px 10px 10px',
           border: '3px solid #fff',
-          boxShadow:
-            '0 0 0 4px #ff4db8, 0 0 0 7px #fff, 0 20px 44px rgba(0,0,0,0.5)',
+          boxShadow: '0 0 0 4px #ff4db8, 0 0 0 7px #fff, 0 20px 44px rgba(0,0,0,0.5)',
         }}
       >
-        <p className="mb-2 text-center font-mono text-[9px] font-bold tracking-[0.24em] text-pink-800">
-          PURIKURA · {data.customerName.toUpperCase()}
+        <p
+          className={`mb-2 truncate text-center font-mono font-bold text-pink-800 ${
+            compact ? 'text-[7px] tracking-[0.12em]' : 'text-[9px] tracking-[0.24em]'
+          }`}
+        >
+          {compact
+            ? `PURIKURA ${offset / FRAMES_PER_STRIP + 1}`
+            : `PURIKURA · ${data.customerName.toUpperCase()}`}
         </p>
 
-        <div className="relative z-10 flex flex-col gap-2 rounded-sm bg-[#120c14] p-2">
+        <div
+          className={`relative z-10 flex flex-col rounded-sm bg-[#120c14] ${
+            compact ? 'gap-1.5 p-1.5' : 'gap-2 p-2'
+          }`}
+        >
           {panels.map((src, i) => (
             <motion.figure
-              key={`${data.id}-photo-${i}`}
+              key={`${data.id}-photo-${offset + i}`}
               initial={reducedMotion ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={
-                reducedMotion
-                  ? LIGHT_TWEEN
-                  : { delay: 0.08 * i, duration: 0.35 }
-              }
+              transition={reducedMotion ? LIGHT_TWEEN : { delay: 0.08 * i, duration: 0.35 }}
               className="relative overflow-hidden"
               style={{
                 border: '3px solid rgba(255,255,255,0.95)',
@@ -70,7 +118,7 @@ export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
             >
               <LazyMedia
                 src={src}
-                alt={`Photo ${i + 1}`}
+                alt={`Photo ${offset + i + 1}`}
                 className="aspect-[3/4] w-full object-cover mobile-no-filter"
                 width={220}
                 height={293}
@@ -91,41 +139,45 @@ export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
                 aria-hidden
               />
               <figcaption className="absolute bottom-1 right-1 rounded bg-black/45 px-1 py-0.5 font-mono text-[7px] tracking-wider text-white/90">
-                {String(i + 1).padStart(2, '0')}
+                {String(offset + i + 1).padStart(2, '0')}
               </figcaption>
             </motion.figure>
           ))}
         </div>
 
-        {STICKERS.map((sticker) => (
-          <span
-            key={`${sticker.text}-${sticker.top}-${sticker.bottom}-${sticker.left}`}
-            className={`pointer-events-none absolute z-20 font-display font-extrabold drop-shadow-md max-md:hidden ${
-              sticker.badge
-                ? 'rounded-full border border-white/80 bg-hotpink px-1.5 py-0.5 text-[9px] tracking-wide'
-                : 'text-[14px]'
-            }`}
-            style={{
-              top: sticker.top,
-              left: sticker.left,
-              right: sticker.right,
-              bottom: sticker.bottom,
-              color: sticker.color,
-              transform: `rotate(${sticker.rotate}deg)`,
-            }}
+        {decorated &&
+          !compact &&
+          STICKERS.map((sticker) => (
+            <span
+              key={`${sticker.text}-${sticker.top}-${sticker.bottom}-${sticker.left}`}
+              className={`pointer-events-none absolute z-20 font-display font-extrabold drop-shadow-md max-md:hidden ${
+                sticker.badge
+                  ? 'rounded-full border border-white/80 bg-hotpink px-1.5 py-0.5 text-[9px] tracking-wide'
+                  : 'text-[14px]'
+              }`}
+              style={{
+                top: sticker.top,
+                left: sticker.left,
+                right: sticker.right,
+                bottom: sticker.bottom,
+                color: sticker.color,
+                transform: `rotate(${sticker.rotate}deg)`,
+              }}
+              aria-hidden
+            >
+              {sticker.text}
+            </span>
+          ))}
+        {decorated && !compact ? (
+          <p
+            className="pointer-events-none absolute bottom-10 left-3 z-30 max-w-[7rem] font-hand text-[12px] leading-snug text-[#2a4a7a]/85 max-md:hidden"
+            style={{ transform: 'rotate(-7deg)' }}
             aria-hidden
           >
-            {sticker.text}
-          </span>
-        ))}
-        <p
-          className="pointer-events-none absolute bottom-10 left-3 z-30 max-w-[7rem] font-hand text-[12px] leading-snug text-[#2a4a7a]/85 max-md:hidden"
-          style={{ transform: 'rotate(-7deg)' }}
-          aria-hidden
-        >
-          this one tho ✨
-        </p>
+            this one tho ✨
+          </p>
+        ) : null}
       </div>
-    </article>
+    </>
   );
 }
