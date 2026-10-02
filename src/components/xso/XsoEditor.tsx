@@ -103,6 +103,7 @@ export function XsoEditor({
               role="tab"
               id={`studio-tab-${item.id}`}
               aria-selected={selected}
+              aria-label={`${item.label} · ${item.cardName}`}
               aria-controls={`studio-panel-${item.id}`}
               onClick={() => onTabChange(item.id)}
               className={`flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center rounded-xl px-1 transition-colors duration-150 ${
@@ -117,16 +118,11 @@ export function XsoEditor({
                 }`}
               >
                 0{index + 1}
+                <span className="hidden lg:inline"> · {item.cardName}</span>
               </span>
-              <span className="max-w-full truncate font-receipt text-[10px] font-bold uppercase tracking-[0.08em] sm:text-[11px]">
-                {item.id === 'letter' ? (
-                  <>
-                    <span className="sm:hidden">Letter</span>
-                    <span className="hidden sm:inline">{item.label}</span>
-                  </>
-                ) : (
-                  item.label
-                )}
+              <span className="max-w-full truncate text-center font-receipt text-[10px] font-bold uppercase leading-tight tracking-[0.08em] sm:text-[11px] lg:whitespace-normal">
+                <span className="lg:hidden">{item.short}</span>
+                <span className="hidden lg:inline">{item.label}</span>
               </span>
             </button>
           );

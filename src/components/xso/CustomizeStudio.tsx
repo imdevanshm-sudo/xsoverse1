@@ -6,6 +6,7 @@ import { useXsoData } from '@/store/useXsoData';
 import { XsoEditor } from '@/components/xso/XsoEditor';
 import { XsoViewer } from '@/components/xso/XsoViewer';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
+import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';
 import { MatteCta } from '@/components/desk/MatteCta';
@@ -36,6 +37,13 @@ const LivePreview = memo(function LivePreview({
       </div>
     );
   }
+  if (lockedStyle === 'rewind') {
+    return (
+      <div className="flex justify-center">
+        <RewindStack data={previewData} size="studio" focusIndex={focusIndex} />
+      </div>
+    );
+  }
   return (
     <div className="paper-frame mx-auto max-w-[320px] p-2">
       <XsoViewer data={previewData} frameSize="compact" />
@@ -63,7 +71,7 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
   }, []);
 
   const focusIndex = STUDIO_STEPS.find((s) => s.id === tab)?.card ?? 0;
-  const activeLabel = STUDIO_STEPS[focusIndex].label;
+  const activeStep = STUDIO_STEPS[focusIndex];
 
   return (
     <>
@@ -129,7 +137,7 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
           fill={visited.size / STUDIO_STEPS.length}
           meta={`${visited.size}/${STUDIO_STEPS.length} memories`}
           done={visited.size === STUDIO_STEPS.length}
-          caption={`Writing · ${activeLabel}`}
+          caption={`Rewinding · ${activeStep.label} · ${activeStep.cardName}`}
         />
         <MatteCta
           href={`/checkout?${styleQuery(lockedStyle)}`}

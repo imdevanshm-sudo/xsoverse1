@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useXsoData } from '@/store/useXsoData';
 import { XsoViewer } from '@/components/xso/XsoViewer';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
+import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { SecretOffer } from '@/components/xso/preview/SecretOffer';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';
@@ -72,6 +73,8 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
 
           {isLoop ? (
             <MemoryDeck data={previewData} onChange={goTo} />
+          ) : lockedStyle === 'rewind' ? (
+            <RewindStack data={previewData} onChange={goTo} />
           ) : (
             <div className="paper-frame w-full max-w-[400px]">
               <XsoViewer

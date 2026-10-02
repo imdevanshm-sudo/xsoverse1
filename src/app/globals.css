@@ -1166,18 +1166,30 @@ html.is-landscape .xso-dock {
   font-size: 15px;
   color: var(--paper-ink);
   outline: none;
-  box-shadow: inset 0 1px 2px rgba(45, 27, 34, 0.08);
-  transition: border-color 150ms, box-shadow 150ms, background-color 150ms;
+  box-shadow:
+    inset 0 1px 2px rgba(45, 27, 34, 0.08),
+    0 0 0 rgba(236, 72, 153, 0),
+    0 0 0 rgba(236, 72, 153, 0);
+  transition:
+    border-color 450ms ease-out,
+    box-shadow 600ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    background-color 450ms ease-out;
 }
 
 .paper-field::placeholder {
   color: #b48799;
 }
 
-.paper-field:focus {
-  border-color: var(--paper-terracotta);
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.18);
+/* A warm underglow that blooms beneath the field instead of a hard focus ring. */
+.paper-field:focus,
+.paper-field:focus-visible {
+  outline: none;
+  border-color: #f5b8cf;
+  background: #fff9f5;
+  box-shadow:
+    inset 0 1px 2px rgba(45, 27, 34, 0.05),
+    0 10px 22px -10px rgba(236, 72, 153, 0.5),
+    0 2px 0 -1px rgba(244, 114, 182, 0.55);
 }
 
 .paper-field[aria-invalid='true'] {
@@ -1422,6 +1434,63 @@ html.is-landscape .xso-dock {
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: #9a6b7b;
+}
+
+/* Rewind: warm cream sheets with fine paper tooth, lit from a sunset behind. */
+.rewind-card {
+  position: relative;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #fff9f5;
+  color: var(--paper-ink);
+  border: 1px solid rgba(236, 72, 153, 0.12);
+  box-shadow:
+    0 1px 2px rgba(45, 15, 28, 0.25),
+    0 18px 36px -14px rgba(45, 10, 30, 0.6),
+    0 0 44px -16px rgba(251, 146, 60, 0.4);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.rewind-card__body {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  flex: 1 1 0%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+}
+
+.rewind-card .deck-card__footer {
+  z-index: 1;
+  background: rgba(253, 240, 232, 0.9);
+}
+
+.rewind-card__glow,
+.rewind-card__grain {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.rewind-card__glow {
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -8%, rgba(251, 207, 232, 0.35), transparent 62%),
+    linear-gradient(0deg, rgba(253, 186, 116, 0.1), transparent 38%);
+}
+
+.rewind-card__grain {
+  opacity: 0.55;
+  mix-blend-mode: multiply;
+  background-size: 360px 360px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.26 0 0 0 0 0.2 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
 }
 
 .deck-card__light,

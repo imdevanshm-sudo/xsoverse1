@@ -4,6 +4,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { XsoViewer } from '@/components/xso/XsoViewer';
 import { PhoneFrame } from '@/components/xso/PhoneFrame';
+import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
@@ -39,7 +40,13 @@ export function GiftUnboxing({
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
             >
-              <XsoViewer data={data} contained={false} />
+              {data.giftStyle === 'rewind' ? (
+                <div className="flex h-full justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
+                  <RewindStack data={data} size="fill" />
+                </div>
+              ) : (
+                <XsoViewer data={data} contained={false} />
+              )}
               <motion.p
                 className="pointer-events-none absolute bottom-16 left-4 z-30 rounded-full border border-white/10 bg-black/80 px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-white/60"
                 initial={{ opacity: 0, y: -8 }}
