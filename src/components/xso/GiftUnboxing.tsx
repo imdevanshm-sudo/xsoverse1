@@ -11,7 +11,19 @@ import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
-export function GiftUnboxing({ giftId, initialData }: { giftId: string; initialData: XsoData }) {
+/**
+ * The recipient's unboxing. Phones get a full-bleed stage sized to the dynamic viewport;
+ * from `md` up it sits in a phone frame. `preview` renders the creator's draft without the share tools.
+ */
+export function GiftUnboxing({
+  giftId,
+  initialData,
+  preview = false,
+}: {
+  giftId: string;
+  initialData: XsoData;
+  preview?: boolean;
+}) {
   const data = initialData;
   const [isUnwrapped, setIsUnwrapped] = useState(false);
   const note = useMemo(() => giftTagNote(data, giftId), [data, giftId]);
@@ -23,11 +35,23 @@ export function GiftUnboxing({ giftId, initialData }: { giftId: string; initialD
   };
 
   return (
-    <div className="mx-auto w-full max-w-sm px-3 py-5 sm:py-8">
-      <p className="mb-5 text-center font-mono text-[9px] uppercase tracking-[0.24em] text-white/40">
-        One-of-one souvenir · {shortCode(giftId)}
+    <div
+      className={`mx-auto my-auto flex w-full max-w-md flex-col justify-between gap-4 p-4 sm:p-6 md:max-w-sm md:py-8 ${
+        preview
+          ? 'flex-1 md:flex-none'
+          : 'min-h-[100dvh] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:min-h-0'
+      }`}
+    >
+      <p
+        className={`font-mono text-[9px] uppercase tracking-[0.24em] text-white/40 ${
+          preview ? 'min-h-8 content-center pr-32 text-left md:pr-0 md:text-center' : 'text-center'
+        }`}
+      >
+        {preview
+          ? 'Receiver preview · exactly what they’ll open'
+          : `XSO · One-of-one souvenir · ${shortCode(giftId)}`}
       </p>
-      <PhoneFrame>
+      <PhoneFrame className="receiver-stage">
         <AnimatePresence>
           {isUnwrapped ? (
             <motion.div
@@ -42,24 +66,28 @@ export function GiftUnboxing({ giftId, initialData }: { giftId: string; initialD
                   <RewindStack data={data} size="fill" />
                 </div>
               ) : data.giftStyle === 'scrapbook' ? (
-                <div className="flex h-full justify-center overflow-hidden bg-[#180e15] px-2 pb-14 pt-3">
-                  <ScrapbookDesk data={data} size="fill" />
+                <div className="flex h-full items-center justify-center overflow-hidden bg-[#180e15] px-2 pb-14 pt-3">
+                  <div className="flex h-full w-full touch-manipulation justify-center max-md:max-h-[65dvh]">
+                    <ScrapbookDesk data={data} size="fill" />
+                  </div>
                 </div>
               ) : data.giftStyle === 'accordion' ? (
                 <div className="flex h-full justify-center overflow-hidden bg-[#180e15] px-4 pb-16 pt-6">
                   <AccordionRibbon data={data} size="fill" />
                 </div>
               ) : data.giftStyle === 'moviebox' ? (
-                <div className="flex h-full justify-center overflow-hidden bg-[#140a0d] px-3 pb-16 pt-5">
+                <div className="flex h-full touch-manipulation justify-center overflow-hidden bg-[#140a0d] px-3 pb-16 pt-5">
                   <MovieBox data={data} size="fill" />
                 </div>
               ) : (
-                <div className="flex h-full justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
-                  <MemoryDeck data={data} size="fill" />
+                <div className="flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
+                  <div className="flex h-full w-full justify-center max-md:max-h-[65dvh]">
+                    <MemoryDeck data={data} size="fill" />
+                  </div>
                 </div>
               )}
               <motion.p
-                className="pointer-events-none absolute bottom-16 left-4 z-30 rounded-full border border-white/10 bg-black/80 px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-white/60"
+                className="pointer-events-none absolute bottom-4 left-4 z-30 rounded-full border border-white/10 bg-black/80 px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-white/60"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
@@ -73,9 +101,13 @@ export function GiftUnboxing({ giftId, initialData }: { giftId: string; initialD
         </AnimatePresence>
       </PhoneFrame>
 
-      <div className="mt-5">
+      {preview ? (
+        <p className="text-center text-[12px] leading-snug text-white/45">
+          Their link opens straight into this, on any phone, no app needed.
+        </p>
+      ) : (
         <ShareGiftLink giftId={giftId} recipientName={data.customerName} compact />
-      </div>
+      )}
     </div>
   );
 }

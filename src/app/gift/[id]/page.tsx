@@ -45,8 +45,8 @@ export default async function GiftPage({ params }: GiftPageProps) {
   if (!gift) notFound();
 
   return (
-    <main className="min-app-h">
-      <header className="flex items-center gap-3 px-4 pt-5 lg:px-8">
+    <main className="min-app-h flex flex-col bg-[#0c070a] md:bg-transparent">
+      <header className="flex items-center gap-3 px-4 pt-5 max-md:hidden lg:px-8">
         <Link
           href="/"
           className="grid h-8 w-8 place-items-center rounded-md border border-phosphor/60 font-pixel text-[8px] tracking-wide text-phosphor"

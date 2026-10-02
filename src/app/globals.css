@@ -741,6 +741,29 @@ html.is-landscape .xso-dock {
   }
 }
 
+/* Receiver stage: full-bleed on phones (grows into whatever the dynamic viewport leaves) */
+@media (max-width: 767.98px) {
+  .receiver-stage {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 460px;
+    border-radius: 1.25rem;
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: none;
+  }
+}
+
+/* Tap targets skip the double-tap-zoom delay; drag surfaces keep their own touch-none/pan-y utilities */
+@layer base {
+  button,
+  a,
+  label,
+  summary,
+  [role='button'] {
+    touch-action: manipulation;
+  }
+}
+
 /* ── Paper animations: transform/opacity only ─────────────────────── */
 .receipt-row {
   animation: receipt-row-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;

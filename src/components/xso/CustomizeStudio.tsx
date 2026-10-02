@@ -5,7 +5,9 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useMediaQuery } from '@/hooks/useTouchSpring';
 import { useXsoData } from '@/store/useXsoData';
 import { XsoEditor } from '@/components/xso/XsoEditor';
+import { Eye } from 'lucide-react';
 import { FormatEditorPanel } from '@/components/xso/FormatEditorPanel';
+import { ReceiverPreview } from '@/components/xso/ReceiverPreview';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
@@ -69,41 +71,38 @@ const LivePreview = memo(function LivePreview({
   );
 });
 
-type MobileView = 'edit' | 'preview';
-
-/** Step 2: live deck beside a paper worksheet (tabbed on mobile). */
-const ViewTab = memo(function ViewTab({
-  id,
-  pressed,
-  onSelect,
+const SeeReceiverButton = memo(function SeeReceiverButton({
+  onOpen,
+  className = '',
 }: {
-  id: MobileView;
-  pressed: boolean;
-  onSelect: (id: MobileView) => void;
+  onOpen: () => void;
+  className?: string;
 }) {
   return (
     <button
       type="button"
-      aria-pressed={pressed}
-      onClick={() => onSelect(id)}
-      className="desk-tab min-h-11 px-5"
+      onClick={onOpen}
+      className={`desk-tab inline-flex min-h-11 items-center justify-center gap-2 px-5 ${className}`}
     >
-      {id === 'edit' ? 'Write' : 'See it'}
+      <Eye className="h-4 w-4" aria-hidden />
+      See receiver experience
     </button>
   );
 });
 
+/** Step 2: live deck beside a paper worksheet; phones open the full receiver preview instead. */
 export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const cart = getCartridge(lockedStyle);
   const [tab, setTab] = useState<StudioStepId>('receipt');
   const [visited, setVisited] = useState<Set<StudioStepId>>(
     () => new Set<StudioStepId>(['receipt']),
   );
-  const [view, setView] = useState<MobileView>('edit');
+  const [receiver, setReceiver] = useState(false);
+  const openReceiver = useCallback(() => setReceiver(true), []);
+  const closeReceiver = useCallback(() => setReceiver(false), []);
   const editorRef = useRef<HTMLElement>(null);
-  /** Hidden previews still re-render and animate, so phones only mount it on the See it tab. */
+  /** Hidden previews still re-render and animate, so phones never mount the side preview. */
   const desktop = useMediaQuery('(min-width: 1024px)');
-  const showPreview = desktop || view === 'preview';
 
   /** Set by the format editor when a section opens; a worksheet tab change takes over again. */
   const [panelFocus, setPanelFocus] = useState<number | null>(null);
@@ -135,32 +134,25 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
             </h1>
           </div>
 
-          <div
-            role="group"
-            aria-label="Studio view"
-            className="grid w-full grid-cols-2 gap-1 rounded-2xl border border-[#4a2a35] bg-[#241419] p-1 sm:w-auto lg:hidden"
-          >
-            {(['edit', 'preview'] as const).map((id) => (
-              <ViewTab key={id} id={id} pressed={view === id} onSelect={setView} />
-            ))}
-          </div>
+          <SeeReceiverButton onOpen={openReceiver} className="w-full sm:w-auto lg:hidden" />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start lg:gap-10">
           <aside
-            className={`lg:sticky lg:top-[calc(var(--xso-header-h)+1.5rem)] ${
-              view === 'preview' ? '' : 'max-lg:hidden'
-            }`}
+            className="lg:sticky lg:top-[calc(var(--xso-header-h)+1.5rem)] max-lg:hidden"
             aria-label="Live preview"
           >
-            <p className="mb-3 flex items-center gap-2 font-receipt text-[11px] uppercase tracking-[0.2em] text-[#c99aae]">
-              <span aria-hidden className="led-peach" />
-              Live · every word lands as you type
-            </p>
-            {showPreview ? <LivePreview lockedStyle={lockedStyle} focusIndex={focusIndex} /> : null}
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="flex items-center gap-2 font-receipt text-[11px] uppercase tracking-[0.2em] text-[#c99aae]">
+                <span aria-hidden className="led-peach" />
+                Live · every word lands as you type
+              </p>
+              <SeeReceiverButton onOpen={openReceiver} className="!min-h-9 !px-3 text-[11px]" />
+            </div>
+            {desktop ? <LivePreview lockedStyle={lockedStyle} focusIndex={focusIndex} /> : null}
           </aside>
 
-          <div className={`grid gap-6 ${view === 'edit' ? '' : 'max-lg:hidden'}`}>
+          <div className="grid gap-6">
             <FormatEditorPanel style={lockedStyle} onFocusCard={setPanelFocus} />
             <section
               ref={editorRef}
@@ -189,6 +181,7 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
           loadingLabel="Fetching the envelope…"
         />
       </DeskDock>
+      {receiver ? <ReceiverPreview style={lockedStyle} onClose={closeReceiver} /> : null}
     </>
   );
 }

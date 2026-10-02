@@ -17,6 +17,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, Camera, Lock, X, Zap } from 'lucide-react';
 import { packContent, useXsoStore, type PackContent } from '@/store/useXsoStore';
 import { useExpressOrder } from '@/store/useExpressOrder';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { CARTRIDGE_PRICE, CARTRIDGES, displayTitle, getCartridge } from '@/lib/cartridges';
 import { THEMES, getTheme, type ThemeId } from '@/lib/themes';
 import type { FormatKey, FormatLayers } from '@/lib/formats';
@@ -107,33 +108,11 @@ export function ExpressOrderModal() {
     bodyRef.current?.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
   }, [step, style, reduce]);
 
-  /** Pins the page in place (iOS ignores overflow:hidden on body) and restores its exact scroll on close. */
+  useBodyScrollLock();
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    const { body, documentElement: html } = document;
-    const scrollY = window.scrollY;
-    const saved = {
-      htmlOverflow: html.style.overflow,
-      overflow: body.style.overflow,
-      position: body.style.position,
-      top: body.style.top,
-      width: body.style.width,
-    };
-    html.style.overflow = 'hidden';
-    body.style.overflow = 'hidden';
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.width = '100%';
     dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus({ preventScroll: true });
-    return () => {
-      html.style.overflow = saved.htmlOverflow;
-      body.style.overflow = saved.overflow;
-      body.style.position = saved.position;
-      body.style.top = saved.top;
-      body.style.width = saved.width;
-      window.scrollTo({ top: scrollY, behavior: 'instant' });
-      previous?.focus?.({ preventScroll: true });
-    };
+    return () => previous?.focus?.({ preventScroll: true });
   }, []);
 
   useEffect(() => {

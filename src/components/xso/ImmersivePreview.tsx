@@ -16,6 +16,8 @@ import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
 import { MovieBox } from '@/components/xso/preview/MovieBox';
 import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { SecretOffer } from '@/components/xso/preview/SecretOffer';
+import { ReceiverPreview } from '@/components/xso/ReceiverPreview';
+import { Eye } from 'lucide-react';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';
 import { MatteCta } from '@/components/desk/MatteCta';
@@ -90,6 +92,8 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
     setMemory((m) => ({ current: index, seen: m.seen | (1 << index), label }));
   }, []);
   const explored = countBits(memory.seen);
+  const [receiver, setReceiver] = useState(false);
+  const closeReceiver = useCallback(() => setReceiver(false), []);
   const openWith = useExpressOrder((s) => s.openWith);
   const openExpress = useCallback(
     () => openWith({ style: lockedStyle, theme: useXsoStore.getState().themeId as ThemeId }),
@@ -110,6 +114,15 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
           </div>
 
           <PreviewStage style={lockedStyle} data={previewData} onChange={goTo} />
+
+          <button
+            type="button"
+            onClick={() => setReceiver(true)}
+            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-[#5a3442] px-4 font-receipt text-[11px] uppercase tracking-[0.16em] text-[#e0b4c6] hover:border-[#f9a8d4] hover:text-[#fdf2f8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]"
+          >
+            <Eye className="h-4 w-4" aria-hidden />
+            See receiver experience
+          </button>
 
           <div className="mt-7 w-full max-w-[400px]">
             <SecretOffer reward={data.scratchOffReward} />
@@ -164,6 +177,7 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
         </div>
       </DeskDock>
       <ExpressOrderHost />
+      {receiver ? <ReceiverPreview style={lockedStyle} onClose={closeReceiver} /> : null}
     </div>
   );
 }
