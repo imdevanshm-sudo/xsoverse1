@@ -1,8 +1,9 @@
 'use client';
 
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
+import { resolveCustom } from '@/lib/formats';
 import {
   AIQuizCustomizer,
   type CraftPhase,
@@ -27,6 +28,8 @@ export const AICraftPanel = memo(function AICraftPanel({
   onCrafted: (story: CraftedStory, source: CraftSource) => void;
 }) {
   const name = useXsoStore((s) => s.customerName);
+  const custom = useXsoStore((s) => s.custom);
+  const modules = useMemo(() => resolveCustom({ custom }).modules, [custom]);
   const setField = useXsoStore((s) => s.setField);
   const onName = useCallback((value: string) => setField('customerName', value), [setField]);
   const [open, setOpen] = useState(false);
@@ -37,6 +40,7 @@ export const AICraftPanel = memo(function AICraftPanel({
         <AIQuizCustomizer
           tone="paper"
           style={style}
+          modules={modules}
           name={name}
           onName={onName}
           photoSlot={<StudioPhotoFrames label="Your photos" />}

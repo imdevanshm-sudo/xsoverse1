@@ -95,6 +95,7 @@ const ACTION_LABELS: Record<GiftStyle, string> = {
   scrapbook: 'Reshuffle collage',
   accordion: 'Pull next panel',
   moviebox: 'Crank / advance',
+  custom: 'Next layer',
 };
 
 export function R3FUnifiedViewer({

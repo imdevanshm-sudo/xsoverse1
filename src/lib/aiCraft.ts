@@ -1,7 +1,7 @@
 import { newId } from '@/lib/constants';
 import { AUDIT_KEYS, FORMAT_LIMITS, halfStar } from '@/lib/formats';
 import type { PackContent } from '@/store/useXsoStore';
-import type { AuditMetrics, GiftStyle } from '@/types/xso';
+import type { AuditMetrics, CustomModule, GiftStyle } from '@/types/xso';
 
 export const RELATIONSHIPS = ['Best Friend', 'Partner', 'Sibling', 'Situationship'] as const;
 export type Relationship = (typeof RELATIONSHIPS)[number];
@@ -19,7 +19,12 @@ export const ADJUSTMENTS = [
 ] as const;
 export type Adjustment = (typeof ADJUSTMENTS)[number]['id'];
 
-export const CRAFT_LIMITS = { name: 40, memory: 600, minMemory: 8 } as const;
+export const CRAFT_LIMITS = { name: 40, memory: 600, minMemory: 8, question: 120 } as const;
+
+export interface QuestionsResponse {
+  questions: string[];
+  source: 'ai' | 'template';
+}
 
 export interface CraftInput {
   recipientName: string;
@@ -27,6 +32,10 @@ export interface CraftInput {
   tone: CraftTone;
   memoryText: string;
   format: GiftStyle;
+  /** Custom Hybrid only: the stacked layers, so each gets its own copy. */
+  modules?: CustomModule[];
+  /** The AI question the memory answers, if one was picked. */
+  question?: string;
   adjust?: Adjustment;
 }
 

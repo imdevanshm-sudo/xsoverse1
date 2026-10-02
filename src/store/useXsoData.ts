@@ -34,6 +34,7 @@ export function useXsoData(): XsoData {
       rewind: s.rewind,
       accordion: s.accordion,
       moviebox: s.moviebox,
+      custom: s.custom,
     })),
   );
 }

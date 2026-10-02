@@ -7,11 +7,15 @@ import {
   LOOP_CARD_META,
   MIN_LOOP_CARDS,
   RATED,
+  resolveCustom,
   type FormatKey,
   type FormatLayers,
 } from '@/lib/formats';
+import { CustomBuilderCanvas } from '@/components/xso/CustomBuilderCanvas';
 import {
+  CUSTOM_MODULES,
   LOOP_CARDS,
+  type CustomModule,
   type GiftStyle,
   type LoopCard,
   type MovieScene,
@@ -54,6 +58,7 @@ const FORMAT_NAMES: Record<GiftStyle, string> = {
   scrapbook: 'Scrapbook',
   accordion: 'Accordion',
   moviebox: 'Movie Box',
+  custom: 'Custom Hybrid',
 };
 
 /**
@@ -99,7 +104,9 @@ export const FormatEditor = memo(function FormatEditor({
             <h3 className={`font-receipt text-[11px] uppercase tracking-[0.18em] ${t.detail}`}>
               {style === 'scrapbook'
                 ? 'Build your scrapbook elements'
-                : `Customize your ${FORMAT_NAMES[style]}`}
+                : style === 'custom'
+                  ? 'Build your own stack'
+                  : `Customize your ${FORMAT_NAMES[style]}`}
             </h3>
           ) : null}
           <p className={`mt-1 text-[12.5px] leading-snug ${t.detail} opacity-80`}>
@@ -118,6 +125,8 @@ export const FormatEditor = memo(function FormatEditor({
           defaultOpen={['polaroids'] as ScrapbookElement[]}
           onFocusCard={onFocusCard}
         />
+      ) : style === 'custom' ? (
+        <CustomEditor {...props} tone={tone} onScrapbook={onScrapbook} />
       ) : style === 'loop' ? (
         <LoopEditor {...props} />
       ) : style === 'rewind' ? (
@@ -207,6 +216,82 @@ function FacesRow({
 }
 
 const LOOP_FOCUS: Record<LoopCard, number> = { receipt: 0, audit: 1, photos: 2, letter: 3 };
+const RECEIPT_LAYER_CARDS = ['receipt', 'audit', 'letter'] as const;
+
+/** Custom Hybrid: the layer checklist, each checked layer opening its format's own editor. */
+function CustomEditor({
+  tone,
+  onScrapbook,
+  ...props
+}: EditorProps & { tone: ToneName; onScrapbook: (patch: Partial<ScrapbookLayers>) => void }) {
+  const { t, fields, onPatch, onFormat, photoSlot, onFocusCard } = props;
+  const [open, setOpen] = useOpenSet<'faces'>();
+  const layerFocus = (m: CustomModule) => () => onFocusCard?.(CUSTOM_MODULES.indexOf(m));
+  const nested = (m: CustomModule): EditorProps => ({ ...props, onFocusCard: layerFocus(m) });
+
+  const renderEditor = (m: CustomModule) => {
+    switch (m) {
+      case 'receipt':
+        return (
+          <div className="grid gap-5">
+            {RECEIPT_LAYER_CARDS.map((id) => (
+              <section key={id}>
+                <p className={`mb-2 ${t.field}`}>
+                  {LOOP_CARD_META[id].label.replace(/^Card \d · /, '')}
+                </p>
+                <LoopCardFields
+                  id={id}
+                  t={t}
+                  fields={fields}
+                  onPatch={onPatch}
+                  photoSlot={photoSlot}
+                />
+              </section>
+            ))}
+          </div>
+        );
+      case 'cassette':
+        return <RewindEditor {...nested(m)} />;
+      case 'accordion':
+        return <AccordionEditor {...nested(m)} />;
+      case 'scrapbook':
+        return (
+          <ScrapbookElements
+            tone={tone}
+            fields={fields}
+            onPatch={onPatch}
+            onLayers={onScrapbook}
+            photoSlot={photoSlot}
+            defaultOpen={['polaroids'] as ScrapbookElement[]}
+            onFocusCard={layerFocus(m)}
+          />
+        );
+      case 'moviebox':
+        return <MovieEditor {...nested(m)} />;
+    }
+  };
+
+  return (
+    <div className="grid gap-3">
+      <CustomBuilderCanvas
+        modules={resolveCustom(fields).modules}
+        onModules={(modules) => onFormat('custom', { modules })}
+        tone={tone}
+        renderEditor={renderEditor}
+        onFocusLayer={onFocusCard}
+      />
+      <ul className="m-0 grid list-none gap-2 p-0">
+        <FacesRow
+          t={t}
+          open={open.has('faces')}
+          onExpand={() => setOpen('faces')}
+          photoSlot={photoSlot}
+          detail="Shared by every layer that shows your faces"
+        />
+      </ul>
+    </div>
+  );
+}
 
 function LoopEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard }: EditorProps) {
   const [open, setOpen] = useOpenSet<LoopCard>(['photos']);
@@ -216,85 +301,9 @@ function LoopEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard }: Ed
     setOpen(id);
   };
 
-  const editor = (id: LoopCard) => {
-    switch (id) {
-      case 'receipt':
-        return (
-          <div className="grid gap-3">
-            <div className="grid gap-3 min-[420px]:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-              <Labeled t={t} label="Title">
-                <input
-                  className={`${t.input} uppercase`}
-                  value={fields.merchantName}
-                  maxLength={32}
-                  onChange={(e) => onPatch({ merchantName: e.target.value })}
-                />
-              </Labeled>
-              <Labeled t={t} label="Timestamp">
-                <input
-                  className={t.input}
-                  value={fields.timestamp}
-                  maxLength={30}
-                  onChange={(e) => onPatch({ timestamp: e.target.value })}
-                />
-              </Labeled>
-            </div>
-            <LineItemsEditor
-              t={t}
-              lineItems={fields.lineItems}
-              onChange={(lineItems) => onPatch({ lineItems })}
-            />
-          </div>
-        );
-      case 'audit':
-        return (
-          <div className="grid gap-3">
-            <FlagFields
-              t={t}
-              label="The roast · red flags"
-              flags={fields.redFlags}
-              onChange={(redFlags) => onPatch({ redFlags })}
-            />
-            <FlagFields
-              t={t}
-              label="The note · green flags"
-              flags={fields.greenFlags}
-              onChange={(greenFlags) => onPatch({ greenFlags })}
-            />
-            <Labeled t={t} label="Certified stamp">
-              <input
-                className={`${t.input} uppercase`}
-                value={fields.certifiedStampText}
-                maxLength={28}
-                onChange={(e) => onPatch({ certifiedStampText: e.target.value })}
-              />
-            </Labeled>
-          </div>
-        );
-      case 'photos':
-        return photoSlot;
-      case 'letter':
-        return (
-          <div className="grid gap-3">
-            <LetterFields
-              t={t}
-              label="Closing letter"
-              message={fields.birthdayMessage}
-              signOff={fields.billerName}
-              onPatch={onPatch}
-            />
-            <div>
-              <p className={`mb-1.5 ${t.field}`}>Audio snippet</p>
-              <AudioField
-                t={t}
-                value={fields.voiceNoteUrl}
-                onChange={(voiceNoteUrl) => onPatch({ voiceNoteUrl })}
-              />
-            </div>
-          </div>
-        );
-    }
-  };
+  const editor = (id: LoopCard) => (
+    <LoopCardFields id={id} t={t} fields={fields} onPatch={onPatch} photoSlot={photoSlot} />
+  );
 
   return (
     <ul className="m-0 grid list-none gap-2 p-0">
@@ -327,6 +336,92 @@ function LoopEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard }: Ed
       </li>
     </ul>
   );
+}
+
+function LoopCardFields({
+  id,
+  t,
+  fields,
+  onPatch,
+  photoSlot,
+}: Pick<EditorProps, 't' | 'fields' | 'onPatch' | 'photoSlot'> & { id: LoopCard }) {
+  switch (id) {
+    case 'receipt':
+      return (
+        <div className="grid gap-3">
+          <div className="grid gap-3 min-[420px]:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            <Labeled t={t} label="Title">
+              <input
+                className={`${t.input} uppercase`}
+                value={fields.merchantName}
+                maxLength={32}
+                onChange={(e) => onPatch({ merchantName: e.target.value })}
+              />
+            </Labeled>
+            <Labeled t={t} label="Timestamp">
+              <input
+                className={t.input}
+                value={fields.timestamp}
+                maxLength={30}
+                onChange={(e) => onPatch({ timestamp: e.target.value })}
+              />
+            </Labeled>
+          </div>
+          <LineItemsEditor
+            t={t}
+            lineItems={fields.lineItems}
+            onChange={(lineItems) => onPatch({ lineItems })}
+          />
+        </div>
+      );
+    case 'audit':
+      return (
+        <div className="grid gap-3">
+          <FlagFields
+            t={t}
+            label="The roast · red flags"
+            flags={fields.redFlags}
+            onChange={(redFlags) => onPatch({ redFlags })}
+          />
+          <FlagFields
+            t={t}
+            label="The note · green flags"
+            flags={fields.greenFlags}
+            onChange={(greenFlags) => onPatch({ greenFlags })}
+          />
+          <Labeled t={t} label="Certified stamp">
+            <input
+              className={`${t.input} uppercase`}
+              value={fields.certifiedStampText}
+              maxLength={28}
+              onChange={(e) => onPatch({ certifiedStampText: e.target.value })}
+            />
+          </Labeled>
+        </div>
+      );
+    case 'photos':
+      return photoSlot;
+    case 'letter':
+      return (
+        <div className="grid gap-3">
+          <LetterFields
+            t={t}
+            label="Closing letter"
+            message={fields.birthdayMessage}
+            signOff={fields.billerName}
+            onPatch={onPatch}
+          />
+          <div>
+            <p className={`mb-1.5 ${t.field}`}>Audio snippet</p>
+            <AudioField
+              t={t}
+              value={fields.voiceNoteUrl}
+              onChange={(voiceNoteUrl) => onPatch({ voiceNoteUrl })}
+            />
+          </div>
+        </div>
+      );
+  }
 }
 
 type RewindSection = 'tape' | 'audit' | 'faces' | 'review';

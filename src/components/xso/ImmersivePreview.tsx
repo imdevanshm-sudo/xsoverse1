@@ -10,11 +10,7 @@ import { ExpressOrderHost } from '@/components/storefront/ExpressOrderHost';
 import type { ThemeId } from '@/lib/themes';
 import { motion, useReducedMotion } from 'framer-motion';
 import { CINEMATIC, FORMAT_SWAP } from '@/lib/motion';
-import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
-import { RewindStack } from '@/components/xso/preview/RewindStack';
-import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
-import { MovieBox } from '@/components/xso/preview/MovieBox';
-import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
+import { FormatPreview } from '@/components/xso/preview/FormatPreview';
 import { SecretOffer } from '@/components/xso/preview/SecretOffer';
 import { ReceiverPreview } from '@/components/xso/ReceiverPreview';
 import { Eye } from 'lucide-react';
@@ -33,6 +29,7 @@ const STAGE_HINT: Record<GiftStyle, string> = {
   scrapbook: 'Pick something up · turn it over',
   accordion: 'Pull the ribbon · let it unfold',
   moviebox: 'Turn the crank · roll the reel',
+  custom: 'Play each layer · tap the tabs to switch',
 };
 
 function countBits(n: number) {
@@ -60,17 +57,7 @@ const PreviewStage = memo(function PreviewStage({
       animate={FORMAT_SWAP.animate}
       transition={CINEMATIC}
     >
-      {style === 'rewind' ? (
-        <RewindStack data={data} onChange={onChange} />
-      ) : style === 'scrapbook' ? (
-        <ScrapbookDesk data={data} onChange={onChange} />
-      ) : style === 'accordion' ? (
-        <AccordionRibbon data={data} onChange={onChange} />
-      ) : style === 'moviebox' ? (
-        <MovieBox data={data} onChange={onChange} />
-      ) : (
-        <MemoryDeck data={data} onChange={onChange} />
-      )}
+      <FormatPreview style={style} data={data} onChange={onChange} />
     </motion.div>
   );
 });

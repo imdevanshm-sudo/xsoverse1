@@ -12,11 +12,7 @@ import { AICraftPanel } from '@/components/xso/AICraftPanel';
 import { CraftBadge, type CraftPhase, type CraftSource } from '@/components/xso/AIQuizCustomizer';
 import { useXsoStore } from '@/store/useXsoStore';
 import { storyToPatch, type CraftedStory } from '@/lib/aiCraft';
-import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
-import { RewindStack } from '@/components/xso/preview/RewindStack';
-import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
-import { MovieBox } from '@/components/xso/preview/MovieBox';
-import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
+import { FormatPreview } from '@/components/xso/preview/FormatPreview';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';
 import { MatteCta } from '@/components/desk/MatteCta';
@@ -40,37 +36,9 @@ const LivePreview = memo(function LivePreview({
     [settled, lockedStyle],
   );
 
-  if (lockedStyle === 'rewind') {
-    return (
-      <div className="flex justify-center">
-        <RewindStack data={previewData} size="studio" focusIndex={focusIndex} />
-      </div>
-    );
-  }
-  if (lockedStyle === 'scrapbook') {
-    return (
-      <div className="flex justify-center">
-        <ScrapbookDesk data={previewData} size="studio" focusIndex={focusIndex} />
-      </div>
-    );
-  }
-  if (lockedStyle === 'accordion') {
-    return (
-      <div className="flex justify-center">
-        <AccordionRibbon data={previewData} size="studio" focusIndex={focusIndex} />
-      </div>
-    );
-  }
-  if (lockedStyle === 'moviebox') {
-    return (
-      <div className="flex justify-center">
-        <MovieBox data={previewData} size="studio" focusIndex={focusIndex} />
-      </div>
-    );
-  }
   return (
     <div className="flex justify-center">
-      <MemoryDeck data={previewData} size="studio" focusIndex={focusIndex} />
+      <FormatPreview style={lockedStyle} data={previewData} size="studio" focusIndex={focusIndex} />
     </div>
   );
 });

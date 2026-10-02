@@ -13,7 +13,9 @@ export interface AuditMetrics {
   support: number;
 }
 
-export type GiftStyle = 'loop' | 'scrapbook' | 'rewind' | 'accordion' | 'moviebox';
+export type GiftStyle = 'loop' | 'scrapbook' | 'rewind' | 'accordion' | 'moviebox' | 'custom';
+/** The five built-in formats; `custom` stacks pieces of these. */
+export type BaseStyle = Exclude<GiftStyle, 'custom'>;
 
 export const SCRAPBOOK_ELEMENTS = [
   'receipt',
@@ -75,6 +77,20 @@ export interface MovieLayers {
   stars: number;
 }
 
+export const CUSTOM_MODULES = [
+  'receipt',
+  'cassette',
+  'accordion',
+  'scrapbook',
+  'moviebox',
+] as const;
+export type CustomModule = (typeof CUSTOM_MODULES)[number];
+
+/** Custom Hybrid: which keepsake layers are stacked, in canonical order. */
+export interface CustomLayers {
+  modules: CustomModule[];
+}
+
 export interface XsoData {
   id: string;
   giftStyle: GiftStyle;
@@ -104,6 +120,7 @@ export interface XsoData {
   rewind?: RewindLayers;
   accordion?: AccordionLayers;
   moviebox?: MovieLayers;
+  custom?: CustomLayers;
 }
 
 export type XsoSideIndex = 0 | 1 | 2 | 3;

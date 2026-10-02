@@ -100,6 +100,22 @@ export const CARTRIDGES: CartridgeSpec[] = [
     labelBg: '#2a1610',
     ink: '#fff0e8',
   },
+  {
+    id: 'custom',
+    code: 'XSO-06',
+    title: 'CUSTOM HYBRID',
+    subtitle: 'Build Your Own',
+    caption: 'Your own stack',
+    tagline: 'Built exactly the way you two are.',
+    description:
+      'Pick the pieces: a receipt, a cassette, an unfolding bill, a polaroid desk, a film reel. They open one layer after another, in a stack only you could have built.',
+    year: '2026',
+    glow: '#f472b6',
+    accent: '#f9a8d4',
+    accentSoft: 'rgba(249, 168, 212, 0.22)',
+    labelBg: '#2a1420',
+    ink: '#fdf2f8',
+  },
 ];
 
 /** Charged amount in cents; checkout sends this to Lemon Squeezy as a custom price. */

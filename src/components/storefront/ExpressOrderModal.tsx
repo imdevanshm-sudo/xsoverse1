@@ -28,7 +28,13 @@ import { useExpressOrder } from '@/store/useExpressOrder';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { CARTRIDGE_PRICE, CARTRIDGES, displayTitle, getCartridge } from '@/lib/cartridges';
 import { THEMES, getTheme, type ThemeId } from '@/lib/themes';
-import type { FormatKey, FormatLayers } from '@/lib/formats';
+import {
+  CUSTOM_MODULE_META,
+  resolveCustom,
+  type FormatKey,
+  type FormatLayers,
+} from '@/lib/formats';
+import { CustomBuilderCanvas } from '@/components/xso/CustomBuilderCanvas';
 import { compressPhotoForStyle } from '@/lib/media';
 import { startCheckout } from '@/lib/startCheckout';
 import { styleQuery } from '@/lib/styleLock';
@@ -36,12 +42,8 @@ import { pickXsoPayload } from '@/lib/xsoPayload';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { FormatEditor, type FormatPatch } from '@/components/xso/FormatEditor';
-import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
-import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
-import { RewindStack } from '@/components/xso/preview/RewindStack';
-import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
-import { MovieBox } from '@/components/xso/preview/MovieBox';
-import type { GiftStyle, XsoData } from '@/types/xso';
+import { FormatPreview } from '@/components/xso/preview/FormatPreview';
+import type { CustomModule, GiftStyle, XsoData } from '@/types/xso';
 
 const MAX_PHOTOS = 3;
 const STEPS = ['Style', 'Photos', 'Pay'] as const;
@@ -62,6 +64,7 @@ function seedDraft(id: ThemeId): Draft {
       rewind: store.rewind,
       accordion: store.accordion,
       moviebox: store.moviebox,
+      custom: store.custom,
     };
   }
   return packContent(id);
@@ -95,7 +98,7 @@ export function ExpressOrderModal() {
   const pickTheme = useCallback(
     (id: ThemeId) => {
       setTheme(id);
-      setDraft(seedDraft(id));
+      setDraft((d) => ({ ...seedDraft(id), custom: d.custom }));
       uncraft();
     },
     [uncraft],
@@ -129,6 +132,7 @@ export function ExpressOrderModal() {
     () =>
       setDraft((d) => ({
         ...packContent(themeRef.current),
+        custom: d.custom,
         customerName: d.customerName,
         billerName: d.billerName,
         voiceNoteUrl: d.voiceNoteUrl,
@@ -264,6 +268,12 @@ export function ExpressOrderModal() {
 
   const scrapbook = style === 'scrapbook';
   const elements = draft.scrapbook.elements;
+  const custom = draft.custom;
+  const modules = useMemo(() => resolveCustom({ custom }).modules, [custom]);
+  const setModules = useCallback(
+    (next: CustomModule[]) => patchFormat('custom', { modules: next }),
+    [patchFormat],
+  );
   const needsPhotos = scrapbook
     ? elements.includes('polaroids')
     : style !== 'loop' || draft.loop.cards.includes('photos');
@@ -380,7 +390,17 @@ export function ExpressOrderModal() {
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-4"
         >
           {step === 0 ? (
-            <StylePicker style={style} theme={theme} onStyle={pickStyle} onTheme={pickTheme} />
+            <StylePicker
+              style={style}
+              theme={theme}
+              onStyle={pickStyle}
+              onTheme={pickTheme}
+              builder={
+                style === 'custom' ? (
+                  <CustomBuilderCanvas modules={modules} onModules={setModules} />
+                ) : null
+              }
+            />
           ) : null}
           {step === 1 && craftPhase !== 'quiz' ? (
             <FormatThumb
@@ -396,6 +416,7 @@ export function ExpressOrderModal() {
           <div hidden={step !== 1}>
             <AIQuizCustomizer
               style={style}
+              modules={modules}
               name={name}
               onName={setName}
               photoSlot={photoPicker}
@@ -457,7 +478,9 @@ export function ExpressOrderModal() {
                   ? `${elements.length} on the desk`
                   : style === 'loop'
                     ? `${draft.loop.cards.length} of 4 cards`
-                    : undefined
+                    : style === 'custom'
+                      ? modules.map((m) => CUSTOM_MODULE_META[m].emoji).join(' ')
+                      : undefined
               }
               onCustomize={customizeFirst}
             />
@@ -510,20 +533,19 @@ const StylePicker = memo(function StylePicker({
   theme,
   onStyle,
   onTheme,
+  builder,
 }: {
   style: GiftStyle;
   theme: ThemeId;
   onStyle: (style: GiftStyle) => void;
   onTheme: (theme: ThemeId) => void;
+  /** Custom Hybrid's layer builder, shown under the formats when it's picked. */
+  builder?: ReactNode;
 }) {
   return (
     <>
       <p className="font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">Format</p>
-      <div
-        role="radiogroup"
-        aria-label="Format"
-        className="mt-2 grid grid-cols-3 gap-2 min-[420px]:grid-cols-5"
-      >
+      <div role="radiogroup" aria-label="Format" className="mt-2 grid grid-cols-3 gap-2">
         {CARTRIDGES.map((cart, i) => {
           const selected = cart.id === style;
           return (
@@ -541,13 +563,21 @@ const StylePicker = memo(function StylePicker({
               <span className="relative block aspect-[4/5] bg-[#1a0f14]">
                 <StyleThumb style={cart.id as GiftStyle} sizes="96px" priority={i < 3} />
               </span>
-              <span className="block truncate px-2 py-1.5 font-receipt text-[10px] font-bold uppercase tracking-[0.1em]">
-                {displayTitle(cart)}
+              <span className="line-clamp-2 px-2 py-1.5 font-receipt text-[10px] font-bold uppercase leading-tight tracking-[0.1em]">
+                {cart.id === 'custom' ? '✨ Custom Hybrid' : displayTitle(cart)}
               </span>
             </button>
           );
         })}
       </div>
+      {builder ? (
+        <div className="mt-4">
+          <p className="mb-2 font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">
+            Build your stack
+          </p>
+          {builder}
+        </div>
+      ) : null}
 
       <p className="mt-5 font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">
         Story pack
@@ -720,6 +750,7 @@ const THUMB_COPY: Record<GiftStyle, string> = {
   rewind: 'Your tape label, scores and review land on the stack as you type.',
   accordion: 'Every line item prints onto the ribbon the moment you add it.',
   moviebox: 'Scene titles, stills and your rating play on the reel as you edit.',
+  custom: 'Every layer you stack becomes a tab they play through, in this order.',
 };
 
 const LARGE_SCALE = 0.78;
@@ -756,7 +787,11 @@ const FormatThumb = memo(function FormatThumb({
         style={{ width: DESK_W * scale, height: DESK_H * scale }}
       >
         {badge ? (
-          <span className="absolute inset-x-2 top-2 z-10 flex justify-center">{badge}</span>
+          <span
+            className={`absolute inset-x-2 z-10 flex justify-center ${style === 'custom' ? 'bottom-2' : 'top-2'}`}
+          >
+            {badge}
+          </span>
         ) : null}
         <div
           ref={makeInert}
@@ -764,17 +799,14 @@ const FormatThumb = memo(function FormatThumb({
           className="pointer-events-none absolute left-0 top-0 origin-top-left"
           style={{ width: DESK_W, height: DESK_H, transform: `scale(${scale})` }}
         >
-          {style === 'scrapbook' ? (
-            <ScrapbookDesk data={deferred} size="fill" chrome={false} focusIndex={focus} />
-          ) : style === 'loop' ? (
-            <MemoryDeck data={deferred} size="fill" focusIndex={focus} />
-          ) : style === 'rewind' ? (
-            <RewindStack data={deferred} size="fill" focusIndex={focus} />
-          ) : style === 'accordion' ? (
-            <AccordionRibbon data={deferred} size="fill" focusIndex={focus} />
-          ) : (
-            <MovieBox data={deferred} size="fill" focusIndex={focus} />
-          )}
+          <FormatPreview
+            style={style}
+            data={deferred}
+            size="fill"
+            chrome={false}
+            focusIndex={focus}
+            autoplay={4000}
+          />
         </div>
       </Frame>
       {large ? null : (

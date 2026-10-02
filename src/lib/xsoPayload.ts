@@ -1,8 +1,15 @@
 import type { GiftStyle, XsoData } from '@/types/xso';
 import { sanitizeScrapbook } from '@/lib/scrapbook';
-import { sanitizeAuditLabels, sanitizeFormat } from '@/lib/formats';
+import { sanitizeAuditLabels, sanitizeFormat, usesFormat } from '@/lib/formats';
 
-export const GIFT_STYLES: GiftStyle[] = ['loop', 'scrapbook', 'rewind', 'accordion', 'moviebox'];
+export const GIFT_STYLES: GiftStyle[] = [
+  'loop',
+  'scrapbook',
+  'rewind',
+  'accordion',
+  'moviebox',
+  'custom',
+];
 
 export function isGiftStyle(value: string | null | undefined): value is GiftStyle {
   return !!value && (GIFT_STYLES as string[]).includes(value);
@@ -38,7 +45,7 @@ export function pickXsoPayload(data: XsoData): XsoData {
     birthdayMessage: data.birthdayMessage,
     voiceNoteUrl: data.voiceNoteUrl,
     scratchOffReward: data.scratchOffReward,
-    scrapbook: data.giftStyle === 'scrapbook' ? sanitizeScrapbook(data.scrapbook, data) : undefined,
+    scrapbook: usesFormat(data, 'scrapbook') ? sanitizeScrapbook(data.scrapbook, data) : undefined,
     ...sanitizeFormat(data.giftStyle, data),
   };
 }

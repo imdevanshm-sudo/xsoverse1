@@ -8,6 +8,7 @@ import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
 import { MovieBox } from '@/components/xso/preview/MovieBox';
 import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
+import { HybridStack } from '@/components/xso/preview/FormatPreview';
 import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
@@ -78,6 +79,10 @@ export function GiftUnboxing({
               ) : data.giftStyle === 'moviebox' ? (
                 <div className="flex h-full touch-manipulation justify-center overflow-hidden bg-[#140a0d] px-3 pb-16 pt-5">
                   <MovieBox data={data} size="fill" />
+                </div>
+              ) : data.giftStyle === 'custom' ? (
+                <div className="flex h-full touch-manipulation flex-col overflow-hidden bg-[#180e15] px-3 pb-14 pt-4">
+                  <HybridStack data={data} size="fill" />
                 </div>
               ) : (
                 <div className="flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
@@ -261,7 +266,7 @@ function StyleStamp({ style, date }: { style: GiftStyle; date: string }) {
         darkWrapper ? 'text-rose-100/40' : 'text-[#4d3b2d]/45'
       }`}
     >
-      {style} edition
+      {style === 'custom' ? 'hybrid' : style} edition
       <span className="mt-1 block border-t border-current pt-1 text-center">{date}</span>
     </div>
   );

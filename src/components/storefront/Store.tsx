@@ -27,7 +27,7 @@ import { THEMES, getTheme, type ThemeId } from '@/lib/themes';
 import { DeckBox } from '@/components/storefront/DeckBox';
 import { StyleDemo } from '@/components/storefront/StyleDemo';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
-import { HeroReel } from '@/components/storefront/HeroReel';
+import { HeroMarquee } from '@/components/storefront/HeroMarquee';
 import { StickyExpressBar } from '@/components/storefront/StickyExpressBar';
 import { ExpressOrderHost } from '@/components/storefront/ExpressOrderHost';
 import { MatteCta } from '@/components/desk/MatteCta';
@@ -89,6 +89,13 @@ export function Store() {
   const expressStyle = useCallback(
     () => openExpress({ style: useXsoStore.getState().giftStyle }),
     [openExpress],
+  );
+  const expressFormat = useCallback(
+    (style: GiftStyle) => {
+      selectStyle(style);
+      openExpress({ style });
+    },
+    [openExpress, selectStyle],
   );
   const expressDeck = useCallback(
     (id: ThemeId) => openExpress({ style: useXsoStore.getState().giftStyle, theme: id }),
@@ -153,9 +160,7 @@ export function Store() {
             Your story, turned into a gift{' '}
             <em className="font-medium text-[#f9a8d4]">they can play.</em>
           </h1>
-          <div className="mt-3 [&>div]:max-w-[min(360px,46svh)]">
-            {desktop ? null : <HeroReel />}
-          </div>
+          <div className="mt-3">{desktop ? null : <HeroMarquee onPick={expressFormat} />}</div>
           <p className="mt-3 text-pretty text-[15px] leading-snug text-[#e0b4c6]">
             A digital keepsake of your story: receipts, photos and a letter, sent as a link they
             open and play.
@@ -178,14 +183,15 @@ export function Store() {
           </p>
         </section>
 
-        <section className="mt-6 hidden max-w-2xl sm:mt-12 md:block">
+        <section className="mt-6 hidden sm:mt-12 md:block">
           <p className="mb-2.5 font-receipt text-[10px] uppercase tracking-[0.22em] text-[#fdba74] sm:mb-4 sm:text-[11px]">
             Experience + Souvenir <span className="text-[#7f5466]">=</span> XSO
           </p>
-          <h1 className="text-balance font-serif text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.02em] text-[#fdf2f8] sm:text-6xl">
+          <h1 className="max-w-2xl text-balance font-serif text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.02em] text-[#fdf2f8] sm:text-6xl">
             Keepsakes for the words <em className="font-medium text-[#f9a8d4]">you never said.</em>
           </h1>
-          <p className="mt-3 max-w-lg text-pretty text-[15px] leading-[1.6] text-[#e0b4c6] sm:mt-4 sm:text-[16px]">
+          <div className="mt-6">{desktop ? <HeroMarquee onPick={expressFormat} /> : null}</div>
+          <p className="mt-5 max-w-lg text-pretty text-[15px] leading-[1.6] text-[#e0b4c6] sm:text-[16px]">
             Some feelings don&apos;t fit in a text. An XSO gives them a shape you can hold: a
             receipt of the moments you shared, an audit of who they are to you, a strip of faces and
             a letter that finally says it. Made once, for one person, for {CARTRIDGE_PRICE}.
@@ -207,7 +213,7 @@ export function Store() {
           <div
             role="radiogroup"
             aria-label="Souvenir format"
-            className="relative -mx-5 flex snap-x scroll-px-5 gap-2.5 overflow-x-auto px-5 pb-2 pt-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0"
+            className="relative -mx-5 flex snap-x scroll-px-5 gap-2.5 overflow-x-auto px-5 pb-2 pt-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-6"
           >
             {CARTRIDGES.map((cart, index) => (
               <StyleChip
@@ -411,6 +417,7 @@ const StyleChip = memo(function StyleChip({
         {cart.code}
       </span>
       <span className="mt-1 block font-serif text-[18px] font-semibold leading-tight">
+        {cart.id === 'custom' ? '✨ ' : ''}
         {displayTitle(cart)}
       </span>
       <span

@@ -90,6 +90,21 @@ function poseFor(style: GiftStyle, i: number, step: number): Pose {
             scale: 0.66,
             zIndex: 5,
           });
+    case 'custom': {
+      // Layers stack in one at a time, then the finished stack fans open.
+      const k = step % (CARDS + 2);
+      if (k > CARDS) {
+        return pose({
+          x: (i - 1.5) * 58,
+          y: Math.abs(i - 1.5) * 8,
+          rotate: (i - 1.5) * 9,
+          zIndex: i + 1,
+        });
+      }
+      return i < k
+        ? pose({ ...STACK[k - 1 - i], scale: 1 - (k - 1 - i) * 0.03, zIndex: 10 - (k - 1 - i) })
+        : pose({ y: -150, opacity: 0, scale: 0.9, zIndex: 20 });
+    }
     default:
       return pose({});
   }

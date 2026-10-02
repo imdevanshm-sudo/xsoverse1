@@ -52,6 +52,7 @@ const STYLE_TINT: Record<GiftStyle, string> = {
   scrapbook: 'rgba(233, 217, 193, 0.24)',
   accordion: 'rgba(249, 168, 212, 0.18)',
   moviebox: 'rgba(245, 158, 11, 0.24)',
+  custom: 'rgba(244, 114, 182, 0.14)',
 };
 
 async function decode(

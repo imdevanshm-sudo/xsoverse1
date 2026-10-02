@@ -1,7 +1,11 @@
 import {
+  CUSTOM_MODULES,
   LOOP_CARDS,
   type AccordionLayers,
   type AuditMetrics,
+  type BaseStyle,
+  type CustomLayers,
+  type CustomModule,
   type GiftStyle,
   type LoopLayers,
   type MovieLayers,
@@ -45,6 +49,66 @@ export const LOOP_CARD_META = {
 
 /** The deck needs two cards to have something to loop to. */
 export const MIN_LOOP_CARDS = 2;
+
+export const CUSTOM_MODULE_META: Record<
+  CustomModule,
+  { label: string; short: string; emoji: string; detail: string; style: BaseStyle }
+> = {
+  receipt: {
+    label: 'Receipt Module',
+    short: 'Receipt',
+    emoji: '🧾',
+    detail: 'The itemized receipt, the roast and your letter',
+    style: 'loop',
+  },
+  cassette: {
+    label: 'Cassette / Audio Player',
+    short: 'Cassette',
+    emoji: '📼',
+    detail: 'Tape label, friendship audit and a director’s note',
+    style: 'rewind',
+  },
+  accordion: {
+    label: 'Unfolding Accordion Bill',
+    short: 'Accordion',
+    emoji: '🪗',
+    detail: 'One long paper bill they pull open',
+    style: 'accordion',
+  },
+  scrapbook: {
+    label: 'Scrapbook Photo / Polaroid Stack',
+    short: 'Scrapbook',
+    emoji: '📸',
+    detail: 'Polaroids, a sticky note and a ticket on a desk',
+    style: 'scrapbook',
+  },
+  moviebox: {
+    label: 'Movie Box Filmstrip Reel',
+    short: 'Film reel',
+    emoji: '🎞️',
+    detail: 'Four scenes on a hand-cranked reel',
+    style: 'moviebox',
+  },
+};
+
+/** A hybrid needs two layers to be more than one of the standard formats. */
+export const MIN_CUSTOM_MODULES = 2;
+const DEFAULT_MODULES: CustomModule[] = ['receipt', 'cassette', 'scrapbook'];
+
+export function resolveCustom(data: Pick<XsoData, 'custom'>): CustomLayers {
+  const raw = Array.isArray(data.custom?.modules) ? data.custom.modules : [];
+  const modules = CUSTOM_MODULES.filter((m) => raw.includes(m));
+  return { modules: modules.length >= MIN_CUSTOM_MODULES ? modules : [...DEFAULT_MODULES] };
+}
+
+/** True when the gift renders this format's layer, on its own or inside a hybrid. */
+export function usesFormat(data: Pick<XsoData, 'giftStyle' | 'custom'>, style: BaseStyle) {
+  if (data.giftStyle === style) return true;
+  return (
+    data.giftStyle === 'custom' &&
+    resolveCustom(data).modules.some((m) => CUSTOM_MODULE_META[m].style === style)
+  );
+}
 
 export const FORMAT_LIMITS = {
   sideA: 30,
@@ -93,6 +157,7 @@ export interface FormatLayers {
   rewind: RewindLayers;
   accordion: AccordionLayers;
   moviebox: MovieLayers;
+  custom: CustomLayers;
 }
 
 export type FormatKey = keyof FormatLayers;
@@ -114,6 +179,7 @@ export function formatDefaults(content: Pack): FormatLayers {
     },
     accordion: { sentiment: `${content.total.toLowerCase()} — worth every cent ♡` },
     moviebox: movieDefaults(content, MOVIE_TITLES, halfStar(overallStars(content.auditMetrics))),
+    custom: { modules: [...DEFAULT_MODULES] },
   };
 }
 
@@ -134,6 +200,13 @@ const STILL = /^data:image\/(?:webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/;
 
 /** Server-side guard: only the chosen format's settings reach the public gift JSON. */
 export function sanitizeFormat(style: GiftStyle, data: XsoData): Partial<XsoData> {
+  if (style === 'custom') {
+    const custom = resolveCustom(data);
+    return custom.modules.reduce<Partial<XsoData>>(
+      (out, m) => ({ ...out, ...sanitizeFormat(CUSTOM_MODULE_META[m].style, data) }),
+      { custom },
+    );
+  }
   if (style === 'loop' && isObject(data.loop)) {
     const raw = Array.isArray(data.loop.cards) ? data.loop.cards : [];
     const cards = LOOP_CARDS.filter((card) => raw.includes(card));
