@@ -68,13 +68,12 @@ export const useXsoStore = create<XsoStore>((set) => ({
 
   applyTheme: (id) => {
     if (!getTheme(id)) return;
-    set((state) => ({ ...packContent(id), custom: state.custom, themeId: id }));
+    set({ ...packContent(id), themeId: id });
   },
 
   resetStory: () =>
     set((state) => ({
       ...packContent(state.themeId),
-      custom: state.custom,
       customerName: state.customerName,
       billerName: state.billerName,
       photos: state.photos,

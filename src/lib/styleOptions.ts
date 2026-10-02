@@ -44,11 +44,4 @@ export const STYLE_OPTIONS: StyleOption[] = [
     title: 'The Old Movie Box',
     description: 'A hand crank advances a vintage film-strip projector.',
   },
-  {
-    id: 'custom',
-    icon: '✨',
-    label: 'Custom Hybrid Style',
-    title: '✨ Custom Hybrid Style',
-    description: 'Stack the keepsake layers you want, in one gift.',
-  },
 ];

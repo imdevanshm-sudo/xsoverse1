@@ -27,8 +27,9 @@ import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { useProjectorFx } from '@/hooks/useProjectorFx';
 import { CINEMA_EASE, CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { auditLabel, resolveMovie } from '@/lib/formats';
+import { stackCards } from '@/lib/formatCards';
 import { LazyMedia } from '@/components/xso/LazyMedia';
-import { getArtifacts } from '@/components/xso/viewers/shared';
+import { getArtifacts, type Artifact } from '@/components/xso/viewers/shared';
 
 /** Crank travel that pulls one frame through the gate. */
 const STEP = 180;
@@ -71,27 +72,54 @@ function storyFor(data: XsoData, movie: MovieLayers) {
   };
 }
 
-export const MovieBox = memo(function MovieBox({
+interface ProjectorProps {
+  data: XsoData;
+  /** `fill` stretches to its container, e.g. inside the gift phone frame. */
+  size?: keyof typeof SCREEN_SIZE;
+  /** Scene index (0–3), so the scene editor can bring its frame into the gate. */
+  focusIndex?: number;
+  onChange?: (index: number, label: string) => void;
+}
+
+/** Each frame remembers which of the four scenes it plays, since cards can be left out. */
+type Frame = Artifact & { scene: number };
+
+export const MovieBox = memo(function MovieBox(props: ProjectorProps) {
+  const { data, focusIndex } = props;
+  const key = stackCards(data, 'moviebox').join('|');
+  const movie = useMemo(() => resolveMovie(data), [data]);
+  const artifacts = useMemo<Frame[]>(
+    () =>
+      getArtifacts(data)
+        .map((artifact, i) => ({
+          ...artifact,
+          label: movie.scenes[i]?.title || artifact.label,
+          scene: i,
+        }))
+        .filter((a) => key.split('|').includes(a.id)),
+    [data, key, movie],
+  );
+  const focused =
+    focusIndex === undefined ? undefined : artifacts.findIndex((a) => a.scene === focusIndex);
+  return (
+    <Projector
+      key={key}
+      {...props}
+      movie={movie}
+      artifacts={artifacts}
+      focusIndex={focused === undefined || focused < 0 ? undefined : focused}
+    />
+  );
+});
+
+function Projector({
   data,
   onChange,
   size = 'hero',
   focusIndex,
-}: {
-  data: XsoData;
-  /** `fill` stretches to its container, e.g. inside the gift phone frame. */
-  size?: keyof typeof SCREEN_SIZE;
-  focusIndex?: number;
-  onChange?: (index: number, label: string) => void;
-}) {
-  const movie = useMemo(() => resolveMovie(data), [data]);
-  const artifacts = useMemo(
-    () =>
-      getArtifacts(data).map((artifact, i) => ({
-        ...artifact,
-        label: movie.scenes[i]?.title || artifact.label,
-      })),
-    [data, movie],
-  );
+  movie,
+  artifacts,
+}: ProjectorProps & { movie: MovieLayers; artifacts: Frame[] }) {
   const story = useMemo(() => storyFor(data, movie), [data, movie]);
   const count = artifacts.length;
   const reduce = Boolean(useReducedMotion());
@@ -111,6 +139,7 @@ export const MovieBox = memo(function MovieBox({
   const goal = useRef(0);
   const motion$ = useRef<AnimationPlaybackControls | null>(null);
   const frame = wrap(step, count);
+  const scene = artifacts[frame].scene;
 
   useMotionValueEvent(crank, 'change', (deg) => {
     const tooth = Math.floor(deg / RATCHET);
@@ -206,7 +235,7 @@ export const MovieBox = memo(function MovieBox({
   useEffect(() => () => motion$.current?.stop(), []);
 
   const lensBlur = !reduce && !coarse;
-  const [primary, secondary] = story.notes[frame];
+  const [primary, secondary] = story.notes[scene];
 
   return (
     <section
@@ -265,7 +294,7 @@ export const MovieBox = memo(function MovieBox({
             <FrameFace
               data={data}
               index={frame}
-              scene={movie.scenes[frame]}
+              scene={movie.scenes[scene]}
               stars={movie.stars}
               titled={Boolean(data.moviebox)}
             />
@@ -289,7 +318,7 @@ export const MovieBox = memo(function MovieBox({
             animate={{ opacity: 1 }}
             transition={{ ...CINEMATIC, delay: reduce ? 0 : 0.25 }}
           >
-            {story.subtitles[frame]}
+            {story.subtitles[scene]}
           </motion.p>
           <span className="film-screen__hint">{notes ? 'hide notes' : "director's notes"}</span>
         </motion.button>
@@ -367,11 +396,11 @@ export const MovieBox = memo(function MovieBox({
         </div>
       </div>
       <p className="sr-only" aria-live="polite">
-        Frame {frame + 1} of {count}: {artifacts[frame].label}. {story.subtitles[frame]}
+        Frame {frame + 1} of {count}: {artifacts[frame].label}. {story.subtitles[scene]}
       </p>
     </section>
   );
-});
+}
 
 function DirectorNote({
   className,

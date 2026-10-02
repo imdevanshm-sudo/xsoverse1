@@ -14,6 +14,7 @@ import {
 import type { RewindLayers, XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
 import { CINEMATIC, SOFT_SPRING } from '@/lib/motion';
+import { selectedCards, stackCards } from '@/lib/formatCards';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
 import {
@@ -84,13 +85,17 @@ interface StackProps {
   onChange?: (index: number, label: string) => void;
 }
 
+const SHEET_ORDER: Sheet['id'][] = ['receipt', 'audit', 'photos', 'letter', 'liner'];
+
 export const RewindStack = memo(function RewindStack(props: StackProps) {
-  const { data } = props;
+  const { data, focusIndex } = props;
   const review = data.rewind?.review.trim() ?? '';
-  const base = useMemo(() => getArtifacts(data), [data]);
+  const cards = selectedCards(data, 'rewind');
+  const key = cards.join('|');
+  const base = useMemo(() => getArtifacts(data, stackCards(data, 'rewind')), [data]);
   const artifacts = useMemo<Sheet[]>(
     () =>
-      review
+      review && key.split('|').includes('liner')
         ? [
             ...base,
             {
@@ -102,10 +107,21 @@ export const RewindStack = memo(function RewindStack(props: StackProps) {
             },
           ]
         : base,
-    [base, data, review],
+    [base, data, key, review],
   );
-  /** Adding or removing the liner notes reshapes the pile, so it starts fresh. */
-  return <Stack key={artifacts.length} {...props} artifacts={artifacts} />;
+  const focused =
+    focusIndex === undefined
+      ? undefined
+      : artifacts.findIndex((a) => a.id === SHEET_ORDER[focusIndex]);
+  /** A different set of sheets reshapes the pile, so it starts fresh. */
+  return (
+    <Stack
+      key={artifacts.map((a) => a.id).join('|')}
+      {...props}
+      focusIndex={focused === undefined || focused < 0 ? undefined : focused}
+      artifacts={artifacts}
+    />
+  );
 });
 
 function Stack({
@@ -115,16 +131,13 @@ function Stack({
   size = 'hero',
   focusIndex,
 }: StackProps & { artifacts: Sheet[] }) {
-  const faces = useMemo<Record<Sheet['id'], ReactNode>>(
-    () => ({
-      receipt: <Side1Receipt data={data} bare />,
-      audit: artifacts[1].content,
-      photos: artifacts[2].content,
-      letter: <Side4BirthdayCard data={data} bare />,
-      liner: artifacts[4]?.content,
-    }),
-    [artifacts, data],
-  );
+  const faces = useMemo(() => {
+    const out: Partial<Record<Sheet['id'], ReactNode>> = {};
+    for (const a of artifacts) out[a.id] = a.content;
+    out.receipt = <Side1Receipt data={data} bare />;
+    out.letter = <Side4BirthdayCard data={data} bare />;
+    return out;
+  }, [artifacts, data]);
   /** A slightly messy pile: stable, human-placed tilt per sheet (−3° … 3°). */
   const tilts = useMemo(
     () => artifacts.map((_, i) => seededOffset(data.id || 'xso', i, 3)),

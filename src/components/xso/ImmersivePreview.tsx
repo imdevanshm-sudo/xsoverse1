@@ -1,12 +1,10 @@
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useXsoData } from '@/store/useXsoData';
 import { useXsoStore } from '@/store/useXsoStore';
-import { useExpressOrder } from '@/store/useExpressOrder';
-import { ExpressOrderHost } from '@/components/storefront/ExpressOrderHost';
+import { useCustomizerModal } from '@/store/useCustomizerModal';
+import { XSOCustomizerHost } from '@/components/storefront/XSOCustomizerHost';
 import type { ThemeId } from '@/lib/themes';
 import { motion, useReducedMotion } from 'framer-motion';
 import { CINEMATIC, FORMAT_SWAP } from '@/lib/motion';
@@ -18,7 +16,6 @@ import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { CARTRIDGE_PRICE, getCartridge } from '@/lib/cartridges';
-import { styleQuery } from '@/lib/styleLock';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
 const MEMORY_COUNT = 4;
@@ -29,7 +26,6 @@ const STAGE_HINT: Record<GiftStyle, string> = {
   scrapbook: 'Pick something up · turn it over',
   accordion: 'Pull the ribbon · let it unfold',
   moviebox: 'Turn the crank · roll the reel',
-  custom: 'Play each layer · tap the tabs to switch',
 };
 
 function countBits(n: number) {
@@ -68,12 +64,6 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const data = useXsoData();
   const previewData = useMemo(() => ({ ...data, giftStyle: lockedStyle }), [data, lockedStyle]);
 
-  const router = useRouter();
-  const customizeHref = `/customize?${styleQuery(lockedStyle)}`;
-  useEffect(() => {
-    router.prefetch(customizeHref);
-  }, [router, customizeHref]);
-
   const [memory, setMemory] = useState({ current: 0, seen: 1, label: 'Receipt' });
   const goTo = useCallback((index: number, label: string) => {
     setMemory((m) => ({ current: index, seen: m.seen | (1 << index), label }));
@@ -81,10 +71,10 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const explored = countBits(memory.seen);
   const [receiver, setReceiver] = useState(false);
   const closeReceiver = useCallback(() => setReceiver(false), []);
-  const openWith = useExpressOrder((s) => s.openWith);
-  const openExpress = useCallback(
-    () => openWith({ style: lockedStyle, theme: useXsoStore.getState().themeId as ThemeId }),
-    [openWith, lockedStyle],
+  const openCustomizer = useCustomizerModal((s) => s.open);
+  const create = useCallback(
+    () => openCustomizer({ format: lockedStyle, theme: useXsoStore.getState().themeId as ThemeId }),
+    [openCustomizer, lockedStyle],
   );
 
   return (
@@ -147,23 +137,23 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
         />
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <MatteCta
-            onClick={openExpress}
-            label="Express Buy"
+            onClick={create}
+            label="Create Your XSO"
             price={CARTRIDGE_PRICE}
             loadingLabel="Opening…"
-            ariaLabel={`Express buy, ${CARTRIDGE_PRICE}`}
+            ariaLabel={`Create your XSO, ${CARTRIDGE_PRICE}`}
           />
-          <Link
-            href={customizeHref}
-            prefetch
+          <button
+            type="button"
+            onClick={create}
             className="paper-button flex min-h-[3.25rem] touch-manipulation items-center justify-center rounded-full px-4 font-receipt text-[11px] font-bold uppercase tracking-[0.14em] transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.98]"
-            aria-label="Customize first: build your XSO line by line"
+            aria-label="Customize: pick the cards and write it with AI"
           >
             Customize
-          </Link>
+          </button>
         </div>
       </DeskDock>
-      <ExpressOrderHost />
+      <XSOCustomizerHost />
       {receiver ? <ReceiverPreview style={lockedStyle} onClose={closeReceiver} /> : null}
     </div>
   );

@@ -13,9 +13,7 @@ export interface AuditMetrics {
   support: number;
 }
 
-export type GiftStyle = 'loop' | 'scrapbook' | 'rewind' | 'accordion' | 'moviebox' | 'custom';
-/** The five built-in formats; `custom` stacks pieces of these. */
-export type BaseStyle = Exclude<GiftStyle, 'custom'>;
+export type GiftStyle = 'loop' | 'scrapbook' | 'rewind' | 'accordion' | 'moviebox';
 
 export const SCRAPBOOK_ELEMENTS = [
   'receipt',
@@ -51,17 +49,22 @@ export interface LoopLayers {
   cards: LoopCard[];
 }
 
+export type RewindCard = LoopCard | 'liner';
+
 /** Rewind: the cassette label and the liner-notes card. */
 export interface RewindLayers {
   sideA: string;
   sideB: string;
   tapeDate: string;
   review: string;
+  /** Absent on older gifts, which show every card. */
+  cards?: RewindCard[];
 }
 
 /** Accordion: the handwritten line under the bill's total. */
 export interface AccordionLayers {
   sentiment: string;
+  cards?: LoopCard[];
 }
 
 export interface MovieScene {
@@ -75,20 +78,7 @@ export interface MovieScene {
 export interface MovieLayers {
   scenes: MovieScene[];
   stars: number;
-}
-
-export const CUSTOM_MODULES = [
-  'receipt',
-  'cassette',
-  'accordion',
-  'scrapbook',
-  'moviebox',
-] as const;
-export type CustomModule = (typeof CUSTOM_MODULES)[number];
-
-/** Custom Hybrid: which keepsake layers are stacked, in canonical order. */
-export interface CustomLayers {
-  modules: CustomModule[];
+  cards?: LoopCard[];
 }
 
 export interface XsoData {
@@ -120,7 +110,6 @@ export interface XsoData {
   rewind?: RewindLayers;
   accordion?: AccordionLayers;
   moviebox?: MovieLayers;
-  custom?: CustomLayers;
 }
 
 export type XsoSideIndex = 0 | 1 | 2 | 3;

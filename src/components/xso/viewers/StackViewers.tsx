@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
+import { stackCards } from '@/lib/formatCards';
 import {
   SPRING,
   TossCard,
@@ -18,7 +19,7 @@ export interface ViewerEngineProps {
 }
 
 export function LoopViewer({ data, initialSide = 0 }: ViewerEngineProps) {
-  const artifacts = getArtifacts(data);
+  const artifacts = getArtifacts(data, stackCards(data, 'loop'));
   const initialOrder = useMemo(
     () => rotateFrom(artifacts.map((artifact) => artifact.id), initialSide),
     // The order is intentionally initialized once per mounted style engine.
@@ -201,7 +202,7 @@ function DeskBackdrop() {
 }
 
 export function RewindViewer({ data, initialSide = 0 }: ViewerEngineProps) {
-  const artifacts = getArtifacts(data);
+  const artifacts = getArtifacts(data, stackCards(data, 'rewind'));
   const start = Math.max(0, Math.min(artifacts.length - 1, initialSide));
   const [discarded, setDiscarded] = useState(start);
   const [recalling, setRecalling] = useState(false);

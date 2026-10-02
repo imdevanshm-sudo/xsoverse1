@@ -12,9 +12,9 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Play, Zap } from 'lucide-react';
+import { Play, Sparkles } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
-import { useExpressOrder } from '@/store/useExpressOrder';
+import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { useMediaQuery } from '@/hooks/useTouchSpring';
 import {
   CARTRIDGE_PRICE,
@@ -29,14 +29,14 @@ import { StyleDemo } from '@/components/storefront/StyleDemo';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { HeroMarquee } from '@/components/storefront/HeroMarquee';
 import { StickyExpressBar } from '@/components/storefront/StickyExpressBar';
-import { ExpressOrderHost } from '@/components/storefront/ExpressOrderHost';
+import { XSOCustomizerHost } from '@/components/storefront/XSOCustomizerHost';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { CINEMATIC, FORMAT_SWAP } from '@/lib/motion';
+import { isGiftStyle } from '@/lib/xsoPayload';
 import type { GiftStyle } from '@/types/xso';
 
 const previewHref = (style: GiftStyle, theme: ThemeId) =>
   `/preview?style=${encodeURIComponent(style)}&theme=${theme}`;
-const customizeHref = (style: GiftStyle) => `/customize?style=${encodeURIComponent(style)}`;
 
 /** Static studio shadow + tinted rim; only the layer's opacity animates between styles. */
 /** Store & template gallery: pick a format, then tap a story deck. */
@@ -47,7 +47,7 @@ export function Store() {
   const themeId = useXsoStore((s) => s.themeId);
   const setField = useXsoStore((s) => s.setField);
   const applyTheme = useXsoStore((s) => s.applyTheme);
-  const openExpress = useExpressOrder((s) => s.openWith);
+  const openCustomizer = useCustomizerModal((s) => s.open);
   const desktop = useMediaQuery('(min-width: 768px)');
   const [pending, startTransition] = useTransition();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -56,7 +56,6 @@ export function Store() {
 
   useEffect(() => {
     router.prefetch('/preview');
-    router.prefetch('/customize');
     router.prefetch('/checkout');
   }, [router]);
 
@@ -86,21 +85,31 @@ export function Store() {
     tabRefs.current[index] = el;
   }, []);
 
-  const expressStyle = useCallback(
-    () => openExpress({ style: useXsoStore.getState().giftStyle }),
-    [openExpress],
+  const createXso = useCallback(
+    () => openCustomizer({ format: useXsoStore.getState().giftStyle }),
+    [openCustomizer],
   );
-  const expressFormat = useCallback(
+  const createWithFormat = useCallback(
     (style: GiftStyle) => {
       selectStyle(style);
-      openExpress({ style });
+      openCustomizer({ format: style });
     },
-    [openExpress, selectStyle],
+    [openCustomizer, selectStyle],
   );
-  const expressDeck = useCallback(
-    (id: ThemeId) => openExpress({ style: useXsoStore.getState().giftStyle, theme: id }),
-    [openExpress],
+  const createWithDeck = useCallback(
+    (id: ThemeId) => openCustomizer({ format: useXsoStore.getState().giftStyle, theme: id }),
+    [openCustomizer],
   );
+
+  /** `/?order=<style>` (the checkout page's edit link) lands straight in the customizer. */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const order = params.get('order');
+    if (!params.has('order')) return;
+    if (isGiftStyle(order)) createWithFormat(order);
+    else createXso();
+    router.replace('/', { scroll: false });
+  }, [createWithFormat, createXso, router]);
 
   // Keep the selected format visible inside the horizontally scrolling tab row (mobile),
   // without scrolling the page itself.
@@ -115,18 +124,14 @@ export function Store() {
       row.scrollTo({ left: right, behavior: reduce ? 'auto' : 'smooth' });
   }, [giftStyle, reduce]);
 
-  const goWithDeck = useCallback(
-    (id: ThemeId, destination: 'preview' | 'customize') => {
+  const openDeck = useCallback(
+    (id: ThemeId) => {
       applyTheme(id);
       const style = useXsoStore.getState().giftStyle;
-      startTransition(() => {
-        router.push(destination === 'preview' ? previewHref(style, id) : customizeHref(style));
-      });
+      startTransition(() => router.push(previewHref(style, id)));
     },
     [applyTheme, router],
   );
-  const openDeck = useCallback((id: ThemeId) => goWithDeck(id, 'preview'), [goWithDeck]);
-  const customizeDeck = useCallback((id: ThemeId) => goWithDeck(id, 'customize'), [goWithDeck]);
 
   return (
     <main className="desk min-app-h" aria-busy={pending}>
@@ -160,7 +165,7 @@ export function Store() {
             Your story, turned into a gift{' '}
             <em className="font-medium text-[#f9a8d4]">they can play.</em>
           </h1>
-          <div className="mt-3">{desktop ? null : <HeroMarquee onPick={expressFormat} />}</div>
+          <div className="mt-3">{desktop ? null : <HeroMarquee onPick={createWithFormat} />}</div>
           <p className="mt-3 text-pretty text-[15px] leading-snug text-[#e0b4c6]">
             A digital keepsake of your story: receipts, photos and a letter, sent as a link they
             open and play.
@@ -168,18 +173,18 @@ export function Store() {
           <div className="mt-3 flex items-center gap-3">
             <button
               type="button"
-              onClick={expressStyle}
+              onClick={createXso}
               className="matte-cta flex min-h-[3.25rem] flex-1 touch-manipulation items-center justify-center gap-2 rounded-full px-5 font-serif text-[17px] font-semibold"
             >
-              <Zap className="h-4 w-4" aria-hidden />
-              Express Order
+              <Sparkles className="h-4 w-4" aria-hidden />
+              Create Your XSO
             </button>
             <span className="shrink-0 rounded-full border border-[#fdba74]/40 px-3 py-1.5 font-receipt text-[13px] font-bold tabular-nums text-[#fdba74]">
               {CARTRIDGE_PRICE}
             </span>
           </div>
           <p className="mt-2 text-center font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6a7e]">
-            60 seconds · 3 steps · ready to send
+            5 quick steps · AI-written · ready to send
           </p>
         </section>
 
@@ -190,7 +195,7 @@ export function Store() {
           <h1 className="max-w-2xl text-balance font-serif text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.02em] text-[#fdf2f8] sm:text-6xl">
             Keepsakes for the words <em className="font-medium text-[#f9a8d4]">you never said.</em>
           </h1>
-          <div className="mt-6">{desktop ? <HeroMarquee onPick={expressFormat} /> : null}</div>
+          <div className="mt-6">{desktop ? <HeroMarquee onPick={createWithFormat} /> : null}</div>
           <p className="mt-5 max-w-lg text-pretty text-[15px] leading-[1.6] text-[#e0b4c6] sm:text-[16px]">
             Some feelings don&apos;t fit in a text. An XSO gives them a shape you can hold: a
             receipt of the moments you shared, an audit of who they are to you, a strip of faces and
@@ -213,7 +218,7 @@ export function Store() {
           <div
             role="radiogroup"
             aria-label="Souvenir format"
-            className="relative -mx-5 flex snap-x scroll-px-5 gap-2.5 overflow-x-auto px-5 pb-2 pt-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-6"
+            className="relative -mx-5 flex snap-x scroll-px-5 gap-2.5 overflow-x-auto px-5 pb-2 pt-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5"
           >
             {CARTRIDGES.map((cart, index) => (
               <StyleChip
@@ -317,20 +322,20 @@ export function Store() {
 
                 <div className="mt-4 grid gap-2 sm:mt-5 sm:gap-2.5">
                   <MatteCta
-                    onClick={expressStyle}
-                    label={`Express Order · ${displayTitle(format)}`}
-                    narrowLabel="Express Order"
+                    onClick={createXso}
+                    label={`Create Your XSO · ${displayTitle(format)}`}
+                    narrowLabel="Create Your XSO"
                     price={CARTRIDGE_PRICE}
                     loadingLabel="Opening…"
-                    ariaLabel={`Express order ${displayTitle(format)} with ${activeTheme.title}, ${CARTRIDGE_PRICE}`}
+                    ariaLabel={`Create your XSO as ${displayTitle(format)} with ${activeTheme.title}, ${CARTRIDGE_PRICE}`}
                   />
-                  <Link
-                    href={previewHref(giftStyle, themeId)}
-                    prefetch
+                  <button
+                    type="button"
+                    onClick={createXso}
                     className="flex min-h-[44px] touch-manipulation items-center justify-center rounded-full px-5 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#c99aae] underline decoration-[#6b3f4f] underline-offset-4 transition-colors hover:text-[#fdf2f8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
                   >
                     Customize first →
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
@@ -361,8 +366,7 @@ export function Store() {
                     styleLabel={displayTitle(format)}
                     loaded={theme.id === themeId}
                     onOpen={openDeck}
-                    onExpress={expressDeck}
-                    onCustomize={customizeDeck}
+                    onStart={createWithDeck}
                   />
                 </div>
               ))}
@@ -374,7 +378,7 @@ export function Store() {
         </section>
       </div>
       <StickyExpressBar />
-      <ExpressOrderHost />
+      <XSOCustomizerHost />
     </main>
   );
 }
@@ -417,7 +421,6 @@ const StyleChip = memo(function StyleChip({
         {cart.code}
       </span>
       <span className="mt-1 block font-serif text-[18px] font-semibold leading-tight">
-        {cart.id === 'custom' ? '✨ ' : ''}
         {displayTitle(cart)}
       </span>
       <span

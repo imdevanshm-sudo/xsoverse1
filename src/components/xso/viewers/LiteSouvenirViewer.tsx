@@ -16,6 +16,7 @@ import {
   useTransform,
 } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
+import { stackCards } from '@/lib/formatCards';
 import { liteReasonLabel, type LiteReason } from '@/lib/deviceQuality';
 import {
   SPRING,
@@ -153,7 +154,7 @@ function LiteStack({
   mode: 'loop' | 'rewind';
   onAdvance?: () => void;
 }) {
-  const artifacts = useMemo(() => getArtifacts(data), [data]);
+  const artifacts = useMemo(() => getArtifacts(data, stackCards(data, mode)), [data, mode]);
   const [order, setOrder] = useState(() =>
     rotateFrom(
       artifacts.map((a) => a.id),

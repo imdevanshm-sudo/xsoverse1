@@ -10,9 +10,9 @@ import {
   type TargetAndTransition,
 } from 'framer-motion';
 import { MiniFace } from '@/components/storefront/DeckBox';
-import type { BaseStyle } from '@/types/xso';
+import type { GiftStyle } from '@/types/xso';
 
-const REEL: { style: BaseStyle; name: string; caption: string }[] = [
+const REEL: { style: GiftStyle; name: string; caption: string }[] = [
   { style: 'loop', name: 'Loop', caption: 'Flick it, it comes back' },
   { style: 'rewind', name: 'Rewind', caption: 'Call it all back' },
   { style: 'scrapbook', name: 'Scrapbook', caption: 'Spill it on the desk' },
@@ -29,7 +29,7 @@ const BEAT = { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } as const;
 type Pose = { animate: TargetAndTransition; kind: number; className?: string };
 
 /** Three paper cards per format, each looping that format's signature move. */
-const SCENES: Record<Exclude<BaseStyle, 'moviebox'>, Pose[]> = {
+const SCENES: Record<Exclude<GiftStyle, 'moviebox'>, Pose[]> = {
   loop: [
     { kind: 2, animate: { x: 6, y: 8, rotate: 4 } },
     { kind: 1, animate: { x: -4, y: 4, rotate: -3 } },
@@ -70,7 +70,7 @@ const MotionPreview = memo(function MotionPreview({
   style,
   playing,
 }: {
-  style: BaseStyle;
+  style: GiftStyle;
   playing: boolean;
 }) {
   if (style === 'moviebox') {
@@ -137,7 +137,7 @@ function ReelCard({
 }: {
   item: (typeof REEL)[number];
   playing: boolean;
-  onPick?: (style: BaseStyle) => void;
+  onPick?: (style: GiftStyle) => void;
   copy: boolean;
 }) {
   return (
@@ -146,7 +146,7 @@ function ReelCard({
       tabIndex={copy ? -1 : undefined}
       aria-hidden={copy || undefined}
       onClick={() => onPick?.(item.style)}
-      aria-label={`${item.name}: ${item.caption}. Start an express order`}
+      aria-label={`${item.name}: ${item.caption}. Create your XSO in this format`}
       className="group relative mr-3 h-[178px] w-[148px] shrink-0 touch-manipulation overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(ellipse_at_50%_30%,#3a1a28,#170c12_75%)] text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] md:h-[208px] md:w-[196px]"
     >
       <span className="absolute inset-x-0 top-0 h-[128px] md:h-[156px]">
@@ -164,12 +164,12 @@ function ReelCard({
 
 /**
  * Endless reel of the five formats in motion. Hover or press to pause;
- * tapping a card opens an express order in that format.
+ * tapping a card opens the customizer in that format.
  */
 export const HeroMarquee = memo(function HeroMarquee({
   onPick,
 }: {
-  onPick?: (style: BaseStyle) => void;
+  onPick?: (style: GiftStyle) => void;
 }) {
   const reduce = useReducedMotion();
   const [scope, animate] = useAnimate<HTMLDivElement>();

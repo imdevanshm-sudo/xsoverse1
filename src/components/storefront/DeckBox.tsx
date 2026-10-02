@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
-import { Zap } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { ThemeId, ThemePack } from '@/lib/themes';
 import { useTouchSpring } from '@/hooks/useTouchSpring';
 
@@ -37,15 +37,14 @@ export const DeckBox = memo(function DeckBox({
   styleLabel,
   loaded,
   onOpen,
-  onExpress,
-  onCustomize,
+  onStart,
 }: {
   theme: ThemePack;
   styleLabel: string;
   loaded: boolean;
   onOpen: (id: ThemeId) => void;
-  onExpress: (id: ThemeId) => void;
-  onCustomize: (id: ThemeId) => void;
+  /** Opens the customizer with this deck's story. */
+  onStart: (id: ThemeId) => void;
 }) {
   const reduce = useReducedMotion();
   const spring = useTouchSpring(SPRING);
@@ -145,20 +144,12 @@ export const DeckBox = memo(function DeckBox({
       </motion.button>
       <button
         type="button"
-        onClick={() => onExpress(theme.id)}
+        onClick={() => onStart(theme.id)}
         className="matte-cta mt-3 flex min-h-[48px] w-full max-w-[250px] touch-manipulation items-center justify-center gap-2 rounded-full px-5 font-serif text-[16px] font-semibold"
-        aria-label={`Express order ${theme.title} as ${styleLabel}`}
+        aria-label={`Start with ${theme.title} as ${styleLabel}`}
       >
-        <Zap className="h-4 w-4" aria-hidden />
-        Express Order
-      </button>
-      <button
-        type="button"
-        onClick={() => onCustomize(theme.id)}
-        className="mt-1 inline-flex min-h-[44px] touch-manipulation items-center gap-1.5 rounded-xl px-4 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#c99aae] underline decoration-[#6b3f4f] underline-offset-4 transition-colors hover:text-[#fdf2f8] hover:decoration-[#f9a8d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.98]"
-        aria-label={`Start from ${theme.title} and customize every line first`}
-      >
-        Customize first
+        <Sparkles className="h-4 w-4" aria-hidden />
+        Start with this story
       </button>
     </div>
   );

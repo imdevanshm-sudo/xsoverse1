@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { ModeHeader } from '@/components/layout/ModeHeader';
 import { CheckoutEnvelope } from '@/components/checkout/CheckoutEnvelope';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
-import { resolveLockedStyle, styleQuery } from '@/lib/styleLock';
+import { resolveLockedStyle } from '@/lib/styleLock';
 import { useXsoStore } from '@/store/useXsoStore';
 
 function CheckoutShell() {
@@ -26,8 +26,8 @@ function CheckoutShell() {
         tone="paper"
         brand="XSO Checkout"
         meta={displayTitle(cart)}
-        actionHref={`/customize?${styleQuery(lockedStyle)}`}
-        actionLabel="Studio"
+        actionHref={`/?order=${encodeURIComponent(lockedStyle)}`}
+        actionLabel="Edit"
       />
       <CheckoutEnvelope lockedStyle={lockedStyle} />
     </main>

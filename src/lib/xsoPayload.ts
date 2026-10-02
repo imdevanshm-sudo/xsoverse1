@@ -1,15 +1,8 @@
 import type { GiftStyle, XsoData } from '@/types/xso';
 import { sanitizeScrapbook } from '@/lib/scrapbook';
-import { sanitizeAuditLabels, sanitizeFormat, usesFormat } from '@/lib/formats';
+import { sanitizeAuditLabels, sanitizeFormat } from '@/lib/formats';
 
-export const GIFT_STYLES: GiftStyle[] = [
-  'loop',
-  'scrapbook',
-  'rewind',
-  'accordion',
-  'moviebox',
-  'custom',
-];
+export const GIFT_STYLES: GiftStyle[] = ['loop', 'scrapbook', 'rewind', 'accordion', 'moviebox'];
 
 export function isGiftStyle(value: string | null | undefined): value is GiftStyle {
   return !!value && (GIFT_STYLES as string[]).includes(value);
@@ -23,9 +16,11 @@ export function parseGiftStyle(
 }
 
 export function pickXsoPayload(data: XsoData): XsoData {
+  /** Retired styles (e.g. the old hybrid) open as a Loop rather than failing. */
+  const giftStyle = parseGiftStyle(data.giftStyle);
   return {
     id: data.id,
-    giftStyle: data.giftStyle,
+    giftStyle,
     billerName: data.billerName,
     customerName: data.customerName,
     occasion: data.occasion,
@@ -45,7 +40,7 @@ export function pickXsoPayload(data: XsoData): XsoData {
     birthdayMessage: data.birthdayMessage,
     voiceNoteUrl: data.voiceNoteUrl,
     scratchOffReward: data.scratchOffReward,
-    scrapbook: usesFormat(data, 'scrapbook') ? sanitizeScrapbook(data.scrapbook, data) : undefined,
-    ...sanitizeFormat(data.giftStyle, data),
+    scrapbook: giftStyle === 'scrapbook' ? sanitizeScrapbook(data.scrapbook, data) : undefined,
+    ...sanitizeFormat(giftStyle, data),
   };
 }

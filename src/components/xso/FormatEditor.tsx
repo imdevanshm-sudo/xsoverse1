@@ -7,15 +7,11 @@ import {
   LOOP_CARD_META,
   MIN_LOOP_CARDS,
   RATED,
-  resolveCustom,
   type FormatKey,
   type FormatLayers,
 } from '@/lib/formats';
-import { CustomBuilderCanvas } from '@/components/xso/CustomBuilderCanvas';
 import {
-  CUSTOM_MODULES,
   LOOP_CARDS,
-  type CustomModule,
   type GiftStyle,
   type LoopCard,
   type MovieScene,
@@ -58,7 +54,6 @@ const FORMAT_NAMES: Record<GiftStyle, string> = {
   scrapbook: 'Scrapbook',
   accordion: 'Accordion',
   moviebox: 'Movie Box',
-  custom: 'Custom Hybrid',
 };
 
 /**
@@ -104,9 +99,7 @@ export const FormatEditor = memo(function FormatEditor({
             <h3 className={`font-serif text-[16px] font-semibold leading-tight ${t.label}`}>
               {style === 'scrapbook'
                 ? 'Build Your Scrapbook'
-                : style === 'custom'
-                  ? 'Build Your Own Stack'
-                  : `Customize Your ${FORMAT_NAMES[style]}`}
+                : `Customize Your ${FORMAT_NAMES[style]}`}
             </h3>
           ) : null}
           <p className={`mt-1 text-[13px] leading-snug ${t.detail}`}>
@@ -126,8 +119,6 @@ export const FormatEditor = memo(function FormatEditor({
           defaultOpen={['polaroids'] as ScrapbookElement[]}
           onFocusCard={onFocusCard}
         />
-      ) : style === 'custom' ? (
-        <CustomEditor {...props} tone={tone} onScrapbook={onScrapbook} />
       ) : style === 'loop' ? (
         <LoopEditor {...props} />
       ) : style === 'rewind' ? (
@@ -217,82 +208,6 @@ function FacesRow({
 }
 
 const LOOP_FOCUS: Record<LoopCard, number> = { receipt: 0, audit: 1, photos: 2, letter: 3 };
-const RECEIPT_LAYER_CARDS = ['receipt', 'audit', 'letter'] as const;
-
-/** Custom Hybrid: the layer checklist, each checked layer opening its format's own editor. */
-function CustomEditor({
-  tone,
-  onScrapbook,
-  ...props
-}: EditorProps & { tone: ToneName; onScrapbook: (patch: Partial<ScrapbookLayers>) => void }) {
-  const { t, fields, onPatch, onFormat, photoSlot, onFocusCard } = props;
-  const [open, setOpen] = useOpenSet<'faces'>();
-  const layerFocus = (m: CustomModule) => () => onFocusCard?.(CUSTOM_MODULES.indexOf(m));
-  const nested = (m: CustomModule): EditorProps => ({ ...props, onFocusCard: layerFocus(m) });
-
-  const renderEditor = (m: CustomModule) => {
-    switch (m) {
-      case 'receipt':
-        return (
-          <div className="grid gap-5">
-            {RECEIPT_LAYER_CARDS.map((id) => (
-              <section key={id}>
-                <p className={`mb-2 ${t.field}`}>
-                  {LOOP_CARD_META[id].label.replace(/^Card \d · /, '')}
-                </p>
-                <LoopCardFields
-                  id={id}
-                  t={t}
-                  fields={fields}
-                  onPatch={onPatch}
-                  photoSlot={photoSlot}
-                />
-              </section>
-            ))}
-          </div>
-        );
-      case 'cassette':
-        return <RewindEditor {...nested(m)} />;
-      case 'accordion':
-        return <AccordionEditor {...nested(m)} />;
-      case 'scrapbook':
-        return (
-          <ScrapbookElements
-            tone={tone}
-            fields={fields}
-            onPatch={onPatch}
-            onLayers={onScrapbook}
-            photoSlot={photoSlot}
-            defaultOpen={['polaroids'] as ScrapbookElement[]}
-            onFocusCard={layerFocus(m)}
-          />
-        );
-      case 'moviebox':
-        return <MovieEditor {...nested(m)} />;
-    }
-  };
-
-  return (
-    <div className="grid gap-3">
-      <CustomBuilderCanvas
-        modules={resolveCustom(fields).modules}
-        onModules={(modules) => onFormat('custom', { modules })}
-        tone={tone}
-        renderEditor={renderEditor}
-        onFocusLayer={onFocusCard}
-      />
-      <ul className="m-0 grid list-none gap-2 p-0">
-        <FacesRow
-          t={t}
-          open={open.has('faces')}
-          onExpand={() => setOpen('faces')}
-          photoSlot={photoSlot}
-          detail="Shared by every layer that shows your faces"
-        />
-      </ul>
-    </div>
-  );
-}
 
 function LoopEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard }: EditorProps) {
   const [open, setOpen] = useOpenSet<LoopCard>(['photos']);

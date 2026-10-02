@@ -16,7 +16,7 @@ import {
   type Relationship,
 } from '@/lib/aiCraft';
 import { TONES, type ToneName } from '@/components/xso/editors/kit';
-import type { CustomModule, GiftStyle } from '@/types/xso';
+import type { GiftStyle } from '@/types/xso';
 
 export type CraftPhase = 'quiz' | 'crafted' | 'manual';
 export type CraftSource = CraftResponse['source'];
@@ -40,7 +40,7 @@ const PILL = {
   },
 } as const;
 
-async function requestStory(input: CraftInput, signal: AbortSignal): Promise<CraftResponse> {
+export async function requestStory(input: CraftInput, signal: AbortSignal): Promise<CraftResponse> {
   const res = await fetch('/api/generate-xso', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -60,8 +60,10 @@ interface QuestionState {
   error: string | null;
 }
 
-/** Three memory prompts for this relationship; `refresh` asks for ones not shown yet. */
-function useMemoryQuestions(
+export type MemoryQuestions = ReturnType<typeof useMemoryQuestions>;
+
+/** Three memory prompts for this relationship and tone; `refresh` asks for ones not shown yet. */
+export function useMemoryQuestions(
   enabled: boolean,
   relationship: Relationship | null,
   tone: CraftTone | null,
@@ -105,7 +107,7 @@ function useMemoryQuestions(
         error?: string;
       };
       if (!res.ok || !json.questions?.length) {
-        throw new Error(json.error || 'Couldn’t fetch questions. Type your own instead.');
+        throw new Error(json.error || 'Couldn’t fetch questions. Try refreshing.');
       }
       const questions = json.questions;
       seenRef.current = [...seenRef.current, ...questions].slice(-30);
@@ -146,13 +148,243 @@ export function CraftBadge({
   );
 }
 
+/** Name, relationship and vibe: everything the questions and the story are keyed on. */
+export function VibeFields({
+  tone = 'dark',
+  name,
+  onName,
+  relationship,
+  onRelationship,
+  vibe,
+  onVibe,
+}: {
+  tone?: ToneName;
+  name: string;
+  onName: (name: string) => void;
+  relationship: Relationship | null;
+  onRelationship: (r: Relationship) => void;
+  vibe: CraftTone | null;
+  onVibe: (v: CraftTone) => void;
+}) {
+  const t = TONES[tone];
+  const p = PILL[tone];
+  return (
+    <div className="grid gap-5">
+      <NameInput t={t} name={name} onName={onName} />
+      <fieldset>
+        <legend className={t.field}>You are their…</legend>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {RELATIONSHIPS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              aria-pressed={relationship === r}
+              onClick={() => onRelationship(r)}
+              className={`min-h-10 rounded-full border px-4 text-[14px] font-semibold transition-colors ${relationship === r ? p.on : p.off}`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend className={t.field}>Pick the vibe</legend>
+        <div className="mt-2 grid gap-2">
+          {CRAFT_TONES.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              aria-pressed={vibe === v.id}
+              onClick={() => onVibe(v.id)}
+              className={`flex min-h-12 items-center gap-3 rounded-2xl border px-4 text-left text-[15px] font-semibold transition-colors ${vibe === v.id ? p.on : p.off}`}
+            >
+              <span className="text-[20px]" aria-hidden>
+                {v.emoji}
+              </span>
+              {v.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+    </div>
+  );
+}
+
+/** Keeps a question picked: the first one, or whichever survives a refresh. */
+export function useAskedQuestion(prompts: MemoryQuestions) {
+  const [question, setQuestion] = useState<string | null>(null);
+  const asked = question && prompts.questions.includes(question) ? question : null;
+  useEffect(() => {
+    if (!asked && prompts.questions.length) setQuestion(prompts.questions[0]);
+  }, [asked, prompts.questions]);
+  return [asked, setQuestion] as const;
+}
+
+/** The three AI questions, a refresh, and one line to answer the picked question. */
+export function MemorySpark({
+  tone = 'dark',
+  relationship,
+  prompts,
+  question,
+  onQuestion,
+  answer,
+  onAnswer,
+  onSubmit,
+}: {
+  tone?: ToneName;
+  relationship: Relationship | null;
+  prompts: MemoryQuestions;
+  question: string | null;
+  onQuestion: (q: string) => void;
+  answer: string;
+  onAnswer: (a: string) => void;
+  /** Enter in the answer box, once it's long enough. */
+  onSubmit?: () => void;
+}) {
+  const t = TONES[tone];
+  const p = PILL[tone];
+  const answerRef = useRef<HTMLInputElement>(null);
+  const pick = (q: string) => {
+    onQuestion(q);
+    answerRef.current?.focus({ preventScroll: true });
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <p className={t.field}>
+          {prompts.source === 'ai' ? '✨ AI questions' : 'Questions'} for your{' '}
+          {relationship?.toLowerCase() ?? 'person'}
+        </p>
+        <button
+          type="button"
+          onClick={() => void prompts.refresh()}
+          disabled={prompts.loading || !relationship}
+          aria-busy={prompts.loading}
+          className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${p.off}`}
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${prompts.loading ? 'animate-spin' : ''}`}
+            aria-hidden
+          />
+          ✨ Refresh Questions
+        </button>
+      </div>
+      <div
+        role="radiogroup"
+        aria-label="Pick a question to answer"
+        aria-busy={prompts.loading}
+        tabIndex={-1}
+        data-step-focus
+        className="mt-2 grid gap-2 focus:outline-none"
+      >
+        {prompts.questions.length === 0 && (prompts.loading || !prompts.error)
+          ? Array.from({ length: 3 }, (_, i) => (
+              <span
+                key={i}
+                aria-hidden
+                className={`block h-12 animate-pulse rounded-2xl ${tone === 'dark' ? 'bg-white/[0.06]' : 'bg-[#f6dce7]'}`}
+              />
+            ))
+          : prompts.questions.map((q) => (
+              <button
+                key={q}
+                type="button"
+                role="radio"
+                aria-checked={question === q}
+                onClick={() => pick(q)}
+                className={`min-h-12 rounded-2xl border px-4 py-2.5 text-left text-[14px] font-medium leading-snug transition-[colors,opacity] ${question === q ? p.on : p.off} ${prompts.loading ? 'opacity-50' : ''}`}
+              >
+                {q}
+              </button>
+            ))}
+      </div>
+      {prompts.error ? (
+        <p role="alert" className={`mt-2 text-[12.5px] ${t.error}`}>
+          {prompts.error}
+        </p>
+      ) : null}
+      <label className="mt-4 grid gap-1.5">
+        <span className={t.field}>Your answer</span>
+        <input
+          ref={answerRef}
+          value={answer}
+          onChange={(e) => onAnswer(e.target.value.slice(0, CRAFT_LIMITS.memory))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && answer.trim().length >= CRAFT_LIMITS.minMemory) onSubmit?.();
+          }}
+          aria-label={question ? `Your answer to: ${question}` : undefined}
+          placeholder="One line is enough: a name, a place, what they always say"
+          autoComplete="off"
+          enterKeyHint="next"
+          className={t.input}
+        />
+      </label>
+    </div>
+  );
+}
+
+/** Re-roll the story in a new direction, or go back and change the answers. */
+export function AdjustBar({
+  tone = 'dark',
+  busy,
+  onAdjust,
+  onChangeAnswers,
+  error,
+}: {
+  tone?: ToneName;
+  busy: Adjustment | 'generate' | null;
+  onAdjust: (adjust: Adjustment) => void;
+  onChangeAnswers: () => void;
+  error?: string | null;
+}) {
+  const t = TONES[tone];
+  const p = PILL[tone];
+  const chip = `inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold transition-colors disabled:opacity-50 ${p.off}`;
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {ADJUSTMENTS.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            onClick={() => onAdjust(a.id)}
+            disabled={busy !== null}
+            className={chip}
+          >
+            {busy === a.id ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <span aria-hidden>{a.emoji}</span>
+            )}
+            {a.label}
+          </button>
+        ))}
+        <button type="button" onClick={onChangeAnswers} disabled={busy !== null} className={chip}>
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+          Change my answers
+        </button>
+      </div>
+      {busy && busy !== 'generate' ? (
+        <p className={`mt-2 text-[12.5px] ${p.hint}`} role="status">
+          Re-writing every line…
+        </p>
+      ) : null}
+      {error ? (
+        <p role="alert" className={`mt-2 text-[13px] ${t.error}`}>
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /**
- * Three questions → a complete, format-specific story. Owns the answers so a
- * re-roll never needs re-typing; the host owns the draft and photos.
+ * Studio composite: three questions → a complete, format-specific story. Owns the
+ * answers so a re-roll never needs re-typing; the host owns the draft and photos.
  */
 export const AIQuizCustomizer = memo(function AIQuizCustomizer({
   style,
-  modules,
   name,
   onName,
   photoSlot,
@@ -166,8 +398,6 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
   tone = 'dark',
 }: {
   style: GiftStyle;
-  /** Custom Hybrid's stacked layers, so the story covers each one. */
-  modules?: CustomModule[];
   name: string;
   onName: (name: string) => void;
   photoSlot: ReactNode;
@@ -188,23 +418,18 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
   const [relationship, setRelationship] = useState<Relationship | null>(null);
   const [vibe, setVibe] = useState<CraftTone | null>(null);
   const [memory, setMemory] = useState('');
-  const [question, setQuestion] = useState<string | null>(null);
   const [busy, setBusy] = useState<'generate' | Adjustment | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const answerRef = useRef<HTMLInputElement>(null);
   const prompts = useMemoryQuestions(
     phase === 'quiz' && relationship !== null && vibe !== null,
     relationship,
     vibe,
     name,
   );
-  const asked = question && prompts.questions.includes(question) ? question : null;
+  const [question, setQuestion] = useAskedQuestion(prompts);
 
   useEffect(() => () => abortRef.current?.abort(), []);
-  useEffect(() => {
-    if (!asked && prompts.questions.length) setQuestion(prompts.questions[0]);
-  }, [asked, prompts.questions]);
 
   const setPhase = onPhase;
   const setStep = useCallback(
@@ -237,7 +462,6 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
             memoryText: memory.trim(),
             question: question ?? undefined,
             format: style,
-            modules: style === 'custom' ? modules : undefined,
             adjust,
           },
           controller.signal,
@@ -251,19 +475,8 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
         if (abortRef.current === controller) setBusy(null);
       }
     },
-    [busy, memory, modules, onCrafted, question, relationship, setPhase, style, trimmedName, vibe],
+    [busy, memory, onCrafted, question, relationship, setPhase, style, trimmedName, vibe],
   );
-
-  const pickQuestion = (q: string) => {
-    setQuestion(q);
-    answerRef.current?.focus({ preventScroll: true });
-  };
-
-  const errorLine = error ? (
-    <p role="alert" className={`mt-3 text-[13px] ${t.error}`}>
-      {error}
-    </p>
-  ) : null;
 
   if (phase === 'manual') {
     return (
@@ -284,50 +497,19 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
   if (phase === 'crafted') {
     return (
       <div className="grid gap-3" aria-live="polite">
-        <p className={`rounded-2xl border px-3 py-2 text-[13px] leading-snug ${p.status}`}>
-          <Sparkles className="mr-1.5 inline h-3.5 w-3.5 align-[-2px]" aria-hidden />
-          {source === 'ai'
-            ? `Crafted for ${trimmedName}. Every line is editable below.`
-            : `Our AI writer is offline right now, so we've generated a placeholder story from your answers. Every line is editable below.`}
-        </p>
+        <CraftStatus tone={tone} source={source} name={trimmedName} />
         <div>
-          <p className={t.field}>Regenerate tone</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {ADJUSTMENTS.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => generate(a.id)}
-                disabled={busy !== null}
-                className={`inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold transition-colors disabled:opacity-50 ${p.off}`}
-              >
-                {busy === a.id ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                ) : (
-                  <span aria-hidden>{a.emoji}</span>
-                )}
-                {a.label}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                setStep(0);
-                setPhase('quiz');
-              }}
-              disabled={busy !== null}
-              className={`inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold transition-colors disabled:opacity-50 ${p.off}`}
-            >
-              <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-              Change my answers
-            </button>
-          </div>
-          {busy ? (
-            <p className={`mt-2 text-[12.5px] ${p.hint}`} role="status">
-              Re-writing every line…
-            </p>
-          ) : null}
-          {errorLine}
+          <p className={`mb-2 ${t.field}`}>Regenerate tone</p>
+          <AdjustBar
+            tone={tone}
+            busy={busy}
+            onAdjust={(a) => void generate(a)}
+            onChangeAnswers={() => {
+              setStep(0);
+              setPhase('quiz');
+            }}
+            error={error}
+          />
         </div>
       </div>
     );
@@ -336,7 +518,7 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <p className={`font-receipt text-[10.5px] uppercase tracking-[0.18em] text-[#fdba74]`}>
+        <p className="font-receipt text-[10.5px] uppercase tracking-[0.18em] text-[#fdba74]">
           <Sparkles className="mr-1 inline h-3 w-3 align-[-1px]" aria-hidden />
           AI Story Craft · {step + 1} of 3
         </p>
@@ -353,145 +535,50 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
         {QUESTIONS[step]}
       </h3>
 
-      {step === 0 ? (
-        <div className="mt-4 grid gap-5">
-          <NameInput t={t} name={name} onName={onName} />
-          <fieldset>
-            <legend className={t.field}>You are their…</legend>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {RELATIONSHIPS.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  aria-pressed={relationship === r}
-                  onClick={() => setRelationship(r)}
-                  className={`min-h-10 rounded-full border px-4 text-[14px] font-semibold transition-colors ${relationship === r ? p.on : p.off}`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <fieldset>
-            <legend className={t.field}>Pick the vibe</legend>
-            <div className="mt-2 grid gap-2">
-              {CRAFT_TONES.map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  aria-pressed={vibe === v.id}
-                  onClick={() => setVibe(v.id)}
-                  className={`flex min-h-12 items-center gap-3 rounded-2xl border px-4 text-left text-[15px] font-semibold transition-colors ${vibe === v.id ? p.on : p.off}`}
-                >
-                  <span className="text-[20px]" aria-hidden>
-                    {v.emoji}
-                  </span>
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-        </div>
-      ) : step === 1 ? (
-        <div className="mt-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className={t.field}>
-              {prompts.source === 'ai' ? '✨ AI questions' : 'Questions'} for your{' '}
-              {relationship?.toLowerCase()}
-            </p>
-            <button
-              type="button"
-              onClick={() => void prompts.refresh()}
-              disabled={prompts.loading}
-              aria-busy={prompts.loading}
-              className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${p.off}`}
-            >
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${prompts.loading ? 'animate-spin' : ''}`}
-                aria-hidden
-              />
-              ✨ Refresh Questions
-            </button>
-          </div>
-          <div
-            role="radiogroup"
-            aria-label="Pick a question to answer"
-            aria-busy={prompts.loading}
-            tabIndex={-1}
-            data-step-focus
-            className="mt-2 grid gap-2 focus:outline-none"
-          >
-            {prompts.questions.length === 0 && prompts.loading
-              ? Array.from({ length: 3 }, (_, i) => (
-                  <span
-                    key={i}
-                    aria-hidden
-                    className={`block h-12 animate-pulse rounded-2xl ${tone === 'dark' ? 'bg-white/[0.06]' : 'bg-[#f6dce7]'}`}
-                  />
-                ))
-              : prompts.questions.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    role="radio"
-                    aria-checked={asked === q}
-                    onClick={() => pickQuestion(q)}
-                    className={`min-h-12 rounded-2xl border px-4 py-2.5 text-left text-[14px] font-medium leading-snug transition-[colors,opacity] ${asked === q ? p.on : p.off} ${prompts.loading ? 'opacity-50' : ''}`}
-                  >
-                    {q}
-                  </button>
-                ))}
-          </div>
-          {prompts.error ? (
-            <p role="alert" className={`mt-2 text-[12.5px] ${t.error}`}>
-              {prompts.error}
-            </p>
-          ) : null}
-          <label className="mt-4 grid gap-1.5">
-            <span className={t.field}>Your answer</span>
-            <input
-              ref={answerRef}
-              value={memory}
-              onChange={(e) => setMemory(e.target.value.slice(0, CRAFT_LIMITS.memory))}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && step2Done) setStep(2);
-              }}
-              aria-label={asked ? `Your answer to: ${asked}` : undefined}
-              placeholder="One line is enough: a name, a place, what they always say"
-              autoComplete="off"
-              enterKeyHint="next"
-              className={t.input}
+      <div className="mt-4">
+        {step === 0 ? (
+          <VibeFields
+            tone={tone}
+            name={name}
+            onName={onName}
+            relationship={relationship}
+            onRelationship={setRelationship}
+            vibe={vibe}
+            onVibe={setVibe}
+          />
+        ) : step === 1 ? (
+          <MemorySpark
+            tone={tone}
+            relationship={relationship}
+            prompts={prompts}
+            question={question}
+            onQuestion={setQuestion}
+            answer={memory}
+            onAnswer={setMemory}
+            onSubmit={() => setStep(2)}
+          />
+        ) : (
+          <div className="grid gap-4">
+            {photoSlot}
+            <GenerateButton
+              busy={busy === 'generate'}
+              disabled={!photosReady || busy !== null}
+              onClick={() => void generate()}
             />
-          </label>
-        </div>
-      ) : (
-        <div className="mt-4 grid gap-4">
-          {photoSlot}
-          <button
-            type="button"
-            onClick={() => generate()}
-            disabled={!photosReady || busy !== null}
-            aria-busy={busy === 'generate'}
-            className="flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#ec4899] via-[#f472b6] to-[#fb923c] px-5 font-serif text-[17px] font-semibold text-white shadow-[0_10px_30px_rgba(236,72,153,.35)] transition-transform active:scale-[0.98] disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
-          >
-            {busy === 'generate' ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                Crafting your custom story...
-              </>
-            ) : (
-              '✨ Magic Generate XSO'
-            )}
-          </button>
-          {!photosReady && busy === null ? (
-            <p className={`-mt-2 text-center text-[12.5px] ${p.hint}`}>
-              Add at least one photo to generate.
-            </p>
-          ) : null}
-        </div>
-      )}
+            {!photosReady && busy === null ? (
+              <p className={`-mt-2 text-center text-[12.5px] ${p.hint}`}>
+                Add at least one photo to generate.
+              </p>
+            ) : null}
+          </div>
+        )}
+      </div>
 
-      {errorLine}
+      {error ? (
+        <p role="alert" className={`mt-3 text-[13px] ${t.error}`}>
+          {error}
+        </p>
+      ) : null}
 
       <div className="mt-5 flex items-center justify-between gap-3">
         {step > 0 ? (
@@ -530,6 +617,60 @@ export const AIQuizCustomizer = memo(function AIQuizCustomizer({
     </div>
   );
 });
+
+/** Says whether Gemini wrote it or the offline template stood in. */
+export function CraftStatus({
+  tone = 'dark',
+  source,
+  name,
+}: {
+  tone?: ToneName;
+  source: CraftSource | null;
+  name: string;
+}) {
+  return (
+    <p className={`rounded-2xl border px-3 py-2 text-[13px] leading-snug ${PILL[tone].status}`}>
+      <Sparkles className="mr-1.5 inline h-3.5 w-3.5 align-[-2px]" aria-hidden />
+      {source === 'ai'
+        ? `Crafted for ${name}. Tweak it below, or edit any line.`
+        : "Our AI writer is offline right now, so we've generated a placeholder story from your answers. Every line is editable below."}
+    </p>
+  );
+}
+
+/** The gradient call to action that turns answers into a story. */
+export function GenerateButton({
+  busy,
+  disabled,
+  onClick,
+  label = '✨ Magic Generate XSO',
+  className = '',
+}: {
+  busy: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-busy={busy}
+      className={`flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#ec4899] via-[#f472b6] to-[#fb923c] px-5 font-serif text-[17px] font-semibold text-white shadow-[0_10px_30px_rgba(236,72,153,.35)] transition-transform active:scale-[0.98] disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] ${className}`}
+    >
+      {busy ? (
+        <>
+          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+          Crafting your keepsake...
+        </>
+      ) : (
+        label
+      )}
+    </button>
+  );
+}
 
 function NameInput({
   t,

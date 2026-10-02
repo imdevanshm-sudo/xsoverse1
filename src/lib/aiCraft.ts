@@ -1,7 +1,8 @@
 import { newId } from '@/lib/constants';
 import { AUDIT_KEYS, FORMAT_LIMITS, halfStar } from '@/lib/formats';
 import type { PackContent } from '@/store/useXsoStore';
-import type { AuditMetrics, CustomModule, GiftStyle } from '@/types/xso';
+import type { CardId } from '@/lib/formatCards';
+import type { AuditMetrics, GiftStyle } from '@/types/xso';
 
 export const RELATIONSHIPS = ['Best Friend', 'Partner', 'Sibling', 'Situationship'] as const;
 export type Relationship = (typeof RELATIONSHIPS)[number];
@@ -14,8 +15,8 @@ export const CRAFT_TONES = [
 export type CraftTone = (typeof CRAFT_TONES)[number]['id'];
 
 export const ADJUSTMENTS = [
-  { id: 'familiar', label: 'Make it more familiar', emoji: '🫶' },
   { id: 'sweeter', label: 'Make it sweeter', emoji: '🥹' },
+  { id: 'funnier', label: 'Make it funnier', emoji: '😂' },
 ] as const;
 export type Adjustment = (typeof ADJUSTMENTS)[number]['id'];
 
@@ -32,8 +33,8 @@ export interface CraftInput {
   tone: CraftTone;
   memoryText: string;
   format: GiftStyle;
-  /** Custom Hybrid only: the stacked layers, so each gets its own copy. */
-  modules?: CustomModule[];
+  /** The cards the sender kept, so the copy lands where it will be seen. */
+  cards?: CardId[];
   /** The AI question the memory answers, if one was picked. */
   question?: string;
   adjust?: Adjustment;

@@ -10,14 +10,19 @@ import {
   useTransform,
   type MotionValue,
 } from 'framer-motion';
-import type { AuditMetrics, XsoData } from '@/types/xso';
+import { LOOP_CARDS, type AuditMetrics, type XsoData } from '@/types/xso';
 import { auditLabel } from '@/lib/formats';
+import { stackCards } from '@/lib/formatCards';
 import { playFoley } from '@/lib/foley';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { SOFT_SPRING_VALUE } from '@/lib/motion';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { overallStars } from '@/components/xso/Side2Audit';
-import { getArtifacts, playMechanicalCue } from '@/components/xso/viewers/shared';
+import {
+  getArtifacts,
+  playMechanicalCue,
+  type Artifact,
+} from '@/components/xso/viewers/shared';
 
 const RIBBON_HEIGHT = {
   hero: 'memory-deck',
@@ -93,19 +98,44 @@ function foldRibbon(travel: number, crease: number, open: number, count: number,
   };
 }
 
-export const AccordionRibbon = memo(function AccordionRibbon({
+interface RibbonProps {
+  data: XsoData;
+  /** `fill` stretches to its container, e.g. inside the gift phone frame. */
+  size?: keyof typeof RIBBON_HEIGHT;
+  /** Index into `LOOP_CARDS`, so editors can bring a panel forward. */
+  focusIndex?: number;
+  onChange?: (index: number, label: string) => void;
+}
+
+export const AccordionRibbon = memo(function AccordionRibbon(props: RibbonProps) {
+  const { data, focusIndex } = props;
+  const cards = stackCards(data, 'accordion');
+  const key = cards.join('|');
+  const artifacts = useMemo(
+    () => getArtifacts(data, key.split('|') as Artifact['id'][]),
+    [data, key],
+  );
+  const focused =
+    focusIndex === undefined
+      ? undefined
+      : artifacts.findIndex((a) => a.id === LOOP_CARDS[focusIndex]);
+  return (
+    <Ribbon
+      key={key}
+      {...props}
+      artifacts={artifacts}
+      focusIndex={focused === undefined || focused < 0 ? undefined : focused}
+    />
+  );
+});
+
+function Ribbon({
   data,
   onChange,
   size = 'hero',
   focusIndex,
-}: {
-  data: XsoData;
-  /** `fill` stretches to its container, e.g. inside the gift phone frame. */
-  size?: keyof typeof RIBBON_HEIGHT;
-  focusIndex?: number;
-  onChange?: (index: number, label: string) => void;
-}) {
-  const artifacts = useMemo(() => getArtifacts(data), [data]);
+  artifacts,
+}: RibbonProps & { artifacts: Artifact[] }) {
   const count = artifacts.length;
   const last = count - 1;
   const reduce = Boolean(useReducedMotion());
@@ -339,7 +369,7 @@ export const AccordionRibbon = memo(function AccordionRibbon({
       </p>
     </section>
   );
-});
+}
 
 function Aura({ open }: { open: MotionValue<number> }) {
   const opacity = useTransform(open, [0, 1], [0.45, 1]);

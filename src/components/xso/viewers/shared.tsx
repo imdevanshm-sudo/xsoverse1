@@ -45,8 +45,9 @@ export interface Artifact {
   content: ReactNode;
 }
 
-export function getArtifacts(data: XsoData): Artifact[] {
-  return [
+/** The four keepsakes, optionally limited to the cards the sender kept. */
+export function getArtifacts(data: XsoData, cards?: readonly Artifact['id'][]): Artifact[] {
+  const all: Artifact[] = [
     {
       id: 'receipt',
       label: 'Receipt',
@@ -76,6 +77,7 @@ export function getArtifacts(data: XsoData): Artifact[] {
       content: <Side4BirthdayCard data={data} />,
     },
   ];
+  return cards ? all.filter((a) => cards.includes(a.id)) : all;
 }
 
 export function rotateFrom<T>(items: T[], start: number): T[] {

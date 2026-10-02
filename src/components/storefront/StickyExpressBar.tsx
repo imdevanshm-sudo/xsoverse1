@@ -1,9 +1,9 @@
 'use client';
 
 import { memo, useCallback } from 'react';
-import { Zap } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
-import { useExpressOrder } from '@/store/useExpressOrder';
+import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { CARTRIDGE_PRICE, displayTitle, getCartridge } from '@/lib/cartridges';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { socialProofLine } from '@/lib/socialProof';
@@ -11,8 +11,11 @@ import { socialProofLine } from '@/lib/socialProof';
 /** Mobile-only buy bar pinned to the bottom of the store. */
 export const StickyExpressBar = memo(function StickyExpressBar() {
   const giftStyle = useXsoStore((s) => s.giftStyle);
-  const openWith = useExpressOrder((s) => s.openWith);
-  const open = useCallback(() => openWith({ style: giftStyle }), [openWith, giftStyle]);
+  const openCustomizer = useCustomizerModal((s) => s.open);
+  const open = useCallback(
+    () => openCustomizer({ format: giftStyle }),
+    [openCustomizer, giftStyle],
+  );
   const cart = getCartridge(giftStyle);
 
   return (
@@ -37,8 +40,8 @@ export const StickyExpressBar = memo(function StickyExpressBar() {
           onClick={open}
           className="matte-cta flex min-h-[48px] shrink-0 touch-manipulation items-center gap-2 rounded-full px-5 font-serif text-[16px] font-semibold"
         >
-          <Zap className="h-4 w-4" aria-hidden />
-          Express Buy
+          <Sparkles className="h-4 w-4" aria-hidden />
+          Create Your XSO
         </button>
       </div>
     </div>
