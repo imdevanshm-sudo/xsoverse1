@@ -1445,7 +1445,7 @@ html.is-landscape .xso-dock {
   flex-direction: column;
   overflow: hidden;
   border-radius: 14px;
-  background: #fff9f5;
+  background: #fffaf8;
   color: var(--paper-ink);
   border: 1px solid rgba(236, 72, 153, 0.12);
   box-shadow:
@@ -1454,6 +1454,19 @@ html.is-landscape .xso-dock {
     0 0 44px -16px rgba(251, 146, 60, 0.4);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+}
+
+/* Pre-rendered so hover only fades opacity instead of repainting a box-shadow. */
+.rewind-card__lift-shadow {
+  position: absolute;
+  inset: 4px 2px 0;
+  border-radius: 16px;
+  pointer-events: none;
+  will-change: opacity;
+  box-shadow:
+    0 30px 60px -18px rgba(45, 10, 30, 0.6),
+    0 14px 50px -12px rgba(236, 72, 153, 0.28),
+    0 0 70px -16px rgba(251, 146, 60, 0.3);
 }
 
 .rewind-card__body {

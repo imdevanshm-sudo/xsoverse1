@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
+  AnimatePresence,
   motion,
   useDragControls,
   useInView,
   useMotionValue,
   useReducedMotion,
   useTransform,
+  type Variants,
 } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
@@ -20,8 +22,10 @@ import {
   type Artifact,
 } from '@/components/xso/viewers/shared';
 
-const SWIPE_DISTANCE = 70;
-const SWIPE_VELOCITY = 500;
+/** Pointer travel needed to let go of a memory; the card itself only gives ~⅓ of that. */
+const PULL_DISTANCE = 90;
+const PULL_VELOCITY = 550;
+const PULL_ELASTIC = 0.35;
 const INTERACTIVE = 'button, a, input, audio, canvas, [role="slider"]';
 
 /**
@@ -34,8 +38,7 @@ const DEPTH = [
   { y: -34, scale: 0.86, opacity: 0.62, blur: 2.2 },
   { y: -48, scale: 0.8, opacity: 0.45, blur: 3.2 },
 ];
-/** Front card tips away from the viewer before it slips behind the pile. */
-const LIFT = { y: -66, scale: 1.03, opacity: 1, blur: 0, rotateX: 16 };
+const BACK = DEPTH[DEPTH.length - 1];
 
 const DECK_HEIGHT = {
   hero: 'memory-deck',
@@ -43,9 +46,33 @@ const DECK_HEIGHT = {
   fill: 'min-h-0 flex-1',
 };
 
-/** Low stiffness, moderate damping: a photo settling onto a bed, not a UI snap. */
-const SETTLE = { type: 'spring' as const, stiffness: 78, damping: 15, mass: 1.15 };
-const LIFT_TWEEN = { duration: 0.38, ease: [0.33, 0, 0.2, 1] as const };
+const SPRING = { type: 'spring' as const, stiffness: 200, damping: 20 };
+const INSTANT = { duration: 0 };
+
+type Direction = 1 | -1;
+
+/** The memory in focus drifts up and off to one side as it lets go. */
+const SHEET: Variants = {
+  exit: (direction: Direction) => ({
+    x: direction * 170,
+    y: -80,
+    rotate: direction * 11,
+    scale: 0.97,
+    opacity: 0,
+    filter: 'blur(0px)',
+    zIndex: 30,
+    pointerEvents: 'none',
+    transition: { ...SPRING, opacity: { duration: 0.42, ease: 'easeOut' } },
+  }),
+};
+
+interface Pile {
+  order: number[];
+  /** Bumped when a sheet is sent to the back so it leaves and re-enters as a new presence. */
+  passes: number[];
+  turn: number;
+  direction: Direction;
+}
 
 export function RewindStack({
   data,
@@ -69,48 +96,47 @@ export function RewindStack({
     }),
     [artifacts, data],
   );
-  /** Stable, human-placed tilt per sheet (−2° … 2°). */
+  /** A slightly messy pile: stable, human-placed tilt per sheet (−3° … 3°). */
   const tilts = useMemo(
-    () => artifacts.map((_, i) => seededOffset(data.id || 'xso', i, 2)),
+    () => artifacts.map((_, i) => seededOffset(data.id || 'xso', i, 3)),
     [artifacts, data.id],
   );
-  const [order, setOrder] = useState(() => artifacts.map((_, i) => i));
-  const [lifting, setLifting] = useState(false);
+  const [pile, setPile] = useState<Pile>(() => ({
+    order: artifacts.map((_, i) => i),
+    passes: artifacts.map(() => 0),
+    turn: 0,
+    direction: -1,
+  }));
   const reduce = Boolean(useReducedMotion());
   const stage = useRef<HTMLElement>(null);
   const visible = useInView(stage, { margin: '120px' });
 
   useEffect(() => {
     if (focusIndex === undefined) return;
-    setLifting(false);
-    setOrder((current) => {
-      const at = current.indexOf(focusIndex);
-      return at <= 0 ? current : [...current.slice(at), ...current.slice(0, at)];
+    setPile((current) => {
+      const at = current.order.indexOf(focusIndex);
+      if (at <= 0) return current;
+      return {
+        ...current,
+        order: [...current.order.slice(at), ...current.order.slice(0, at)],
+      };
     });
   }, [focusIndex]);
 
+  const { order, passes, turn, direction } = pile;
   const front = order[0];
   const next = order[1];
 
-  /** Once the front memory has tipped back, tuck it under the pile and let the rest settle. */
-  useEffect(() => {
-    if (!lifting) return;
-    const timer = window.setTimeout(
-      () => {
-        if (!reduce) playFoley('land', 0.7);
-        setLifting(false);
-        setOrder((current) => [...current.slice(1), current[0]]);
-        onChange?.(next, artifacts[next].label);
-      },
-      reduce ? 0 : LIFT_TWEEN.duration * 1000,
-    );
-    return () => window.clearTimeout(timer);
-  }, [lifting, reduce, next, artifacts, onChange]);
-
-  const rewind = () => {
-    if (lifting) return;
+  const rewind = (towards: Direction = -1) => {
     playMechanicalCue('click');
-    setLifting(true);
+    if (!reduce) playFoley('land', 0.55);
+    setPile((current) => {
+      const [top, ...rest] = current.order;
+      const bumped = [...current.passes];
+      bumped[top] += 1;
+      return { order: [...rest, top], passes: bumped, turn: current.turn + 1, direction: towards };
+    });
+    onChange?.(next, artifacts[next].label);
   };
 
   return (
@@ -120,47 +146,54 @@ export function RewindStack({
       aria-label="Rewind stack"
       aria-roledescription="card stack"
     >
-      <Backlight pulsing={!reduce && visible} />
+      <Backlight pulsing={!reduce && visible} turn={reduce ? 0 : turn} />
 
-      <div className={`relative w-full ${DECK_HEIGHT[size]}`} style={{ perspective: 1100 }}>
-        {artifacts.map((artifact, index) => {
-          const depth = order.indexOf(index);
-          const isFront = depth === 0;
-          const isLifting = isFront && lifting;
-          /** The rest swell forward while the front memory is pulled back. */
-          const settled = lifting && !isFront ? depth - 1 : depth;
-          const pose = isLifting && !reduce ? LIFT : DEPTH[settled];
-          return (
-            <motion.div
-              key={artifact.id}
-              className={`absolute inset-x-1 bottom-7 top-14 ${isFront && !lifting ? '' : 'pointer-events-none'}`}
-              style={{
-                zIndex: isLifting ? 20 : 10 - settled,
-                transformOrigin: '50% 0%',
-                willChange: 'transform, opacity',
-              }}
-              initial={false}
-              animate={{
-                y: pose.y,
-                scale: pose.scale,
-                opacity: pose.opacity,
-                rotate: tilts[index],
-                rotateX: isLifting ? LIFT.rotateX : 0,
-                filter: reduce ? 'blur(0px)' : `blur(${pose.blur}px)`,
-              }}
-              transition={reduce ? { duration: 0 } : isLifting ? LIFT_TWEEN : SETTLE}
-            >
-              <RewindCard
-                artifact={artifact}
-                face={faces[artifact.id]}
-                number={index + 1}
-                active={isFront && !lifting}
-                reduce={reduce}
-                onRewind={rewind}
-              />
-            </motion.div>
-          );
-        })}
+      <div className={`relative w-full ${DECK_HEIGHT[size]}`}>
+        <AnimatePresence initial={false} custom={direction}>
+          {order.map((index, depth) => {
+            const artifact = artifacts[index];
+            const pose = DEPTH[depth];
+            const isFront = depth === 0;
+            return (
+              <motion.div
+                key={`${artifact.id}:${passes[index]}`}
+                custom={direction}
+                variants={SHEET}
+                className={`absolute inset-x-1 bottom-7 top-14 ${isFront ? '' : 'pointer-events-none'}`}
+                style={{
+                  zIndex: 10 - depth,
+                  transformOrigin: '50% 0%',
+                  willChange: 'transform, opacity',
+                }}
+                initial={{
+                  y: BACK.y - 14,
+                  scale: BACK.scale - 0.04,
+                  opacity: 0,
+                  rotate: tilts[index],
+                  filter: `blur(${BACK.blur + 2}px)`,
+                }}
+                animate={{
+                  y: pose.y,
+                  scale: pose.scale,
+                  opacity: pose.opacity,
+                  rotate: isFront ? tilts[index] * 0.25 : tilts[index],
+                  filter: reduce ? 'blur(0px)' : `blur(${pose.blur}px)`,
+                }}
+                exit={reduce ? { opacity: 0, transition: INSTANT } : 'exit'}
+                transition={reduce ? INSTANT : SPRING}
+              >
+                <RewindCard
+                  artifact={artifact}
+                  face={faces[artifact.id]}
+                  number={index + 1}
+                  active={isFront}
+                  reduce={reduce}
+                  onRewind={rewind}
+                />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
 
       <div className="mt-4 flex w-full items-center justify-between gap-4">
@@ -176,7 +209,7 @@ export function RewindStack({
         </div>
         <motion.button
           type="button"
-          onClick={rewind}
+          onClick={() => rewind()}
           whileTap={reduce ? undefined : { scale: 0.97, y: 1 }}
           transition={{ type: 'spring', stiffness: 500, damping: 30 }}
           className="paper-button inline-flex touch-manipulation items-center gap-2"
@@ -195,22 +228,25 @@ export function RewindStack({
   );
 }
 
-/** Sunset backlight that breathes in a slow, resting two-beat rhythm. */
-function Backlight({ pulsing }: { pulsing: boolean }) {
+/**
+ * Room light falling on the desk: a slow resting heartbeat in the CTA's
+ * pinks and ambers, with a brief warm swell each time a memory changes hands.
+ */
+function Backlight({ pulsing, turn }: { pulsing: boolean; turn: number }) {
   return (
     <div aria-hidden className="pointer-events-none absolute -inset-x-8 -top-4 bottom-6 -z-10">
       <div
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 55% 50% at 50% 42%, rgba(251,207,232,0.20), transparent 70%)',
+            'radial-gradient(ellipse 55% 50% at 50% 42%, rgba(251,207,232,0.18), transparent 70%)',
         }}
       />
       <motion.div
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 48% 42% at 50% 38%, rgba(249,168,212,0.42), transparent 68%), radial-gradient(ellipse 40% 34% at 36% 64%, rgba(253,186,116,0.32), transparent 70%), radial-gradient(ellipse 36% 30% at 66% 60%, rgba(251,191,36,0.2), transparent 70%)',
+            'radial-gradient(ellipse 48% 42% at 50% 38%, rgba(236,72,153,0.30), transparent 68%), radial-gradient(ellipse 40% 34% at 34% 64%, rgba(251,146,60,0.26), transparent 70%), radial-gradient(ellipse 36% 30% at 68% 60%, rgba(244,63,94,0.18), transparent 70%)',
           willChange: 'transform, opacity',
         }}
         initial={false}
@@ -230,9 +266,33 @@ function Backlight({ pulsing }: { pulsing: boolean }) {
             : { duration: 0.6 }
         }
       />
+      {turn > 0 ? (
+        <motion.div
+          key={turn}
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 44% 38% at 50% 40%, rgba(251,146,60,0.30), rgba(236,72,153,0.16) 45%, transparent 72%)',
+            willChange: 'transform, opacity',
+          }}
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: [0, 1, 0], scale: [0.92, 1.06, 1.12] }}
+          transition={{ duration: 1.2, times: [0, 0.3, 1], ease: 'easeOut' }}
+        />
+      ) : null}
     </div>
   );
 }
+
+/** Hover lift: a touch closer, with a softer, wider shadow pooling underneath. */
+const LIFTABLE: Variants = {
+  rest: { scale: 1 },
+  lift: { scale: 1.02 },
+};
+const LIFT_SHADOW: Variants = {
+  rest: { opacity: 0 },
+  lift: { opacity: 1 },
+};
 
 function RewindCard({
   artifact,
@@ -247,14 +307,15 @@ function RewindCard({
   number: number;
   active: boolean;
   reduce: boolean;
-  onRewind: () => void;
+  onRewind: (towards?: Direction) => void;
 }) {
   /** The click that trails a swipe must not rewind a second time. */
   const dragEndedAt = useRef(0);
   const dragControls = useDragControls();
   const dragX = useMotionValue(0);
-  const dragRotate = useTransform(dragX, [-180, 0, 180], [-6, 0, 6]);
+  const dragRotate = useTransform(dragX, [-60, 0, 60], [-4, 0, 4]);
   const sheet = useRef<HTMLDivElement>(null);
+  const tactile = active && !reduce;
 
   /** Memories further back stay out of reach for taps, tabbing and screen readers. */
   useEffect(() => {
@@ -264,27 +325,29 @@ function RewindCard({
   return (
     <motion.div
       ref={sheet}
-      className="relative h-full w-full"
+      className="relative h-full w-full touch-pan-y"
       style={{ x: dragX, rotate: dragRotate }}
-      drag={active && !reduce ? 'x' : false}
+      variants={LIFTABLE}
+      initial="rest"
+      animate="rest"
+      whileHover={tactile ? 'lift' : undefined}
+      transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+      drag={tactile ? 'x' : false}
       dragControls={dragControls}
       dragListener={false}
       onPointerDown={(event) => {
-        if (!active || reduce) return;
+        if (!tactile) return;
         if ((event.target as Element).closest(INTERACTIVE)) return;
         dragControls.start(event);
       }}
       dragSnapToOrigin
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.5}
-      dragTransition={{ bounceStiffness: 160, bounceDamping: 18 }}
+      dragElastic={PULL_ELASTIC}
+      dragTransition={{ bounceStiffness: 200, bounceDamping: 20 }}
       onDragEnd={(_, info) => {
         dragEndedAt.current = performance.now();
-        if (
-          Math.abs(info.offset.x) > SWIPE_DISTANCE ||
-          Math.abs(info.velocity.x) > SWIPE_VELOCITY
-        ) {
-          onRewind();
+        if (Math.abs(info.offset.x) > PULL_DISTANCE || Math.abs(info.velocity.x) > PULL_VELOCITY) {
+          onRewind(info.offset.x > 0 ? 1 : -1);
         }
       }}
       onClick={(event) => {
@@ -293,6 +356,12 @@ function RewindCard({
         onRewind();
       }}
     >
+      <motion.span
+        aria-hidden
+        className="rewind-card__lift-shadow"
+        variants={LIFT_SHADOW}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+      />
       <div className={`rewind-card ${active ? 'cursor-pointer' : ''}`}>
         <div className="rewind-card__body">{face}</div>
         <div className="deck-card__footer">
