@@ -29,6 +29,8 @@ export interface QuestionsResponse {
 
 export interface CraftInput {
   recipientName: string;
+  /** Who the gift is from; blank when they'd rather sign anonymously. */
+  senderName?: string;
   relationship: Relationship;
   tone: CraftTone;
   memoryText: string;

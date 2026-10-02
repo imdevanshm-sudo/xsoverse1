@@ -1,5 +1,7 @@
 /** Fields that hold media or ids, never prose. */
 const SKIP = new Set(['id', 'photos', 'image', 'voiceNoteUrl', 'voiceUrl', 'spotifyUrl']);
+/** Signatures that are also everyday words; renaming them would rewrite every "me" in the copy. */
+const COMMON = new Set(['me', 'you', 'us', 'i', 'we']);
 
 function escape(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -37,7 +39,8 @@ export function personalize<T extends { customerName: string; billerName: string
     [draft.billerName, names.sender],
   ];
   for (const [from, to] of pairs) {
-    if (from.trim() && to.trim() && from.trim().toLowerCase() !== to.trim().toLowerCase()) {
+    const old = from.trim().toLowerCase();
+    if (old && to.trim() && !COMMON.has(old) && old !== to.trim().toLowerCase()) {
       next = walk(next, from.trim(), to.trim());
     }
   }

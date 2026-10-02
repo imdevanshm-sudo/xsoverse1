@@ -37,6 +37,11 @@ import { CardChecklist, FormatStep } from '@/components/storefront/customizer/st
 import { FormatThumb } from '@/components/storefront/customizer/FormatThumb';
 import { MAX_PHOTOS, PhotoPicker } from '@/components/storefront/customizer/PhotoPicker';
 import {
+  CardStack,
+  DraftReceipt,
+  FormatShowcase,
+} from '@/components/storefront/customizer/LivePreview';
+import {
   fromGiftStyle,
   toGiftStyle,
   type OrderFormat,
@@ -102,6 +107,7 @@ export function XSOCustomizerModal() {
     () => useCustomizerModal.getState().theme ?? (useXsoStore.getState().themeId as ThemeId),
   );
   const [draft, setDraft] = useState<Draft>(() => seedDraft(theme));
+  const [draftId] = useState(() => useXsoStore.getState().id);
   const [config, setConfig] = useState<XSOOrderConfig>(() => {
     const style = useCustomizerModal.getState().format ?? useXsoStore.getState().giftStyle;
     return {
@@ -120,6 +126,7 @@ export function XSOCustomizerModal() {
   const [crafting, setCrafting] = useState<'generate' | Adjustment | null>(null);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adjusted, setAdjusted] = useState<Adjustment | null>(null);
   const [focusCard, setFocusCard] = useState<number | undefined>(undefined);
   const busy = paying || crafting !== null;
 
@@ -287,6 +294,7 @@ export function XSOCustomizerModal() {
         const result = await requestStory(
           {
             recipientName: name,
+            senderName: vibe.senderName.trim() || undefined,
             relationship: vibe.relationship,
             tone: vibe.tone,
             memoryText: vibe.answer.trim(),
@@ -299,6 +307,7 @@ export function XSOCustomizerModal() {
         );
         setDraft((d) => personalize({ ...d, ...storyToPatch(result.story, d) }, names));
         setCrafted(result.source);
+        setAdjusted(adjust ?? null);
         craftedFrom.current = craftKey;
         if (!adjust) setStep(DETAILS);
       } catch (err) {
@@ -338,48 +347,56 @@ export function XSOCustomizerModal() {
     () => ({ ...draft, ...cardsPatch(style, cards, draft) }),
     [cards, draft, style],
   );
-  /** Mirrors `commit`: the sender's photos first, the pack's placeholders after them. */
-  const previewData = useMemo<XsoData>(
-    () => ({
-      ...withCards,
-      id: 'customizer-preview',
-      giftStyle: style,
-      customerName: name || withCards.customerName,
-      photos:
-        scrapbook && photos.length ? photos : [...photos, ...withCards.photos.slice(photos.length)],
-    }),
-    [name, photos, scrapbook, style, withCards],
+  /**
+   * The order exactly as it will be paid for and delivered: every preview renders it and
+   * checkout sends it. Names typed in step 3 replace the pack's placeholders as they're typed.
+   */
+  const order = useMemo<XsoData>(
+    () =>
+      personalize(
+        {
+          ...withCards,
+          id: draftId,
+          giftStyle: style,
+          photos:
+            scrapbook && photos.length
+              ? photos
+              : [...photos, ...withCards.photos.slice(photos.length)],
+        },
+        { recipient: name, sender: vibe.senderName.trim() },
+      ),
+    [draftId, name, photos, scrapbook, style, vibe.senderName, withCards],
   );
 
-  /** Writes the order into the gift draft (theme first, since it resets content). */
+  /** Keeps the gift draft in sync with the order (theme first, since it resets content). */
   const commit = useCallback(() => {
     const store = useXsoStore.getState();
     if (store.themeId !== theme) store.applyTheme(theme);
-    useXsoStore.setState({
-      ...withCards,
-      giftStyle: style,
-      ...(name ? { customerName: name } : {}),
-    });
-    if (scrapbook) {
-      if (photos.length) useXsoStore.setState({ photos });
-    } else {
-      const { setPhotoAt } = useXsoStore.getState();
-      photos.forEach((photo, i) => setPhotoAt(i, photo));
-    }
-  }, [name, photos, scrapbook, style, theme, withCards]);
+    const { id: _id, ...fields } = order;
+    useXsoStore.setState(fields);
+  }, [order, theme]);
+
+  /** Coming back from the payment page via the back button restores a live page, not a spinner. */
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setPaying(false);
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
 
   const checkout = useCallback(async () => {
     if (busy) return;
     setPaying(true);
     setError(null);
-    commit();
     try {
-      await startCheckout(style);
+      commit();
+      await startCheckout(style, order);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Checkout failed');
+      setError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
       setPaying(false);
     }
-  }, [busy, commit, style]);
+  }, [busy, commit, order, style]);
 
   const pack = getTheme(theme) ?? THEMES[0];
   const canNext = step === 0 || step === 1;
@@ -414,7 +431,7 @@ export function XSOCustomizerModal() {
         initial={reduce ? false : { y: 48, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-        className="relative flex max-h-[90vh] min-h-[min(640px,85vh)] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#180e15] text-[#fdf2f8] shadow-[0_-12px_40px_rgba(0,0,0,.5)] supports-[height:100svh]:max-h-[90svh] supports-[height:100svh]:min-h-[min(640px,85svh)] md:min-h-0 md:max-w-lg md:rounded-3xl"
+        className="relative flex max-h-[90vh] min-h-[min(640px,85vh)] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#180e15] text-[#fdf2f8] shadow-[0_-12px_40px_rgba(0,0,0,.5)] supports-[height:100svh]:max-h-[90svh] supports-[height:100svh]:min-h-[min(640px,85svh)] md:min-h-[min(680px,90vh)] md:max-w-4xl md:rounded-3xl"
       >
         <header className="flex items-center gap-3 border-b border-white/10 px-5 pb-3 pt-4">
           {step > 0 ? (
@@ -465,97 +482,122 @@ export function XSOCustomizerModal() {
           ref={bodyRef}
           className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-4 ${step === LAST ? 'pb-32' : 'pb-6'}`}
         >
-          {step === 0 ? <FormatStep format={config.format} onFormat={pickFormat} /> : null}
+          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,380px)] md:items-start md:gap-8">
+            <aside
+              aria-label="Live preview"
+              className={`mx-auto w-full md:sticky md:top-0 md:order-2 md:max-w-none ${
+                step === 0 ? 'max-w-[250px]' : step < DETAILS ? 'max-w-[300px]' : 'max-w-[380px]'
+              }`}
+            >
+              {step === 0 ? (
+                <FormatShowcase data={order} style={style} />
+              ) : step === 1 ? (
+                <CardStack data={order} style={style} cards={cards} />
+              ) : step === 2 ? (
+                <DraftReceipt
+                  data={order}
+                  recipient={name}
+                  sender={vibe.senderName.trim()}
+                  relationship={vibe.relationship}
+                  tone={vibe.tone}
+                />
+              ) : (
+                <FormatThumb data={order} style={style} focus={focusCard} fit />
+              )}
+            </aside>
 
-          {step === 1 ? (
-            <div className="grid gap-5">
-              <FormatThumb data={previewData} style={style} focus={focusCard} />
-              <CardChecklist format={config.format} cards={cards} onCards={setCards} />
-            </div>
-          ) : null}
+            <div className="min-w-0">
+              {step === 0 ? <FormatStep format={config.format} onFormat={pickFormat} /> : null}
 
-          {step === 2 ? (
-            <div className="grid gap-6">
-              <VibeFields
-                name={vibe.recipientName}
-                onName={(recipientName) => setVibe({ recipientName })}
-                senderName={vibe.senderName}
-                onSenderName={(senderName) => setVibe({ senderName })}
-                relationship={vibe.relationship}
-                onRelationship={(relationship: Relationship) => setVibe({ relationship })}
-                vibe={vibe.tone}
-                onVibe={(tone: CraftTone) => setVibe({ tone })}
-              />
-              {vibe.relationship && vibe.tone ? (
-                <div className="border-t border-white/10 pt-5">
-                  <h3 className="mb-3 font-serif text-[1.1rem] font-semibold leading-tight">
-                    ✨ Memory Spark
-                  </h3>
-                  <MemorySpark
+              {step === 1 ? (
+                <CardChecklist format={config.format} cards={cards} onCards={setCards} />
+              ) : null}
+
+              {step === 2 ? (
+                <div className="grid gap-6">
+                  <VibeFields
+                    name={vibe.recipientName}
+                    onName={(recipientName) => setVibe({ recipientName })}
+                    senderName={vibe.senderName}
+                    onSenderName={(senderName) => setVibe({ senderName })}
                     relationship={vibe.relationship}
-                    prompts={prompts}
-                    question={question}
-                    onQuestion={(q) => setVibe({ question: q })}
-                    answer={vibe.answer}
-                    onAnswer={(answer) => setVibe({ answer })}
-                    onSubmit={() => vibeDone && !busy && writeStory()}
+                    onRelationship={(relationship: Relationship) => setVibe({ relationship })}
+                    vibe={vibe.tone}
+                    onVibe={(tone: CraftTone) => setVibe({ tone })}
+                  />
+                  {vibe.relationship && vibe.tone ? (
+                    <div className="border-t border-white/10 pt-5">
+                      <h3 className="mb-3 font-serif text-[1.1rem] font-semibold leading-tight">
+                        ✨ Memory Spark
+                      </h3>
+                      <MemorySpark
+                        relationship={vibe.relationship}
+                        prompts={prompts}
+                        question={question}
+                        onQuestion={(q) => setVibe({ question: q })}
+                        answer={vibe.answer}
+                        onAnswer={(answer) => setVibe({ answer })}
+                        onSubmit={() => vibeDone && !busy && writeStory()}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-[13px] leading-snug text-[#9a6a7e]">
+                      Pick who they are to you and a vibe, and we&apos;ll ask three questions to
+                      spark the story.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
+              {step === DETAILS ? (
+                <div className="grid gap-5">
+                  {crafted ? <CraftStatus source={crafted} name={name} /> : null}
+                  <p className="text-[13px] leading-snug text-[#c99aae]">
+                    Open any card to change its words. Photos are optional: without them we use the
+                    placeholders from {pack.title}.
+                  </p>
+                  <CardDetailsEditor
+                    key={style}
+                    style={style}
+                    cards={cards}
+                    fields={withCards}
+                    onPatch={patchDraft}
+                    onFormat={patchFormat}
+                    photoSlot={photoPicker}
+                    onFocusCard={setFocusCard}
                   />
                 </div>
-              ) : (
-                <p className="text-[13px] leading-snug text-[#9a6a7e]">
-                  Pick who they are to you and a vibe, and we&apos;ll ask three questions to spark
-                  the story.
-                </p>
-              )}
-            </div>
-          ) : null}
+              ) : null}
 
-          {step === DETAILS ? (
-            <div className="grid gap-5">
-              <FormatThumb data={previewData} style={style} focus={focusCard} />
-              {crafted ? <CraftStatus source={crafted} name={name} /> : null}
-              <p className="text-[13px] leading-snug text-[#c99aae]">
-                Open any card to change its words. Photos are optional: without them we use the
-                placeholders from {pack.title}.
-              </p>
-              <CardDetailsEditor
-                key={style}
-                style={style}
-                cards={cards}
-                fields={withCards}
-                onPatch={patchDraft}
-                onFormat={patchFormat}
-                photoSlot={photoPicker}
-                onFocusCard={setFocusCard}
-              />
+              {step === LAST ? (
+                <section>
+                  <p className={`mb-2 ${LABEL}`}>Quick adjustments</p>
+                  <AdjustBar busy={crafting} onAdjust={(a) => void generate(a)} />
+                  <p role="status" className="mt-2 text-[12px] leading-snug text-[#9a6a7e]">
+                    {adjusted ? (
+                      <span className="font-semibold text-[#f9a8d4]">
+                        {adjusted === 'sweeter' ? '🥹 Sweeter' : '😂 Funnier'} version applied to
+                        every card.{' '}
+                      </span>
+                    ) : null}
+                    Rewrites the story in a new direction. Your photos stay; to change single lines,
+                    go back a step.
+                  </p>
+                </section>
+              ) : null}
             </div>
-          ) : null}
+          </div>
+        </div>
 
-          {step === LAST ? (
-            <div className="grid gap-5" aria-live="polite">
-              <FormatThumb data={previewData} style={style} focus={focusCard} fit />
-              <section>
-                <p className={`mb-2 ${LABEL}`}>Quick adjustments</p>
-                <AdjustBar busy={crafting} onAdjust={(a) => void generate(a)} />
-                <p className="mt-2 text-[12px] leading-snug text-[#9a6a7e]">
-                  Rewrites the story in a new direction. Your photos stay; to change single lines,
-                  go back a step.
-                </p>
-              </section>
-            </div>
-          ) : null}
-
+        <footer className="border-t border-white/10 px-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-3">
           {error ? (
             <p
               role="alert"
-              className="mt-3 rounded-xl bg-[#3b1220] px-3 py-2 text-[13px] text-[#fecdd3]"
+              className="mb-2.5 rounded-xl bg-[#3b1220] px-3 py-2 text-[13px] leading-snug text-[#fecdd3]"
             >
               {error}
             </p>
           ) : null}
-        </div>
-
-        <footer className="border-t border-white/10 px-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-3">
           {step < 2 ? (
             <button
               type="button"
