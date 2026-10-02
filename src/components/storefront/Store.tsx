@@ -31,6 +31,7 @@ import { HeroReel } from '@/components/storefront/HeroReel';
 import { StickyExpressBar } from '@/components/storefront/StickyExpressBar';
 import { ExpressOrderHost } from '@/components/storefront/ExpressOrderHost';
 import { MatteCta } from '@/components/desk/MatteCta';
+import { CINEMATIC, FORMAT_SWAP } from '@/lib/motion';
 import type { GiftStyle } from '@/types/xso';
 
 const previewHref = (style: GiftStyle, theme: ThemeId) =>
@@ -231,7 +232,7 @@ export function Store() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: reduce ? 0 : 0.45, ease: 'easeOut' }}
+                transition={reduce ? { duration: 0 } : CINEMATIC}
               />
             </AnimatePresence>
             <div
@@ -246,50 +247,67 @@ export function Store() {
                   className="felt group relative block h-[220px] overflow-hidden"
                   aria-label={`Watch ${displayTitle(format)} in motion`}
                 >
-                  <StyleThumb style={giftStyle} sizes="(max-width: 768px) 100vw, 480px" />
+                  <AnimatePresence initial={false}>
+                    <motion.span
+                      key={giftStyle}
+                      className="absolute inset-0"
+                      initial={reduce ? false : FORMAT_SWAP.initial}
+                      animate={FORMAT_SWAP.animate}
+                      exit={reduce ? { opacity: 0, transition: { duration: 0 } } : FORMAT_SWAP.exit}
+                      transition={CINEMATIC}
+                    >
+                      <StyleThumb style={giftStyle} sizes="(max-width: 768px) 100vw, 480px" />
+                    </motion.span>
+                  </AnimatePresence>
                   <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-[#180e15]/90 px-3 py-1.5 font-receipt text-[11px] font-bold uppercase tracking-[0.14em] text-[#fdf2f8]">
                     <Play className="h-3 w-3" aria-hidden /> Watch it
                   </span>
                 </Link>
               )}
               <div className="relative flex flex-col p-4 sm:p-7 md:min-h-[260px]">
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={giftStyle}
-                    initial={reduce ? false : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                    transition={{ duration: 0.18, ease: 'easeOut' }}
-                    className="flex flex-1 flex-col"
-                  >
-                    <p
-                      className="font-receipt text-[10px] uppercase tracking-[0.22em]"
-                      style={{ color: format.glow }}
+                <div className="grid flex-1">
+                  <AnimatePresence initial={false}>
+                    <motion.div
+                      key={giftStyle}
+                      initial={reduce ? false : FORMAT_SWAP.initial}
+                      animate={FORMAT_SWAP.animate}
+                      exit={
+                        reduce
+                          ? { opacity: 0, transition: { duration: 0 } }
+                          : { ...FORMAT_SWAP.exit, transition: { ...CINEMATIC, duration: 0.5 } }
+                      }
+                      transition={CINEMATIC}
+                      className="col-start-1 row-start-1 flex origin-top-left flex-col"
                     >
-                      {format.code} · {format.year} · {format.subtitle}
-                    </p>
-                    <h3 className="mt-1.5 font-serif text-[1.75rem] font-semibold leading-none tracking-[-0.015em] text-[#fdf2f8] sm:mt-2 sm:text-[1.9rem]">
-                      {displayTitle(format)}
-                    </h3>
-                    <p className="mt-1.5 font-hand text-[20px] leading-tight text-[#f9a8d4] sm:mt-2 sm:text-[21px]">
-                      {format.tagline}
-                    </p>
-                    <p className="mt-2.5 text-pretty text-[14.5px] leading-[1.6] text-[#e0b4c6] sm:mt-3 sm:text-[15px]">
-                      {format.description}
-                    </p>
-                    <p className="mt-3.5 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#a8798c] sm:mt-4 sm:text-[11px]">
-                      <span className="inline-flex items-center gap-1.5 text-[#fdba74]">
-                        <span className="led-peach" aria-hidden />
-                        Slot A · Ready
-                      </span>
-                      <span className="text-[#6b3f4f]"> / </span>
-                      <span className="font-bold text-[#fce7f3]">{activeTheme.title}</span>
-                    </p>
-                    <p className="mt-1 font-serif text-[14px] italic text-[#a8798c]">
-                      Loaded, and waiting for your words.
-                    </p>
-                  </motion.div>
-                </AnimatePresence>
+                      <p
+                        className="font-receipt text-[10px] uppercase tracking-[0.22em]"
+                        style={{ color: format.glow }}
+                      >
+                        {format.code} · {format.year} · {format.subtitle}
+                      </p>
+                      <h3 className="mt-1.5 font-serif text-[1.75rem] font-semibold leading-none tracking-[-0.015em] text-[#fdf2f8] sm:mt-2 sm:text-[1.9rem]">
+                        {displayTitle(format)}
+                      </h3>
+                      <p className="mt-1.5 font-hand text-[20px] leading-tight text-[#f9a8d4] sm:mt-2 sm:text-[21px]">
+                        {format.tagline}
+                      </p>
+                      <p className="mt-2.5 text-pretty text-[14.5px] leading-[1.6] text-[#e0b4c6] sm:mt-3 sm:text-[15px]">
+                        {format.description}
+                      </p>
+                      <p className="mt-3.5 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#a8798c] sm:mt-4 sm:text-[11px]">
+                        <span className="inline-flex items-center gap-1.5 text-[#fdba74]">
+                          <span className="led-peach" aria-hidden />
+                          Slot A · Ready
+                        </span>
+                        <span className="text-[#6b3f4f]"> / </span>
+                        <span className="font-bold text-[#fce7f3]">{activeTheme.title}</span>
+                      </p>
+                      <p className="mt-1 font-serif text-[14px] italic text-[#a8798c]">
+                        Loaded, and waiting for your words.
+                      </p>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
 
                 <div className="mt-4 grid gap-2 sm:mt-5 sm:gap-2.5">
                   <MatteCta

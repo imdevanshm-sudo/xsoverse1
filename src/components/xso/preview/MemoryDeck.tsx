@@ -23,7 +23,8 @@ import {
 } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
-import { TOUCH_SPRING, useCoarsePointer } from '@/hooks/useTouchSpring';
+import { useCoarsePointer } from '@/hooks/useTouchSpring';
+import { CINEMA_EASE, CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
 import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
@@ -52,10 +53,12 @@ const flingPose = (dir: Direction) => ({
   rotateY: dir * -30,
   scale: 1.05,
 });
-const FLING = { duration: 0.34, ease: [0.22, 0.8, 0.36, 1] as const };
-/** Sheets underneath step up quickly; the flung sheet tucks under with a little overshoot. */
-const PROMOTE = { type: 'spring' as const, stiffness: 420, damping: 32, mass: 0.8 };
-const TUCK = { type: 'spring' as const, stiffness: 260, damping: 21, mass: 1 };
+const FLING = { duration: 0.7, ease: CINEMA_EASE };
+/** Finger-down lift stays immediate; only the stack change itself is slow. */
+const LIFT = { duration: 0.3, ease: CINEMA_EASE };
+/** Sheets underneath drift up; the flung sheet glides back under with a little weight. */
+const PROMOTE = CINEMATIC;
+const TUCK = SOFT_SPRING;
 
 /** Deeper sheets sit in shade from the top-down light and move less with tilt. */
 const DIM = [0, 0.1, 0.18, 0.26];
@@ -286,9 +289,8 @@ function DeckSlot({
   const py = useTransform([tilt.x, parallax], ([t, k]: number[]) => -t * k);
 
   const isPresent = useIsPresent();
-  const touch = useCoarsePointer();
   const wasFlung = useRef(false);
-  const transition = fling ? FLING : touch ? TOUCH_SPRING : wasFlung.current ? TUCK : PROMOTE;
+  const transition = fling ? FLING : wasFlung.current ? TUCK : PROMOTE;
   useEffect(() => {
     wasFlung.current = fling !== null;
   }, [fling]);
@@ -299,7 +301,7 @@ function DeckSlot({
       style={{ zIndex: 10 - depth, transformPerspective: 1100 }}
       initial={{ ...REST[MOUNTED_DEPTH], opacity: 0 }}
       animate={fling ? { ...flingPose(fling), opacity: 1 } : { ...REST[settledDepth], opacity: 1 }}
-      exit={{ ...REST[MOUNTED_DEPTH], opacity: 0, transition: touch ? TOUCH_SPRING : TUCK }}
+      exit={{ ...REST[MOUNTED_DEPTH], opacity: 0, transition: TUCK }}
       transition={transition}
       onAnimationComplete={() => {
         if (fling && isPresent) onFlung();
@@ -381,7 +383,7 @@ function DeckCard({
         className={`deck-shadow ${artifact.id === 'receipt' ? 'deck-shadow--receipt' : ''}`}
         initial={false}
         animate={lifted ? LIFTED_SHADOW : SHADOW[depth]}
-        transition={lifted ? FLING : PROMOTE}
+        transition={lifted ? LIFT : PROMOTE}
       />
 
       <div className={`deck-card ${material.surface} ${active ? 'cursor-pointer' : ''}`}>

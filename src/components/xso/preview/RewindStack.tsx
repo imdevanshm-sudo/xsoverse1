@@ -13,7 +13,7 @@ import {
 } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
-import { useTouchSpring } from '@/hooks/useTouchSpring';
+import { CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
 import {
@@ -46,8 +46,8 @@ const DECK_HEIGHT = {
   fill: 'min-h-0 flex-1',
 };
 
-const SPRING = { type: 'spring' as const, stiffness: 200, damping: 20 };
 const INSTANT = { duration: 0 };
+const SETTLE = { ...SOFT_SPRING, opacity: CINEMATIC };
 
 type Direction = 1 | -1;
 
@@ -61,6 +61,7 @@ const SHEET: Variants = {
     opacity: 0,
     zIndex: 30,
     pointerEvents: 'none',
+    transition: CINEMATIC,
   }),
 };
 
@@ -106,7 +107,6 @@ export const RewindStack = memo(function RewindStack({
     direction: -1,
   }));
   const reduce = Boolean(useReducedMotion());
-  const spring = useTouchSpring(SPRING);
   const stage = useRef<HTMLElement>(null);
   const visible = useInView(stage, { margin: '120px' });
 
@@ -190,9 +190,7 @@ export const RewindStack = memo(function RewindStack({
                   rotate: isFront ? tilts[index] * 0.25 : tilts[index],
                 }}
                 exit={reduce ? { opacity: 0, transition: INSTANT } : 'exit'}
-                transition={
-                  reduce ? INSTANT : { ...spring, opacity: { duration: 0.42, ease: 'easeOut' } }
-                }
+                transition={reduce ? INSTANT : SETTLE}
               >
                 <RewindCard
                   artifact={artifact}

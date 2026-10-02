@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useXsoData } from '@/store/useXsoData';
 import { useXsoStore } from '@/store/useXsoStore';
 import { useExpressOrder } from '@/store/useExpressOrder';
 import { ExpressOrderHost } from '@/components/storefront/ExpressOrderHost';
 import type { ThemeId } from '@/lib/themes';
+import { motion, useReducedMotion } from 'framer-motion';
+import { CINEMATIC, FORMAT_SWAP } from '@/lib/motion';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
@@ -19,7 +21,7 @@ import { FlowProgress } from '@/components/desk/FlowProgress';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { CARTRIDGE_PRICE, getCartridge } from '@/lib/cartridges';
 import { styleQuery } from '@/lib/styleLock';
-import type { GiftStyle } from '@/types/xso';
+import type { GiftStyle, XsoData } from '@/types/xso';
 
 const MEMORY_COUNT = 4;
 
@@ -36,6 +38,40 @@ function countBits(n: number) {
   for (let v = n; v; v &= v - 1) count += 1;
   return count;
 }
+
+/** The live format, isolated so dock/progress updates never re-render the preview itself. */
+const PreviewStage = memo(function PreviewStage({
+  style,
+  data,
+  onChange,
+}: {
+  style: GiftStyle;
+  data: XsoData;
+  onChange: (index: number, label: string) => void;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      key={style}
+      className="flex w-full flex-col items-center"
+      initial={reduce ? false : FORMAT_SWAP.initial}
+      animate={FORMAT_SWAP.animate}
+      transition={CINEMATIC}
+    >
+      {style === 'rewind' ? (
+        <RewindStack data={data} onChange={onChange} />
+      ) : style === 'scrapbook' ? (
+        <ScrapbookDesk data={data} onChange={onChange} />
+      ) : style === 'accordion' ? (
+        <AccordionRibbon data={data} onChange={onChange} />
+      ) : style === 'moviebox' ? (
+        <MovieBox data={data} onChange={onChange} />
+      ) : (
+        <MemoryDeck data={data} onChange={onChange} />
+      )}
+    </motion.div>
+  );
+});
 
 /** Step 1 — paper keepsake deck, secret offer ticket and sticky CTA. */
 export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
@@ -73,17 +109,7 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
             </p>
           </div>
 
-          {lockedStyle === 'rewind' ? (
-            <RewindStack data={previewData} onChange={goTo} />
-          ) : lockedStyle === 'scrapbook' ? (
-            <ScrapbookDesk data={previewData} onChange={goTo} />
-          ) : lockedStyle === 'accordion' ? (
-            <AccordionRibbon data={previewData} onChange={goTo} />
-          ) : lockedStyle === 'moviebox' ? (
-            <MovieBox data={previewData} onChange={goTo} />
-          ) : (
-            <MemoryDeck data={previewData} onChange={goTo} />
-          )}
+          <PreviewStage style={lockedStyle} data={previewData} onChange={goTo} />
 
           <div className="mt-7 w-full max-w-[400px]">
             <SecretOffer reward={data.scratchOffReward} />

@@ -4,16 +4,12 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
 import { MiniFace } from '@/components/storefront/DeckBox';
 import { useTouchSpring } from '@/hooks/useTouchSpring';
+import { CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import type { GiftStyle } from '@/types/xso';
 
 const CARDS = 4;
 const STEP_MS = 1500;
-const SPRING = {
-  type: 'spring' as const,
-  stiffness: 190,
-  damping: 22,
-  mass: 0.9,
-};
+const SPRING = SOFT_SPRING;
 
 type Pose = {
   x: number;
@@ -141,7 +137,7 @@ export const StyleDemo = memo(function StyleDemo({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: reduce ? 0 : 0.45 }}
+          transition={reduce ? { duration: 0 } : CINEMATIC}
         />
       </AnimatePresence>
       {style === 'moviebox' ? (

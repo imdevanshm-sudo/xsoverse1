@@ -12,7 +12,8 @@ import {
 } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
-import { useCoarsePointer, useTouchSpring } from '@/hooks/useTouchSpring';
+import { useCoarsePointer } from '@/hooks/useTouchSpring';
+import { SOFT_SPRING_VALUE } from '@/lib/motion';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { getArtifacts, playMechanicalCue } from '@/components/xso/viewers/shared';
@@ -34,10 +35,10 @@ const FOLD_STOPS: ReadonlyArray<readonly [number, number]> = [
 /** Angle of every panel when the ribbon is compressed into a bundle. */
 const SHUT = 86;
 
-/** Ribbon travel: follows the finger, settles without wobble. */
-const TRAVEL = { stiffness: 260, damping: 32 };
+/** Ribbon travel: glides between panels and settles without wobble. */
+const TRAVEL = SOFT_SPRING_VALUE;
 /** Folds lag the travel a touch and overshoot slightly, like paper settling. */
-const CREASE = { stiffness: 140, damping: 15, mass: 0.9 };
+const CREASE = { stiffness: 70, damping: 15, mass: 1.2 };
 const SNAPPY = { stiffness: 1000, damping: 100 };
 
 const TAB_PULL = 140;
@@ -108,8 +109,6 @@ export const AccordionRibbon = memo(function AccordionRibbon({
   const last = count - 1;
   const reduce = Boolean(useReducedMotion());
   const coarse = useCoarsePointer();
-  const travelSpring = useTouchSpring(TRAVEL);
-
   const stage = useRef<HTMLDivElement>(null);
   const visible = useInView(stage, { once: true, amount: 0.35 });
   const [box, setBox] = useState({ w: 340, h: 460 });
@@ -132,7 +131,7 @@ export const AccordionRibbon = memo(function AccordionRibbon({
   /** Targets: gestures write here and the springs below carry the paper there. */
   const target = useMotionValue(0);
   const openTarget = useMotionValue(reduce ? 1 : 0);
-  const travel = useSpring(target, reduce ? SNAPPY : travelSpring);
+  const travel = useSpring(target, reduce ? SNAPPY : TRAVEL);
   const crease = useSpring(target, reduce ? SNAPPY : CREASE);
   const open = useSpring(openTarget, reduce ? SNAPPY : CREASE);
   const height = useMotionValue(panelH);

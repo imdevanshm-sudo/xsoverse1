@@ -16,6 +16,7 @@ import {
 import type { XsoData } from '@/types/xso';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { useProjectorFx } from '@/hooks/useProjectorFx';
+import { CINEMA_EASE, CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { getArtifacts } from '@/components/xso/viewers/shared';
@@ -162,7 +163,7 @@ export const MovieBox = memo(function MovieBox({
         crank.set(target);
         return;
       }
-      motion$.current = animate(crank, target, { type: 'spring', stiffness: 110, damping: 17 });
+      motion$.current = animate(crank, target, SOFT_SPRING);
     },
     [stop, reduce, crank],
   );
@@ -192,11 +193,7 @@ export const MovieBox = memo(function MovieBox({
     if (delta === 0) return;
     goal.current = current + delta;
     motion$.current?.stop();
-    motion$.current = animate(crank, (current + delta) * STEP, {
-      type: 'spring',
-      stiffness: 110,
-      damping: 17,
-    });
+    motion$.current = animate(crank, (current + delta) * STEP, SOFT_SPRING);
   }, [focusIndex, count, crank]);
 
   useEffect(() => () => motion$.current?.stop(), []);
@@ -256,7 +253,7 @@ export const MovieBox = memo(function MovieBox({
                       : { scale: [1.03, 1.01, 1] }),
                   }
             }
-            transition={{ duration: 0.34, times: [0, 0.4, 1], ease: 'easeOut' }}
+            transition={{ duration: 0.75, times: [0, 0.35, 1], ease: CINEMA_EASE }}
           >
             <FrameFace data={data} index={frame} />
           </motion.div>
@@ -267,7 +264,7 @@ export const MovieBox = memo(function MovieBox({
               className="film-shutter"
               initial={{ opacity: 0.7 }}
               animate={{ opacity: [0.7, 0, 0.25, 0] }}
-              transition={{ duration: 0.28, times: [0, 0.35, 0.55, 1] }}
+              transition={{ duration: 0.5, times: [0, 0.35, 0.55, 1] }}
             />
           ) : null}
           <span aria-hidden className="film-grain" />
@@ -277,7 +274,7 @@ export const MovieBox = memo(function MovieBox({
             className="film-subtitle"
             initial={reduce ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: reduce ? 0 : 0.18 }}
+            transition={{ ...CINEMATIC, delay: reduce ? 0 : 0.25 }}
           >
             {story.subtitles[frame]}
           </motion.p>

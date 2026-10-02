@@ -11,12 +11,12 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, Camera, Lock, X } from 'lucide-react';
+import { ArrowLeft, Camera, Lock, X, Zap } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
 import { useExpressOrder } from '@/store/useExpressOrder';
 import { CARTRIDGE_PRICE, CARTRIDGES, displayTitle, getCartridge } from '@/lib/cartridges';
 import { THEMES, getTheme, type ThemeId } from '@/lib/themes';
-import { compressImage } from '@/lib/media';
+import { compressPhotoForStyle } from '@/lib/media';
 import { startCheckout } from '@/lib/startCheckout';
 import { styleQuery } from '@/lib/styleLock';
 import { MatteCta } from '@/components/desk/MatteCta';
@@ -86,19 +86,46 @@ export function ExpressOrderModal() {
     [busy, close],
   );
 
+  /** Originals are kept as File handles (not decoded) so a style change can re-grade them. */
+  const filesRef = useRef<File[]>([]);
+  const styleRef = useRef(style);
+  styleRef.current = style;
+  const [processing, setProcessing] = useState(0);
+
   const addPhotos = useCallback(async (files: File[]) => {
     setError(null);
+    setProcessing((n) => n + files.length);
     try {
-      const shrunk = await Promise.all(files.map((file) => compressImage(file)));
+      const shrunk = await Promise.all(
+        files.map((file) => compressPhotoForStyle(file, styleRef.current)),
+      );
+      filesRef.current = [...filesRef.current, ...files].slice(0, MAX_PHOTOS);
       setPhotos((current) => [...current, ...shrunk].slice(0, MAX_PHOTOS));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read that photo');
+    } finally {
+      setProcessing((n) => Math.max(0, n - files.length));
     }
   }, []);
 
   const removePhoto = useCallback((index: number) => {
+    filesRef.current = filesRef.current.filter((_, i) => i !== index);
     setPhotos((current) => current.filter((_, i) => i !== index));
   }, []);
+
+  useEffect(() => {
+    const files = filesRef.current;
+    if (!files.length) return;
+    let cancelled = false;
+    Promise.all(files.map((file) => compressPhotoForStyle(file, style)))
+      .then((graded) => {
+        if (!cancelled) setPhotos(graded);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [style]);
 
   /** Writes the express choices into the draft (theme first, since it resets content). */
   const commit = useCallback(() => {
@@ -128,7 +155,8 @@ export function ExpressOrderModal() {
     }
   }, [busy, commit, style]);
 
-  const canContinue = step === 0 || (photos.length > 0 && name.trim().length > 0);
+  const canContinue =
+    step === 0 || (photos.length > 0 && name.trim().length > 0 && processing === 0);
   const cart = getCartridge(style);
   const pack = getTheme(theme) ?? THEMES[0];
 
@@ -138,7 +166,7 @@ export function ExpressOrderModal() {
         type="button"
         aria-label="Close express order"
         tabIndex={-1}
-        className="absolute inset-0 bg-[#0c0609]/80"
+        className="absolute inset-0 bg-[#180e15]/[0.92]"
         initial={reduce ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
@@ -153,7 +181,7 @@ export function ExpressOrderModal() {
         initial={reduce ? false : { y: 48, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-        className="relative flex max-h-[92svh] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#180e15] text-[#fdf2f8] shadow-[0_-12px_40px_rgba(0,0,0,.5)] md:max-w-lg md:rounded-3xl"
+        className="relative flex max-h-[92svh] min-h-[min(620px,88svh)] w-full flex-col overflow-hidden md:min-h-0 rounded-t-3xl border border-white/10 bg-[#180e15] text-[#fdf2f8] shadow-[0_-12px_40px_rgba(0,0,0,.5)] md:max-w-lg md:rounded-3xl"
       >
         <header className="flex items-center gap-3 border-b border-white/10 px-5 pb-3 pt-4">
           {step > 0 ? (
@@ -206,13 +234,15 @@ export function ExpressOrderModal() {
           {step === 0 ? (
             <StylePicker style={style} theme={theme} onStyle={setStyle} onTheme={setTheme} />
           ) : step === 1 ? (
-            <PhotosAndName
-              photos={photos}
-              name={name}
-              onName={setName}
-              onAdd={addPhotos}
-              onRemove={removePhoto}
-            />
+            <>
+              <NameField name={name} onName={setName} />
+              <PhotoPicker
+                photos={photos}
+                processing={processing}
+                onAdd={addPhotos}
+                onRemove={removePhoto}
+              />
+            </>
           ) : (
             <Review
               style={style}
@@ -342,26 +372,13 @@ const StylePicker = memo(function StylePicker({
   );
 });
 
-const PhotosAndName = memo(function PhotosAndName({
-  photos,
+const NameField = memo(function NameField({
   name,
   onName,
-  onAdd,
-  onRemove,
 }: {
-  photos: string[];
   name: string;
   onName: (name: string) => void;
-  onAdd: (files: File[]) => void;
-  onRemove: (index: number) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const onFiles = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []).slice(0, MAX_PHOTOS - photos.length);
-    e.target.value = '';
-    if (files.length) onAdd(files);
-  };
-
   return (
     <>
       <label
@@ -380,13 +397,52 @@ const PhotosAndName = memo(function PhotosAndName({
         placeholder="e.g. Alex"
         className="mt-2 h-12 w-full rounded-xl border border-white/15 bg-[#21131b] px-4 text-[16px] text-[#fdf2f8] placeholder:text-[#7f5466] focus:border-[#ec4899] focus:outline-none"
       />
+    </>
+  );
+});
 
+const PhotoPicker = memo(function PhotoPicker({
+  photos,
+  processing,
+  onAdd,
+  onRemove,
+}: {
+  photos: string[];
+  processing: number;
+  onAdd: (files: File[]) => void;
+  onRemove: (index: number) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const onFiles = (e: ChangeEvent<HTMLInputElement>) => {
+    const room = MAX_PHOTOS - photos.length - processing;
+    const files = Array.from(e.target.files ?? []).slice(0, Math.max(0, room));
+    e.target.value = '';
+    if (files.length) onAdd(files);
+  };
+
+  return (
+    <>
       <p className="mt-5 font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">
         1–3 photos of you two
       </p>
       <div className="mt-2 grid grid-cols-3 gap-2">
         {Array.from({ length: MAX_PHOTOS }, (_, i) => {
           const photo = photos[i];
+          if (!photo && i < photos.length + processing) {
+            return (
+              <div
+                key={i}
+                className="flex aspect-square items-center justify-center rounded-xl bg-[#21131b]"
+                aria-label={`Preparing photo ${i + 1}`}
+                role="status"
+              >
+                <span
+                  aria-hidden
+                  className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-[#f9a8d4]"
+                />
+              </div>
+            );
+          }
           if (photo) {
             return (
               <div
@@ -406,7 +462,7 @@ const PhotosAndName = memo(function PhotosAndName({
               </div>
             );
           }
-          const isNext = i === photos.length;
+          const isNext = i === photos.length + processing;
           return (
             <button
               key={i}
@@ -424,6 +480,12 @@ const PhotosAndName = memo(function PhotosAndName({
           );
         })}
       </div>
+      <p className="mt-2.5 flex items-start gap-1.5 text-[12.5px] italic leading-snug text-[#c99aae]">
+        <span aria-hidden className="not-italic text-[#fdba74]">
+          ✦
+        </span>
+        Photos are automatically color-matched to your chosen XSO aesthetic.
+      </p>
       <input
         ref={inputRef}
         type="file"
@@ -454,6 +516,10 @@ const Review = memo(function Review({
 }) {
   return (
     <>
+      <p className="mb-3 flex items-center justify-center gap-2 rounded-full border border-[#fdba74]/45 bg-[#2a1a12] px-3 py-2 text-center font-receipt text-[10.5px] font-bold uppercase leading-tight tracking-[0.1em] text-[#fed7aa]">
+        <Zap className="h-3.5 w-3.5 shrink-0 fill-[#fdba74] text-[#fdba74]" aria-hidden />
+        Instant link generated right after checkout · No app required
+      </p>
       <div className="flex gap-4 rounded-2xl border border-white/10 bg-[#21131b] p-3">
         <span className="relative h-28 w-24 shrink-0 overflow-hidden rounded-xl bg-[#1a0f14]">
           <StyleThumb style={style} sizes="96px" />

@@ -23,12 +23,13 @@ import { Pause, Play } from 'lucide-react';
 import type { XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
 import { useCoarsePointer, useTouchSpring } from '@/hooks/useTouchSpring';
+import { SOFT_SPRING } from '@/lib/motion';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { seededOffset } from '@/components/xso/viewers/shared';
 
 const PICK_UP = { type: 'spring' as const, stiffness: 300, damping: 25 };
-const FLIP = { type: 'spring' as const, stiffness: 170, damping: 22 };
+const FLIP = SOFT_SPRING;
 const INSTANT = { duration: 0 };
 /** Presses on these stay with the control instead of picking the item up. */
 const INTERACTIVE = 'button, a, input, audio, [data-no-drag]';
@@ -449,7 +450,7 @@ const Polaroid = memo(function Polaroid({
   flipped: boolean;
   reduce: boolean;
 }) {
-  const flip = useTouchSpring(FLIP);
+  const flip = FLIP;
   const line = data.lineItems[photo.index];
   const date = data.timestamp.split(' ')[0];
   return (
@@ -535,8 +536,7 @@ const StickyNote = memo(function StickyNote({
   peel: 0 | 1 | 2;
   reduce: boolean;
 }) {
-  const spring = useTouchSpring({ type: 'spring' as const, stiffness: 220, damping: 24 });
-  const transition = reduce ? INSTANT : spring;
+  const transition = reduce ? INSTANT : SOFT_SPRING;
   const score = overallStars(data.auditMetrics).toFixed(1);
   return (
     <div className="relative aspect-square">
@@ -710,7 +710,7 @@ const FoldedLetter = memo(function FoldedLetter({ data }: { data: XsoData }) {
   );
 });
 
-const UNFOLD = { type: 'spring' as const, stiffness: 120, damping: 18 };
+const UNFOLD = { ...SOFT_SPRING, damping: 18 };
 
 function OpenLetter({
   data,
