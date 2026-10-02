@@ -137,16 +137,16 @@ export function DeckBox({
           {theme.blurb}
         </p>
         <p className="mt-2 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#e2b48f] transition-colors group-hover:text-[#f7f4eb]">
-          Open preview →
+          Open the box →
         </p>
       </motion.button>
       <button
         type="button"
         onClick={onCustomize}
         className="mt-2 inline-flex min-h-[44px] touch-manipulation items-center gap-1.5 rounded-xl px-4 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#a89c8a] underline decoration-[#5a534b] underline-offset-4 transition-colors hover:text-[#f7f4eb] hover:decoration-[#e2b48f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2b48f] active:scale-[0.98]"
-        aria-label={`Load ${theme.title} and customize it`}
+        aria-label={`Start from ${theme.title} and write your own`}
       >
-        Customize this deck
+        Write your own
       </button>
     </div>
   );

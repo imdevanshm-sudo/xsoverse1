@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: GiftPageProps): Promise<Metad
   if (!gift || gift.status !== 'paid') {
     return {
       title: 'An XSO gift is waiting',
-      description: 'Someone made you a one-of-one XSO souvenir.',
+      description: 'Someone turned the words they couldn’t say into something you can hold.',
       robots,
     };
   }
@@ -28,8 +28,8 @@ export async function generateMetadata({ params }: GiftPageProps): Promise<Metad
   const { customerName, billerName, occasion } = gift.data;
   const title = `A gift for ${customerName} from ${billerName}`;
   const description = occasion
-    ? `${occasion} · a one-of-one XSO souvenir.`
-    : 'A one-of-one XSO souvenir, made just for you.';
+    ? `${occasion} · a one-of-one XSO, made for you alone.`
+    : 'A one-of-one XSO, made for you alone.';
 
   return {
     title,
@@ -55,7 +55,7 @@ export default async function GiftPage({ params }: GiftPageProps) {
           XSO
         </Link>
         <span className="font-display text-sm font-bold tracking-wide">
-          XSO Gift Unboxing
+          XSO · Something for you
         </span>
       </header>
 

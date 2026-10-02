@@ -77,7 +77,7 @@ export function SecretOffer({ reward }: { reward: string }) {
   };
 
   return (
-    <section className="paper-ticket-shadow w-full" aria-label="Secret offer">
+    <section className="paper-ticket-shadow w-full" aria-label="Secret promise">
       <div className="paper-ticket grid grid-cols-[2.5rem_minmax(0,1fr)]">
         <div className="flex items-center justify-center border-r-2 border-dashed border-[#cdbfa6] bg-[#c85a32]">
           <p className="rotate-180 whitespace-nowrap font-receipt text-[10px] font-bold uppercase tracking-[0.3em] text-[#fbefe2] [writing-mode:vertical-rl]">
@@ -88,10 +88,10 @@ export function SecretOffer({ reward }: { reward: string }) {
         <div className="min-w-0 px-3.5 pb-3.5 pt-3 sm:px-4">
           <header className="mb-3 flex items-center justify-between gap-3">
             <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[#c85a32] px-2.5 py-1 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#fbefe2]">
-              Secret offer
+              Secret promise
             </span>
             <span className="truncate font-receipt text-[10px] uppercase tracking-[0.16em] text-[#8a7b66]">
-              Inside the keep
+              Tucked inside
             </span>
           </header>
 
@@ -106,7 +106,7 @@ export function SecretOffer({ reward }: { reward: string }) {
           >
             <div>
               <p className="font-receipt text-[10px] uppercase tracking-[0.26em] text-[#8a7b66]">
-                Promo code
+                Redeem with me
               </p>
               <p className="mt-0.5 select-all font-receipt text-[22px] font-bold tracking-[0.1em] text-[#2b2621] sm:text-2xl">
                 {code || perk}
@@ -125,12 +125,12 @@ export function SecretOffer({ reward }: { reward: string }) {
               aria-live="polite"
             >
               {!revealed
-                ? 'Scratch the foil to reveal your code.'
+                ? 'Scratch the foil. Something’s waiting underneath.'
                 : copyState === 'copied'
                 ? 'Copied to clipboard.'
                 : copyState === 'failed'
                   ? 'Copy blocked — long-press the code.'
-                  : 'Use it at checkout.'}
+                  : 'Keep it. Cash it in together.'}
             </p>
             <motion.button
               type="button"

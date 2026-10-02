@@ -71,10 +71,10 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#a89c8a]">
-              Studio · {displayTitle(cart)}
+              Studio · {displayTitle(cart)} · Slot A
             </p>
             <h1 className="mt-1 font-serif text-[28px] font-semibold leading-[1.1] text-[#f7f4eb] sm:text-[34px]">
-              Make it <em className="font-normal text-[#e2b48f]">unmistakably yours.</em>
+              Say what you <em className="font-normal text-[#e2b48f]">never got to say.</em>
             </h1>
           </div>
 
@@ -91,7 +91,7 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
                 onClick={() => setView(id)}
                 className="desk-tab min-h-11 px-5"
               >
-                {id === 'edit' ? 'Edit cards' : 'Live preview'}
+                {id === 'edit' ? 'Write' : 'See it'}
               </button>
             ))}
           </div>
@@ -106,7 +106,7 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
           >
             <p className="mb-3 flex items-center gap-2 font-receipt text-[11px] uppercase tracking-[0.2em] text-[#a89c8a]">
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[#9daf88]" />
-              Live · updates as you type
+              Live · every word lands as you type
             </p>
             <LivePreview lockedStyle={lockedStyle} focusIndex={focusIndex} />
           </aside>
@@ -127,15 +127,16 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
         <FlowProgress
           step={2}
           fill={visited.size / STUDIO_STEPS.length}
-          meta={`${visited.size}/${STUDIO_STEPS.length} cards`}
+          meta={`${visited.size}/${STUDIO_STEPS.length} memories`}
           done={visited.size === STUDIO_STEPS.length}
-          caption={`Editing · ${activeLabel}`}
+          caption={`Writing · ${activeLabel}`}
         />
         <MatteCta
           href={`/checkout?${styleQuery(lockedStyle)}`}
-          label="Get your XSO"
+          label="Lock these memories"
+          narrowLabel="Lock it in"
           price={CARTRIDGE_PRICE}
-          loadingLabel="Opening the envelope…"
+          loadingLabel="Fetching the envelope…"
         />
       </DeskDock>
     </>

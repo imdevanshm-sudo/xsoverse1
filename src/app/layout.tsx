@@ -58,9 +58,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: 'XSO · Experience Souvenir',
+  title: 'XSO · Keepsakes for unsaid words',
   description:
-    'Four printed-feel memory cards — a receipt, an audit, a photo strip and a letter — made into a one-of-one interactive keepsake.',
+    'An XSO is an experience turned souvenir: the feelings you couldn’t quite voice, pressed into a receipt, an audit, a photo strip and a letter they can hold.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

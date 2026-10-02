@@ -112,7 +112,7 @@ export const THEMES: ThemePack[] = [
     id: 'bestie-roast',
     code: 'PACK-01',
     title: 'The Bestie Roast',
-    blurb: 'An itemised bill for years of chaos, snacks and unpaid therapy.',
+    blurb: 'An itemised bill for years of chaos, snacks and therapy you never charged for.',
     defaultStyle: 'loop',
     box: { body: '#c85a32', band: '#f7f4eb', ink: '#2b2825', label: '#fbe9dc' },
     content: bestieRoast,

@@ -49,7 +49,7 @@ export function ShareGiftLink({
     try {
       await navigator.share({
         title: recipientName ? `A gift for ${recipientName}` : 'Your XSO gift',
-        text: 'Someone made you a one-of-one XSO souvenir.',
+        text: 'Someone turned the words they couldn’t say into something you can hold.',
         url,
       });
     } catch (error) {

@@ -191,7 +191,7 @@ function ReceiptSection() {
 
   return (
     <div className="space-y-6">
-      <Section title="Header" note="Printed at the top of the thermal receipt">
+      <Section title="Header" note="Who it’s for, who it’s from, and why today.">
         <div className="grid gap-3 sm:grid-cols-2">
           <StoreField field="merchantName" label="Store name" className="sm:col-span-2" />
           <StoreField field="cashier" label="Cashier" />
@@ -204,7 +204,8 @@ function ReceiptSection() {
 
       <Section
         title="Line items"
-        action={<AddButton onClick={addLineItem}>Add item</AddButton>}
+        note="Every line is proof of something you shared. Bill them for it."
+        action={<AddButton onClick={addLineItem}>Add a memory</AddButton>}
       >
         <ul className="m-0 list-none space-y-2.5 p-0">
           {lineItems.map((item, index) => (
@@ -218,7 +219,7 @@ function ReceiptSection() {
         </ul>
       </Section>
 
-      <Section title="Totals">
+      <Section title="Totals" note="What it all added up to.">
         <div className="grid grid-cols-3 gap-2.5">
           <StoreField field="subtotal" label="Subtotal" />
           <StoreField field="emotionalTax" label="Tax" />
@@ -279,7 +280,7 @@ const LineItemRow = memo(function LineItemRow({
 function AuditSection() {
   return (
     <div className="space-y-6">
-      <Section title="Score meters" note="Drag to set each score out of 100">
+      <Section title="Score meters" note="Drag to score them out of 100. Be honest. Be kind.">
         <ul className="m-0 list-none space-y-4 p-0">
           {METRIC_KEYS.map((key) => (
             <AuditSlider key={key} metric={key} label={METRIC_LABELS[key]} />
@@ -465,7 +466,7 @@ function PhotosSection() {
   return (
     <Section
       title={strips > 1 ? `Purikura strips (${strips})` : 'Purikura strip'}
-      note={`Drop photos onto a frame, or tap to choose. Portrait shots look best. Up to ${MAX_STRIPS} strips of ${FRAMES_PER_STRIP}.`}
+      note={`The faces you’d keep in your wallet. Drop photos onto a frame or tap to choose; portrait shots look best. Up to ${MAX_STRIPS} strips of ${FRAMES_PER_STRIP}.`}
     >
       <div className="space-y-5">
         {Array.from({ length: strips }, (_, strip) => (
@@ -626,7 +627,7 @@ function PhotoFrame({
 function LetterSection() {
   return (
     <div className="space-y-6">
-      <StoreField field="birthdayMessage" label="Your letter" multiline maxLength={600} />
+      <StoreField field="birthdayMessage" label="The part you never said out loud" multiline maxLength={600} />
       <VoiceNoteField />
       <PromoFields />
     </div>
@@ -654,7 +655,7 @@ function VoiceNoteField() {
   };
 
   return (
-    <Section title="Voice note" note="Optional · MP3, M4A or WEBM up to 1.5 MB">
+    <Section title="Voice note" note="Optional · let them hear it in your voice. MP3, M4A or WEBM up to 1.5 MB">
       {voiceNoteUrl ? (
         <div className="flex items-center gap-2 rounded-xl border border-dashed border-[#d9ccb4] bg-white/40 p-2.5">
           <audio controls src={voiceNoteUrl} className="h-10 min-w-0 flex-1" />
@@ -670,7 +671,7 @@ function VoiceNoteField() {
           className="flex w-full touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#d3c4aa] bg-white/40 px-4 py-4 font-receipt text-[12px] font-bold uppercase tracking-[0.12em] text-[#6b6257] transition-colors hover:border-[#c85a32] hover:text-[#c85a32] disabled:opacity-60"
         >
           <Mic className="h-4 w-4" aria-hidden />
-          {busy ? 'Pressing to tape…' : 'Upload a voice note'}
+          {busy ? 'Pressing to tape…' : 'Add a voice note'}
         </button>
       )}
       <input
@@ -699,9 +700,9 @@ function PromoFields() {
   const { code, perk } = splitReward(reward);
 
   return (
-    <Section title="Secret offer" note="Printed on the ticket stub tucked inside the keep">
+    <Section title="Secret promise" note="A small promise under the foil, for them to scratch, keep and cash in with you.">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <Field label="Promo code">
+        <Field label="Secret code">
           <input
             className="paper-field font-receipt font-bold uppercase tracking-[0.1em]"
             value={code}
@@ -714,7 +715,7 @@ function PromoFields() {
             }
           />
         </Field>
-        <Field label="What it unlocks">
+        <Field label="What you promise">
           <input
             className="paper-field"
             value={perk}

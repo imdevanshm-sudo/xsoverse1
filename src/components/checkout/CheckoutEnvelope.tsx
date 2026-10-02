@@ -67,7 +67,7 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
         {/* Envelope with the invoice tucked inside */}
         <section aria-label="Invoice" className="lg:sticky lg:top-[calc(var(--xso-header-h)+2rem)]">
           <p className="mb-3 font-receipt text-[11px] uppercase tracking-[0.24em] text-[#a89c8a]">
-            Your order · sealed for delivery
+            Your XSO · ready to seal
           </p>
           <div className="relative mx-auto max-w-[420px] pt-2 lg:pt-10">
             <motion.div
@@ -100,7 +100,7 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
                 </dl>
                 <div className="space-y-1 border-t border-dashed border-[#cbbd9f] pt-3">
                   <p className="flex justify-between gap-3">
-                    <span>XSO · 4 memories</span>
+                    <span>XSO · 4 memories, 1 person</span>
                     <span className="tabular-nums">{option.price}</span>
                   </p>
                   <p className="mt-2 flex justify-between gap-3 border-t border-[#2b2825] pt-2 text-[15px] font-bold">
@@ -135,7 +135,7 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
               Seal your <em className="font-normal text-[#e2b48f]">XSO.</em>
             </h1>
             <p className="mt-2 text-[15px] text-[#b3a794]">
-              One payment, and it&apos;s theirs to open, loop and keep.
+              Once it&apos;s sealed, it&apos;s theirs: something to open, hold and come back to long after the moment passes.
             </p>
           </div>
 
@@ -179,7 +179,7 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
         <MatteCta
           onClick={() => void pay()}
           loading={busy}
-          label="Pay & seal it"
+          label="Seal & send"
           price={option.price}
           loadingLabel="Sealing the envelope…"
           ariaLabel={`Pay ${option.price} for your ${option.label}`}

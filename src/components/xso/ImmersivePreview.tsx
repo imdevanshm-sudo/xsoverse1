@@ -16,11 +16,11 @@ import type { GiftStyle } from '@/types/xso';
 const MEMORY_COUNT = 4;
 
 const STAGE_HINT: Record<GiftStyle, string> = {
-  loop: 'Tap the cards · loop the memory',
-  rewind: 'Tap the stack · rewind the memory',
-  scrapbook: 'Tap a scrap · inspect the memory',
-  accordion: 'Pull the ribbon · unfold the keep',
-  moviebox: 'Crank the wheel · advance the reel',
+  loop: 'Tap the stack · let it come back around',
+  rewind: 'Tap the stack · then call it all back',
+  scrapbook: 'Tap a scrap · hold it to the light',
+  accordion: 'Pull the ribbon · let it unfold',
+  moviebox: 'Turn the crank · roll the reel',
 };
 
 function countBits(n: number) {
@@ -96,8 +96,8 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
             {cart.tagline}
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-[#b3a794]">
-            Flip through the keepsakes, grab your secret code, then make every
-            line your own in the studio.
+            This is what they&apos;ll hold. Turn each keepsake over, scratch the ticket, then
+            fill every line with the things you never quite found the words for.
           </p>
         </aside>
       </div>
@@ -115,14 +115,14 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
               memories
             </>
           }
-          caption={memory.label ? `Now showing · ${memory.label}` : undefined}
+          caption={memory.label ? `Holding · ${memory.label}` : undefined}
         />
         <MatteCta
           href={customizeHref}
-          label="Customize souvenir"
+          label="Build your XSO"
           price={CARTRIDGE_PRICE}
-          loadingLabel="Opening the studio…"
-          ariaLabel={`Customize souvenir from ${CARTRIDGE_PRICE}`}
+          loadingLabel="Clearing the desk…"
+          ariaLabel={`Build your XSO, ${CARTRIDGE_PRICE}`}
         />
       </DeskDock>
     </div>

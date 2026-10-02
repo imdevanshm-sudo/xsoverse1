@@ -17,7 +17,7 @@ function CheckoutSuccessInner() {
   const giftId = searchParams.get('giftId');
   const preview = searchParams.get('preview') === '1';
   const [phase, setPhase] = useState<Phase>('confirming');
-  const [message, setMessage] = useState('Confirming your XSO…');
+  const [message, setMessage] = useState('Pressing the wax seal…');
   const [error, setError] = useState<string | null>(null);
   const [recipient, setRecipient] = useState<string | undefined>();
   const [run, setRun] = useState(0);
@@ -75,7 +75,7 @@ function CheckoutSuccessInner() {
           setMessage(
             preview
               ? 'Activating preview gift…'
-              : 'Payment received. Waiting for Lemon Squeezy to confirm…',
+              : 'Payment received. Letting the seal set…',
           );
           timer = window.setTimeout(poll, INTERVAL_MS);
           return;
@@ -103,7 +103,7 @@ function CheckoutSuccessInner() {
   }, [giftId, preview, run]);
 
   const title =
-    phase === 'ready' ? 'Sealed & sent.' : phase === 'error' ? 'Hold up.' : 'Almost there…';
+    phase === 'ready' ? 'Sealed. It’s theirs now.' : phase === 'error' ? 'Not quite yet.' : 'Pressing the seal…';
 
   return (
     <div className="paper-panel w-full max-w-md p-6 text-center sm:p-8">
@@ -118,8 +118,8 @@ function CheckoutSuccessInner() {
         <>
           <p className="mt-2 text-[15px] text-[#6b6257]">
             {recipient
-              ? `Send this link to ${recipient}. It opens their one-of-one keepsake.`
-              : 'Send this link to open the one-of-one keepsake.'}
+              ? `This link is the only way in. Send it to ${recipient} when the moment feels right.`
+              : 'This link is the only way in. Send it when the moment feels right.'}
           </p>
           <div className="mt-5">
             <ShareGiftLink giftId={giftId} recipientName={recipient} tone="paper" />
@@ -172,7 +172,7 @@ export default function CheckoutSuccessPage() {
   return (
     <main className="desk grid min-app-h place-items-center px-4 py-10">
       <Suspense
-        fallback={<p className="font-receipt text-sm text-[#a89c8a]">Loading checkout…</p>}
+        fallback={<p className="font-receipt text-sm text-[#a89c8a]">Pressing the seal…</p>}
       >
         <CheckoutSuccessInner />
       </Suspense>

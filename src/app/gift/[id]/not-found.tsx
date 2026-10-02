@@ -8,17 +8,17 @@ export default function GiftNotFound() {
           XSO Gift
         </p>
         <h1 className="mt-3 font-arcade text-xl uppercase tracking-[0.12em] text-console-mist">
-          Gift not found
+          This one isn’t here
         </h1>
         <p className="mt-3 font-mono text-sm text-white/60">
-          This link doesn&apos;t match any gift. Double-check the link you were sent, or
-          make one of your own.
+          This link doesn&apos;t lead to an XSO. Check the link you were sent, or make one
+          for someone who needs to hear it.
         </p>
         <Link
           href="/"
           className="mt-6 inline-flex min-h-11 items-center rounded-full bg-phosphor px-6 py-3 font-pixel text-[9px] uppercase tracking-[0.14em] text-[#0a120e]"
         >
-          Make an XSO
+          Make your own XSO
         </Link>
       </div>
     </main>

@@ -58,12 +58,12 @@ export function GiftPendingPoller({ giftId }: { giftId: string }) {
   return (
     <div className="mx-auto w-full max-w-sm px-4 py-16 text-center">
       <p className="font-pixel text-[9px] uppercase tracking-[0.24em] text-phosphor/70">
-        Payment processing
+        Being sealed
       </p>
       <p className="mt-4 font-mono text-sm text-white/60">
         {exhausted
-          ? 'Still waiting on payment confirmation. This can take a minute.'
-          : 'Your gift is being wrapped. This page will open it automatically.'}
+          ? 'Still sealing. This can take a minute.'
+          : 'Someone is wrapping this for you. It will open here on its own.'}
       </p>
       {exhausted && (
         <button
@@ -71,7 +71,7 @@ export function GiftPendingPoller({ giftId }: { giftId: string }) {
           onClick={retry}
           className="mt-6 min-h-11 touch-manipulation rounded-full bg-phosphor px-6 py-3 font-pixel text-[9px] uppercase tracking-[0.14em] text-[#0a120e]"
         >
-          Retry
+          Check again
         </button>
       )}
     </div>

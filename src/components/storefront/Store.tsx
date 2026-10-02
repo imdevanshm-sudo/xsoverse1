@@ -103,13 +103,17 @@ export function Store() {
         </header>
 
         <section className="mt-9 max-w-2xl sm:mt-12">
+          <p className="mb-4 font-receipt text-[11px] uppercase tracking-[0.22em] text-[#9daf88]">
+            Experience + Souvenir <span className="text-[#6f665a]">=</span> XSO
+          </p>
           <h1 className="font-serif text-[2.4rem] font-semibold leading-[1.04] tracking-tight text-[#f7f4eb] sm:text-6xl">
-            Keepsakes you can hold,{' '}
-            <em className="font-medium text-[#e2b48f]">even through a screen.</em>
+            Keepsakes for the words{' '}
+            <em className="font-medium text-[#e2b48f]">you never said.</em>
           </h1>
           <p className="mt-4 max-w-lg text-[16px] leading-relaxed text-[#b3a794]">
-            Four printed-feel memory cards (a receipt, an audit, a photo strip and a letter)
-            shuffled into one interactive souvenir, for {CARTRIDGE_PRICE}.
+            Some feelings don&apos;t fit in a text. An XSO gives them a shape you can hold: a
+            receipt of the moments you shared, an audit of who they are to you, a strip of faces
+            and a letter that finally says it. Made once, for one person, for {CARTRIDGE_PRICE}.
           </p>
         </section>
 
@@ -119,7 +123,7 @@ export function Store() {
               id="format-heading"
               className="font-receipt text-[11px] uppercase tracking-[0.22em] text-[#a89c8a]"
             >
-              <span className="text-[#e2b48f]">1</span> · Choose how it plays
+              <span className="text-[#e2b48f]">1</span> · How should it unfold?
             </h2>
             <p className="shrink-0 font-receipt text-[11px] tracking-[0.14em] text-[#7d7264]">
               {format.code}
@@ -200,8 +204,12 @@ export function Store() {
                     {format.description}
                   </p>
                   <p className="mt-4 font-receipt text-[11px] uppercase tracking-[0.16em] text-[#8a7f70]">
-                    Loaded deck ·{' '}
+                    <span className="text-[#9daf88]">● Slot A · Ready</span>
+                    <span className="text-[#5a534b]"> / </span>
                     <span className="font-bold text-[#efe7d7]">{activeTheme.title}</span>
+                  </p>
+                  <p className="mt-1 font-serif text-[14px] italic text-[#8a7f70]">
+                    Loaded, and waiting for your words.
                   </p>
                 </motion.div>
               </AnimatePresence>
@@ -210,10 +218,10 @@ export function Store() {
                 <MatteCta
                   key={`preview-${giftStyle}-${themeId}`}
                   href={previewHref(giftStyle, themeId)}
-                  label={`Preview ${displayTitle(format)}`}
-                  narrowLabel="Preview"
+                  label={`Feel it as ${displayTitle(format)}`}
+                  narrowLabel="Feel it first"
                   price={CARTRIDGE_PRICE}
-                  loadingLabel="Opening preview…"
+                  loadingLabel="Inserting the cartridge…"
                   ariaLabel={`Preview ${displayTitle(format)} with ${activeTheme.title}, ${CARTRIDGE_PRICE}`}
                 />
                 <Link
@@ -221,7 +229,7 @@ export function Store() {
                   prefetch
                   className="paper-button flex min-h-[48px] touch-manipulation items-center justify-center rounded-2xl px-5 font-receipt text-[12px] font-bold uppercase tracking-[0.16em] transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2b48f] active:scale-[0.98]"
                 >
-                  Customize {displayTitle(format)} →
+                  Build your XSO →
                 </Link>
               </div>
             </div>
@@ -234,7 +242,7 @@ export function Store() {
               id="decks-heading"
               className="font-receipt text-[11px] uppercase tracking-[0.22em] text-[#a89c8a]"
             >
-              <span className="text-[#e2b48f]">2</span> · Pick a story deck
+              <span className="text-[#e2b48f]">2</span> · Start from a story
             </h2>
             <p className="shrink-0 font-receipt text-[11px] tracking-[0.14em] text-[#7d7264]">
               Plays as {displayTitle(format)}
@@ -259,7 +267,7 @@ export function Store() {
             </div>
           </div>
           <p className="mt-4 text-center font-receipt text-[11px] uppercase tracking-[0.16em] text-[#7d7264]">
-            Every deck is fully editable in the studio
+            Every deck is just a first draft · the words are yours
           </p>
         </section>
       </div>
