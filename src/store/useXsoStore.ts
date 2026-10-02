@@ -2,9 +2,9 @@
 
 import { create } from 'zustand';
 import { newId } from '@/lib/constants';
-import { getTheme, type ThemeId } from '@/lib/themes';
+import { THEMES, getTheme, type ThemeContent, type ThemeId } from '@/lib/themes';
 import { FRAMES_PER_STRIP, MAX_STRIPS, blankFrame, stripCount } from '@/lib/photoStrips';
-import { scrapbookDefaults } from '@/lib/scrapbook';
+import { formatDefaults, type FormatKey, type FormatLayers } from '@/lib/formats';
 import {
   getMockXsoData,
   type AuditMetrics,
@@ -15,12 +15,27 @@ import {
 
 type ScalarField = Exclude<
   keyof XsoData,
-  'lineItems' | 'auditMetrics' | 'greenFlags' | 'redFlags' | 'photos' | 'scrapbook'
+  'lineItems' | 'auditMetrics' | 'greenFlags' | 'redFlags' | 'photos' | FormatKey
 >;
+
+export type PackContent = ThemeContent & FormatLayers;
+
+/** A story pack's copy with fresh line-item ids and every format's starter settings. */
+export function packContent(id: ThemeId): PackContent {
+  const content = (getTheme(id) ?? THEMES[0]).content();
+  return {
+    ...content,
+    lineItems: content.lineItems.map((item) => ({ ...item, id: newId() })),
+    ...formatDefaults(content),
+  };
+}
 
 interface XsoActions {
   setField: <K extends ScalarField>(key: K, value: XsoData[K]) => void;
   setScrapbook: (patch: Partial<ScrapbookLayers>) => void;
+  setFormat: <K extends FormatKey>(key: K, patch: Partial<FormatLayers[K]>) => void;
+  /** Story copy back to the pack's defaults; names, photos and the voice note stay. */
+  resetStory: () => void;
   setAuditMetric: (key: keyof AuditMetrics, value: number) => void;
   addLineItem: () => void;
   updateLineItem: (id: string, patch: Partial<Omit<LineItem, 'id'>>) => void;
@@ -41,28 +56,33 @@ interface XsoActions {
   applyTheme: (id: ThemeId) => void;
 }
 
-export type XsoStore = XsoData & XsoActions & { themeId: ThemeId; scrapbook: ScrapbookLayers };
+export type XsoStore = XsoData & XsoActions & FormatLayers & { themeId: ThemeId };
 
 const initial = getMockXsoData();
 
 export const useXsoStore = create<XsoStore>((set) => ({
   ...initial,
-  scrapbook: scrapbookDefaults(initial),
+  ...formatDefaults(initial),
   themeId: 'bestie-roast',
 
   applyTheme: (id) => {
-    const theme = getTheme(id);
-    if (!theme) return;
-    const content = theme.content();
-    set({
-      ...content,
-      lineItems: content.lineItems.map((item) => ({ ...item, id: newId() })),
-      scrapbook: scrapbookDefaults(content),
-      themeId: id,
-    });
+    if (!getTheme(id)) return;
+    set({ ...packContent(id), themeId: id });
   },
 
+  resetStory: () =>
+    set((state) => ({
+      ...packContent(state.themeId),
+      customerName: state.customerName,
+      billerName: state.billerName,
+      photos: state.photos,
+      voiceNoteUrl: state.voiceNoteUrl,
+    })),
+
   setScrapbook: (patch) => set((state) => ({ scrapbook: { ...state.scrapbook, ...patch } })),
+
+  setFormat: (key, patch) =>
+    set((state) => ({ [key]: { ...state[key], ...patch } }) as Partial<FormatLayers>),
 
   setPhotoAt: (index, url) =>
     set((state) => {

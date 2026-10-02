@@ -21,8 +21,9 @@ import {
   useTransform,
   type MotionValue,
 } from 'framer-motion';
-import type { XsoData } from '@/types/xso';
+import { LOOP_CARDS, type XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
+import { resolveLoop } from '@/lib/formats';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { CINEMA_EASE, CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
@@ -86,27 +87,53 @@ interface Tilt {
   y: MotionValue<number>;
 }
 
-export const MemoryDeck = memo(function MemoryDeck({
-  data,
-  onChange,
-  size = 'hero',
-  focusIndex,
-}: {
+interface DeckProps {
   data: XsoData;
   /** `fill` stretches to its container, e.g. inside the gift phone frame. */
   size?: 'hero' | 'studio' | 'fill';
-  /** Brings this card to the top whenever it changes (studio tabs). */
+  /** Brings this card (0–3, of all four) to the top whenever it changes. */
   focusIndex?: number;
   /** Fires with the new top card after each loop. */
   onChange?: (index: number, label: string) => void;
-}) {
-  const artifacts = useMemo(() => getArtifacts(data), [data]);
+}
+
+export const MemoryDeck = memo(function MemoryDeck(props: DeckProps) {
+  const { data, focusIndex } = props;
+  const { cards } = resolveLoop(data);
+  const key = cards.join('|');
+  const all = useMemo(() => getArtifacts(data), [data]);
+  const artifacts = useMemo(
+    () => all.filter((artifact) => key.split('|').includes(artifact.id)),
+    [all, key],
+  );
+  const focused =
+    focusIndex === undefined
+      ? undefined
+      : artifacts.findIndex((artifact) => artifact.id === LOOP_CARDS[focusIndex]);
+  /** A different hand of cards is a new deck; remounting keeps the pile order valid. */
+  return (
+    <Deck
+      key={key}
+      {...props}
+      artifacts={artifacts}
+      focusIndex={focused === undefined || focused < 0 ? undefined : focused}
+    />
+  );
+});
+
+function Deck({
+  data,
+  artifacts,
+  onChange,
+  size = 'hero',
+  focusIndex,
+}: DeckProps & { artifacts: Artifact[] }) {
   /** Receipt and letter render bare so the deck card itself is the paper. */
   const faces = useMemo<Record<Artifact['id'], ReactNode>>(
     () => ({
       receipt: <Side1Receipt data={data} bare />,
-      audit: artifacts[1].content,
-      photos: artifacts[2].content,
+      audit: artifacts.find((a) => a.id === 'audit')?.content,
+      photos: artifacts.find((a) => a.id === 'photos')?.content,
       letter: <Side4BirthdayCard data={data} bare />,
     }),
     [artifacts, data],
@@ -260,7 +287,7 @@ export const MemoryDeck = memo(function MemoryDeck({
       </p>
     </section>
   );
-});
+}
 
 /** Positions one sheet in the pile and gives it depth parallax against the stage tilt. */
 function DeckSlot({

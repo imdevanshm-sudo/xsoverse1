@@ -29,6 +29,10 @@ export function useXsoData(): XsoData {
       voiceNoteUrl: s.voiceNoteUrl,
       scratchOffReward: s.scratchOffReward,
       scrapbook: s.scrapbook,
+      loop: s.loop,
+      rewind: s.rewind,
+      accordion: s.accordion,
+      moviebox: s.moviebox,
     })),
   );
 }

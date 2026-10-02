@@ -15,21 +15,24 @@ import {
 } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, Camera, Lock, X, Zap } from 'lucide-react';
-import { useXsoStore } from '@/store/useXsoStore';
+import { packContent, useXsoStore, type PackContent } from '@/store/useXsoStore';
 import { useExpressOrder } from '@/store/useExpressOrder';
 import { CARTRIDGE_PRICE, CARTRIDGES, displayTitle, getCartridge } from '@/lib/cartridges';
-import { THEMES, getTheme, type ThemeContent, type ThemeId } from '@/lib/themes';
-import { newId } from '@/lib/constants';
+import { THEMES, getTheme, type ThemeId } from '@/lib/themes';
+import type { FormatKey, FormatLayers } from '@/lib/formats';
 import { compressPhotoForStyle } from '@/lib/media';
-import { scrapbookDefaults } from '@/lib/scrapbook';
 import { startCheckout } from '@/lib/startCheckout';
 import { styleQuery } from '@/lib/styleLock';
 import { pickXsoPayload } from '@/lib/xsoPayload';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
-import { ScrapbookElements } from '@/components/xso/ScrapbookElements';
+import { FormatEditor, type FormatPatch } from '@/components/xso/FormatEditor';
 import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
-import type { GiftStyle, ScrapbookLayers, XsoData } from '@/types/xso';
+import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
+import { RewindStack } from '@/components/xso/preview/RewindStack';
+import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
+import { MovieBox } from '@/components/xso/preview/MovieBox';
+import type { GiftStyle, XsoData } from '@/types/xso';
 
 const MAX_PHOTOS = 3;
 const MAX_NAME = 40;
@@ -37,21 +40,23 @@ const STEPS = ['Style', 'Photos', 'Pay'] as const;
 const FOCUSABLE =
   'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-type Draft = ThemeContent & { scrapbook: ScrapbookLayers };
+type Draft = PackContent;
 
 /** Keeps edits already made in the studio when the pack is unchanged; otherwise the pack's starter copy. */
 function seedDraft(id: ThemeId): Draft {
   const store = useXsoStore.getState();
   if (store.themeId === id) {
     const { id: _id, giftStyle: _style, ...rest } = pickXsoPayload(store);
-    return { ...rest, scrapbook: store.scrapbook };
+    return {
+      ...rest,
+      scrapbook: store.scrapbook,
+      loop: store.loop,
+      rewind: store.rewind,
+      accordion: store.accordion,
+      moviebox: store.moviebox,
+    };
   }
-  const content = (getTheme(id) ?? THEMES[0]).content();
-  return {
-    ...content,
-    lineItems: content.lineItems.map((item) => ({ ...item, id: newId() })),
-    scrapbook: scrapbookDefaults(content),
-  };
+  return packContent(id);
 }
 
 /** Three-step impulse checkout: format + story, faces + name, pay. */
@@ -72,27 +77,61 @@ export function ExpressOrderModal() {
     setTheme(id);
     setDraft(seedDraft(id));
   }, []);
-  const patchDraft = useCallback(
-    (patch: Partial<ThemeContent>) => setDraft((d) => ({ ...d, ...patch })),
+  const patchDraft = useCallback((patch: FormatPatch) => setDraft((d) => ({ ...d, ...patch })), []);
+  const patchFormat = useCallback(
+    <K extends FormatKey>(key: K, patch: Partial<FormatLayers[K]>) =>
+      setDraft((d) => ({ ...d, [key]: { ...d[key], ...patch } })),
     [],
   );
-  const patchLayers = useCallback(
-    (patch: Partial<ScrapbookLayers>) =>
-      setDraft((d) => ({ ...d, scrapbook: { ...d.scrapbook, ...patch } })),
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
+  const resetStory = useCallback(
+    () =>
+      setDraft((d) => ({
+        ...packContent(themeRef.current),
+        customerName: d.customerName,
+        billerName: d.billerName,
+        voiceNoteUrl: d.voiceNoteUrl,
+      })),
     [],
   );
+  const [focusCard, setFocusCard] = useState<number | undefined>(undefined);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setFocusCard(undefined);
+    bodyRef.current?.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+  }, [step, style, reduce]);
+
+  /** Pins the page in place (iOS ignores overflow:hidden on body) and restores its exact scroll on close. */
+  useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    const { overflow } = document.body.style;
-    document.body.style.overflow = 'hidden';
+    const { body, documentElement: html } = document;
+    const scrollY = window.scrollY;
+    const saved = {
+      htmlOverflow: html.style.overflow,
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+    };
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
     dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus({ preventScroll: true });
     return () => {
-      document.body.style.overflow = overflow;
+      html.style.overflow = saved.htmlOverflow;
+      body.style.overflow = saved.overflow;
+      body.style.position = saved.position;
+      body.style.top = saved.top;
+      body.style.width = saved.width;
+      window.scrollTo({ top: scrollY, behavior: 'instant' });
       previous?.focus?.({ preventScroll: true });
     };
   }, []);
@@ -206,7 +245,9 @@ export function ExpressOrderModal() {
 
   const scrapbook = style === 'scrapbook';
   const elements = draft.scrapbook.elements;
-  const needsPhotos = !scrapbook || elements.includes('polaroids');
+  const needsPhotos = scrapbook
+    ? elements.includes('polaroids')
+    : style !== 'loop' || draft.loop.cards.includes('photos');
   const canContinue =
     step === 0 ||
     (name.trim().length > 0 &&
@@ -216,15 +257,16 @@ export function ExpressOrderModal() {
   const cart = getCartridge(style);
   const pack = getTheme(theme) ?? THEMES[0];
 
+  /** Mirrors `commit`: scrapbook keeps only real photos, strips keep the pack's frames after them. */
   const previewData = useMemo<XsoData>(
     () => ({
       ...draft,
       id: 'express-preview',
-      giftStyle: 'scrapbook',
+      giftStyle: style,
       customerName: name.trim() || draft.customerName,
-      photos,
+      photos: scrapbook ? photos : [...photos, ...draft.photos.slice(photos.length)],
     }),
-    [draft, name, photos],
+    [draft, name, photos, scrapbook, style],
   );
   const photoPicker = useMemo(
     () => (
@@ -233,10 +275,10 @@ export function ExpressOrderModal() {
         processing={processing}
         onAdd={addPhotos}
         onRemove={removePhoto}
-        compact={scrapbook}
+        compact
       />
     ),
-    [addPhotos, photos, processing, removePhoto, scrapbook],
+    [addPhotos, photos, processing, removePhoto],
   );
 
   return (
@@ -260,7 +302,7 @@ export function ExpressOrderModal() {
         initial={reduce ? false : { y: 48, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-        className="relative flex max-h-[92svh] min-h-[min(620px,88svh)] w-full flex-col overflow-hidden md:min-h-0 rounded-t-3xl border border-white/10 bg-[#180e15] text-[#fdf2f8] shadow-[0_-12px_40px_rgba(0,0,0,.5)] md:max-w-lg md:rounded-3xl"
+        className="relative flex max-h-[85vh] min-h-[min(620px,80vh)] w-full flex-col overflow-hidden supports-[height:100svh]:max-h-[85svh] supports-[height:100svh]:min-h-[min(620px,80svh)] md:min-h-0 rounded-t-3xl border border-white/10 bg-[#180e15] text-[#fdf2f8] shadow-[0_-12px_40px_rgba(0,0,0,.5)] md:max-w-lg md:rounded-3xl"
       >
         <header className="flex items-center gap-3 border-b border-white/10 px-5 pb-3 pt-4">
           {step > 0 ? (
@@ -287,7 +329,7 @@ export function ExpressOrderModal() {
                 : step === 1
                   ? scrapbook
                     ? 'Build your scrapbook'
-                    : 'Who is it for?'
+                    : 'Make it theirs'
                   : 'Seal it and send it'}
             </h2>
           </div>
@@ -311,31 +353,29 @@ export function ExpressOrderModal() {
           ))}
         </ol>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-4">
+        <div
+          ref={bodyRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-4"
+        >
           {step === 0 ? (
             <StylePicker style={style} theme={theme} onStyle={setStyle} onTheme={pickTheme} />
-          ) : step === 1 && scrapbook ? (
-            <>
-              <DeskThumb data={previewData} />
-              <NameField name={name} onName={setName} />
-              <h3 className="mt-5 font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">
-                Build your scrapbook elements
-              </h3>
-              <p className="mb-2.5 mt-1 text-[12.5px] leading-snug text-[#9a6a7e]">
-                Pre-filled from {pack.title}. Edit any piece, or just add photos and go.
-              </p>
-              <ScrapbookElements
-                fields={draft}
-                onPatch={patchDraft}
-                onLayers={patchLayers}
-                photoSlot={photoPicker}
-                defaultOpen={['polaroids']}
-              />
-            </>
           ) : step === 1 ? (
             <>
+              <FormatThumb data={previewData} style={style} focus={focusCard} />
               <NameField name={name} onName={setName} />
-              {photoPicker}
+              <div className="mt-5">
+                <FormatEditor
+                  key={style}
+                  style={style}
+                  fields={draft}
+                  onPatch={patchDraft}
+                  onFormat={patchFormat}
+                  photoSlot={photoPicker}
+                  packTitle={pack.title}
+                  onReset={resetStory}
+                  onFocusCard={setFocusCard}
+                />
+              </div>
             </>
           ) : (
             <Review
@@ -344,7 +384,13 @@ export function ExpressOrderModal() {
               themeTitle={pack.title}
               name={name.trim()}
               photos={photos}
-              pieces={scrapbook ? elements.length : undefined}
+              pieces={
+                scrapbook
+                  ? `${elements.length} on the desk`
+                  : style === 'loop'
+                    ? `${draft.loop.cards.length} of 4 cards`
+                    : undefined
+              }
               onCustomize={customizeFirst}
             />
           )}
@@ -369,7 +415,7 @@ export function ExpressOrderModal() {
               {step === 0
                 ? scrapbook
                   ? 'Next · build the scrapbook'
-                  : 'Next · add their faces'
+                  : 'Next · make it theirs'
                 : 'Next · review'}
             </button>
           ) : (
@@ -629,7 +675,23 @@ const DESK_W = 380;
 const DESK_H = 470;
 const THUMB_SCALE = 0.45;
 
-const DeskThumb = memo(function DeskThumb({ data }: { data: XsoData }) {
+const THUMB_COPY: Record<GiftStyle, string> = {
+  scrapbook: 'Every piece you check lands on their desk. Uncheck one and it’s cleared away.',
+  loop: 'Each card you keep joins the loop. Open a card to bring it to the front.',
+  rewind: 'Your tape label, scores and review land on the stack as you type.',
+  accordion: 'Every line item prints onto the ribbon the moment you add it.',
+  moviebox: 'Scene titles, stills and your rating play on the reel as you edit.',
+};
+
+const FormatThumb = memo(function FormatThumb({
+  data,
+  style,
+  focus,
+}: {
+  data: XsoData;
+  style: GiftStyle;
+  focus?: number;
+}) {
   const deferred = useDeferredValue(data);
   const makeInert = useCallback((node: HTMLDivElement | null) => {
     node?.setAttribute('inert', '');
@@ -646,7 +708,17 @@ const DeskThumb = memo(function DeskThumb({ data }: { data: XsoData }) {
           className="pointer-events-none absolute left-0 top-0 origin-top-left"
           style={{ width: DESK_W, height: DESK_H, transform: `scale(${THUMB_SCALE})` }}
         >
-          <ScrapbookDesk data={deferred} size="fill" chrome={false} />
+          {style === 'scrapbook' ? (
+            <ScrapbookDesk data={deferred} size="fill" chrome={false} focusIndex={focus} />
+          ) : style === 'loop' ? (
+            <MemoryDeck data={deferred} size="fill" focusIndex={focus} />
+          ) : style === 'rewind' ? (
+            <RewindStack data={deferred} size="fill" focusIndex={focus} />
+          ) : style === 'accordion' ? (
+            <AccordionRibbon data={deferred} size="fill" focusIndex={focus} />
+          ) : (
+            <MovieBox data={deferred} size="fill" focusIndex={focus} />
+          )}
         </div>
       </div>
       <div className="min-w-0">
@@ -654,9 +726,7 @@ const DeskThumb = memo(function DeskThumb({ data }: { data: XsoData }) {
           <span aria-hidden className="led-peach" />
           Live preview
         </p>
-        <p className="mt-1.5 text-[13px] leading-snug text-[#e0b4c6]">
-          Every piece you check lands on their desk. Uncheck one and it’s cleared away.
-        </p>
+        <p className="mt-1.5 text-[13px] leading-snug text-[#e0b4c6]">{THUMB_COPY[style]}</p>
       </div>
     </div>
   );
@@ -676,8 +746,8 @@ const Review = memo(function Review({
   themeTitle: string;
   name: string;
   photos: string[];
-  /** Scrapbook only: how many artifacts are on the desk. */
-  pieces?: number;
+  /** Scrapbook and Loop: which artifacts made the cut. */
+  pieces?: string;
   onCustomize: () => void;
 }) {
   return (
@@ -694,7 +764,7 @@ const Review = memo(function Review({
           <Row label="For" value={name} />
           <Row label="Format" value={styleTitle} />
           <Row label="Story" value={themeTitle} />
-          {pieces !== undefined ? <Row label="Pieces" value={`${pieces} on the desk`} /> : null}
+          {pieces !== undefined ? <Row label="Pieces" value={pieces} /> : null}
           <Row label="Photos" value={`${photos.length} added`} />
           <Row label="Total" value={CARTRIDGE_PRICE} strong />
         </dl>
@@ -704,10 +774,8 @@ const Review = memo(function Review({
         data-step-focus
         tabIndex={-1}
       >
-        {pieces !== undefined
-          ? 'Anything you didn’t edit keeps the story pack’s starter text.'
-          : 'Our story pack fills in the rest: the receipt, the audit and the letter.'}{' '}
-        Want to write every line yourself?{' '}
+        Anything you didn’t edit keeps the story pack’s starter text. Want the full studio with a
+        big live preview?{' '}
         <Link
           href={`/customize?${styleQuery(style)}`}
           className="font-semibold text-[#f9a8d4] underline underline-offset-2"

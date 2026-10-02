@@ -11,7 +11,7 @@ import {
   useTransform,
   type Variants,
 } from 'framer-motion';
-import type { XsoData } from '@/types/xso';
+import type { RewindLayers, XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
 import { CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
@@ -73,25 +73,55 @@ interface Pile {
   direction: Direction;
 }
 
-export const RewindStack = memo(function RewindStack({
-  data,
-  onChange,
-  size = 'hero',
-  focusIndex,
-}: {
+type Sheet = Omit<Artifact, 'id'> & { id: Artifact['id'] | 'liner' };
+
+interface StackProps {
   data: XsoData;
   /** `fill` stretches to its container, e.g. inside the gift phone frame. */
   size?: keyof typeof DECK_HEIGHT;
+  /** 0–3 are the four keepsakes; 4 is the liner notes when present. */
   focusIndex?: number;
   onChange?: (index: number, label: string) => void;
-}) {
-  const artifacts = useMemo(() => getArtifacts(data), [data]);
-  const faces = useMemo<Record<Artifact['id'], ReactNode>>(
+}
+
+export const RewindStack = memo(function RewindStack(props: StackProps) {
+  const { data } = props;
+  const review = data.rewind?.review.trim() ?? '';
+  const base = useMemo(() => getArtifacts(data), [data]);
+  const artifacts = useMemo<Sheet[]>(
+    () =>
+      review
+        ? [
+            ...base,
+            {
+              id: 'liner',
+              label: 'Liner notes',
+              rotation: 0,
+              contentScale: 1,
+              content: <LinerNotes data={data} review={review} />,
+            },
+          ]
+        : base,
+    [base, data, review],
+  );
+  /** Adding or removing the liner notes reshapes the pile, so it starts fresh. */
+  return <Stack key={artifacts.length} {...props} artifacts={artifacts} />;
+});
+
+function Stack({
+  data,
+  artifacts,
+  onChange,
+  size = 'hero',
+  focusIndex,
+}: StackProps & { artifacts: Sheet[] }) {
+  const faces = useMemo<Record<Sheet['id'], ReactNode>>(
     () => ({
       receipt: <Side1Receipt data={data} bare />,
       audit: artifacts[1].content,
       photos: artifacts[2].content,
       letter: <Side4BirthdayCard data={data} bare />,
+      liner: artifacts[4]?.content,
     }),
     [artifacts, data],
   );
@@ -163,6 +193,8 @@ export const RewindStack = memo(function RewindStack({
       aria-roledescription="card stack"
     >
       <Backlight pulsing={!reduce && visible} turn={reduce ? 0 : turn} />
+
+      {data.rewind ? <TapeLabel tape={data.rewind} /> : null}
 
       <div className={`relative w-full ${DECK_HEIGHT[size]}`}>
         <AnimatePresence initial={false} custom={direction}>
@@ -236,7 +268,51 @@ export const RewindStack = memo(function RewindStack({
       </p>
     </section>
   );
-});
+}
+
+/** The cassette's paper J-card label: both sides' titles and the date it was dubbed. */
+function TapeLabel({ tape }: { tape: RewindLayers }) {
+  return (
+    <div className="relative z-10 mb-2 flex w-full items-stretch gap-2 rounded-md border border-[#fdba74]/25 bg-[#f6ead7] px-2.5 py-1.5 text-[#2d1b22] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.6)]">
+      <span
+        aria-hidden
+        className="grid w-6 shrink-0 place-items-center rounded-sm bg-[#ec4899] font-receipt text-[10px] font-bold text-white"
+      >
+        A
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-hand text-[17px] leading-none">{tape.sideA || 'Side A'}</p>
+        <p className="mt-0.5 truncate font-receipt text-[8px] uppercase tracking-[0.18em] text-[#7a5563]">
+          B · {tape.sideB || 'Side B'}
+        </p>
+      </div>
+      {tape.tapeDate ? (
+        <span className="self-center font-receipt text-[9px] uppercase tracking-[0.14em] text-[#7a5563]">
+          {tape.tapeDate}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function LinerNotes({ data, review }: { data: XsoData; review: string }) {
+  return (
+    <article className="flex h-full flex-col bg-[#fbf6ee] px-5 py-5 text-[#2d1b22]">
+      <p className="font-receipt text-[9px] uppercase tracking-[0.24em] text-[#9a6a7e]">
+        Liner notes · director&apos;s cut
+      </p>
+      <p className="mt-1 font-serif text-[20px] font-semibold leading-tight">
+        {data.rewind?.sideA || 'The review'}
+      </p>
+      <p className="mt-3 min-h-0 flex-1 overflow-hidden whitespace-pre-line font-hand text-[21px] leading-[1.15] text-[#3a2530]">
+        {review}
+      </p>
+      <p className="self-end font-hand text-[20px] leading-none text-[#b4234a]">
+        — {data.billerName}
+      </p>
+    </article>
+  );
+}
 
 /**
  * Room light falling on the desk: a slow resting heartbeat in the CTA's
@@ -312,7 +388,7 @@ const RewindCard = memo(function RewindCard({
   reduce,
   onRewind,
 }: {
-  artifact: Artifact;
+  artifact: Sheet;
   face: ReactNode;
   number: number;
   active: boolean;

@@ -477,6 +477,11 @@ const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; inde
           <span>Total</span>
           <span>{data.total}</span>
         </p>
+        {data.accordion?.sentiment ? (
+          <p className="mt-1 truncate text-right font-hand text-[17px] leading-none text-[#b4234a]">
+            {data.accordion.sentiment}
+          </p>
+        ) : null}
       </div>
     );
   }

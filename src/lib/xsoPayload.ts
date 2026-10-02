@@ -1,5 +1,6 @@
 import type { GiftStyle, XsoData } from '@/types/xso';
 import { sanitizeScrapbook } from '@/lib/scrapbook';
+import { sanitizeFormat } from '@/lib/formats';
 
 export const GIFT_STYLES: GiftStyle[] = ['loop', 'scrapbook', 'rewind', 'accordion', 'moviebox'];
 
@@ -37,5 +38,6 @@ export function pickXsoPayload(data: XsoData): XsoData {
     voiceNoteUrl: data.voiceNoteUrl,
     scratchOffReward: data.scratchOffReward,
     scrapbook: data.giftStyle === 'scrapbook' ? sanitizeScrapbook(data.scrapbook, data) : undefined,
+    ...sanitizeFormat(data.giftStyle, data),
   };
 }

@@ -5,7 +5,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useMediaQuery } from '@/hooks/useTouchSpring';
 import { useXsoData } from '@/store/useXsoData';
 import { XsoEditor } from '@/components/xso/XsoEditor';
-import { ScrapbookElementsPanel } from '@/components/xso/ScrapbookElementsPanel';
+import { FormatEditorPanel } from '@/components/xso/FormatEditorPanel';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
@@ -105,8 +105,12 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const desktop = useMediaQuery('(min-width: 1024px)');
   const showPreview = desktop || view === 'preview';
 
+  /** Set by the format editor when a section opens; a worksheet tab change takes over again. */
+  const [panelFocus, setPanelFocus] = useState<number | null>(null);
+
   const changeTab = useCallback((next: StudioStepId) => {
     setTab(next);
+    setPanelFocus(null);
     setVisited((prev) => (prev.has(next) ? prev : new Set(prev).add(next)));
     const editor = editorRef.current;
     if (editor && editor.getBoundingClientRect().top < 0) {
@@ -114,8 +118,9 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
     }
   }, []);
 
-  const focusIndex = STUDIO_STEPS.find((s) => s.id === tab)?.card ?? 0;
-  const activeStep = STUDIO_STEPS[focusIndex];
+  const tabCard = STUDIO_STEPS.find((s) => s.id === tab)?.card ?? 0;
+  const focusIndex = panelFocus ?? tabCard;
+  const activeStep = STUDIO_STEPS[tabCard];
 
   return (
     <>
@@ -156,7 +161,7 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
           </aside>
 
           <div className={`grid gap-6 ${view === 'edit' ? '' : 'max-lg:hidden'}`}>
-            {lockedStyle === 'scrapbook' ? <ScrapbookElementsPanel /> : null}
+            <FormatEditorPanel style={lockedStyle} onFocusCard={setPanelFocus} />
             <section
               ref={editorRef}
               className="paper-panel scroll-mt-[calc(var(--xso-header-h)+0.5rem)] p-4 sm:p-6"

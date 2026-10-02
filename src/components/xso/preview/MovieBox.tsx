@@ -1,6 +1,15 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
 import {
   AnimatePresence,
   animate,
@@ -13,12 +22,12 @@ import {
   type AnimationPlaybackControls,
   type MotionValue,
 } from 'framer-motion';
-import type { XsoData } from '@/types/xso';
+import type { MovieLayers, MovieScene, XsoData } from '@/types/xso';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { useProjectorFx } from '@/hooks/useProjectorFx';
 import { CINEMA_EASE, CINEMATIC, SOFT_SPRING } from '@/lib/motion';
+import { resolveMovie } from '@/lib/formats';
 import { LazyMedia } from '@/components/xso/LazyMedia';
-import { overallStars } from '@/components/xso/Side2Audit';
 import { getArtifacts } from '@/components/xso/viewers/shared';
 
 /** Crank travel that pulls one frame through the gate. */
@@ -48,21 +57,11 @@ const DUST = [
 const wrap = (n: number, count: number) => ((n % count) + count) % count;
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
-function firstSentence(text: string) {
-  const match = text.match(/^.*?[.!?](\s|$)/);
-  return (match ? match[0] : text).trim();
-}
-
-function storyFor(data: XsoData) {
+function storyFor(data: XsoData, movie: MovieLayers) {
   const item = data.lineItems[0]?.description.toLowerCase() ?? 'that one night';
   const flag = data.greenFlags[0]?.toLowerCase() ?? 'shows up, every single time';
   return {
-    subtitles: [
-      `${data.merchantName.replace(/[.!?]+$/, '')}. I kept every receipt.`,
-      `Rated ${overallStars(data.auditMetrics).toFixed(1)} out of 5. I rounded down so you'd stay humble.`,
-      'Some frames I replay more than others.',
-      firstSentence(data.birthdayMessage),
-    ],
+    subtitles: movie.scenes.map((scene) => scene.caption),
     notes: [
       [`${item} — this is where it all started`, 'keep the receipt. always.'],
       [`green flag: ${flag}`, 'the missing stars? those were mine.'],
@@ -84,8 +83,16 @@ export const MovieBox = memo(function MovieBox({
   focusIndex?: number;
   onChange?: (index: number, label: string) => void;
 }) {
-  const artifacts = useMemo(() => getArtifacts(data), [data]);
-  const story = useMemo(() => storyFor(data), [data]);
+  const movie = useMemo(() => resolveMovie(data), [data]);
+  const artifacts = useMemo(
+    () =>
+      getArtifacts(data).map((artifact, i) => ({
+        ...artifact,
+        label: movie.scenes[i]?.title || artifact.label,
+      })),
+    [data, movie],
+  );
+  const story = useMemo(() => storyFor(data, movie), [data, movie]);
   const count = artifacts.length;
   const reduce = Boolean(useReducedMotion());
   const coarse = useCoarsePointer();
@@ -255,7 +262,13 @@ export const MovieBox = memo(function MovieBox({
             }
             transition={{ duration: 0.75, times: [0, 0.35, 1], ease: CINEMA_EASE }}
           >
-            <FrameFace data={data} index={frame} />
+            <FrameFace
+              data={data}
+              index={frame}
+              scene={movie.scenes[frame]}
+              stars={movie.stars}
+              titled={Boolean(data.moviebox)}
+            />
           </motion.div>
           {!reduce ? (
             <motion.span
@@ -546,12 +559,67 @@ const FilmStrip = memo(function FilmStrip({
   );
 });
 
-const FrameFace = memo(function FrameFace({ data, index }: { data: XsoData; index: number }) {
+const FrameFace = memo(function FrameFace({
+  data,
+  index,
+  scene: shot,
+  stars,
+  titled,
+}: {
+  data: XsoData;
+  index: number;
+  scene?: MovieScene;
+  stars: number;
+  /** Older gifts have no scene titles; their slate reads just "Scene 01". */
+  titled: boolean;
+}) {
   const scene = (
-    <p className="font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80">
+    <p className="truncate font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80">
       Scene {String(index + 1).padStart(2, '0')}
+      {titled && shot?.title ? ` · ${shot.title}` : ''}
     </p>
   );
+  const still = shot?.image ? (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={shot.image}
+        alt=""
+        className="film-photo absolute inset-0 h-full w-full object-cover"
+      />
+      <span
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-b from-[#120806]/80 via-[#120806]/45 to-[#120806]/80"
+      />
+    </>
+  ) : null;
+  if (index === 2 && shot?.image) {
+    return <div className="absolute inset-0 overflow-hidden bg-[#120806]">{still}</div>;
+  }
+  if (still) {
+    return (
+      <div className="absolute inset-0 overflow-hidden">
+        {still}
+        <div className="relative h-full">
+          <FrameBody data={data} index={index} scene={scene} stars={stars} />
+        </div>
+      </div>
+    );
+  }
+  return <FrameBody data={data} index={index} scene={scene} stars={stars} />;
+});
+
+function FrameBody({
+  data,
+  index,
+  scene,
+  stars,
+}: {
+  data: XsoData;
+  index: number;
+  scene: ReactNode;
+  stars: number;
+}) {
   if (index === 0) {
     return (
       <div className="film-face">
@@ -577,7 +645,7 @@ const FrameFace = memo(function FrameFace({ data, index }: { data: XsoData; inde
       <div className="film-face">
         {scene}
         <p className="mt-1 font-serif text-xl font-semibold leading-tight">
-          {overallStars(data.auditMetrics).toFixed(1)} ★ friendship audit
+          {stars.toFixed(1)} ★ friendship audit
         </p>
         <div className="mt-2 space-y-1.5">
           {Object.entries(data.auditMetrics).map(([label, score]) => (
@@ -627,4 +695,4 @@ const FrameFace = memo(function FrameFace({ data, index }: { data: XsoData; inde
       </p>
     </div>
   );
-});
+}

@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import type { AuditMetrics, XsoData } from '@/types/xso';
+import { overallStars } from '@/lib/formats';
 import { InkStamp, PaperGrain } from '@/components/xso/paper/PaperCraft';
 
 export interface Side2AuditProps {
@@ -25,11 +26,7 @@ function clampScore(n: number) {
   return Math.min(100, Math.max(0, n));
 }
 
-export function overallStars(metrics: AuditMetrics): number {
-  const values = Object.values(metrics);
-  const avg = values.reduce((a, b) => a + b, 0) / values.length;
-  return Math.round((avg / 100) * 5 * 10) / 10;
-}
+export { overallStars };
 
 function polarPoint(
   cx: number,

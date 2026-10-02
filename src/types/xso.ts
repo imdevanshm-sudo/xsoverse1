@@ -41,6 +41,40 @@ export interface ScrapbookLayers {
   songUrl: string;
 }
 
+export const LOOP_CARDS = ['receipt', 'audit', 'photos', 'letter'] as const;
+export type LoopCard = (typeof LOOP_CARDS)[number];
+
+/** Loop: which of the four stack cards are dealt. */
+export interface LoopLayers {
+  cards: LoopCard[];
+}
+
+/** Rewind: the cassette label and the liner-notes card. */
+export interface RewindLayers {
+  sideA: string;
+  sideB: string;
+  tapeDate: string;
+  review: string;
+}
+
+/** Accordion: the handwritten line under the bill's total. */
+export interface AccordionLayers {
+  sentiment: string;
+}
+
+export interface MovieScene {
+  title: string;
+  caption: string;
+  /** Optional still for the frame (data URL), or empty. */
+  image: string;
+}
+
+/** Movie Box: four scenes and the critic's score. */
+export interface MovieLayers {
+  scenes: MovieScene[];
+  stars: number;
+}
+
 export interface XsoData {
   id: string;
   giftStyle: GiftStyle;
@@ -64,6 +98,10 @@ export interface XsoData {
   scratchOffReward: string;
   /** Absent on gifts made before modular scrapbooks; see `resolveScrapbook`. */
   scrapbook?: ScrapbookLayers;
+  loop?: LoopLayers;
+  rewind?: RewindLayers;
+  accordion?: AccordionLayers;
+  moviebox?: MovieLayers;
 }
 
 export type XsoSideIndex = 0 | 1 | 2 | 3;
