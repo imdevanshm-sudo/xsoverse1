@@ -12,7 +12,8 @@ export type FoleyCue =
   | 'scratch' // one grain of a coin on scratch-off foil
   | 'shuffle' // riffle of a few cards
   | 'whir' // tape rewind
-  | 'crank'; // projector ratchet
+  | 'crank' // projector ratchet
+  | 'reel'; // one claw pull-down of the film gate
 
 let context: AudioContext | null = null;
 let noise: AudioBuffer | null = null;
@@ -167,8 +168,54 @@ export function playFoley(cue: FoleyCue, volume = 1) {
           });
         }
         break;
+      case 'reel':
+        burst(ctx, out, { duration: 0.018, gain: 0.14, filter: 'bandpass', freq: jitter(3200), q: 2.4 });
+        burst(ctx, out, { at: 0.01, duration: 0.05, gain: 0.08, filter: 'lowpass', freq: jitter(520), q: 1 });
+        break;
     }
   } catch {
     // Sound is progressive enhancement.
+  }
+}
+
+/**
+ * Low projector motor hum with an 18 Hz shutter flutter. Returns a stop
+ * function that fades it out; calling it twice is harmless.
+ */
+export function startHum(volume = 0.05): () => void {
+  try {
+    const ctx = getContext();
+    if (!ctx) return () => {};
+    const source = ctx.createBufferSource();
+    source.buffer = getNoise(ctx);
+    source.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 240;
+    filter.Q.value = 2;
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0.0001, ctx.currentTime);
+    amp.gain.exponentialRampToValueAtTime(volume, ctx.currentTime + 0.25);
+    const flutter = ctx.createOscillator();
+    flutter.frequency.value = 18;
+    const depth = ctx.createGain();
+    depth.gain.value = volume * 0.35;
+    flutter.connect(depth).connect(amp.gain);
+    source.connect(filter).connect(amp).connect(ctx.destination);
+    source.start();
+    flutter.start();
+    let stopped = false;
+    return () => {
+      if (stopped) return;
+      stopped = true;
+      const end = ctx.currentTime + 0.35;
+      amp.gain.cancelScheduledValues(ctx.currentTime);
+      amp.gain.setValueAtTime(Math.max(amp.gain.value, 0.0001), ctx.currentTime);
+      amp.gain.exponentialRampToValueAtTime(0.0001, end);
+      source.stop(end + 0.05);
+      flutter.stop(end + 0.05);
+    };
+  } catch {
+    return () => {};
   }
 }

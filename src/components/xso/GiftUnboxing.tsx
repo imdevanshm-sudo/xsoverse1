@@ -6,6 +6,7 @@ import { XsoViewer } from '@/components/xso/XsoViewer';
 import { PhoneFrame } from '@/components/xso/PhoneFrame';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
+import { MovieBox } from '@/components/xso/preview/MovieBox';
 import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
 import type { GiftStyle, XsoData } from '@/types/xso';
@@ -53,6 +54,10 @@ export function GiftUnboxing({
               ) : data.giftStyle === 'accordion' ? (
                 <div className="flex h-full justify-center overflow-hidden bg-[#180e15] px-4 pb-16 pt-6">
                   <AccordionRibbon data={data} size="fill" />
+                </div>
+              ) : data.giftStyle === 'moviebox' ? (
+                <div className="flex h-full justify-center overflow-hidden bg-[#140a0d] px-3 pb-16 pt-5">
+                  <MovieBox data={data} size="fill" />
                 </div>
               ) : (
                 <XsoViewer data={data} contained={false} />

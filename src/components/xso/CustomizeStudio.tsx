@@ -8,6 +8,7 @@ import { XsoViewer } from '@/components/xso/XsoViewer';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
+import { MovieBox } from '@/components/xso/preview/MovieBox';
 import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';
@@ -57,6 +58,13 @@ const LivePreview = memo(function LivePreview({
     return (
       <div className="flex justify-center">
         <AccordionRibbon data={previewData} size="studio" focusIndex={focusIndex} />
+      </div>
+    );
+  }
+  if (lockedStyle === 'moviebox') {
+    return (
+      <div className="flex justify-center">
+        <MovieBox data={previewData} size="studio" focusIndex={focusIndex} />
       </div>
     );
   }

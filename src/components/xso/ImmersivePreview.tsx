@@ -7,6 +7,7 @@ import { XsoViewer } from '@/components/xso/XsoViewer';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
+import { MovieBox } from '@/components/xso/preview/MovieBox';
 import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { SecretOffer } from '@/components/xso/preview/SecretOffer';
 import { DeskDock } from '@/components/desk/DeskDock';
@@ -81,6 +82,8 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
             <ScrapbookDesk data={previewData} onChange={goTo} />
           ) : lockedStyle === 'accordion' ? (
             <AccordionRibbon data={previewData} onChange={goTo} />
+          ) : lockedStyle === 'moviebox' ? (
+            <MovieBox data={previewData} onChange={goTo} />
           ) : (
             <div className="paper-frame w-full max-w-[400px]">
               <XsoViewer
