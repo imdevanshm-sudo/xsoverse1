@@ -50,6 +50,7 @@ export const FormatThumb = memo(function FormatThumb({
   fit = false,
   onEdit,
   badge,
+  interactive = false,
 }: {
   data: XsoData;
   style: GiftStyle;
@@ -59,21 +60,31 @@ export const FormatThumb = memo(function FormatThumb({
   fit?: boolean;
   onEdit?: () => void;
   badge?: ReactNode;
+  /** Tap, swipe and flip the cards exactly as the recipient will. */
+  interactive?: boolean;
 }) {
   const deferred = useDeferredValue(data);
-  const makeInert = useCallback((node: HTMLDivElement | null) => {
-    node?.setAttribute('inert', '');
-  }, []);
+  const [current, setCurrent] = useState<string | null>(null);
+  const onChange = useCallback((_: number, label: string) => setCurrent(label), []);
+  const makeInert = useCallback(
+    (node: HTMLDivElement | null) => {
+      node?.toggleAttribute('inert', !interactive);
+    },
+    [interactive],
+  );
   const [fitRef, fitScale] = useFitScale(fit, SCALE.large);
   const scale = fit ? fitScale : SCALE[large ? 'large' : 'small'];
-  const Frame = onEdit ? 'button' : 'div';
+  const Frame = onEdit && !interactive ? 'button' : 'div';
   return (
-    <div ref={fitRef} className={`flex items-center gap-4 ${large || fit ? 'flex-col' : ''}`}>
+    <div
+      ref={fitRef}
+      className={`flex items-center ${large || fit ? 'flex-col' : ''} ${interactive ? 'gap-2.5' : 'gap-4'}`}
+    >
       <Frame
-        {...(onEdit
+        {...(onEdit && !interactive
           ? { type: 'button' as const, onClick: onEdit, 'aria-label': 'Edit every detail' }
           : {})}
-        className={`relative shrink-0 overflow-hidden rounded-2xl ${onEdit ? 'cursor-pointer ring-[#ec4899]/60 transition-shadow hover:ring-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]' : ''}`}
+        className={`relative shrink-0 overflow-hidden rounded-2xl ${interactive ? 'touch-pan-y' : ''} ${onEdit && !interactive ? 'cursor-pointer ring-[#ec4899]/60 transition-shadow hover:ring-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]' : ''}`}
         style={{ width: DESK_W * scale, height: DESK_H * scale }}
       >
         {badge ? (
@@ -81,8 +92,8 @@ export const FormatThumb = memo(function FormatThumb({
         ) : null}
         <div
           ref={makeInert}
-          aria-hidden
-          className="pointer-events-none absolute left-0 top-0 origin-top-left"
+          aria-hidden={!interactive}
+          className={`absolute left-0 top-0 origin-top-left ${interactive ? '' : 'pointer-events-none'}`}
           style={{ width: DESK_W, height: DESK_H, transform: `scale(${scale})` }}
         >
           <FormatPreview
@@ -91,10 +102,19 @@ export const FormatThumb = memo(function FormatThumb({
             size="fill"
             chrome={false}
             focusIndex={focus}
+            onChange={interactive ? onChange : undefined}
           />
         </div>
       </Frame>
-      {large || fit ? null : (
+      {interactive ? (
+        <p className="flex items-center gap-2 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#c99aae]">
+          <span aria-hidden>👆</span>
+          {current ? <span className="text-[#fdf2f8]">{current}</span> : null}
+          {current ? <span aria-hidden>·</span> : null}
+          Tap or swipe to play
+        </p>
+      ) : null}
+      {large || fit || interactive ? null : (
         <div className="min-w-0">
           <p className="flex items-center gap-2 font-receipt text-[10px] uppercase tracking-[0.2em] text-[#fdba74]">
             <span aria-hidden className="led-peach" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, type ReactNode } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { CRAFT_TONES, type CraftTone, type Relationship } from '@/lib/aiCraft';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
@@ -43,7 +43,7 @@ export const FormatShowcase = memo(function FormatShowcase({
             className="rounded-2xl shadow-[0_24px_60px_-20px_rgba(0,0,0,.8)]"
             style={{ boxShadow: `0 0 0 1px ${cart.accentSoft}, 0 24px 60px -20px rgba(0,0,0,.8)` }}
           >
-            <FormatThumb data={data} style={style} fit />
+            <FormatThumb data={data} style={style} fit interactive />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -176,6 +176,8 @@ export const CardStack = memo(function CardStack({
   const dealt = meta.filter((c) => cards.includes(c.id));
   const spread = Math.min(64, (FAN_W - CARD_W - 16) / Math.max(1, dealt.length - 1));
   const mid = (dealt.length - 1) / 2;
+  const [picked, setPicked] = useState<CardId | null>(null);
+  const front = picked && cards.includes(picked) ? picked : null;
   return (
     <div>
       <PaneLabel>
@@ -184,42 +186,58 @@ export const CardStack = memo(function CardStack({
       <div
         className="relative mx-auto overflow-hidden rounded-2xl bg-[radial-gradient(ellipse_at_center,rgba(236,72,153,0.12),transparent_70%)]"
         style={{ height: CARD_H + 48 }}
-        aria-label={`Your stack: ${dealt.map((c) => c.label).join(', ')}`}
-        role="img"
+        role="group"
+        aria-label="Your stack. Tap a card to take a closer look."
+        onClick={(e) => e.target === e.currentTarget && setPicked(null)}
       >
         <AnimatePresence initial={false}>
           {dealt.map((card, i) => {
             const offset = i - mid;
+            const lifted = front === card.id;
             return (
-              <motion.div
+              <motion.button
                 key={card.id}
+                type="button"
+                aria-pressed={lifted}
+                aria-label={`${card.label}${lifted ? ', in front' : ''}`}
+                onClick={() => setPicked(lifted ? null : card.id)}
                 layout={!reduce}
                 initial={reduce ? { opacity: 0 } : { opacity: 0, x: 220, rotate: 18 }}
-                animate={{
-                  opacity: 1,
-                  x: offset * spread,
-                  y: Math.abs(offset) * 6,
-                  rotate: offset * 5,
-                }}
+                animate={
+                  lifted
+                    ? { opacity: 1, x: 0, y: -6, rotate: 0, scale: 1.12 }
+                    : {
+                        opacity: front ? 0.55 : 1,
+                        x: offset * spread,
+                        y: Math.abs(offset) * 6,
+                        rotate: offset * 5,
+                        scale: 1,
+                      }
+                }
+                whileHover={reduce || lifted ? undefined : { y: Math.abs(offset) * 6 - 10 }}
+                whileTap={reduce ? undefined : { scale: lifted ? 1.08 : 0.97 }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, x: 240, y: -20, rotate: 22 }}
                 transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-                className="absolute left-1/2 top-5 overflow-hidden rounded-xl shadow-[0_14px_30px_-10px_rgba(0,0,0,.75)] ring-1 ring-black/10"
+                className="absolute left-1/2 top-5 cursor-pointer overflow-hidden rounded-xl p-0 text-left shadow-[0_14px_30px_-10px_rgba(0,0,0,.75)] ring-1 ring-black/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
                 style={{
                   width: CARD_W,
                   height: CARD_H,
                   marginLeft: -CARD_W / 2,
-                  zIndex: i,
+                  zIndex: lifted ? 50 : i,
                 }}
               >
                 <CardFace id={card.id} data={data} />
                 <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-4 text-[10px] font-semibold text-white">
                   {card.label}
                 </span>
-              </motion.div>
+              </motion.button>
             );
           })}
         </AnimatePresence>
       </div>
+      <p className="mt-2 text-center font-receipt text-[10px] uppercase tracking-[0.18em] text-[#c99aae]">
+        👆 {front ? 'Tap again to put it back' : 'Tap a card to pull it out'}
+      </p>
     </div>
   );
 });

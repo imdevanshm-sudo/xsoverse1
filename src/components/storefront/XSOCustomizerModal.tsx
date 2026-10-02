@@ -502,7 +502,7 @@ export function XSOCustomizerModal() {
                   tone={vibe.tone}
                 />
               ) : (
-                <FormatThumb data={order} style={style} focus={focusCard} fit />
+                <FormatThumb data={order} style={style} focus={focusCard} fit interactive />
               )}
             </aside>
 
