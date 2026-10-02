@@ -506,7 +506,7 @@ function PhotosSection() {
   );
 }
 
-function PhotoFrame({
+export function PhotoFrame({
   index,
   url,
   onFiles,

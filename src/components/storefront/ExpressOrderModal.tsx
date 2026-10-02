@@ -4,10 +4,13 @@ import Link from 'next/link';
 import {
   memo,
   useCallback,
+  useDeferredValue,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
+  type DragEvent,
   type KeyboardEvent,
 } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -15,19 +18,41 @@ import { ArrowLeft, Camera, Lock, X, Zap } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
 import { useExpressOrder } from '@/store/useExpressOrder';
 import { CARTRIDGE_PRICE, CARTRIDGES, displayTitle, getCartridge } from '@/lib/cartridges';
-import { THEMES, getTheme, type ThemeId } from '@/lib/themes';
+import { THEMES, getTheme, type ThemeContent, type ThemeId } from '@/lib/themes';
+import { newId } from '@/lib/constants';
 import { compressPhotoForStyle } from '@/lib/media';
+import { scrapbookDefaults } from '@/lib/scrapbook';
 import { startCheckout } from '@/lib/startCheckout';
 import { styleQuery } from '@/lib/styleLock';
+import { pickXsoPayload } from '@/lib/xsoPayload';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
-import type { GiftStyle } from '@/types/xso';
+import { ScrapbookElements } from '@/components/xso/ScrapbookElements';
+import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
+import type { GiftStyle, ScrapbookLayers, XsoData } from '@/types/xso';
 
 const MAX_PHOTOS = 3;
 const MAX_NAME = 40;
 const STEPS = ['Style', 'Photos', 'Pay'] as const;
 const FOCUSABLE =
-  'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+type Draft = ThemeContent & { scrapbook: ScrapbookLayers };
+
+/** Keeps edits already made in the studio when the pack is unchanged; otherwise the pack's starter copy. */
+function seedDraft(id: ThemeId): Draft {
+  const store = useXsoStore.getState();
+  if (store.themeId === id) {
+    const { id: _id, giftStyle: _style, ...rest } = pickXsoPayload(store);
+    return { ...rest, scrapbook: store.scrapbook };
+  }
+  const content = (getTheme(id) ?? THEMES[0]).content();
+  return {
+    ...content,
+    lineItems: content.lineItems.map((item) => ({ ...item, id: newId() })),
+    scrapbook: scrapbookDefaults(content),
+  };
+}
 
 /** Three-step impulse checkout: format + story, faces + name, pay. */
 export function ExpressOrderModal() {
@@ -39,8 +64,23 @@ export function ExpressOrderModal() {
   const [theme, setTheme] = useState<ThemeId>(
     () => useExpressOrder.getState().theme ?? (useXsoStore.getState().themeId as ThemeId),
   );
+  const [draft, setDraft] = useState<Draft>(() => seedDraft(theme));
   const [photos, setPhotos] = useState<string[]>([]);
   const [name, setName] = useState('');
+
+  const pickTheme = useCallback((id: ThemeId) => {
+    setTheme(id);
+    setDraft(seedDraft(id));
+  }, []);
+  const patchDraft = useCallback(
+    (patch: Partial<ThemeContent>) => setDraft((d) => ({ ...d, ...patch })),
+    [],
+  );
+  const patchLayers = useCallback(
+    (patch: Partial<ScrapbookLayers>) =>
+      setDraft((d) => ({ ...d, scrapbook: { ...d.scrapbook, ...patch } })),
+    [],
+  );
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +111,9 @@ export function ExpressOrderModal() {
         return;
       }
       if (e.key !== 'Tab' || !dialogRef.current) return;
-      const nodes = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+      const nodes = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (node) => !node.closest('[inert]'),
+      );
       if (!nodes.length) return;
       const first = nodes[0];
       const last = nodes[nodes.length - 1];
@@ -131,11 +173,18 @@ export function ExpressOrderModal() {
   const commit = useCallback(() => {
     const store = useXsoStore.getState();
     if (store.themeId !== theme) store.applyTheme(theme);
-    const { setField, setPhotoAt } = useXsoStore.getState();
-    setField('giftStyle', style);
-    if (name.trim()) setField('customerName', name.trim());
-    photos.forEach((photo, i) => setPhotoAt(i, photo));
-  }, [name, photos, style, theme]);
+    useXsoStore.setState({
+      ...draft,
+      giftStyle: style,
+      ...(name.trim() ? { customerName: name.trim() } : {}),
+    });
+    if (style === 'scrapbook') {
+      if (photos.length) useXsoStore.setState({ photos });
+    } else {
+      const { setPhotoAt } = useXsoStore.getState();
+      photos.forEach((photo, i) => setPhotoAt(i, photo));
+    }
+  }, [draft, name, photos, style, theme]);
 
   const customizeFirst = useCallback(() => {
     commit();
@@ -155,10 +204,40 @@ export function ExpressOrderModal() {
     }
   }, [busy, commit, style]);
 
+  const scrapbook = style === 'scrapbook';
+  const elements = draft.scrapbook.elements;
+  const needsPhotos = !scrapbook || elements.includes('polaroids');
   const canContinue =
-    step === 0 || (photos.length > 0 && name.trim().length > 0 && processing === 0);
+    step === 0 ||
+    (name.trim().length > 0 &&
+      processing === 0 &&
+      (!needsPhotos || photos.length > 0) &&
+      (!scrapbook || elements.length > 0));
   const cart = getCartridge(style);
   const pack = getTheme(theme) ?? THEMES[0];
+
+  const previewData = useMemo<XsoData>(
+    () => ({
+      ...draft,
+      id: 'express-preview',
+      giftStyle: 'scrapbook',
+      customerName: name.trim() || draft.customerName,
+      photos,
+    }),
+    [draft, name, photos],
+  );
+  const photoPicker = useMemo(
+    () => (
+      <PhotoPicker
+        photos={photos}
+        processing={processing}
+        onAdd={addPhotos}
+        onRemove={removePhoto}
+        compact={scrapbook}
+      />
+    ),
+    [addPhotos, photos, processing, removePhoto, scrapbook],
+  );
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center md:items-center">
@@ -206,7 +285,9 @@ export function ExpressOrderModal() {
               {step === 0
                 ? 'Pick how it unfolds'
                 : step === 1
-                  ? 'Who is it for?'
+                  ? scrapbook
+                    ? 'Build your scrapbook'
+                    : 'Who is it for?'
                   : 'Seal it and send it'}
             </h2>
           </div>
@@ -232,16 +313,29 @@ export function ExpressOrderModal() {
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-4">
           {step === 0 ? (
-            <StylePicker style={style} theme={theme} onStyle={setStyle} onTheme={setTheme} />
+            <StylePicker style={style} theme={theme} onStyle={setStyle} onTheme={pickTheme} />
+          ) : step === 1 && scrapbook ? (
+            <>
+              <DeskThumb data={previewData} />
+              <NameField name={name} onName={setName} />
+              <h3 className="mt-5 font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">
+                Build your scrapbook elements
+              </h3>
+              <p className="mb-2.5 mt-1 text-[12.5px] leading-snug text-[#9a6a7e]">
+                Pre-filled from {pack.title}. Edit any piece, or just add photos and go.
+              </p>
+              <ScrapbookElements
+                fields={draft}
+                onPatch={patchDraft}
+                onLayers={patchLayers}
+                photoSlot={photoPicker}
+                defaultOpen={['polaroids']}
+              />
+            </>
           ) : step === 1 ? (
             <>
               <NameField name={name} onName={setName} />
-              <PhotoPicker
-                photos={photos}
-                processing={processing}
-                onAdd={addPhotos}
-                onRemove={removePhoto}
-              />
+              {photoPicker}
             </>
           ) : (
             <Review
@@ -250,6 +344,7 @@ export function ExpressOrderModal() {
               themeTitle={pack.title}
               name={name.trim()}
               photos={photos}
+              pieces={scrapbook ? elements.length : undefined}
               onCustomize={customizeFirst}
             />
           )}
@@ -271,7 +366,11 @@ export function ExpressOrderModal() {
               disabled={!canContinue}
               className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-[#fdf2f8] font-serif text-[17px] font-semibold text-[#2d1b22] transition-transform active:scale-[0.98] disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
             >
-              {step === 0 ? 'Next · add their faces' : 'Next · review'}
+              {step === 0
+                ? scrapbook
+                  ? 'Next · build the scrapbook'
+                  : 'Next · add their faces'
+                : 'Next · review'}
             </button>
           ) : (
             <MatteCta
@@ -406,26 +505,52 @@ const PhotoPicker = memo(function PhotoPicker({
   processing,
   onAdd,
   onRemove,
+  compact = false,
 }: {
   photos: string[];
   processing: number;
   onAdd: (files: File[]) => void;
   onRemove: (index: number) => void;
+  /** Inside the scrapbook's Polaroid editor, which supplies its own spacing. */
+  compact?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const onFiles = (e: ChangeEvent<HTMLInputElement>) => {
+  const [over, setOver] = useState(false);
+  const take = (list: FileList | null) => {
     const room = MAX_PHOTOS - photos.length - processing;
-    const files = Array.from(e.target.files ?? []).slice(0, Math.max(0, room));
-    e.target.value = '';
+    const files = Array.from(list ?? [])
+      .filter((file) => file.type.startsWith('image/'))
+      .slice(0, Math.max(0, room));
     if (files.length) onAdd(files);
+  };
+  const onFiles = (e: ChangeEvent<HTMLInputElement>) => {
+    take(e.target.files);
+    e.target.value = '';
+  };
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setOver(false);
+    take(e.dataTransfer.files);
   };
 
   return (
     <>
-      <p className="mt-5 font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">
-        1–3 photos of you two
+      <p
+        className={`font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae] ${compact ? '' : 'mt-5'}`}
+      >
+        1–3 photos of you two{compact ? ' · drop or tap to add' : ''}
       </p>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setOver(true);
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={onDrop}
+        className={`mt-2 grid grid-cols-3 gap-2 rounded-2xl transition-shadow ${
+          over ? 'shadow-[0_0_0_2px_#ec4899]' : ''
+        }`}
+      >
         {Array.from({ length: MAX_PHOTOS }, (_, i) => {
           const photo = photos[i];
           if (!photo && i < photos.length + processing) {
@@ -499,12 +624,51 @@ const PhotoPicker = memo(function PhotoPicker({
   );
 });
 
+/** Live, non-interactive miniature of the desk the recipient will open. */
+const DESK_W = 380;
+const DESK_H = 470;
+const THUMB_SCALE = 0.45;
+
+const DeskThumb = memo(function DeskThumb({ data }: { data: XsoData }) {
+  const deferred = useDeferredValue(data);
+  const makeInert = useCallback((node: HTMLDivElement | null) => {
+    node?.setAttribute('inert', '');
+  }, []);
+  return (
+    <div className="mb-5 flex items-center gap-4">
+      <div
+        aria-hidden
+        className="relative shrink-0 overflow-hidden rounded-2xl"
+        style={{ width: DESK_W * THUMB_SCALE, height: DESK_H * THUMB_SCALE }}
+      >
+        <div
+          ref={makeInert}
+          className="pointer-events-none absolute left-0 top-0 origin-top-left"
+          style={{ width: DESK_W, height: DESK_H, transform: `scale(${THUMB_SCALE})` }}
+        >
+          <ScrapbookDesk data={deferred} size="fill" chrome={false} />
+        </div>
+      </div>
+      <div className="min-w-0">
+        <p className="flex items-center gap-2 font-receipt text-[10px] uppercase tracking-[0.2em] text-[#fdba74]">
+          <span aria-hidden className="led-peach" />
+          Live preview
+        </p>
+        <p className="mt-1.5 text-[13px] leading-snug text-[#e0b4c6]">
+          Every piece you check lands on their desk. Uncheck one and it’s cleared away.
+        </p>
+      </div>
+    </div>
+  );
+});
+
 const Review = memo(function Review({
   style,
   styleTitle,
   themeTitle,
   name,
   photos,
+  pieces,
   onCustomize,
 }: {
   style: GiftStyle;
@@ -512,6 +676,8 @@ const Review = memo(function Review({
   themeTitle: string;
   name: string;
   photos: string[];
+  /** Scrapbook only: how many artifacts are on the desk. */
+  pieces?: number;
   onCustomize: () => void;
 }) {
   return (
@@ -528,6 +694,7 @@ const Review = memo(function Review({
           <Row label="For" value={name} />
           <Row label="Format" value={styleTitle} />
           <Row label="Story" value={themeTitle} />
+          {pieces !== undefined ? <Row label="Pieces" value={`${pieces} on the desk`} /> : null}
           <Row label="Photos" value={`${photos.length} added`} />
           <Row label="Total" value={CARTRIDGE_PRICE} strong />
         </dl>
@@ -537,8 +704,10 @@ const Review = memo(function Review({
         data-step-focus
         tabIndex={-1}
       >
-        Our story pack fills in the rest: the receipt, the audit and the letter. Want to write every
-        line yourself?{' '}
+        {pieces !== undefined
+          ? 'Anything you didn’t edit keeps the story pack’s starter text.'
+          : 'Our story pack fills in the rest: the receipt, the audit and the letter.'}{' '}
+        Want to write every line yourself?{' '}
         <Link
           href={`/customize?${styleQuery(style)}`}
           className="font-semibold text-[#f9a8d4] underline underline-offset-2"

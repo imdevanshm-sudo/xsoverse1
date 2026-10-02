@@ -4,20 +4,23 @@ import { create } from 'zustand';
 import { newId } from '@/lib/constants';
 import { getTheme, type ThemeId } from '@/lib/themes';
 import { FRAMES_PER_STRIP, MAX_STRIPS, blankFrame, stripCount } from '@/lib/photoStrips';
+import { scrapbookDefaults } from '@/lib/scrapbook';
 import {
   getMockXsoData,
   type AuditMetrics,
   type LineItem,
+  type ScrapbookLayers,
   type XsoData,
 } from '@/types/xso';
 
 type ScalarField = Exclude<
   keyof XsoData,
-  'lineItems' | 'auditMetrics' | 'greenFlags' | 'redFlags' | 'photos'
+  'lineItems' | 'auditMetrics' | 'greenFlags' | 'redFlags' | 'photos' | 'scrapbook'
 >;
 
 interface XsoActions {
   setField: <K extends ScalarField>(key: K, value: XsoData[K]) => void;
+  setScrapbook: (patch: Partial<ScrapbookLayers>) => void;
   setAuditMetric: (key: keyof AuditMetrics, value: number) => void;
   addLineItem: () => void;
   updateLineItem: (id: string, patch: Partial<Omit<LineItem, 'id'>>) => void;
@@ -38,10 +41,13 @@ interface XsoActions {
   applyTheme: (id: ThemeId) => void;
 }
 
-export type XsoStore = XsoData & XsoActions & { themeId: ThemeId };
+export type XsoStore = XsoData & XsoActions & { themeId: ThemeId; scrapbook: ScrapbookLayers };
+
+const initial = getMockXsoData();
 
 export const useXsoStore = create<XsoStore>((set) => ({
-  ...getMockXsoData(),
+  ...initial,
+  scrapbook: scrapbookDefaults(initial),
   themeId: 'bestie-roast',
 
   applyTheme: (id) => {
@@ -51,9 +57,12 @@ export const useXsoStore = create<XsoStore>((set) => ({
     set({
       ...content,
       lineItems: content.lineItems.map((item) => ({ ...item, id: newId() })),
+      scrapbook: scrapbookDefaults(content),
       themeId: id,
     });
   },
+
+  setScrapbook: (patch) => set((state) => ({ scrapbook: { ...state.scrapbook, ...patch } })),
 
   setPhotoAt: (index, url) =>
     set((state) => {
@@ -88,9 +97,7 @@ export const useXsoStore = create<XsoStore>((set) => ({
 
   updateLineItem: (id, patch) =>
     set((state) => ({
-      lineItems: state.lineItems.map((item) =>
-        item.id === id ? { ...item, ...patch } : item,
-      ),
+      lineItems: state.lineItems.map((item) => (item.id === id ? { ...item, ...patch } : item)),
     })),
 
   removeLineItem: (id) =>

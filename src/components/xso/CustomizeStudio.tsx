@@ -5,6 +5,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useMediaQuery } from '@/hooks/useTouchSpring';
 import { useXsoData } from '@/store/useXsoData';
 import { XsoEditor } from '@/components/xso/XsoEditor';
+import { ScrapbookElementsPanel } from '@/components/xso/ScrapbookElementsPanel';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
@@ -154,15 +155,16 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
             {showPreview ? <LivePreview lockedStyle={lockedStyle} focusIndex={focusIndex} /> : null}
           </aside>
 
-          <section
-            ref={editorRef}
-            className={`paper-panel scroll-mt-[calc(var(--xso-header-h)+0.5rem)] p-4 sm:p-6 ${
-              view === 'edit' ? '' : 'max-lg:hidden'
-            }`}
-            aria-label="Souvenir editor"
-          >
-            <XsoEditor tab={tab} onTabChange={changeTab} />
-          </section>
+          <div className={`grid gap-6 ${view === 'edit' ? '' : 'max-lg:hidden'}`}>
+            {lockedStyle === 'scrapbook' ? <ScrapbookElementsPanel /> : null}
+            <section
+              ref={editorRef}
+              className="paper-panel scroll-mt-[calc(var(--xso-header-h)+0.5rem)] p-4 sm:p-6"
+              aria-label="Souvenir editor"
+            >
+              <XsoEditor tab={tab} onTabChange={changeTab} />
+            </section>
+          </div>
         </div>
       </div>
 

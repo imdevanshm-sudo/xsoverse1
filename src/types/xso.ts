@@ -13,12 +13,33 @@ export interface AuditMetrics {
   support: number;
 }
 
-export type GiftStyle =
-  | 'loop'
-  | 'scrapbook'
-  | 'rewind'
-  | 'accordion'
-  | 'moviebox';
+export type GiftStyle = 'loop' | 'scrapbook' | 'rewind' | 'accordion' | 'moviebox';
+
+export const SCRAPBOOK_ELEMENTS = [
+  'receipt',
+  'polaroids',
+  'sticky',
+  'letter',
+  'ticket',
+  'voice',
+] as const;
+
+export type ScrapbookElement = (typeof SCRAPBOOK_ELEMENTS)[number];
+
+export type StickyColor = 'pink' | 'amber' | 'cream';
+
+/** Which artifacts sit on the scrapbook desk, plus the copy only the desk uses. */
+export interface ScrapbookLayers {
+  elements: ScrapbookElement[];
+  polaroidCaption: string;
+  secretNote: string;
+  stickyColor: StickyColor;
+  ticketTitle: string;
+  ticketPlace: string;
+  ticketWhen: string;
+  /** Normalized open.spotify.com link, or empty. */
+  songUrl: string;
+}
 
 export interface XsoData {
   id: string;
@@ -41,6 +62,8 @@ export interface XsoData {
   birthdayMessage: string;
   voiceNoteUrl?: string;
   scratchOffReward: string;
+  /** Absent on gifts made before modular scrapbooks; see `resolveScrapbook`. */
+  scrapbook?: ScrapbookLayers;
 }
 
 export type XsoSideIndex = 0 | 1 | 2 | 3;

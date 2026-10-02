@@ -28,6 +28,7 @@ export function useXsoData(): XsoData {
       birthdayMessage: s.birthdayMessage,
       voiceNoteUrl: s.voiceNoteUrl,
       scratchOffReward: s.scratchOffReward,
+      scrapbook: s.scrapbook,
     })),
   );
 }

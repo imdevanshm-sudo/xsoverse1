@@ -20,8 +20,9 @@ import {
   type Variants,
 } from 'framer-motion';
 import { Pause, Play } from 'lucide-react';
-import type { XsoData } from '@/types/xso';
+import type { ScrapbookLayers, XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
+import { STICKY_COLORS, resolveScrapbook } from '@/lib/scrapbook';
 import { useCoarsePointer, useTouchSpring } from '@/hooks/useTouchSpring';
 import { SOFT_SPRING } from '@/lib/motion';
 import { LazyMedia } from '@/components/xso/LazyMedia';
@@ -36,7 +37,7 @@ const INTERACTIVE = 'button, a, input, audio, [data-no-drag]';
 
 const MEMORY_LABELS = ['Receipt', 'Audit', 'Photos', 'Letter'];
 
-type ItemKind = 'receipt' | 'polaroid' | 'sticky' | 'ticket' | 'letter';
+type ItemKind = 'receipt' | 'polaroid' | 'sticky' | 'ticket' | 'letter' | 'voice';
 
 interface DeskItemSpec {
   id: string;
@@ -59,6 +60,7 @@ const LAYOUT: Record<string, Omit<DeskItemSpec, 'id' | 'kind' | 'memory' | 'phot
   sticky: { left: '5%', top: '49%', width: '40%', tilt: 4 },
   letter: { left: '47%', top: '67%', width: '40%', tilt: -5 },
   ticket: { left: '5%', top: '81%', width: '47%', tilt: 8 },
+  voice: { left: '26%', top: '63%', width: '38%', tilt: -7 },
 };
 
 const DESK_HEIGHT = {
@@ -67,23 +69,35 @@ const DESK_HEIGHT = {
   fill: 'min-h-0 flex-1',
 };
 
-function buildItems(data: XsoData): DeskItemSpec[] {
+function buildItems(data: XsoData, layers: ScrapbookLayers): DeskItemSpec[] {
+  const on = new Set(layers.elements);
   const photos = data.photos.filter(Boolean).slice(0, 3);
   const jitter = (id: string, base: number) =>
     Math.max(-6, Math.min(8, base + seededOffset(data.id || 'xso', id.length * 7 + base, 1.5)));
-  const at = (id: string, kind: ItemKind, memory: number, extra?: Partial<DeskItemSpec>) => {
-    const spot = LAYOUT[id];
+  const at = (
+    id: string,
+    kind: ItemKind,
+    memory: number,
+    extra?: Partial<DeskItemSpec>,
+    spotId = id,
+  ) => {
+    const spot = LAYOUT[spotId];
     return { id, kind, memory, ...spot, tilt: jitter(id, spot.tilt), ...extra };
   };
-  return [
-    at('receipt', 'receipt', 0),
-    ...(photos.length ? photos : ['']).map((src, index) =>
-      at(`polaroid-${index}`, 'polaroid', 2, { photo: { src, index } }),
-    ),
-    at('sticky', 'sticky', 1),
-    at('ticket', 'ticket', 3),
-    at('letter', 'letter', 3),
-  ];
+  const items: DeskItemSpec[] = [];
+  if (on.has('receipt')) items.push(at('receipt', 'receipt', 0));
+  if (on.has('polaroids')) {
+    (photos.length ? photos : ['']).forEach((src, index) =>
+      items.push(at(`polaroid-${index}`, 'polaroid', 2, { photo: { src, index } })),
+    );
+  }
+  if (on.has('sticky')) items.push(at('sticky', 'sticky', 1));
+  if (on.has('ticket')) items.push(at('ticket', 'ticket', 3));
+  if (on.has('voice')) {
+    items.push(at('voice', 'voice', 3, undefined, on.has('ticket') ? 'voice' : 'ticket'));
+  }
+  if (on.has('letter')) items.push(at('letter', 'letter', 3));
+  return items;
 }
 
 export const ScrapbookDesk = memo(function ScrapbookDesk({
@@ -91,16 +105,20 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   size = 'hero',
   focusIndex,
   onChange,
+  chrome = true,
 }: {
   data: XsoData;
   /** `fill` stretches to its container, e.g. inside the gift phone frame. */
   size?: keyof typeof DESK_HEIGHT;
   focusIndex?: number;
   onChange?: (index: number, label: string) => void;
+  /** Hides the tidy-up row, for thumbnails. */
+  chrome?: boolean;
 }) {
   const desk = useRef<HTMLDivElement>(null);
   const letterItem = useRef<HTMLDivElement>(null);
-  const items = useMemo(() => buildItems(data), [data]);
+  const layers = useMemo(() => resolveScrapbook(data), [data]);
+  const items = useMemo(() => buildItems(data, layers), [data, layers]);
   const reduce = Boolean(useReducedMotion());
   const coarse = useCoarsePointer();
   const [stack, setStack] = useState<string[]>(() => items.map((item) => item.id));
@@ -109,6 +127,19 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const [peel, setPeel] = useState<0 | 1 | 2>(0);
   const [torn, setTorn] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
+
+  /** Pieces present on first paint settle in place; ones checked later drop onto the desk. */
+  const seen = useRef<Set<string> | null>(null);
+  if (!seen.current) seen.current = new Set(items.map((item) => item.id));
+  useEffect(() => {
+    items.forEach((item) => seen.current!.add(item.id));
+    setStack((current) => {
+      const ids = items.map((item) => item.id);
+      const kept = current.filter((id) => ids.includes(id));
+      const added = ids.filter((id) => !current.includes(id));
+      return added.length || kept.length !== current.length ? [...kept, ...added] : current;
+    });
+  }, [items]);
 
   const bringForward = (ids: string[]) =>
     setStack((current) => [...current.filter((id) => !ids.includes(id)), ...ids]);
@@ -155,6 +186,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
             desk,
             reduce,
             tactile: !coarse,
+            entering: !seen.current!.has(item.id),
             onPickUp: () => pickUp(item),
           };
           switch (item.kind) {
@@ -182,7 +214,13 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
                     setFlipped((f) => ({ ...f, [item.id]: !f[item.id] }));
                   }}
                 >
-                  <Polaroid data={data} photo={item.photo!} flipped={isFlipped} reduce={reduce} />
+                  <Polaroid
+                    data={data}
+                    caption={layers.polaroidCaption}
+                    photo={item.photo!}
+                    flipped={isFlipped}
+                    reduce={reduce}
+                  />
                 </DeskItem>
               );
             }
@@ -203,7 +241,13 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
                     setPeel((p) => (p === 2 ? 0 : 2));
                   }}
                 >
-                  <StickyNote data={data} peel={peel} reduce={reduce} />
+                  <StickyNote
+                    data={data}
+                    secret={layers.secretNote}
+                    paper={STICKY_COLORS[layers.stickyColor].paper}
+                    peel={peel}
+                    reduce={reduce}
+                  />
                 </DeskItem>
               );
             case 'ticket':
@@ -226,7 +270,13 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
                         }
                   }
                 >
-                  <TicketStub data={data} torn={torn} reduce={reduce} />
+                  <TicketStub data={data} layers={layers} torn={torn} reduce={reduce} />
+                </DeskItem>
+              );
+            case 'voice':
+              return (
+                <DeskItem key={`${item.id}:${tidy}`} {...common} label="Voice note and song">
+                  <SongCard data={data} songUrl={layers.songUrl} />
                 </DeskItem>
               );
             case 'letter':
@@ -249,13 +299,15 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
         })}
 
         <AnimatePresence>
-          {letterOpen ? (
+          {letterOpen && layers.elements.includes('letter') ? (
             <OpenLetter key="letter" data={data} reduce={reduce} onClose={closeLetter} />
           ) : null}
         </AnimatePresence>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3 px-1">
+      <div
+        className={`mt-3 flex items-center justify-between gap-3 px-1 ${chrome ? '' : 'hidden'}`}
+      >
         <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
           {coarse ? 'Tap anything · flip, peel, unfold' : 'Pick anything up · flip, peel, unfold'}
         </p>
@@ -296,6 +348,7 @@ function DeskItem({
   desk,
   reduce,
   tactile,
+  entering,
   label,
   hint,
   itemRef,
@@ -310,6 +363,7 @@ function DeskItem({
   reduce: boolean;
   /** Free 2D dragging (fine pointers only); touch screens get tap-only items. */
   tactile: boolean;
+  entering: boolean;
   label: string;
   hint?: string;
   itemRef?: RefObject<HTMLDivElement>;
@@ -322,6 +376,7 @@ function DeskItem({
   const pickUp = useTouchSpring(PICK_UP);
   /** The click that trails a drag must not also flip, peel or unfold. */
   const droppedAt = useRef(0);
+  const [enter] = useState(entering);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!onActivate || (event.key !== 'Enter' && event.key !== ' ')) return;
@@ -380,7 +435,7 @@ function DeskItem({
       aria-label={label}
     >
       <motion.span aria-hidden className="desk-item__lift" variants={LIFT_SHADOW} />
-      {children}
+      <div className={enter ? 'desk-enter' : undefined}>{children}</div>
       {hint ? (
         <span aria-hidden className="desk-hint">
           {hint}
@@ -401,6 +456,8 @@ function Tape({ style, className = '' }: { style?: CSSProperties; className?: st
   );
 }
 
+const RECEIPT_LINES = 4;
+
 const MiniReceipt = memo(function MiniReceipt({ data }: { data: XsoData }) {
   return (
     <article className="desk-paper desk-paper--receipt relative px-3 pb-4 pt-4 font-receipt text-[#2d1b22]">
@@ -413,7 +470,7 @@ const MiniReceipt = memo(function MiniReceipt({ data }: { data: XsoData }) {
       </p>
       <div className="my-2 border-t border-dashed border-[#2d1b22]/30" />
       <ul className="space-y-1 text-[9px] uppercase leading-tight">
-        {data.lineItems.slice(0, 4).map((line) => (
+        {data.lineItems.slice(0, RECEIPT_LINES).map((line) => (
           <li key={line.id} className="flex justify-between gap-2">
             <span className="min-w-0 truncate">
               {line.qty} {line.description}
@@ -421,6 +478,9 @@ const MiniReceipt = memo(function MiniReceipt({ data }: { data: XsoData }) {
             <span className="shrink-0">{line.price}</span>
           </li>
         ))}
+        {data.lineItems.length > RECEIPT_LINES ? (
+          <li className="opacity-60">+ {data.lineItems.length - RECEIPT_LINES} more</li>
+        ) : null}
       </ul>
       <div className="my-2 border-t border-dashed border-[#2d1b22]/30" />
       <p className="flex justify-between text-[10px] font-bold uppercase">
@@ -441,11 +501,13 @@ const GLOSS: Variants = {
 
 const Polaroid = memo(function Polaroid({
   data,
+  caption,
   photo,
   flipped,
   reduce,
 }: {
   data: XsoData;
+  caption: string;
   photo: { src: string; index: number };
   flipped: boolean;
   reduce: boolean;
@@ -501,8 +563,12 @@ const Polaroid = memo(function Polaroid({
           <p className="font-receipt text-[8px] uppercase tracking-[0.2em] text-[#9a6a7e]">
             Frame {String(photo.index + 1).padStart(2, '0')} · {date}
           </p>
-          <p className="mt-2 flex-1 font-hand text-[18px] leading-[1.05] text-[#3a2530]">
-            {line ? `the ${line.description.toLowerCase()} era.` : 'one I keep coming back to.'}
+          <p className="mt-2 line-clamp-4 flex-1 break-words font-hand text-[18px] leading-[1.05] text-[#3a2530]">
+            {photo.index === 0 && caption
+              ? caption
+              : line
+                ? `the ${line.description.toLowerCase()} era.`
+                : 'one I keep coming back to.'}
           </p>
           <p className="font-receipt text-[8px] uppercase tracking-[0.18em] text-[#9a6a7e]">
             {data.occasion}
@@ -529,10 +595,14 @@ const PEEL_SHADOW = [0, 0.5, 1];
 
 const StickyNote = memo(function StickyNote({
   data,
+  secret,
+  paper,
   peel,
   reduce,
 }: {
   data: XsoData;
+  secret: string;
+  paper: string;
   peel: 0 | 1 | 2;
   reduce: boolean;
 }) {
@@ -541,18 +611,17 @@ const StickyNote = memo(function StickyNote({
   return (
     <div className="relative aspect-square">
       <div
-        className="desk-paper desk-paper--under absolute inset-0 flex flex-col items-end justify-end gap-1.5 p-2 text-right"
+        className="desk-paper desk-paper--under absolute inset-0 flex flex-col items-end justify-end p-2 text-right"
         aria-hidden={peel !== 2}
       >
-        <p className="max-w-[48%] font-hand text-[14px] leading-[1.05] text-[#3a2530]">
-          psst… {data.redFlags[0]?.toLowerCase() ?? 'you know what you did'}
+        <p className="line-clamp-5 max-w-[56%] break-words font-hand text-[14px] leading-[1.05] text-[#3a2530]">
+          {secret || '…'}
         </p>
-        <VoiceSnippet data={data} live={peel === 2} />
       </div>
 
       <motion.div
         className="desk-paper desk-paper--sticky gpu-layer absolute inset-0 p-2.5"
-        style={{ transformOrigin: '100% 0%' }}
+        style={{ transformOrigin: '100% 0%', backgroundColor: paper }}
         initial={false}
         animate={PEEL[peel]}
         transition={transition}
@@ -579,13 +648,12 @@ const StickyNote = memo(function StickyNote({
 
 const WAVE = [6, 11, 17, 9, 20, 13, 7, 16, 10, 18, 8, 14];
 
-function VoiceSnippet({ data, live }: { data: XsoData; live: boolean }) {
+function VoiceSnippet({ src, from }: { src: string; from: string }) {
   const audio = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
-    if (!data.voiceNoteUrl) return;
-    const clip = new Audio(data.voiceNoteUrl);
+    const clip = new Audio(src);
     audio.current = clip;
     const ended = () => setPlaying(false);
     clip.addEventListener('ended', ended);
@@ -593,15 +661,9 @@ function VoiceSnippet({ data, live }: { data: XsoData; live: boolean }) {
       clip.pause();
       clip.removeEventListener('ended', ended);
       audio.current = null;
-    };
-  }, [data.voiceNoteUrl]);
-
-  useEffect(() => {
-    if (!live && playing) {
-      audio.current?.pause();
       setPlaying(false);
-    }
-  }, [live, playing]);
+    };
+  }, [src]);
 
   const toggle = async () => {
     const clip = audio.current;
@@ -633,11 +695,7 @@ function VoiceSnippet({ data, live }: { data: XsoData; live: boolean }) {
       <button
         type="button"
         onClick={toggle}
-        tabIndex={live ? 0 : -1}
-        aria-hidden={!live}
-        aria-label={
-          playing ? `Pause ${data.billerName}'s voice note` : `Play ${data.billerName}'s voice note`
-        }
+        aria-label={playing ? `Pause ${from}'s voice note` : `Play ${from}'s voice note`}
         className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#2d1b22] text-[#fdf2f8] shadow-[0_2px_6px_rgba(45,27,34,0.35)]"
       >
         {playing ? (
@@ -650,22 +708,61 @@ function VoiceSnippet({ data, live }: { data: XsoData; live: boolean }) {
   );
 }
 
+/** A cassette label: the voice note plays in place, a song opens in Spotify. */
+const SongCard = memo(function SongCard({ data, songUrl }: { data: XsoData; songUrl: string }) {
+  return (
+    <article className="desk-paper desk-paper--ticket relative px-3 py-2.5 text-[#2d1b22]">
+      <p className="font-receipt text-[8px] uppercase tracking-[0.2em] text-[#9a6a7e]">
+        Side A · {data.voiceNoteUrl ? 'press play' : 'our song'}
+      </p>
+      {data.voiceNoteUrl ? (
+        <div className="mt-1">
+          <VoiceSnippet src={data.voiceNoteUrl} from={data.billerName} />
+        </div>
+      ) : null}
+      {songUrl ? (
+        <a
+          href={songUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 inline-flex min-h-8 items-center gap-1.5 font-hand text-[17px] leading-none text-[#b4234a] underline decoration-[#b4234a]/30 underline-offset-2"
+        >
+          <Play className="h-3 w-3 fill-current" aria-hidden /> play our song
+        </a>
+      ) : null}
+      {!data.voiceNoteUrl && !songUrl ? (
+        <p className="mt-1 font-hand text-[16px] leading-none text-[#3a2530]/60">your song here</p>
+      ) : null}
+    </article>
+  );
+});
+
 const TicketStub = memo(function TicketStub({
   data,
+  layers,
   torn,
   reduce,
 }: {
   data: XsoData;
+  layers: ScrapbookLayers;
   torn: boolean;
   reduce: boolean;
 }) {
+  const where = [layers.ticketPlace, layers.ticketWhen].filter(Boolean).join(' · ');
   return (
     <article className="desk-paper desk-paper--ticket relative px-3 py-2.5 text-[#2d1b22]">
       <div className="flex items-baseline justify-between gap-2 font-receipt text-[8px] uppercase tracking-[0.2em] text-[#9a6a7e]">
         <span>Admit two</span>
         <span>No. 0417</span>
       </div>
-      <p className="mt-0.5 font-serif text-[15px] font-semibold leading-tight">Secret promise</p>
+      <p className="mt-0.5 truncate font-serif text-[15px] font-semibold leading-tight">
+        {layers.ticketTitle || 'Secret promise'}
+      </p>
+      {where ? (
+        <p className="truncate font-receipt text-[8px] uppercase tracking-[0.14em] text-[#7a5563]">
+          {where}
+        </p>
+      ) : null}
       <div className="relative mt-1.5 min-h-[30px] border-t border-dashed border-[#2d1b22]/30 pt-1.5">
         <p className="font-hand text-[16px] leading-[1.05] text-[#b4234a]" aria-hidden={!torn}>
           {data.scratchOffReward}
