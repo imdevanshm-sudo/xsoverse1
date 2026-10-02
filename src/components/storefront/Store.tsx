@@ -16,6 +16,15 @@ const previewHref = (style: GiftStyle, theme: ThemeId) =>
   `/preview?style=${encodeURIComponent(style)}&theme=${theme}`;
 const customizeHref = (style: GiftStyle) => `/customize?style=${encodeURIComponent(style)}`;
 
+/** Static studio shadow + tinted rim; only the layer's opacity animates between styles. */
+const studioShadow = (glow: string) =>
+  [
+    '0 44px 80px -32px rgba(0,0,0,0.9)',
+    '0 18px 36px -18px rgba(0,0,0,0.7)',
+    `0 0 0 1px ${glow}55`,
+    `0 0 56px -12px ${glow}66`,
+  ].join(', ');
+
 /** Store & template gallery: pick a format, then tap a story deck. */
 export function Store() {
   const router = useRouter();
@@ -102,23 +111,22 @@ export function Store() {
           </span>
         </header>
 
-        <section className="mt-9 max-w-2xl sm:mt-12">
-          <p className="mb-4 font-receipt text-[11px] uppercase tracking-[0.22em] text-[#9daf88]">
+        <section className="mt-6 max-w-2xl sm:mt-12">
+          <p className="mb-2.5 font-receipt text-[10px] uppercase tracking-[0.22em] text-[#9daf88] sm:mb-4 sm:text-[11px]">
             Experience + Souvenir <span className="text-[#6f665a]">=</span> XSO
           </p>
-          <h1 className="font-serif text-[2.4rem] font-semibold leading-[1.04] tracking-tight text-[#f7f4eb] sm:text-6xl">
-            Keepsakes for the words{' '}
-            <em className="font-medium text-[#e2b48f]">you never said.</em>
+          <h1 className="text-balance font-serif text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.02em] text-[#f7f4eb] sm:text-6xl">
+            Keepsakes for the words <em className="font-medium text-[#e2b48f]">you never said.</em>
           </h1>
-          <p className="mt-4 max-w-lg text-[16px] leading-relaxed text-[#b3a794]">
+          <p className="mt-3 max-w-lg text-pretty text-[15px] leading-[1.6] text-[#b3a794] sm:mt-4 sm:text-[16px]">
             Some feelings don&apos;t fit in a text. An XSO gives them a shape you can hold: a
-            receipt of the moments you shared, an audit of who they are to you, a strip of faces
-            and a letter that finally says it. Made once, for one person, for {CARTRIDGE_PRICE}.
+            receipt of the moments you shared, an audit of who they are to you, a strip of faces and
+            a letter that finally says it. Made once, for one person, for {CARTRIDGE_PRICE}.
           </p>
         </section>
 
-        <section className="mt-10" aria-labelledby="format-heading">
-          <div className="mb-3 flex items-baseline justify-between gap-3">
+        <section className="mt-7 sm:mt-10" aria-labelledby="format-heading">
+          <div className="mb-2 flex items-baseline justify-between gap-3 sm:mb-3">
             <h2
               id="format-heading"
               className="font-receipt text-[11px] uppercase tracking-[0.22em] text-[#a89c8a]"
@@ -148,7 +156,7 @@ export function Store() {
                   tabIndex={selected ? 0 : -1}
                   onClick={() => selectStyle(cart.id as GiftStyle)}
                   onKeyDown={(e) => onTabKey(e, index)}
-                  className={`min-h-[76px] min-w-[8.5rem] shrink-0 snap-start touch-manipulation rounded-2xl border px-3.5 py-3 text-left transition-[background-color,border-color,transform,box-shadow] duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2b48f] active:scale-[0.97] sm:min-w-0 ${
+                  className={`min-h-[76px] min-w-[8.5rem] shrink-0 snap-start touch-manipulation rounded-2xl border px-3.5 py-3 text-left transition-transform duration-200 ease-out will-change-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2b48f] active:scale-[0.97] sm:min-w-0 ${
                     selected
                       ? 'border-[#e3d9c5] bg-[#f7f4eb] text-[#2b2825] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)]'
                       : 'border-[#3a3632] bg-[#22201d] text-[#efe7d7] hover:-translate-y-0.5 hover:border-[#6a6158] hover:bg-[#2a2723]'
@@ -165,78 +173,95 @@ export function Store() {
                     {displayTitle(cart)}
                   </span>
                   <span
-                    className={`mt-0.5 block truncate text-[12px] ${
+                    className={`mt-0.5 block text-[12px] leading-snug ${
                       selected ? 'text-[#6b6257]' : 'text-[#8a7f70]'
                     }`}
                   >
-                    {cart.subtitle}
+                    {cart.caption}
                   </span>
                 </button>
               );
             })}
           </div>
 
-          <div
-            className="mt-4 grid overflow-hidden rounded-3xl border border-[#3a3632] bg-[#1f1d1a] md:grid-cols-[1.1fr_1fr]"
-            aria-live="polite"
-          >
-            <StyleDemo style={giftStyle} />
-            <div className="relative flex min-h-[260px] flex-col p-5 sm:p-7">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={giftStyle}
-                  initial={reduce ? false : { opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18, ease: 'easeOut' }}
-                  className="flex flex-1 flex-col"
-                >
-                  <p className="font-receipt text-[10px] uppercase tracking-[0.22em] text-[#7d7264]">
-                    {format.code} · {format.year} · {format.subtitle}
-                  </p>
-                  <h3 className="mt-2 font-serif text-[1.9rem] font-semibold leading-none tracking-tight text-[#f7f4eb]">
-                    {displayTitle(format)}
-                  </h3>
-                  <p className="mt-2 font-hand text-[21px] leading-tight text-[#e2b48f]">
-                    {format.tagline}
-                  </p>
-                  <p className="mt-3 text-[15px] leading-relaxed text-[#b3a794]">
-                    {format.description}
-                  </p>
-                  <p className="mt-4 font-receipt text-[11px] uppercase tracking-[0.16em] text-[#8a7f70]">
-                    <span className="text-[#9daf88]">● Slot A · Ready</span>
-                    <span className="text-[#5a534b]"> / </span>
-                    <span className="font-bold text-[#efe7d7]">{activeTheme.title}</span>
-                  </p>
-                  <p className="mt-1 font-serif text-[14px] italic text-[#8a7f70]">
-                    Loaded, and waiting for your words.
-                  </p>
-                </motion.div>
-              </AnimatePresence>
+          <div className="relative mt-3 sm:mt-4">
+            <AnimatePresence initial={false}>
+              <motion.div
+                key={`glow-${giftStyle}`}
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-3xl"
+                style={{ boxShadow: studioShadow(format.glow) }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: reduce ? 0 : 0.45, ease: 'easeOut' }}
+              />
+            </AnimatePresence>
+            <div
+              className="relative grid overflow-hidden rounded-3xl border border-[#3a3632] bg-[#1f1d1a] md:grid-cols-[1.1fr_1fr]"
+              aria-live="polite"
+            >
+              <StyleDemo style={giftStyle} glow={format.glow} />
+              <div className="relative flex flex-col p-4 sm:p-7 md:min-h-[260px]">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={giftStyle}
+                    initial={reduce ? false : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                    className="flex flex-1 flex-col"
+                  >
+                    <p
+                      className="font-receipt text-[10px] uppercase tracking-[0.22em]"
+                      style={{ color: format.glow }}
+                    >
+                      {format.code} · {format.year} · {format.subtitle}
+                    </p>
+                    <h3 className="mt-1.5 font-serif text-[1.75rem] font-semibold leading-none tracking-[-0.015em] text-[#f7f4eb] sm:mt-2 sm:text-[1.9rem]">
+                      {displayTitle(format)}
+                    </h3>
+                    <p className="mt-1.5 font-hand text-[20px] leading-tight text-[#e2b48f] sm:mt-2 sm:text-[21px]">
+                      {format.tagline}
+                    </p>
+                    <p className="mt-2.5 text-pretty text-[14.5px] leading-[1.6] text-[#b3a794] sm:mt-3 sm:text-[15px]">
+                      {format.description}
+                    </p>
+                    <p className="mt-3.5 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#8a7f70] sm:mt-4 sm:text-[11px]">
+                      <span style={{ color: format.glow }}>● Slot A · Ready</span>
+                      <span className="text-[#5a534b]"> / </span>
+                      <span className="font-bold text-[#efe7d7]">{activeTheme.title}</span>
+                    </p>
+                    <p className="mt-1 font-serif text-[14px] italic text-[#8a7f70]">
+                      Loaded, and waiting for your words.
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
 
-              <div className="mt-5 grid gap-2.5">
-                <MatteCta
-                  key={`preview-${giftStyle}-${themeId}`}
-                  href={previewHref(giftStyle, themeId)}
-                  label={`Feel it as ${displayTitle(format)}`}
-                  narrowLabel="Feel it first"
-                  price={CARTRIDGE_PRICE}
-                  loadingLabel="Inserting the cartridge…"
-                  ariaLabel={`Preview ${displayTitle(format)} with ${activeTheme.title}, ${CARTRIDGE_PRICE}`}
-                />
-                <Link
-                  href={customizeHref(giftStyle)}
-                  prefetch
-                  className="paper-button flex min-h-[48px] touch-manipulation items-center justify-center rounded-2xl px-5 font-receipt text-[12px] font-bold uppercase tracking-[0.16em] transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2b48f] active:scale-[0.98]"
-                >
-                  Build your XSO →
-                </Link>
+                <div className="mt-4 grid gap-2 sm:mt-5 sm:gap-2.5">
+                  <MatteCta
+                    key={`preview-${giftStyle}-${themeId}`}
+                    href={previewHref(giftStyle, themeId)}
+                    label={`Experience this ${displayTitle(format)}`}
+                    narrowLabel="Experience it"
+                    price={CARTRIDGE_PRICE}
+                    loadingLabel="Inserting the cartridge…"
+                    ariaLabel={`Preview ${displayTitle(format)} with ${activeTheme.title}, ${CARTRIDGE_PRICE}`}
+                  />
+                  <Link
+                    href={customizeHref(giftStyle)}
+                    prefetch
+                    className="paper-button flex min-h-[48px] touch-manipulation items-center justify-center rounded-2xl px-5 font-receipt text-[12px] font-bold uppercase tracking-[0.16em] transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2b48f] active:scale-[0.98]"
+                  >
+                    Craft this {displayTitle(format)} XSO →
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="mt-12" aria-labelledby="decks-heading">
+        <section className="mt-10 sm:mt-12" aria-labelledby="decks-heading">
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <h2
               id="decks-heading"
@@ -245,7 +270,7 @@ export function Store() {
               <span className="text-[#e2b48f]">2</span> · Start from a story
             </h2>
             <p className="shrink-0 font-receipt text-[11px] tracking-[0.14em] text-[#7d7264]">
-              Plays as {displayTitle(format)}
+              Unfolds as {displayTitle(format)}
             </p>
           </div>
           <div className="felt px-4 pb-6 pt-12 sm:px-8">

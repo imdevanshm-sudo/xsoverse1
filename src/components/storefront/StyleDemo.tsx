@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
 import { MiniFace } from '@/components/storefront/DeckBox';
 import type { GiftStyle } from '@/types/xso';
 
@@ -99,25 +99,45 @@ function poseFor(style: GiftStyle, i: number, step: number): Pose {
 }
 
 /** Looping miniature of how each format plays, so switching styles is felt instantly. */
-export function StyleDemo({ style }: { style: GiftStyle }) {
+export function StyleDemo({ style, glow }: { style: GiftStyle; glow: string }) {
   const reduce = useReducedMotion();
+  const stage = useRef<HTMLDivElement>(null);
+  const visible = useInView(stage, { margin: '80px' });
   const [step, setStep] = useState(0);
 
+  useEffect(() => setStep(0), [style]);
+
+  // Idle when scrolled away or the tab is hidden so older phones aren't animating offscreen.
   useEffect(() => {
-    setStep(0);
-    if (reduce) return;
-    const id = window.setInterval(() => setStep((s) => s + 1), STEP_MS);
+    if (reduce || !visible) return;
+    const id = window.setInterval(() => {
+      if (!document.hidden) setStep((s) => s + 1);
+    }, STEP_MS);
     return () => window.clearInterval(id);
-  }, [reduce, style]);
+  }, [reduce, style, visible]);
 
   return (
     <div
+      ref={stage}
       aria-hidden
-      className="felt relative grid h-[230px] w-full place-items-center overflow-hidden sm:h-[260px]"
+      className="felt relative grid h-[196px] w-full place-items-center overflow-hidden sm:h-[260px]"
       style={{ perspective: 800 }}
     >
+      <AnimatePresence initial={false}>
+        <motion.div
+          key={style}
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse 60% 55% at 50% 38%, ${glow}2e, transparent 70%)`,
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduce ? 0 : 0.45 }}
+        />
+      </AnimatePresence>
       {style === 'moviebox' ? (
-        <FilmStrip reduce={Boolean(reduce)} />
+        <FilmStrip reduce={Boolean(reduce)} playing={visible} />
       ) : (
         Array.from({ length: CARDS }, (_, i) => {
           const p = poseFor(style, i, step);
@@ -146,13 +166,13 @@ export function StyleDemo({ style }: { style: GiftStyle }) {
   );
 }
 
-function FilmStrip({ reduce }: { reduce: boolean }) {
+function FilmStrip({ reduce, playing }: { reduce: boolean; playing: boolean }) {
   const frames = [0, 1, 2, 3, 0, 1, 2, 3];
   return (
     <div className="relative w-full overflow-hidden">
       <motion.div
         className="flex w-max gap-0 bg-[#1b1714] py-3"
-        animate={reduce ? undefined : { x: ['0%', '-50%'] }}
+        animate={reduce || !playing ? undefined : { x: ['0%', '-50%'] }}
         transition={{ duration: 7, ease: 'linear', repeat: Infinity }}
       >
         {frames.map((kind, i) => (

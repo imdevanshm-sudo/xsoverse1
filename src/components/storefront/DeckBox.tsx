@@ -124,7 +124,7 @@ export function DeckBox({
               style={{ background: theme.box.label, color: '#2b2825' }}
             >
               <p className="font-receipt text-[10px] uppercase tracking-[0.2em] text-[#8a7b66]">
-                {theme.code} · 4 memories
+                {theme.code} · 4 memories inside
               </p>
               <p className="mt-0.5 font-serif text-[19px] font-semibold leading-tight">
                 {theme.title}
