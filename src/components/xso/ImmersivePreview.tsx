@@ -6,6 +6,7 @@ import { useXsoData } from '@/store/useXsoData';
 import { XsoViewer } from '@/components/xso/XsoViewer';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
+import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { SecretOffer } from '@/components/xso/preview/SecretOffer';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';
@@ -19,7 +20,7 @@ const MEMORY_COUNT = 4;
 const STAGE_HINT: Record<GiftStyle, string> = {
   loop: 'Tap the stack · let it come back around',
   rewind: 'Tap the stack · then call it all back',
-  scrapbook: 'Tap a scrap · hold it to the light',
+  scrapbook: 'Pick something up · turn it over',
   accordion: 'Pull the ribbon · let it unfold',
   moviebox: 'Turn the crank · roll the reel',
 };
@@ -75,6 +76,8 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
             <MemoryDeck data={previewData} onChange={goTo} />
           ) : lockedStyle === 'rewind' ? (
             <RewindStack data={previewData} onChange={goTo} />
+          ) : lockedStyle === 'scrapbook' ? (
+            <ScrapbookDesk data={previewData} onChange={goTo} />
           ) : (
             <div className="paper-frame w-full max-w-[400px]">
               <XsoViewer

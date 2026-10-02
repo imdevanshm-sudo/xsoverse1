@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { XsoViewer } from '@/components/xso/XsoViewer';
 import { PhoneFrame } from '@/components/xso/PhoneFrame';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
+import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
@@ -43,6 +44,10 @@ export function GiftUnboxing({
               {data.giftStyle === 'rewind' ? (
                 <div className="flex h-full justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
                   <RewindStack data={data} size="fill" />
+                </div>
+              ) : data.giftStyle === 'scrapbook' ? (
+                <div className="flex h-full justify-center overflow-hidden bg-[#180e15] px-2 pb-14 pt-3">
+                  <ScrapbookDesk data={data} size="fill" />
                 </div>
               ) : (
                 <XsoViewer data={data} contained={false} />
