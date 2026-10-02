@@ -30,9 +30,9 @@ export const CARTRIDGES: CartridgeSpec[] = [
     description:
       'Four keepsakes in one hand-held stack. Flick one away and it slides back under the pile, like the thing you meant to say that keeps circling back at 2am.',
     year: '1989',
-    glow: '#9daf88',
-    accent: '#00ff66',
-    accentSoft: 'rgba(0, 255, 102, 0.22)',
+    glow: '#f472b6',
+    accent: '#f472b6',
+    accentSoft: 'rgba(236, 72, 153, 0.22)',
     labelBg: '#0b2416',
     ink: '#e6ffef',
   },
@@ -46,7 +46,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
     description:
       'Set each memory down, then press recall and watch them rush back into your hand. For the moments you’d replay just to say what you didn’t the first time.',
     year: '1991',
-    glow: '#e0a84f',
+    glow: '#fbbf24',
     accent: '#ffc857',
     accentSoft: 'rgba(255, 200, 87, 0.22)',
     labelBg: '#2a2110',
@@ -62,7 +62,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
     description:
       'Receipts, photos and a letter scattered like a shoebox of secret history. Every scrap is a quiet confession of something only you two know.',
     year: '1993',
-    glow: '#d98a8a',
+    glow: '#fb7185',
     accent: '#ff6b9d',
     accentSoft: 'rgba(255, 107, 157, 0.22)',
     labelBg: '#2a1420',
@@ -78,7 +78,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
     description:
       'Every memory folded into one paper ribbon, so nothing gets left out. Pull it open and everything you held back unfolds in a single breath.',
     year: '1995',
-    glow: '#b8c77a',
+    glow: '#c084fc',
     accent: '#b8ff4a',
     accentSoft: 'rgba(184, 255, 74, 0.2)',
     labelBg: '#1c2610',
@@ -94,7 +94,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
     description:
       'Each memory becomes a frame on a hand-cranked reel. Turn it slowly and the scenes you never talked about finally get their screening.',
     year: '1978',
-    glow: '#e0784a',
+    glow: '#fb923c',
     accent: '#ff7a45',
     accentSoft: 'rgba(255, 122, 69, 0.22)',
     labelBg: '#2a1610',

@@ -55,7 +55,7 @@ export function CamcorderTimestamp({
       }
     >
       <div
-        className="xso-blur-safe border border-[#7cff9a]/35 bg-black/80 px-2 py-1.5 font-mono text-[8px] uppercase leading-tight tracking-[0.14em] text-[#7cff9a] shadow-[0_0_8px_rgba(124,255,154,0.12)] sm:text-[9px]"
+        className="xso-blur-safe border border-[#fda4af]/35 bg-black/80 px-2 py-1.5 font-mono text-[8px] uppercase leading-tight tracking-[0.14em] text-[#fda4af] shadow-[0_0_8px_rgba(124,255,154,0.12)] sm:text-[9px]"
         style={{
           textShadow: '0 0 6px rgba(124,255,154,0.45)',
           boxShadow: active
@@ -72,8 +72,8 @@ export function CamcorderTimestamp({
           />
           REC · TAPE
         </p>
-        <p className="mt-0.5 text-[#7cff9a]">{label}</p>
-        <p className="mt-0.5 text-[7px] tracking-[0.2em] text-[#7cff9a]/55">
+        <p className="mt-0.5 text-[#fda4af]">{label}</p>
+        <p className="mt-0.5 text-[7px] tracking-[0.2em] text-[#fda4af]/55">
           {active ? '◀◀ REWIND ACTIVE' : 'STANDBY'}
         </p>
       </div>
@@ -128,7 +128,7 @@ export function VcrRewindButton({
       <div className="flex min-h-10 items-center justify-center gap-2 px-3.5 py-2">
         <span
           className={`h-1.5 w-1.5 rounded-full ${
-            pressing ? 'bg-[#ffb84d]' : 'bg-[#7cff9a]'
+            pressing ? 'bg-[#ffb84d]' : 'bg-[#fda4af]'
           }`}
           style={{
             boxShadow: pressing

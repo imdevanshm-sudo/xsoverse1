@@ -43,7 +43,7 @@ export default function PreviewPage() {
   return (
     <Suspense
       fallback={
-        <main className="desk grid min-app-h place-items-center font-receipt text-sm text-[#a89c8a]">
+        <main className="desk grid min-app-h place-items-center font-receipt text-sm text-[#c99aae]">
           Loading preview…
         </main>
       }

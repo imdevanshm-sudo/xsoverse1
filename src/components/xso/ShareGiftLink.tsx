@@ -82,7 +82,7 @@ export function ShareGiftLink({
           onClick={copy}
           className={
             paper
-              ? `${buttonClass} border-[#d8ccb6] bg-white/60 font-receipt font-bold text-[#2b2825]`
+              ? `${buttonClass} border-[#efd2de] bg-white/60 font-receipt font-bold text-[#2d1b22]`
               : `${buttonClass} border-white/15 bg-white/5 font-mono text-white/80`
           }
           aria-live="polite"
@@ -95,7 +95,7 @@ export function ShareGiftLink({
             onClick={share}
             className={
               paper
-                ? `${buttonClass} border-[#c85a32]/50 bg-[#c85a32]/10 font-receipt font-bold text-[#9e4424]`
+                ? `${buttonClass} border-[#ec4899]/50 bg-[#ec4899]/10 font-receipt font-bold text-[#be185d]`
                 : `${buttonClass} border-phosphor/40 bg-phosphor/10 font-mono text-phosphor`
             }
           >

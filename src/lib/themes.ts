@@ -52,10 +52,10 @@ function anniversaryLore(): ThemeContent {
     ],
     certifiedStampText: 'CERTIFIED KEEPER ♥',
     photos: [
-      svgPhoto('FIRST DATE', '#f6e1d3', '#9e4424'),
+      svgPhoto('FIRST DATE', '#f6e1d3', '#be185d'),
       svgPhoto('ROAD TRIP', '#dfe6d3', '#4d5e3f'),
       svgPhoto('RAINY PICNIC', '#e9dcc5', '#6b4f2f'),
-      svgPhoto('NEW KEYS', '#f3d9c9', '#8a3a1f'),
+      svgPhoto('NEW KEYS', '#f3d9c9', '#9d174d'),
     ],
     birthdayMessage:
       "Happy anniversary. Three years of blanket theft, wrong turns and the same four songs — I'd do every single one of them again. Here's to the next chapter of our lore.",
@@ -96,9 +96,9 @@ function lateNightReceipts(): ThemeContent {
     certifiedStampText: 'CERTIFIED NIGHT OWL ☾',
     photos: [
       svgPhoto('NEON DINER', '#221b2e', '#f5b76b'),
-      svgPhoto('GAS STATION', '#1d2622', '#9daf88'),
+      svgPhoto('GAS STATION', '#1d2622', '#fdba74'),
       svgPhoto('KARAOKE', '#2b1d1a', '#e58a5c'),
-      svgPhoto('SUNRISE', '#f3d9b6', '#8a3a1f'),
+      svgPhoto('SUNRISE', '#f3d9b6', '#9d174d'),
     ],
     birthdayMessage:
       "To my favorite 3am person — for every diner booth, every wrong exit and every sunrise we didn't plan. The receipts are faded, but I kept all of them.",
@@ -114,7 +114,7 @@ export const THEMES: ThemePack[] = [
     title: 'The Bestie Roast',
     blurb: 'An itemised bill for years of chaos, snacks and therapy you never charged for.',
     defaultStyle: 'loop',
-    box: { body: '#c85a32', band: '#f7f4eb', ink: '#2b2825', label: '#fbe9dc' },
+    box: { body: '#ec4899', band: '#fdf2f8', ink: '#2d1b22', label: '#fde4ee' },
     content: bestieRoast,
   },
   {
@@ -123,7 +123,7 @@ export const THEMES: ThemePack[] = [
     title: 'Anniversary Lore',
     blurb: 'Three years of blanket theft, wrong turns and the same four songs.',
     defaultStyle: 'loop',
-    box: { body: '#6f8160', band: '#f7f4eb', ink: '#2b2825', label: '#eef2e6' },
+    box: { body: '#a8557e', band: '#fdf2f8', ink: '#2d1b22', label: '#f8e8f0' },
     content: anniversaryLore,
   },
   {
@@ -132,7 +132,7 @@ export const THEMES: ThemePack[] = [
     title: 'Late Night Receipts',
     blurb: 'Diner booths, parking-lot philosophy and sunrises nobody planned.',
     defaultStyle: 'loop',
-    box: { body: '#3b3531', band: '#a8845a', ink: '#f7f4eb', label: '#e9d9c1' },
+    box: { body: '#3b3531', band: '#e0a87a', ink: '#fdf2f8', label: '#e9d9c1' },
     content: lateNightReceipts,
   },
 ];

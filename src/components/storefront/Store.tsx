@@ -90,35 +90,35 @@ export function Store() {
   return (
     <main className="desk min-app-h" aria-busy={pending}>
       <div className="mx-auto w-full max-w-5xl px-5 pb-20 pt-5 sm:px-8 sm:pt-8">
-        <header className="flex items-center justify-between gap-4 border-b border-[#3a3632]/70 pb-4">
+        <header className="flex items-center justify-between gap-4 border-b border-[#4a2a35]/70 pb-4">
           <Link
             href="/"
-            className="group flex min-h-[44px] min-w-0 items-center gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#e2b48f]"
+            className="group flex min-h-[44px] min-w-0 items-center gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f9a8d4]"
             aria-label="XSO by XSOVERSE, home"
           >
-            <span className="font-serif text-[1.7rem] font-bold leading-none tracking-tight text-[#f7f4eb]">
+            <span className="font-serif text-[1.7rem] font-bold leading-none tracking-tight text-[#fdf2f8]">
               XSO
             </span>
-            <span aria-hidden className="h-7 w-px shrink-0 bg-[#4a443d]" />
-            <span className="min-w-0 font-receipt text-[10px] uppercase leading-tight tracking-[0.22em] text-[#a89c8a] sm:text-[11px]">
-              <span className="font-bold text-[#e2b48f]">XSOVERSE</span>
-              <span className="text-[#6f665a]">{' // '}</span>
+            <span aria-hidden className="h-7 w-px shrink-0 bg-[#5a3442]" />
+            <span className="min-w-0 font-receipt text-[10px] uppercase leading-tight tracking-[0.22em] text-[#c99aae] sm:text-[11px]">
+              <span className="font-bold text-[#f9a8d4]">XSOVERSE</span>
+              <span className="text-[#7f5466]">{' // '}</span>
               <span className="block sm:inline">Experience Souvenir</span>
             </span>
           </Link>
-          <span className="hidden shrink-0 rotate-[-3deg] rounded-md border-2 border-[#c85a32]/70 px-2 py-0.5 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#e2b48f] min-[400px]:inline-block">
+          <span className="hidden shrink-0 rotate-[-3deg] rounded-md border-2 border-[#ec4899]/70 px-2 py-0.5 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#f9a8d4] min-[400px]:inline-block">
             Est. 2026
           </span>
         </header>
 
         <section className="mt-6 max-w-2xl sm:mt-12">
-          <p className="mb-2.5 font-receipt text-[10px] uppercase tracking-[0.22em] text-[#9daf88] sm:mb-4 sm:text-[11px]">
-            Experience + Souvenir <span className="text-[#6f665a]">=</span> XSO
+          <p className="mb-2.5 font-receipt text-[10px] uppercase tracking-[0.22em] text-[#fdba74] sm:mb-4 sm:text-[11px]">
+            Experience + Souvenir <span className="text-[#7f5466]">=</span> XSO
           </p>
-          <h1 className="text-balance font-serif text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.02em] text-[#f7f4eb] sm:text-6xl">
-            Keepsakes for the words <em className="font-medium text-[#e2b48f]">you never said.</em>
+          <h1 className="text-balance font-serif text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.02em] text-[#fdf2f8] sm:text-6xl">
+            Keepsakes for the words <em className="font-medium text-[#f9a8d4]">you never said.</em>
           </h1>
-          <p className="mt-3 max-w-lg text-pretty text-[15px] leading-[1.6] text-[#b3a794] sm:mt-4 sm:text-[16px]">
+          <p className="mt-3 max-w-lg text-pretty text-[15px] leading-[1.6] text-[#e0b4c6] sm:mt-4 sm:text-[16px]">
             Some feelings don&apos;t fit in a text. An XSO gives them a shape you can hold: a
             receipt of the moments you shared, an audit of who they are to you, a strip of faces and
             a letter that finally says it. Made once, for one person, for {CARTRIDGE_PRICE}.
@@ -129,11 +129,11 @@ export function Store() {
           <div className="mb-2 flex items-baseline justify-between gap-3 sm:mb-3">
             <h2
               id="format-heading"
-              className="font-receipt text-[11px] uppercase tracking-[0.22em] text-[#a89c8a]"
+              className="font-receipt text-[11px] uppercase tracking-[0.22em] text-[#c99aae]"
             >
-              <span className="text-[#e2b48f]">1</span> · How should it unfold?
+              <span className="text-[#f9a8d4]">1</span> · How should it unfold?
             </h2>
-            <p className="shrink-0 font-receipt text-[11px] tracking-[0.14em] text-[#7d7264]">
+            <p className="shrink-0 font-receipt text-[11px] tracking-[0.14em] text-[#9a6a7e]">
               {format.code}
             </p>
           </div>
@@ -156,15 +156,15 @@ export function Store() {
                   tabIndex={selected ? 0 : -1}
                   onClick={() => selectStyle(cart.id as GiftStyle)}
                   onKeyDown={(e) => onTabKey(e, index)}
-                  className={`min-h-[76px] min-w-[8.5rem] shrink-0 snap-start touch-manipulation rounded-2xl border px-3.5 py-3 text-left transition-transform duration-200 ease-out will-change-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2b48f] active:scale-[0.97] sm:min-w-0 ${
+                  className={`min-h-[76px] min-w-[8.5rem] shrink-0 snap-start touch-manipulation rounded-2xl border px-3.5 py-3 text-left transition-transform duration-200 ease-out will-change-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.97] sm:min-w-0 ${
                     selected
-                      ? 'border-[#e3d9c5] bg-[#f7f4eb] text-[#2b2825] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)]'
-                      : 'border-[#3a3632] bg-[#22201d] text-[#efe7d7] hover:-translate-y-0.5 hover:border-[#6a6158] hover:bg-[#2a2723]'
+                      ? 'sunset-ring text-[#2d1b22]'
+                      : 'border-[#4a2a35] bg-[#241419] text-[#fce7f3] hover:-translate-y-0.5 hover:border-[#7d4a5c] hover:bg-[#2e1a21]'
                   }`}
                 >
                   <span
                     className={`block font-receipt text-[10px] uppercase tracking-[0.18em] ${
-                      selected ? 'text-[#c85a32]' : 'text-[#7d7264]'
+                      selected ? 'text-[#ec4899]' : 'text-[#9a6a7e]'
                     }`}
                   >
                     {cart.code}
@@ -174,7 +174,7 @@ export function Store() {
                   </span>
                   <span
                     className={`mt-0.5 block text-[12px] leading-snug ${
-                      selected ? 'text-[#6b6257]' : 'text-[#8a7f70]'
+                      selected ? 'text-[#7a5563]' : 'text-[#a8798c]'
                     }`}
                   >
                     {cart.caption}
@@ -198,7 +198,7 @@ export function Store() {
               />
             </AnimatePresence>
             <div
-              className="relative grid overflow-hidden rounded-3xl border border-[#3a3632] bg-[#1f1d1a] md:grid-cols-[1.1fr_1fr]"
+              className="relative grid overflow-hidden rounded-3xl border border-[#4a2a35] bg-[#211218] md:grid-cols-[1.1fr_1fr]"
               aria-live="polite"
             >
               <StyleDemo style={giftStyle} glow={format.glow} />
@@ -218,21 +218,21 @@ export function Store() {
                     >
                       {format.code} · {format.year} · {format.subtitle}
                     </p>
-                    <h3 className="mt-1.5 font-serif text-[1.75rem] font-semibold leading-none tracking-[-0.015em] text-[#f7f4eb] sm:mt-2 sm:text-[1.9rem]">
+                    <h3 className="mt-1.5 font-serif text-[1.75rem] font-semibold leading-none tracking-[-0.015em] text-[#fdf2f8] sm:mt-2 sm:text-[1.9rem]">
                       {displayTitle(format)}
                     </h3>
-                    <p className="mt-1.5 font-hand text-[20px] leading-tight text-[#e2b48f] sm:mt-2 sm:text-[21px]">
+                    <p className="mt-1.5 font-hand text-[20px] leading-tight text-[#f9a8d4] sm:mt-2 sm:text-[21px]">
                       {format.tagline}
                     </p>
-                    <p className="mt-2.5 text-pretty text-[14.5px] leading-[1.6] text-[#b3a794] sm:mt-3 sm:text-[15px]">
+                    <p className="mt-2.5 text-pretty text-[14.5px] leading-[1.6] text-[#e0b4c6] sm:mt-3 sm:text-[15px]">
                       {format.description}
                     </p>
-                    <p className="mt-3.5 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#8a7f70] sm:mt-4 sm:text-[11px]">
-                      <span style={{ color: format.glow }}>● Slot A · Ready</span>
-                      <span className="text-[#5a534b]"> / </span>
-                      <span className="font-bold text-[#efe7d7]">{activeTheme.title}</span>
+                    <p className="mt-3.5 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#a8798c] sm:mt-4 sm:text-[11px]">
+                      <span className="inline-flex items-center gap-1.5 text-[#fdba74]"><span className="led-peach" aria-hidden />Slot A · Ready</span>
+                      <span className="text-[#6b3f4f]"> / </span>
+                      <span className="font-bold text-[#fce7f3]">{activeTheme.title}</span>
                     </p>
-                    <p className="mt-1 font-serif text-[14px] italic text-[#8a7f70]">
+                    <p className="mt-1 font-serif text-[14px] italic text-[#a8798c]">
                       Loaded, and waiting for your words.
                     </p>
                   </motion.div>
@@ -251,7 +251,7 @@ export function Store() {
                   <Link
                     href={customizeHref(giftStyle)}
                     prefetch
-                    className="paper-button flex min-h-[48px] touch-manipulation items-center justify-center rounded-2xl px-5 font-receipt text-[12px] font-bold uppercase tracking-[0.16em] transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2b48f] active:scale-[0.98]"
+                    className="paper-button flex min-h-[48px] touch-manipulation items-center justify-center rounded-full px-5 font-receipt text-[12px] font-bold uppercase tracking-[0.16em] transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.98]"
                   >
                     Craft this {displayTitle(format)} XSO →
                   </Link>
@@ -265,11 +265,11 @@ export function Store() {
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <h2
               id="decks-heading"
-              className="font-receipt text-[11px] uppercase tracking-[0.22em] text-[#a89c8a]"
+              className="font-receipt text-[11px] uppercase tracking-[0.22em] text-[#c99aae]"
             >
-              <span className="text-[#e2b48f]">2</span> · Start from a story
+              <span className="text-[#f9a8d4]">2</span> · Start from a story
             </h2>
-            <p className="shrink-0 font-receipt text-[11px] tracking-[0.14em] text-[#7d7264]">
+            <p className="shrink-0 font-receipt text-[11px] tracking-[0.14em] text-[#9a6a7e]">
               Unfolds as {displayTitle(format)}
             </p>
           </div>
@@ -291,7 +291,7 @@ export function Store() {
               ))}
             </div>
           </div>
-          <p className="mt-4 text-center font-receipt text-[11px] uppercase tracking-[0.16em] text-[#7d7264]">
+          <p className="mt-4 text-center font-receipt text-[11px] uppercase tracking-[0.16em] text-[#9a6a7e]">
             Every deck is just a first draft · the words are yours
           </p>
         </section>

@@ -70,18 +70,18 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
       <div className="mx-auto w-full max-w-6xl px-4 pb-[calc(10rem+env(safe-area-inset-bottom,0px))] pt-4 sm:px-6 lg:pt-8">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#a89c8a]">
+            <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#c99aae]">
               Studio · {displayTitle(cart)} · Slot A
             </p>
-            <h1 className="mt-1 font-serif text-[28px] font-semibold leading-[1.1] text-[#f7f4eb] sm:text-[34px]">
-              Say what you <em className="font-normal text-[#e2b48f]">never got to say.</em>
+            <h1 className="mt-1 font-serif text-[28px] font-semibold leading-[1.1] text-[#fdf2f8] sm:text-[34px]">
+              Say what you <em className="font-normal text-[#f9a8d4]">never got to say.</em>
             </h1>
           </div>
 
           <div
             role="group"
             aria-label="Studio view"
-            className="grid w-full grid-cols-2 gap-1 rounded-2xl border border-[#3a3632] bg-[#22201d] p-1 sm:w-auto lg:hidden"
+            className="grid w-full grid-cols-2 gap-1 rounded-2xl border border-[#4a2a35] bg-[#241419] p-1 sm:w-auto lg:hidden"
           >
             {(['edit', 'preview'] as const).map((id) => (
               <button
@@ -104,8 +104,8 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
             }`}
             aria-label="Live preview"
           >
-            <p className="mb-3 flex items-center gap-2 font-receipt text-[11px] uppercase tracking-[0.2em] text-[#a89c8a]">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[#9daf88]" />
+            <p className="mb-3 flex items-center gap-2 font-receipt text-[11px] uppercase tracking-[0.2em] text-[#c99aae]">
+              <span aria-hidden className="led-peach" />
               Live · every word lands as you type
             </p>
             <LivePreview lockedStyle={lockedStyle} focusIndex={focusIndex} />

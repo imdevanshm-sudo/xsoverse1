@@ -28,7 +28,7 @@ export function MatteCta(props: LinkProps | ButtonProps) {
   const [navigating, setNavigating] = useState(false);
   const isLink = 'href' in props;
   const loading = isLink ? navigating : Boolean(props.loading);
-  const className = `matte-cta group relative flex min-h-[3.25rem] w-full touch-manipulation select-none items-center justify-between gap-3 rounded-2xl pl-5 pr-2 ${
+  const className = `matte-cta group relative flex min-h-[3.25rem] w-full touch-manipulation select-none items-center justify-between gap-3 rounded-full pl-6 pr-2 ${
     loading ? 'is-loading pointer-events-none' : ''
   }`;
 
@@ -39,7 +39,7 @@ export function MatteCta(props: LinkProps | ButtonProps) {
           <>
             <span
               aria-hidden
-              className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#fff6ec]/30 border-t-[#fff6ec]"
+              className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#fff1f6]/30 border-t-[#fff1f6]"
             />
             <span className="truncate">{props.loadingLabel}</span>
           </>
@@ -52,7 +52,7 @@ export function MatteCta(props: LinkProps | ButtonProps) {
           <span className="truncate">{props.label}</span>
         )}
       </span>
-      <span className="relative flex shrink-0 items-center gap-1.5 rounded-xl bg-[#f7f4eb] px-3 py-2 font-receipt text-[13px] font-bold tabular-nums text-[#9e4424] shadow-[inset_0_-1px_0_rgba(43,40,37,0.12)]">
+      <span className="relative flex shrink-0 items-center gap-1.5 rounded-full bg-[#fff7fb]/95 px-3.5 py-2 font-receipt text-[13px] font-bold tabular-nums text-[#be185d] shadow-[inset_0_-1px_0_rgba(45, 27, 34,0.12)]">
         {props.price}
         <ArrowRight
           className="h-3.5 w-3.5 transition-transform duration-200 ease-out group-hover:translate-x-0.5"

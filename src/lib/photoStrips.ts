@@ -17,5 +17,5 @@ export function toStrips(photos: string[]): string[][] {
 }
 
 export function blankFrame(index: number): string {
-  return svgPhoto(`FRAME ${index + 1}`, '#efe7d7', '#8a7b66');
+  return svgPhoto(`FRAME ${index + 1}`, '#fce7f3', '#9a6b7b');
 }

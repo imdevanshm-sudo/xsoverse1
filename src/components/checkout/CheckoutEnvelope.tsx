@@ -66,7 +66,7 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
       <div className="mx-auto grid w-full max-w-5xl gap-8 px-4 pb-[calc(10rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-12 lg:pt-10">
         {/* Envelope with the invoice tucked inside */}
         <section aria-label="Invoice" className="lg:sticky lg:top-[calc(var(--xso-header-h)+2rem)]">
-          <p className="mb-3 font-receipt text-[11px] uppercase tracking-[0.24em] text-[#a89c8a]">
+          <p className="mb-3 font-receipt text-[11px] uppercase tracking-[0.24em] text-[#c99aae]">
             Your XSO · ready to seal
           </p>
           <div className="relative mx-auto max-w-[420px] pt-2 lg:pt-10">
@@ -76,36 +76,36 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
               transition={{ type: 'spring', stiffness: 140, damping: 20, delay: 0.1 }}
               className="relative z-10 mx-4 -mb-24 sm:mx-6"
             >
-              <div className="paper-card rotate-[-1.2deg] px-5 pb-28 pt-5 font-receipt text-[13px] text-[#2b2825]">
-                <div className="flex items-start justify-between gap-3 border-b border-dashed border-[#cbbd9f] pb-3">
+              <div className="paper-card rotate-[-1.2deg] px-5 pb-28 pt-5 font-receipt text-[13px] text-[#2d1b22]">
+                <div className="flex items-start justify-between gap-3 border-b border-dashed border-[#e8bfd0] pb-3">
                   <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-[#8a7b66]">Invoice</p>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-[#9a6b7b]">Invoice</p>
                     <p className="font-serif text-[22px] font-semibold leading-tight">{theme.title}</p>
                   </div>
-                  <p className="shrink-0 text-right text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#8a7b66]">
+                  <p className="shrink-0 text-right text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#9a6b7b]">
                     No. {invoice}
                     <br />
                     {theme.code}
                   </p>
                 </div>
                 <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 py-3 text-[12px] uppercase">
-                  <dt className="text-[#8a7b66]">For</dt>
+                  <dt className="text-[#9a6b7b]">For</dt>
                   <dd className="truncate text-right">{customerName || '—'}</dd>
-                  <dt className="text-[#8a7b66]">From</dt>
+                  <dt className="text-[#9a6b7b]">From</dt>
                   <dd className="truncate text-right">{billerName || '—'}</dd>
-                  <dt className="text-[#8a7b66]">Occasion</dt>
+                  <dt className="text-[#9a6b7b]">Occasion</dt>
                   <dd className="truncate text-right">{occasion || '—'}</dd>
-                  <dt className="text-[#8a7b66]">Plays as</dt>
+                  <dt className="text-[#9a6b7b]">Plays as</dt>
                   <dd className="truncate text-right">{displayTitle(cart)}</dd>
                 </dl>
-                <div className="space-y-1 border-t border-dashed border-[#cbbd9f] pt-3">
+                <div className="space-y-1 border-t border-dashed border-[#e8bfd0] pt-3">
                   <p className="flex justify-between gap-3">
                     <span>XSO · 4 memories, 1 person</span>
                     <span className="tabular-nums">{option.price}</span>
                   </p>
-                  <p className="mt-2 flex justify-between gap-3 border-t border-[#2b2825] pt-2 text-[15px] font-bold">
+                  <p className="mt-2 flex justify-between gap-3 border-t border-[#2d1b22] pt-2 text-[15px] font-bold">
                     <span>Total</span>
-                    <span className="tabular-nums text-[#c85a32]">{option.price}</span>
+                    <span className="tabular-nums text-[#ec4899]">{option.price}</span>
                   </p>
                 </div>
               </div>
@@ -114,14 +114,14 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
             <div className="kraft relative z-20 h-44 overflow-hidden rounded-b-[18px] rounded-t-[6px]">
               <div
                 aria-hidden
-                className="absolute inset-x-0 top-0 h-full bg-[#8a6746]/60"
+                className="absolute inset-x-0 top-0 h-full bg-[#8f5560]/60"
                 style={{ clipPath: 'polygon(0 0, 50% 58%, 100% 0, 100% 100%, 0 100%)' }}
               />
               <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4">
-                <p className="font-hand text-[22px] leading-none text-[#3a2a1b]/80">
+                <p className="font-hand text-[22px] leading-none text-[#4a2430]/80">
                   for {customerName || 'someone special'}
                 </p>
-                <span className="grid h-12 w-12 place-items-center rounded-full bg-[#c85a32] font-serif text-[15px] font-bold italic text-[#f7f4eb] shadow-[inset_0_-2px_4px_rgba(0,0,0,0.3),0_3px_8px_rgba(0,0,0,0.35)]">
+                <span className="grid h-12 w-12 place-items-center rounded-full bg-[#ec4899] font-serif text-[15px] font-bold italic text-[#fdf2f8] shadow-[inset_0_-2px_4px_rgba(0,0,0,0.3),0_3px_8px_rgba(0,0,0,0.35)]">
                   X
                 </span>
               </div>
@@ -131,34 +131,34 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
 
         <form onSubmit={pay} noValidate className="space-y-6">
           <div>
-            <h1 className="font-serif text-[30px] font-semibold leading-[1.1] text-[#f7f4eb]">
-              Seal your <em className="font-normal text-[#e2b48f]">XSO.</em>
+            <h1 className="font-serif text-[30px] font-semibold leading-[1.1] text-[#fdf2f8]">
+              Seal your <em className="font-normal text-[#f9a8d4]">XSO.</em>
             </h1>
-            <p className="mt-2 text-[15px] text-[#b3a794]">
+            <p className="mt-2 text-[15px] text-[#e0b4c6]">
               Once it&apos;s sealed, it&apos;s theirs: something to open, hold and come back to long after the moment passes.
             </p>
           </div>
 
-          <div className="flex items-start gap-3.5 rounded-2xl border border-[#c85a32] bg-[#f7f4eb] p-4 text-[#2b2825] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)]">
+          <div className="flex items-start gap-3.5 rounded-2xl border border-[#ec4899] bg-[#fdf2f8] p-4 text-[#2d1b22] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)]">
             <span
               aria-hidden
-              className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#c85a32] text-[#f7f4eb]"
+              className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ec4899] text-[#fdf2f8]"
             >
               <Sparkles className="h-5 w-5" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-baseline justify-between gap-3">
                 <span className="font-serif text-[18px] font-semibold leading-tight">{option.label}</span>
-                <span className="shrink-0 font-receipt text-[15px] font-bold tabular-nums text-[#c85a32]">
+                <span className="shrink-0 font-receipt text-[15px] font-bold tabular-nums text-[#ec4899]">
                   {option.price}
                 </span>
               </span>
-              <span className="mt-1 block text-[13px] leading-snug text-[#6b6257]">{option.blurb}</span>
+              <span className="mt-1 block text-[13px] leading-snug text-[#7a5563]">{option.blurb}</span>
             </span>
-            <Check aria-hidden className="mt-1 h-4 w-4 shrink-0 text-[#6f8160]" strokeWidth={3} />
+            <Check aria-hidden className="mt-1 h-4 w-4 shrink-0 text-[#a8557e]" strokeWidth={3} />
           </div>
 
-          <p className="flex items-center gap-2 font-receipt text-[11px] uppercase tracking-[0.14em] text-[#7d7264]">
+          <p className="flex items-center gap-2 font-receipt text-[11px] uppercase tracking-[0.14em] text-[#9a6a7e]">
             <Lock className="h-3.5 w-3.5" aria-hidden />
             Secure payment by Lemon Squeezy
           </p>
@@ -167,9 +167,9 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
       </div>
 
       <DeskDock>
-        <div className="flex items-center justify-between gap-3 font-receipt text-[11px] uppercase tracking-[0.12em] text-[#b3a794]">
+        <div className="flex items-center justify-between gap-3 font-receipt text-[11px] uppercase tracking-[0.12em] text-[#e0b4c6]">
           <span className="truncate">{option.label}</span>
-          <span className="shrink-0 font-bold tabular-nums text-[#efe7d7]">{option.price}</span>
+          <span className="shrink-0 font-bold tabular-nums text-[#fce7f3]">{option.price}</span>
         </div>
         {error ? (
           <p role="alert" className="-mt-1 text-center text-[12px] text-[#f0a383]">

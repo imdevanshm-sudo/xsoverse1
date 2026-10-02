@@ -47,7 +47,7 @@ export function Side4BirthdayCard({ data, bare = false }: Side4BirthdayCardProps
         bare
           ? undefined
           : {
-              background: '#fcfaf2',
+              background: '#fff7fb',
               boxShadow:
                 '0 28px 50px rgba(0,0,0,0.28), 0 12px 22px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.7)',
               transform: 'rotate(2deg)',

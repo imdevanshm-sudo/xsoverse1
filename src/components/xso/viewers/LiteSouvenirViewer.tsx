@@ -253,7 +253,7 @@ function LiteStack({
               >
                 <TiltCard
                   disabled={depth !== 0 || isTossing}
-                  className="relative h-full overflow-hidden rounded-md border border-black/10 bg-[#fcfaf2] shadow-[0_14px_30px_rgba(0,0,0,0.5),0_2px_6px_rgba(0,0,0,0.35)]"
+                  className="relative h-full overflow-hidden rounded-md border border-black/10 bg-[#fff7fb] shadow-[0_14px_30px_rgba(0,0,0,0.5),0_2px_6px_rgba(0,0,0,0.35)]"
                 >
                   <div className="h-full overflow-y-auto overscroll-contain p-2">
                     {artifact.content}
@@ -271,7 +271,7 @@ function LiteStack({
           disabled={!top && mode === 'loop'}
           whileTap={{ scale: 0.96, y: 1 }}
           transition={{ type: 'spring', stiffness: 600, damping: 30 }}
-          className="flex w-full touch-manipulation items-center justify-center gap-2 rounded-md border border-white/15 bg-gradient-to-b from-white/[0.14] to-white/[0.06] py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_3px_0_rgba(0,0,0,0.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00ff66]"
+          className="flex w-full touch-manipulation items-center justify-center gap-2 rounded-md border border-white/15 bg-gradient-to-b from-white/[0.14] to-white/[0.06] py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_3px_0_rgba(0,0,0,0.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f472b6]"
         >
           <span aria-hidden>↻</span>
           {mode === 'loop'

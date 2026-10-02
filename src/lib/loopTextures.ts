@@ -1,7 +1,7 @@
 import type { XsoData } from '@/types/xso';
 import { formatReceiptQty, RECEIPT_MAX_ITEMS } from '@/lib/receiptFormat';
 
-const PAPER = '#fcfaf2';
+const PAPER = '#fff7fb';
 
 /** One 120px grain tile (2 octaves, stitched) repeated across every card. */
 const GRAIN_DEFS = `

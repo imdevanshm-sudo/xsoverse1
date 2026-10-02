@@ -80,9 +80,9 @@ export function ScrapbookMemory({
 
   if (index === 1) {
     return (
-      <article className="relative mx-auto w-[270px] bg-[#e8eddd] px-5 pb-7 pt-8 text-[#26302a] shadow-[0_3px_5px_rgba(44,28,17,.22),0_14px_30px_rgba(44,28,17,.32),0_28px_50px_rgba(44,28,17,.2)]">
-        <TornEdge edge="top" color="#e8eddd" />
-        <TornEdge edge="bottom" color="#e8eddd" />
+      <article className="relative mx-auto w-[270px] bg-[#f8e8f0] px-5 pb-7 pt-8 text-[#26302a] shadow-[0_3px_5px_rgba(44,28,17,.22),0_14px_30px_rgba(44,28,17,.32),0_28px_50px_rgba(44,28,17,.2)]">
+        <TornEdge edge="top" color="#f8e8f0" />
+        <TornEdge edge="bottom" color="#f8e8f0" />
         <WashiTape className="-left-7 top-10 rotate-[-82deg]" tone="cream" />
         <Paperclip className="-right-1 -top-3 rotate-[13deg]" />
         <p className="font-mono text-[8px] uppercase tracking-[0.22em] text-slate-600">

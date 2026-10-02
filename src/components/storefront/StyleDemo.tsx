@@ -171,7 +171,7 @@ function FilmStrip({ reduce, playing }: { reduce: boolean; playing: boolean }) {
   return (
     <div className="relative w-full overflow-hidden">
       <motion.div
-        className="flex w-max gap-0 bg-[#1b1714] py-3"
+        className="flex w-max gap-0 bg-[#1d1016] py-3"
         animate={reduce || !playing ? undefined : { x: ['0%', '-50%'] }}
         transition={{ duration: 7, ease: 'linear', repeat: Infinity }}
       >
@@ -179,7 +179,7 @@ function FilmStrip({ reduce, playing }: { reduce: boolean; playing: boolean }) {
           <div key={i} className="relative px-2.5">
             <div className="mb-1.5 flex justify-between px-0.5">
               {Array.from({ length: 5 }, (_, h) => (
-                <span key={h} className="h-1.5 w-2 rounded-[1px] bg-[#efe7d7]/70" />
+                <span key={h} className="h-1.5 w-2 rounded-[1px] bg-[#fce7f3]/70" />
               ))}
             </div>
             <div className="paper-card h-[112px] w-[84px] overflow-hidden !rounded-[4px] p-1.5">
@@ -187,7 +187,7 @@ function FilmStrip({ reduce, playing }: { reduce: boolean; playing: boolean }) {
             </div>
             <div className="mt-1.5 flex justify-between px-0.5">
               {Array.from({ length: 5 }, (_, h) => (
-                <span key={h} className="h-1.5 w-2 rounded-[1px] bg-[#efe7d7]/70" />
+                <span key={h} className="h-1.5 w-2 rounded-[1px] bg-[#fce7f3]/70" />
               ))}
             </div>
           </div>

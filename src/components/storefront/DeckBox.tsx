@@ -80,7 +80,7 @@ export function DeckBox({
       >
         <div className="relative h-[250px] w-full max-w-[230px]" style={{ perspective: 900 }}>
           {loaded ? (
-            <span className="pointer-events-none absolute -right-2 top-[98px] z-40 rotate-[6deg] rounded-md border-2 border-[#9daf88]/80 bg-[#1f231c] px-2 py-0.5 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#c9d6b6] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.7)]">
+            <span className="pointer-events-none absolute -right-2 top-[98px] z-40 rotate-[6deg] rounded-md border-2 border-[#fdba74]/80 bg-[#2a1a12] px-2 py-0.5 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#fed7aa] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.7)]">
               ✓ Loaded
             </span>
           ) : null}
@@ -121,9 +121,9 @@ export function DeckBox({
             />
             <div
               className="relative rounded-[10px] px-3 py-2.5 text-left"
-              style={{ background: theme.box.label, color: '#2b2825' }}
+              style={{ background: theme.box.label, color: '#2d1b22' }}
             >
-              <p className="font-receipt text-[10px] uppercase tracking-[0.2em] text-[#8a7b66]">
+              <p className="font-receipt text-[10px] uppercase tracking-[0.2em] text-[#9a6b7b]">
                 {theme.code} · 4 memories inside
               </p>
               <p className="mt-0.5 font-serif text-[19px] font-semibold leading-tight">
@@ -133,17 +133,17 @@ export function DeckBox({
           </div>
         </div>
 
-        <p className="mt-4 max-w-[250px] text-[14px] leading-relaxed text-[#b3a794]">
+        <p className="mt-4 max-w-[250px] text-[14px] leading-relaxed text-[#e0b4c6]">
           {theme.blurb}
         </p>
-        <p className="mt-2 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#e2b48f] transition-colors group-hover:text-[#f7f4eb]">
+        <p className="mt-2 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#f9a8d4] transition-colors group-hover:text-[#fdf2f8]">
           Open the box →
         </p>
       </motion.button>
       <button
         type="button"
         onClick={onCustomize}
-        className="mt-2 inline-flex min-h-[44px] touch-manipulation items-center gap-1.5 rounded-xl px-4 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#a89c8a] underline decoration-[#5a534b] underline-offset-4 transition-colors hover:text-[#f7f4eb] hover:decoration-[#e2b48f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e2b48f] active:scale-[0.98]"
+        className="mt-2 inline-flex min-h-[44px] touch-manipulation items-center gap-1.5 rounded-xl px-4 font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#c99aae] underline decoration-[#6b3f4f] underline-offset-4 transition-colors hover:text-[#fdf2f8] hover:decoration-[#f9a8d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] active:scale-[0.98]"
         aria-label={`Start from ${theme.title} and write your own`}
       >
         Write your own
@@ -156,15 +156,15 @@ export function DeckBox({
 export function MiniFace({ kind }: { kind: number }) {
   if (kind === 0) {
     return (
-      <div className="flex h-full flex-col gap-1 font-receipt text-[6px] uppercase text-[#6b6257]">
-        <p className="text-center text-[7px] font-bold text-[#2b2825]">Receipt</p>
+      <div className="flex h-full flex-col gap-1 font-receipt text-[6px] uppercase text-[#7a5563]">
+        <p className="text-center text-[7px] font-bold text-[#2d1b22]">Receipt</p>
         {[70, 90, 60, 80, 50].map((w, i) => (
           <div key={i} className="flex items-center gap-1">
-            <span className="h-[3px] rounded bg-[#2b2825]/25" style={{ width: `${w}%` }} />
-            <span className="ml-auto h-[3px] w-3 rounded bg-[#2b2825]/35" />
+            <span className="h-[3px] rounded bg-[#2d1b22]/25" style={{ width: `${w}%` }} />
+            <span className="ml-auto h-[3px] w-3 rounded bg-[#2d1b22]/35" />
           </div>
         ))}
-        <div className="mt-auto border-t border-dashed border-[#2b2825]/30 pt-1 text-right font-bold text-[#2b2825]">
+        <div className="mt-auto border-t border-dashed border-[#2d1b22]/30 pt-1 text-right font-bold text-[#2d1b22]">
           Priceless
         </div>
       </div>
@@ -173,21 +173,21 @@ export function MiniFace({ kind }: { kind: number }) {
   if (kind === 1) {
     return (
       <div className="flex h-full flex-col gap-1.5">
-        <p className="text-center font-receipt text-[7px] font-bold uppercase text-[#2b2825]">
+        <p className="text-center font-receipt text-[7px] font-bold uppercase text-[#2d1b22]">
           Audit
         </p>
         {[92, 99, 76, 88].map((w, i) => (
-          <div key={i} className="h-[5px] overflow-hidden rounded-full bg-[#2b2825]/10">
+          <div key={i} className="h-[5px] overflow-hidden rounded-full bg-[#2d1b22]/10">
             <div
               className="h-full rounded-full"
               style={{
                 width: `${w}%`,
-                background: i % 2 ? '#9daf88' : '#c85a32',
+                background: i % 2 ? '#fdba74' : '#ec4899',
               }}
             />
           </div>
         ))}
-        <div className="mx-auto mt-auto rotate-[-8deg] rounded border border-[#c85a32] px-1 font-receipt text-[6px] font-bold uppercase text-[#c85a32]">
+        <div className="mx-auto mt-auto rotate-[-8deg] rounded border border-[#ec4899] px-1 font-receipt text-[6px] font-bold uppercase text-[#ec4899]">
           Certified
         </div>
       </div>
@@ -195,7 +195,7 @@ export function MiniFace({ kind }: { kind: number }) {
   }
   if (kind === 2) {
     return (
-      <div className="grid h-full grid-rows-4 gap-1 rounded bg-[#2b2825] p-1">
+      <div className="grid h-full grid-rows-4 gap-1 rounded bg-[#2d1b22] p-1">
         {['#f3d9c9', '#dfe6d3', '#e9dcc5', '#f6e1b8'].map((c) => (
           <div key={c} className="rounded-[2px]" style={{ background: c }} />
         ))}
@@ -204,11 +204,11 @@ export function MiniFace({ kind }: { kind: number }) {
   }
   return (
     <div className="flex h-full flex-col gap-1.5">
-      <p className="font-serif text-[9px] italic text-[#2b2825]">Dear you,</p>
+      <p className="font-serif text-[9px] italic text-[#2d1b22]">Dear you,</p>
       {[95, 80, 90, 60].map((w, i) => (
-        <span key={i} className="h-[3px] rounded bg-[#2b2825]/25" style={{ width: `${w}%` }} />
+        <span key={i} className="h-[3px] rounded bg-[#2d1b22]/25" style={{ width: `${w}%` }} />
       ))}
-      <p className="mt-auto text-right font-hand text-[11px] text-[#c85a32]">♥</p>
+      <p className="mt-auto text-right font-hand text-[11px] text-[#ec4899]">♥</p>
     </div>
   );
 }

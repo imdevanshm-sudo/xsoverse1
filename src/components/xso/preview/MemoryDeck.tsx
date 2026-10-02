@@ -227,7 +227,7 @@ export function MemoryDeck({
             <span
               key={artifact.id}
               className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
-                index === topIndex ? 'w-5 bg-[#9daf88]' : 'w-1.5 bg-[#efe7d7]/20'
+                index === topIndex ? 'w-5 bg-[#fdba74]' : 'w-1.5 bg-[#fce7f3]/20'
               }`}
             />
           ))}
@@ -388,7 +388,7 @@ function DeckCard({
           <span className="truncate">
             No. {String(number).padStart(2, '0')} · {artifact.label}
           </span>
-          {active ? <span className="shrink-0 text-[#c85a32]">Tap · swipe</span> : null}
+          {active ? <span className="shrink-0 text-[#ec4899]">Tap · swipe</span> : null}
         </div>
 
         {artifact.id === 'letter' ? <span aria-hidden className="deck-card__creases" /> : null}

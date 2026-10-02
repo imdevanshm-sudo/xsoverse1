@@ -32,9 +32,9 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     id: 'dark',
     label: 'Dark Thermal',
     paper: '#1c1a17',
-    ink: '#f4efe6',
+    ink: '#fdf2f8',
     muted: '#c9c0b2',
-    accent: '#f4efe6',
+    accent: '#fdf2f8',
     grainOpacity: 0.16,
   },
 };

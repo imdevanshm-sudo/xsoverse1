@@ -977,7 +977,7 @@ function CardMesh({
       : '#f0e6d2'
     : kind === 1
       ? '#f3e4a0'
-      : '#fcfaf2';
+      : '#fff7fb';
   const roughness = aged ? 0.88 : 0.72;
   const shadowOpacity = aged ? (elevated ? 0.32 : 0.18) : elevated ? 0.2 : 0.12;
 
@@ -987,7 +987,7 @@ function CardMesh({
         <mesh castShadow receiveShadow position={[0, -0.12, -0.02]}>
           <boxGeometry args={[3.45, 4.75, 0.1]} />
           <meshStandardMaterial
-            color={aged ? '#efe6d4' : '#fcfaf2'}
+            color={aged ? '#efe6d4' : '#fff7fb'}
             roughness={aged ? 0.9 : 0.82}
             metalness={0}
           />
@@ -1398,7 +1398,7 @@ function ScrapbookInspection({
       aria-label={`Inspect ${titles[index]}`}
     >
       <motion.article
-        className="relative max-h-[82vh] w-full max-w-md cursor-default overflow-y-auto rounded-sm border border-[#e8dfd0] bg-[#fcfaf2] p-6 text-[#292722] shadow-[0_16px_48px_rgba(0,0,0,.5)]"
+        className="relative max-h-[82vh] w-full max-w-md cursor-default overflow-y-auto rounded-sm border border-[#e8dfd0] bg-[#fff7fb] p-6 text-[#292722] shadow-[0_16px_48px_rgba(0,0,0,.5)]"
         initial={{ opacity: 0, scale: 0.92, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 16 }}
@@ -1556,7 +1556,7 @@ function AccordionScene({
             <mesh castShadow receiveShadow>
               <boxGeometry args={[3.15, panelHeight - 0.08, 0.1]} />
               <meshStandardMaterial
-                color="#f4efe6"
+                color="#fdf2f8"
                 roughness={0.92}
                 metalness={0}
               />
@@ -1571,11 +1571,11 @@ function AccordionScene({
             </mesh>
             <mesh position={[0, panelHeight / 2 - 0.12, 0.057]}>
               <planeGeometry args={[3.05, 0.16]} />
-              <meshBasicMaterial color="#f4efe6" />
+              <meshBasicMaterial color="#fdf2f8" />
             </mesh>
             <mesh position={[0, -panelHeight / 2 + 0.12, 0.057]}>
               <planeGeometry args={[3.05, 0.16]} />
-              <meshBasicMaterial color="#f4efe6" />
+              <meshBasicMaterial color="#fdf2f8" />
             </mesh>
             <mesh
               position={[0, -panelHeight / 2 + 0.04, 0.072]}

@@ -92,7 +92,7 @@ export function XsoEditor({
       <div
         role="tablist"
         aria-label="Souvenir cards"
-        className="sticky top-[var(--xso-header-h,0px)] z-20 -mx-4 -mt-4 mb-5 grid grid-cols-4 gap-1 rounded-t-[20px] border-b border-dashed border-[#d9ccb4] bg-[#f7f4eb]/95 p-2 sm:-mx-6 sm:-mt-6 sm:px-4"
+        className="sticky top-[var(--xso-header-h,0px)] z-20 -mx-4 -mt-4 mb-5 grid grid-cols-4 gap-1 rounded-t-[20px] border-b border-dashed border-[#f0cfdc] bg-[#fdf2f8]/95 p-2 sm:-mx-6 sm:-mt-6 sm:px-4"
       >
         {STUDIO_STEPS.map((item, index) => {
           const selected = item.id === tab;
@@ -107,13 +107,13 @@ export function XsoEditor({
               onClick={() => onTabChange(item.id)}
               className={`flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center rounded-xl px-1 transition-colors duration-150 ${
                 selected
-                  ? 'bg-[#2b2825] text-[#f7f4eb] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.6)]'
-                  : 'text-[#6b6257] hover:bg-[#2b2825]/[0.06]'
+                  ? 'bg-[linear-gradient(120deg,#fbbf24_0%,#ec4899_52%,#9333ea_100%)] text-[#fff7fb] shadow-[0_0_15px_rgba(236,72,153,0.4)]'
+                  : 'text-[#7a5563] hover:bg-[#2d1b22]/[0.06]'
               }`}
             >
               <span
                 className={`font-receipt text-[9px] tabular-nums tracking-[0.2em] ${
-                  selected ? 'text-[#e2b48f]' : 'text-[#a3968a]'
+                  selected ? 'text-[#fff7fb]/80' : 'text-[#b48799]'
                 }`}
               >
                 0{index + 1}
@@ -243,7 +243,7 @@ const LineItemRow = memo(function LineItemRow({
   const { id } = item;
 
   return (
-    <li className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-2 rounded-xl border border-dashed border-[#d9ccb4] bg-white/40 p-2.5 sm:grid-cols-[4.25rem_minmax(0,1fr)_6rem_auto]">
+    <li className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-2 rounded-xl border border-dashed border-[#f0cfdc] bg-white/40 p-2.5 sm:grid-cols-[4.25rem_minmax(0,1fr)_6rem_auto]">
       <input
         className="paper-field font-receipt tabular-nums"
         value={item.qty}
@@ -288,8 +288,8 @@ function AuditSection() {
         </ul>
       </Section>
       <StoreField field="certifiedStampText" label="Certified stamp" />
-      <FlagEditor title="Green flags" kind="greenFlags" tone="#6f8160" />
-      <FlagEditor title="Red flags" kind="redFlags" tone="#c85a32" />
+      <FlagEditor title="Green flags" kind="greenFlags" tone="#a8557e" />
+      <FlagEditor title="Red flags" kind="redFlags" tone="#ec4899" />
     </div>
   );
 }
@@ -349,7 +349,7 @@ const AuditSlider = memo(function AuditSlider({
     <li>
       <div className="mb-1.5 flex items-baseline justify-between font-receipt text-[12px] uppercase tracking-[0.1em] text-[#4a4038]">
         <span>{label}</span>
-        <span className="font-bold tabular-nums text-[#c85a32]">{value}</span>
+        <span className="font-bold tabular-nums text-[#ec4899]">{value}</span>
       </div>
       <input
         type="range"
@@ -473,13 +473,13 @@ function PhotosSection() {
           <div key={strip}>
             {strips > 1 ? (
               <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a7b66]">
+                <p className="font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#9a6b7b]">
                   Strip {strip + 1}
                 </p>
                 <button
                   type="button"
                   onClick={() => removePhotoStrip(strip)}
-                  className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2 font-receipt text-[11px] font-bold uppercase tracking-[0.12em] text-[#b84e2a] hover:bg-[#b84e2a]/10"
+                  className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2 font-receipt text-[11px] font-bold uppercase tracking-[0.12em] text-[#db2777] hover:bg-[#db2777]/10"
                   aria-label={`Remove strip ${strip + 1}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -508,13 +508,13 @@ function PhotosSection() {
           <button
             type="button"
             onClick={addPhotoStrip}
-            className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#d3c4aa] font-receipt text-[12px] font-bold uppercase tracking-[0.14em] text-[#8a7b66] transition-colors hover:border-[#c85a32] hover:text-[#c85a32] active:scale-[0.99]"
+            className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#ebc3d3] font-receipt text-[12px] font-bold uppercase tracking-[0.14em] text-[#9a6b7b] transition-colors hover:border-[#ec4899] hover:text-[#ec4899] active:scale-[0.99]"
           >
             <Plus className="h-4 w-4" aria-hidden />
             Add another strip
           </button>
         ) : (
-          <p className="text-center font-receipt text-[11px] uppercase tracking-[0.14em] text-[#8a7b66]">
+          <p className="text-center font-receipt text-[11px] uppercase tracking-[0.14em] text-[#9a6b7b]">
             Max {MAX_STRIPS} strips
           </p>
         )}
@@ -568,7 +568,7 @@ function PhotoFrame({
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
         className={`relative aspect-[3/4] overflow-hidden rounded-xl border-2 border-dashed transition-colors duration-150 ${
-          over ? 'border-[#c85a32] bg-[#c85a32]/10' : 'border-[#d3c4aa] bg-white/40'
+          over ? 'border-[#ec4899] bg-[#ec4899]/10' : 'border-[#ebc3d3] bg-white/40'
         }`}
       >
         {url ? (
@@ -580,8 +580,8 @@ function PhotoFrame({
           onClick={() => inputRef.current?.click()}
           className={`absolute inset-0 flex touch-manipulation flex-col items-center justify-center gap-1.5 text-center font-receipt text-[10px] font-bold uppercase tracking-[0.14em] transition-opacity ${
             url
-              ? 'bg-[#2b2825]/55 text-[#f7f4eb] opacity-0 hover:opacity-100 focus-visible:opacity-100'
-              : 'text-[#8a7b66]'
+              ? 'bg-[#2d1b22]/55 text-[#fdf2f8] opacity-0 hover:opacity-100 focus-visible:opacity-100'
+              : 'text-[#9a6b7b]'
           }`}
           aria-label={url ? `Replace photo ${index + 1}` : `Add photo ${index + 1}`}
         >
@@ -597,7 +597,7 @@ function PhotoFrame({
             type="button"
             onClick={onClear}
             aria-label={`Remove photo ${index + 1}`}
-            className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-[#2b2825]/80 text-[#f7f4eb]"
+            className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-[#2d1b22]/80 text-[#fdf2f8]"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -616,7 +616,7 @@ function PhotoFrame({
         />
       </div>
       {error ? (
-        <p role="alert" className="mt-1 text-[11px] text-[#b84e2a]">
+        <p role="alert" className="mt-1 text-[11px] text-[#db2777]">
           {error}
         </p>
       ) : null}
@@ -657,7 +657,7 @@ function VoiceNoteField() {
   return (
     <Section title="Voice note" note="Optional · let them hear it in your voice. MP3, M4A or WEBM up to 1.5 MB">
       {voiceNoteUrl ? (
-        <div className="flex items-center gap-2 rounded-xl border border-dashed border-[#d9ccb4] bg-white/40 p-2.5">
+        <div className="flex items-center gap-2 rounded-xl border border-dashed border-[#f0cfdc] bg-white/40 p-2.5">
           <audio controls src={voiceNoteUrl} className="h-10 min-w-0 flex-1" />
           <IconBtn label="Remove voice note" onClick={() => setField('voiceNoteUrl', undefined)}>
             <Trash2 className="h-3.5 w-3.5" />
@@ -668,7 +668,7 @@ function VoiceNoteField() {
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="flex w-full touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#d3c4aa] bg-white/40 px-4 py-4 font-receipt text-[12px] font-bold uppercase tracking-[0.12em] text-[#6b6257] transition-colors hover:border-[#c85a32] hover:text-[#c85a32] disabled:opacity-60"
+          className="flex w-full touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#ebc3d3] bg-white/40 px-4 py-4 font-receipt text-[12px] font-bold uppercase tracking-[0.12em] text-[#7a5563] transition-colors hover:border-[#ec4899] hover:text-[#ec4899] disabled:opacity-60"
         >
           <Mic className="h-4 w-4" aria-hidden />
           {busy ? 'Pressing to tape…' : 'Add a voice note'}
@@ -686,7 +686,7 @@ function VoiceNoteField() {
         }}
       />
       {error ? (
-        <p role="alert" className="mt-1.5 text-[12px] text-[#b84e2a]">
+        <p role="alert" className="mt-1.5 text-[12px] text-[#db2777]">
           {error}
         </p>
       ) : null}
@@ -745,13 +745,13 @@ function Section({
     <section>
       <div className="mb-3 flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="flex items-center gap-2 font-serif text-[20px] font-semibold leading-tight text-[#2b2825]">
+          <h3 className="flex items-center gap-2 font-serif text-[20px] font-semibold leading-tight text-[#2d1b22]">
             {dot ? (
               <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: dot }} />
             ) : null}
             {title}
           </h3>
-          {note ? <p className="mt-0.5 text-[13px] text-[#7a6c58]">{note}</p> : null}
+          {note ? <p className="mt-0.5 text-[13px] text-[#8a5f6e]">{note}</p> : null}
         </div>
         {action}
       </div>
@@ -765,7 +765,7 @@ function AddButton({ onClick, children }: { onClick: () => void; children: React
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex shrink-0 touch-manipulation items-center gap-1 rounded-full border border-[#d3c4aa] bg-white/60 px-3 py-1.5 font-receipt text-[11px] font-bold uppercase tracking-[0.12em] text-[#2b2825] transition-colors hover:border-[#c85a32] hover:text-[#c85a32] active:scale-[0.97]"
+      className="inline-flex shrink-0 touch-manipulation items-center gap-1 rounded-full border border-[#ebc3d3] bg-white/60 px-3 py-1.5 font-receipt text-[11px] font-bold uppercase tracking-[0.12em] text-[#2d1b22] transition-colors hover:border-[#ec4899] hover:text-[#ec4899] active:scale-[0.97]"
     >
       <Plus className="h-3.5 w-3.5" aria-hidden />
       {children}
@@ -786,9 +786,9 @@ function Field({
 }) {
   return (
     <label className={`grid gap-1.5 ${className}`}>
-      <span className="flex items-baseline justify-between gap-2 font-receipt text-[11px] uppercase tracking-[0.14em] text-[#7a6c58]">
+      <span className="flex items-baseline justify-between gap-2 font-receipt text-[11px] uppercase tracking-[0.14em] text-[#8a5f6e]">
         {label}
-        {hint ? <span className="tabular-nums text-[#a3968a]">{hint}</span> : null}
+        {hint ? <span className="tabular-nums text-[#b48799]">{hint}</span> : null}
       </span>
       {children}
     </label>
@@ -812,7 +812,7 @@ function IconBtn({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid h-10 w-10 shrink-0 touch-manipulation place-items-center rounded-lg border border-[#d9ccb4] bg-white/50 text-[#4a4038] transition-colors hover:text-[#c85a32] disabled:opacity-30"
+      className="grid h-10 w-10 shrink-0 touch-manipulation place-items-center rounded-lg border border-[#f0cfdc] bg-white/50 text-[#4a4038] transition-colors hover:text-[#ec4899] disabled:opacity-30"
     >
       {children}
     </button>

@@ -313,7 +313,7 @@ export function ScratchReveal({
   return (
     <div
       className={`relative overflow-hidden ${
-        unstyled ? '' : 'rounded-xl border border-[#c9c0b0] bg-[#fcfaf2]'
+        unstyled ? '' : 'rounded-xl border border-[#c9c0b0] bg-[#fff7fb]'
       } ${className}`}
       style={
         unstyled

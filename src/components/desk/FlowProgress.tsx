@@ -28,19 +28,19 @@ export function FlowProgress({
   return (
     <div className="w-full">
       <div className="mb-1.5 flex items-center justify-between gap-3 whitespace-nowrap font-receipt text-[11px] uppercase tracking-[0.12em]">
-        <p className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[#b3a794]">
-          <span className="font-bold text-[#9daf88]">Step {step}</span>
-          <span className="text-[#7d7264]">of {FLOW_STEPS.length}</span>
-          <span className="text-[#7d7264]">·</span>
+        <p className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[#e0b4c6]">
+          <span className="font-bold text-[#fdba74]">Step {step}</span>
+          <span className="text-[#9a6a7e]">of {FLOW_STEPS.length}</span>
+          <span className="text-[#9a6a7e]">·</span>
           <span className="truncate">{FLOW_STEPS[step - 1]}</span>
         </p>
         {meta ? (
           <p
-            className="flex shrink-0 items-center gap-1 tabular-nums text-[#b3a794]"
+            className="flex shrink-0 items-center gap-1 tabular-nums text-[#e0b4c6]"
             aria-live="polite"
           >
             {done ? (
-              <Check className="h-3 w-3 text-[#9daf88]" strokeWidth={3} aria-hidden />
+              <Check className="h-3 w-3 text-[#fdba74]" strokeWidth={3} aria-hidden />
             ) : null}
             {meta}
           </p>
@@ -57,13 +57,13 @@ export function FlowProgress({
         {FLOW_STEPS.map((label, index) => {
           const n = index + 1;
           if (n < step) {
-            return <div key={label} className="h-1.5 rounded-full bg-[#9daf88]/70" />;
+            return <div key={label} className="h-1.5 rounded-full bg-[#fdba74]/70" />;
           }
           if (n === step) {
             return (
-              <div key={label} className="h-1.5 overflow-hidden rounded-full bg-[#efe7d7]/10">
+              <div key={label} className="h-1.5 overflow-hidden rounded-full bg-[#fce7f3]/10">
                 <div
-                  className="h-full origin-left rounded-full bg-[#9daf88] transition-transform duration-500 ease-out"
+                  className="h-full origin-left rounded-full bg-[#fdba74] transition-transform duration-500 ease-out"
                   style={{ transform: `scaleX(${clamped})` }}
                 />
               </div>
@@ -73,14 +73,14 @@ export function FlowProgress({
             <div
               key={label}
               className={`h-1.5 rounded-full border border-dashed transition-colors duration-300 ${
-                done ? 'border-[#c85a32] bg-[#c85a32]/25' : 'border-[#5a534b]'
+                done ? 'border-[#ec4899] bg-[#ec4899]/25' : 'border-[#6b3f4f]'
               }`}
             />
           );
         })}
       </div>
       {caption ? (
-        <p className="mt-1 hidden truncate font-receipt text-[10px] uppercase tracking-[0.14em] text-[#7d7264] sm:block">
+        <p className="mt-1 hidden truncate font-receipt text-[10px] uppercase tracking-[0.14em] text-[#9a6a7e] sm:block">
           {caption}
         </p>
       ) : null}

@@ -16,7 +16,7 @@ export interface Side1ReceiptProps {
   bare?: boolean;
 }
 
-const PAPER = '#fcfaf2';
+const PAPER = '#fff7fb';
 const INK = '#262626';
 const MUTED = '#4a4a4a';
 

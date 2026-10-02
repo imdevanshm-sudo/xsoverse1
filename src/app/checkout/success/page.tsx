@@ -107,16 +107,16 @@ function CheckoutSuccessInner() {
 
   return (
     <div className="paper-panel w-full max-w-md p-6 text-center sm:p-8">
-      <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#8a7b66]">
+      <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#9a6b7b]">
         XSO · Receipt of delivery
       </p>
-      <h1 className="mt-2 font-serif text-[32px] font-semibold leading-tight text-[#2b2825]">
+      <h1 className="mt-2 font-serif text-[32px] font-semibold leading-tight text-[#2d1b22]">
         {title}
       </h1>
 
       {phase === 'ready' && giftId ? (
         <>
-          <p className="mt-2 text-[15px] text-[#6b6257]">
+          <p className="mt-2 text-[15px] text-[#7a5563]">
             {recipient
               ? `This link is the only way in. Send it to ${recipient} when the moment feels right.`
               : 'This link is the only way in. Send it when the moment feels right.'}
@@ -126,13 +126,13 @@ function CheckoutSuccessInner() {
           </div>
           <Link
             href={giftPath(giftId)}
-            className="matte-cta mt-4 flex min-h-[3.25rem] w-full items-center justify-center rounded-2xl px-6 font-serif text-[17px] font-semibold"
+            className="matte-cta mt-4 flex min-h-[3.25rem] w-full items-center justify-center rounded-full px-6 font-serif text-[17px] font-semibold"
           >
             Open the keepsake
           </Link>
         </>
       ) : (
-        <p className="mt-3 text-[15px] text-[#6b6257]" aria-live="polite">
+        <p className="mt-3 text-[15px] text-[#7a5563]" aria-live="polite">
           {error ?? message}
         </p>
       )}
@@ -140,7 +140,7 @@ function CheckoutSuccessInner() {
       {phase === 'confirming' ? (
         <span
           aria-hidden
-          className="mx-auto mt-5 block h-6 w-6 animate-spin rounded-full border-2 border-[#c85a32]/25 border-t-[#c85a32]"
+          className="mx-auto mt-5 block h-6 w-6 animate-spin rounded-full border-2 border-[#ec4899]/25 border-t-[#ec4899]"
         />
       ) : null}
 
@@ -149,7 +149,7 @@ function CheckoutSuccessInner() {
           <button
             type="button"
             onClick={retry}
-            className="matte-cta min-h-12 w-full rounded-2xl font-serif text-[16px] font-semibold"
+            className="matte-cta min-h-12 w-full rounded-full font-serif text-[16px] font-semibold"
           >
             Try again
           </button>
@@ -160,7 +160,7 @@ function CheckoutSuccessInner() {
       )}
 
       {giftId && (
-        <p className="mt-5 border-t border-dashed border-[#d9ccb4] pt-3 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#a3968a]">
+        <p className="mt-5 border-t border-dashed border-[#f0cfdc] pt-3 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#b48799]">
           Gift · {giftId}
         </p>
       )}
@@ -172,7 +172,7 @@ export default function CheckoutSuccessPage() {
   return (
     <main className="desk grid min-app-h place-items-center px-4 py-10">
       <Suspense
-        fallback={<p className="font-receipt text-sm text-[#a89c8a]">Pressing the seal…</p>}
+        fallback={<p className="font-receipt text-sm text-[#c99aae]">Pressing the seal…</p>}
       >
         <CheckoutSuccessInner />
       </Suspense>

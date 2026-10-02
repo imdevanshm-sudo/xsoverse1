@@ -32,7 +32,7 @@ export function ReshuffleSlideCue({ active }: { active: boolean }) {
           {[0, 1, 2, 3].map((i) => (
             <motion.span
               key={i}
-              className="absolute h-16 w-12 rounded-[2px] border border-[#d8cbb0]/40 bg-[#f4efe6]/25"
+              className="absolute h-16 w-12 rounded-[2px] border border-[#d8cbb0]/40 bg-[#fdf2f8]/25"
               style={{
                 left: `${18 + i * 18}%`,
                 top: `${28 + (i % 2) * 12}%`,

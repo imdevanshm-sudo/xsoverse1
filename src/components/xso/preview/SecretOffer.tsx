@@ -79,18 +79,18 @@ export function SecretOffer({ reward }: { reward: string }) {
   return (
     <section className="paper-ticket-shadow w-full" aria-label="Secret promise">
       <div className="paper-ticket grid grid-cols-[2.5rem_minmax(0,1fr)]">
-        <div className="flex items-center justify-center border-r-2 border-dashed border-[#cdbfa6] bg-[#c85a32]">
-          <p className="rotate-180 whitespace-nowrap font-receipt text-[10px] font-bold uppercase tracking-[0.3em] text-[#fbefe2] [writing-mode:vertical-rl]">
+        <div className="flex items-center justify-center border-r-2 border-dashed border-[#e9c2d2] bg-[#ec4899]">
+          <p className="rotate-180 whitespace-nowrap font-receipt text-[10px] font-bold uppercase tracking-[0.3em] text-[#ffeef5] [writing-mode:vertical-rl]">
             Admit one · No. 0417
           </p>
         </div>
 
         <div className="min-w-0 px-3.5 pb-3.5 pt-3 sm:px-4">
           <header className="mb-3 flex items-center justify-between gap-3">
-            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[#c85a32] px-2.5 py-1 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#fbefe2]">
+            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[#ec4899] px-2.5 py-1 font-receipt text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffeef5]">
               Secret promise
             </span>
-            <span className="truncate font-receipt text-[10px] uppercase tracking-[0.16em] text-[#8a7b66]">
+            <span className="truncate font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6b7b]">
               Tucked inside
             </span>
           </header>
@@ -102,17 +102,17 @@ export function SecretOffer({ reward }: { reward: string }) {
             compact
             unstyled
             onReveal={() => setRevealed(true)}
-            className="rounded-xl border-2 border-dashed border-[#d3c4aa] bg-[#f3ebdc]"
+            className="rounded-xl border-2 border-dashed border-[#ebc3d3] bg-[#fbeaf1]"
           >
             <div>
-              <p className="font-receipt text-[10px] uppercase tracking-[0.26em] text-[#8a7b66]">
+              <p className="font-receipt text-[10px] uppercase tracking-[0.26em] text-[#9a6b7b]">
                 Redeem with me
               </p>
-              <p className="mt-0.5 select-all font-receipt text-[22px] font-bold tracking-[0.1em] text-[#2b2621] sm:text-2xl">
+              <p className="mt-0.5 select-all font-receipt text-[22px] font-bold tracking-[0.1em] text-[#2d1b22] sm:text-2xl">
                 {code || perk}
               </p>
               {code ? (
-                <p className="mt-1 font-serif text-[15px] italic leading-snug text-[#5c4a3a]">
+                <p className="mt-1 font-serif text-[15px] italic leading-snug text-[#6b4552]">
                   {perk}
                 </p>
               ) : null}
@@ -121,7 +121,7 @@ export function SecretOffer({ reward }: { reward: string }) {
 
           <div className="mt-3 flex items-center justify-between gap-3">
             <p
-              className="min-w-0 font-receipt text-[11px] leading-snug text-[#7a6c58]"
+              className="min-w-0 font-receipt text-[11px] leading-snug text-[#8a5f6e]"
               aria-live="polite"
             >
               {!revealed

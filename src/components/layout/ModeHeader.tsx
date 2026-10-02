@@ -38,21 +38,21 @@ export function ModeHeader({
             {actionLabel}
           </Link>
           <p className="flex min-w-0 items-baseline justify-center gap-2 whitespace-nowrap">
-            <span className="font-receipt text-[11px] font-bold uppercase tracking-[0.22em] text-[#f1e8d8]">
+            <span className="font-receipt text-[11px] font-bold uppercase tracking-[0.22em] text-[#fce7f3]">
               {brand}
             </span>
             {meta ? (
               <>
-                <span className="text-[#5a534b]" aria-hidden>
+                <span className="text-[#6b3f4f]" aria-hidden>
                   ·
                 </span>
-                <span className="font-serif text-[15px] italic text-[#d08a67]">
+                <span className="font-serif text-[15px] italic text-[#f9a8d4]">
                   {meta}
                 </span>
               </>
             ) : null}
           </p>
-          <div className="min-w-0 justify-self-end truncate font-receipt text-[11px] tracking-[0.14em] text-[#a89c8a]">
+          <div className="min-w-0 justify-self-end truncate font-receipt text-[11px] tracking-[0.14em] text-[#c99aae]">
             {aside}
           </div>
         </div>

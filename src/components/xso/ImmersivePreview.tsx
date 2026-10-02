@@ -62,10 +62,10 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
       <div className="mx-auto grid w-full max-w-xl gap-10 px-5 pb-[calc(10rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6 sm:pt-8 lg:max-w-5xl lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-14 lg:pb-48 lg:pt-10">
         <div className="flex min-w-0 flex-col items-center">
           <div className="mb-4 flex w-full max-w-[400px] items-center justify-between gap-3">
-            <p className="min-w-0 truncate font-receipt text-[11px] uppercase tracking-[0.18em] text-[#b3a794]">
+            <p className="min-w-0 truncate font-receipt text-[11px] uppercase tracking-[0.18em] text-[#e0b4c6]">
               {STAGE_HINT[lockedStyle]}
             </p>
-            <p className="shrink-0 rounded-full border border-[#4a443d] px-2 py-0.5 font-receipt text-[10px] tracking-[0.16em] text-[#a89c8a]">
+            <p className="shrink-0 rounded-full border border-[#5a3442] px-2 py-0.5 font-receipt text-[10px] tracking-[0.16em] text-[#c99aae]">
               {cart.code}
             </p>
           </div>
@@ -89,13 +89,13 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
         </div>
 
         <aside className="mx-auto w-full max-w-[400px] lg:sticky lg:top-24 lg:mx-0 lg:pt-16">
-          <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#9daf88]">
+          <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#fdba74]">
             {cart.subtitle}
           </p>
-          <h1 className="mt-1.5 font-serif text-[2rem] font-semibold leading-[1.05] tracking-tight text-[#f7f4eb] lg:text-[2.6rem]">
+          <h1 className="mt-1.5 font-serif text-[2rem] font-semibold leading-[1.05] tracking-tight text-[#fdf2f8] lg:text-[2.6rem]">
             {cart.tagline}
           </h1>
-          <p className="mt-3 text-[15px] leading-relaxed text-[#b3a794]">
+          <p className="mt-3 text-[15px] leading-relaxed text-[#e0b4c6]">
             This is what they&apos;ll hold. Turn each keepsake over, scratch the ticket, then
             fill every line with the things you never quite found the words for.
           </p>
@@ -109,7 +109,7 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
           done={explored >= MEMORY_COUNT}
           meta={
             <>
-              <span className="font-bold text-[#f7f4eb]">
+              <span className="font-bold text-[#fdf2f8]">
                 {memory.current + 1}/{MEMORY_COUNT}
               </span>
               memories
