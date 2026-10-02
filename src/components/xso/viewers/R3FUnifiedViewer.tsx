@@ -355,7 +355,7 @@ export function R3FUnifiedViewer({
       {isAccordion && (
         <motion.div
           className={`absolute right-3 top-[42%] z-20 flex h-36 w-9 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-full border border-[#c4a882]/25 bg-[#2a221c]/90 active:cursor-grabbing ${
-            quality.softOverlays ? 'backdrop-blur-sm' : ''
+            quality.softOverlays ? 'md:backdrop-blur-sm' : ''
           }`}
           drag="y"
           dragConstraints={{ top: 0, bottom: 0 }}
@@ -456,7 +456,7 @@ export function R3FUnifiedViewer({
                   pressing ? 'translate-y-1' : ''
                 }`
               : `absolute bottom-3 right-3 z-20 flex min-h-12 min-w-12 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/85 px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_24px_rgba(0,0,0,.45)] sm:bottom-4 sm:right-4 ${
-                  quality.softOverlays ? 'backdrop-blur-md' : ''
+                  quality.softOverlays ? 'md:backdrop-blur-md' : ''
                 }`
           }
           style={
@@ -1385,8 +1385,8 @@ function ScrapbookInspection({
 
   return (
     <motion.div
-      className={`fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/80 p-4 ${
-        quality.softOverlays ? 'backdrop-blur-md' : ''
+      className={`fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/90 p-4 md:bg-black/80 ${
+        quality.softOverlays ? 'md:backdrop-blur-md' : ''
       }`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -1411,8 +1411,8 @@ function ScrapbookInspection({
           }`}
           style={{
             backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.55'/%3E%3C/svg%3E\")",
-            backgroundSize: '160px 160px',
+              "url('/textures/noise-mono.png')",
+            backgroundSize: '128px 128px',
           }}
           aria-hidden
         />

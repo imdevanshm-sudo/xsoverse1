@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import type { ThemePack } from '@/lib/themes';
+import { useTouchSpring } from '@/hooks/useTouchSpring';
 
 const CARD_COUNT = 4;
 const SPRING = {
@@ -44,6 +45,7 @@ export function DeckBox({
   onCustomize: () => void;
 }) {
   const reduce = useReducedMotion();
+  const spring = useTouchSpring(SPRING);
   const [opening, setOpening] = useState(false);
   const timers = useRef<number[]>([]);
 
@@ -95,8 +97,8 @@ export function DeckBox({
               key={index}
               aria-hidden
               variants={reduce ? undefined : cardVariants(index)}
-              transition={SPRING}
-              className="paper-card absolute bottom-[40%] left-1/2 -ml-[52px] h-[140px] w-[104px] origin-bottom overflow-hidden !rounded-[10px] p-2"
+              transition={spring}
+              className="paper-card gpu-layer absolute bottom-[40%] left-1/2 -ml-[52px] h-[140px] w-[104px] origin-bottom overflow-hidden !rounded-[10px] p-2"
               style={{ zIndex: 10 + index }}
             >
               <MiniFace kind={index} />
@@ -104,11 +106,9 @@ export function DeckBox({
           ))}
 
           <div
-            className="absolute inset-x-0 bottom-0 z-30 flex h-[56%] flex-col justify-end overflow-hidden rounded-[16px] p-3"
+            className="deck-box__body absolute inset-x-0 bottom-0 z-30 flex h-[56%] flex-col justify-end overflow-hidden rounded-[16px] p-3"
             style={{
               background: `linear-gradient(180deg, ${theme.box.body} 0%, color-mix(in srgb, ${theme.box.body} 82%, #000) 100%)`,
-              boxShadow:
-                'inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -10px 18px rgba(0,0,0,0.25), 0 18px 30px -12px rgba(0,0,0,0.7)',
             }}
           >
             <div

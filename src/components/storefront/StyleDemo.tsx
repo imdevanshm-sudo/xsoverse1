@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
 import { MiniFace } from '@/components/storefront/DeckBox';
+import { useTouchSpring } from '@/hooks/useTouchSpring';
 import type { GiftStyle } from '@/types/xso';
 
 const CARDS = 4;
@@ -101,6 +102,7 @@ function poseFor(style: GiftStyle, i: number, step: number): Pose {
 /** Looping miniature of how each format plays, so switching styles is felt instantly. */
 export function StyleDemo({ style, glow }: { style: GiftStyle; glow: string }) {
   const reduce = useReducedMotion();
+  const spring = useTouchSpring(SPRING);
   const stage = useRef<HTMLDivElement>(null);
   const visible = useInView(stage, { margin: '80px' });
   const [step, setStep] = useState(0);
@@ -120,7 +122,7 @@ export function StyleDemo({ style, glow }: { style: GiftStyle; glow: string }) {
     <div
       ref={stage}
       aria-hidden
-      className="felt relative grid h-[196px] w-full place-items-center overflow-hidden sm:h-[260px]"
+      className="felt relative grid h-[196px] w-full touch-pan-y place-items-center overflow-hidden sm:h-[260px]"
       style={{ perspective: 800 }}
     >
       <AnimatePresence initial={false}>
@@ -144,7 +146,7 @@ export function StyleDemo({ style, glow }: { style: GiftStyle; glow: string }) {
           return (
             <motion.div
               key={i}
-              className="paper-card absolute h-[124px] w-[92px] overflow-hidden !rounded-[10px] p-2"
+              className="paper-card gpu-layer absolute h-[124px] w-[92px] overflow-hidden !rounded-[10px] p-2"
               initial={false}
               animate={{
                 x: p.x,
@@ -155,7 +157,7 @@ export function StyleDemo({ style, glow }: { style: GiftStyle; glow: string }) {
                 opacity: p.opacity,
               }}
               style={{ zIndex: p.zIndex }}
-              transition={reduce ? { duration: 0 } : SPRING}
+              transition={reduce ? { duration: 0 } : spring}
             >
               <MiniFace kind={i} />
             </motion.div>

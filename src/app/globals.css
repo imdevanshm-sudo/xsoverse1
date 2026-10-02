@@ -25,7 +25,7 @@
   --app-height: 100vh;
   --app-width: 100vw;
   /* Static 2-octave noise tile, drawn once and repeated */
-  --console-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --console-noise: url('/textures/noise-light.png');
 }
 
 @supports (height: 100dvh) {
@@ -212,7 +212,7 @@ body {
     inset: 0;
     border-radius: inherit;
     opacity: 0.28;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+    background-image: url('/textures/noise-mono.png');
     mix-blend-mode: overlay;
   }
 
@@ -953,9 +953,9 @@ html.is-landscape .xso-dock {
 /* ── XSO warm desk system (store · preview · customize · checkout) ─ */
 :root {
   /* Dark fibre specks for cream card stock */
-  --paper-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.24 0 0 0 0 0.17 0 0 0 0 0.1 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-noise: url('/textures/noise-warm.png');
   /* Light warm grain for the desk surface */
-  --stone-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.95 0 0 0 0 0.88 0 0 0 0 0.76 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --stone-noise: url('/textures/noise-light.png');
   --desk-900: #1a0f14;
   --desk-800: #241419;
   --desk-700: #2e1a21;
@@ -1525,8 +1525,8 @@ html.is-landscape .xso-dock {
   background-color: #fdfbf7;
   background-image:
     linear-gradient(168deg, rgba(255, 255, 255, 0.5), transparent 38%, rgba(120, 80, 50, 0.05) 100%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.28 0 0 0 0 0.2 0 0 0 0.13 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
-  background-size: auto, 240px 240px;
+    var(--paper-noise);
+  background-size: auto, 128px 128px;
   box-shadow:
     0 1px 1px rgba(0, 0, 0, 0.35),
     0 3px 6px -1px rgba(0, 0, 0, 0.32),
@@ -1540,8 +1540,8 @@ html.is-landscape .xso-dock {
   background-image:
     linear-gradient(180deg, transparent 31%, rgba(90, 60, 40, 0.07) 32%, transparent 34%),
     linear-gradient(180deg, transparent 64%, rgba(90, 60, 40, 0.06) 65%, transparent 67%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.28 0 0 0 0 0.2 0 0 0 0.13 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
-  background-size: auto, auto, 240px 240px;
+    var(--paper-noise);
+  background-size: auto, auto, 128px 128px;
 }
 
 .desk-paper--polaroid,
@@ -1568,10 +1568,12 @@ html.is-landscape .xso-dock {
   box-shadow: none;
 }
 
-.sticky-curl {
+.sticky-lift {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   pointer-events: none;
-  background: linear-gradient(315deg, #fff7ea 0%, #eedcbf 55%, #d9c19c 100%);
-  filter: drop-shadow(-2px -2px 3px rgba(60, 35, 20, 0.25));
+  box-shadow: -6px 10px 16px -6px rgba(45, 20, 10, 0.45);
 }
 
 /* The fold creases of a letter that has lived in a pocket. */
@@ -1579,8 +1581,8 @@ html.is-landscape .xso-dock {
   background-image:
     linear-gradient(180deg, transparent 49.4%, rgba(90, 60, 40, 0.12) 50%, rgba(255, 255, 255, 0.6) 50.6%, transparent 52%),
     linear-gradient(90deg, transparent 49.4%, rgba(90, 60, 40, 0.08) 50%, rgba(255, 255, 255, 0.5) 50.6%, transparent 52%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.28 0 0 0 0 0.2 0 0 0 0.13 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
-  background-size: auto, auto, 240px 240px;
+    var(--paper-noise);
+  background-size: auto, auto, 128px 128px;
 }
 
 .letter-panel {
@@ -1718,8 +1720,8 @@ html.is-landscape .xso-dock {
 .rewind-card__grain {
   opacity: 0.55;
   mix-blend-mode: multiply;
-  background-size: 360px 360px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.26 0 0 0 0 0.2 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  background-image: var(--paper-noise);
 }
 
 .deck-card__light,
@@ -1907,5 +1909,92 @@ html.is-landscape .xso-dock {
   .deck-card .ink-stamp,
   .deck-card .ink-ring {
     filter: url(#xso-ink-bleed);
+  }
+}
+
+/* Promote moving cards to their own compositor layer before they move. */
+.gpu-layer {
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.studio-glow {
+  box-shadow:
+    0 44px 80px -32px rgba(0, 0, 0, 0.9),
+    0 18px 36px -18px rgba(0, 0, 0, 0.7),
+    0 0 0 1px color-mix(in srgb, var(--glow) 33%, transparent),
+    0 0 56px -12px color-mix(in srgb, var(--glow) 40%, transparent);
+}
+
+.deck-box__body {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.25),
+    0 18px 30px -12px rgba(0, 0, 0, 0.7);
+}
+
+/*
+ * Phones: no backdrop blur (solid tinted glass instead) and one cheap shadow
+ * per card. Multi-layer blurred shadows re-rasterise on every transform
+ * change in mobile Safari and Android WebViews.
+ */
+@media (max-width: 767px) {
+  :root {
+    --paper-shadow: 0 8px 16px -6px rgba(20, 4, 12, 0.5);
+    --paper-shadow-lift: 0 10px 18px -6px rgba(0, 0, 0, 0.45);
+  }
+
+  .mode-header[data-tone='paper'],
+  .paper-dock {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .mode-header[data-tone='paper'] {
+    background: rgba(24, 14, 21, 0.94);
+    box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.7);
+  }
+
+  .paper-dock {
+    background: rgba(24, 14, 21, 0.94);
+    box-shadow: 0 -6px 14px -8px rgba(0, 0, 0, 0.7);
+  }
+
+  .paper-card {
+    box-shadow: var(--paper-shadow-lift);
+  }
+
+  .paper-panel {
+    box-shadow: var(--paper-shadow);
+  }
+
+  .rewind-card,
+  .desk-paper,
+  .deck-shadow,
+  .letter-panel {
+    box-shadow: 0 8px 16px -6px rgba(0, 0, 0, 0.45);
+  }
+
+  .desk-paper--sticky {
+    box-shadow: none;
+  }
+
+  .rewind-card__lift-shadow,
+  .desk-item__lift {
+    box-shadow: 0 18px 28px -10px rgba(0, 0, 0, 0.55);
+  }
+
+  .sticky-lift {
+    box-shadow: -4px 8px 12px -6px rgba(45, 20, 10, 0.45);
+  }
+
+  .studio-glow {
+    box-shadow: 0 0 36px -10px color-mix(in srgb, var(--glow) 45%, transparent);
+  }
+
+  .deck-box__body {
+    box-shadow: 0 10px 16px -8px rgba(0, 0, 0, 0.65);
   }
 }

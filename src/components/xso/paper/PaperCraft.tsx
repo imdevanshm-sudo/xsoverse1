@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from 'react';
 
 /** One static grain tile (2 octaves) shared by every paper surface. */
 export const PAPER_GRAIN_URL =
-  "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.27 0 0 0 0 0.22 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\")";
+  "url('/textures/noise-warm.png')";
 
 export const PAPER_CREAM = '#fff7fb';
 

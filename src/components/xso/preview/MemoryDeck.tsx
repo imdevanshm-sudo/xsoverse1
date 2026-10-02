@@ -1,16 +1,11 @@
 'use client';
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type PointerEvent,
-  type ReactNode,
-} from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import {
   animate,
+  AnimatePresence,
   motion,
+  useIsPresent,
   useDragControls,
   useMotionValue,
   useReducedMotion,
@@ -20,13 +15,10 @@ import {
 } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
+import { TOUCH_SPRING, useCoarsePointer } from '@/hooks/useTouchSpring';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
-import {
-  getArtifacts,
-  playMechanicalCue,
-  type Artifact,
-} from '@/components/xso/viewers/shared';
+import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
 
 const TILT_MAX = 6;
 const SWIPE_DISTANCE = 70;
@@ -59,6 +51,8 @@ const TUCK = { type: 'spring' as const, stiffness: 260, damping: 21, mass: 1 };
 
 /** Deeper sheets sit in shade from the top-down light and move less with tilt. */
 const DIM = [0, 0.1, 0.18, 0.26];
+/** Sheets at this depth or deeper are unmounted; they're fully hidden under the pile anyway. */
+const MOUNTED_DEPTH = 3;
 const PARALLAX = [1.3, 0.85, 0.5, 0.22];
 const SHADOW = [
   { opacity: 1, y: 0, scale: 1 },
@@ -108,6 +102,9 @@ export function MemoryDeck({
   const [order, setOrder] = useState(() => artifacts.map((_, i) => i));
   const [fling, setFling] = useState<Direction | null>(null);
   const reduce = Boolean(useReducedMotion());
+  /** Whole-stage 3D lean is a mouse nicety; on touch it only costs compositor time. */
+  const coarse = useCoarsePointer();
+  const lean3d = !reduce && !coarse;
 
   const rawTiltX = useMotionValue(0);
   const rawTiltY = useMotionValue(0);
@@ -161,7 +158,7 @@ export function MemoryDeck({
 
   return (
     <section
-      className="relative isolate flex w-full max-w-[400px] flex-col items-center"
+      className="relative isolate flex w-full max-w-[400px] touch-pan-y flex-col items-center"
       aria-label="Memory deck"
       aria-roledescription="card deck"
     >
@@ -171,17 +168,15 @@ export function MemoryDeck({
       <motion.div
         className={`deck-stage relative w-full ${size === 'studio' ? 'memory-deck--studio' : 'memory-deck'}`}
         style={
-          reduce
-            ? undefined
-            : { rotateX: tilt.x, rotateY: tilt.y, transformPerspective: 1200 }
+          lean3d ? { rotateX: tilt.x, rotateY: tilt.y, transformPerspective: 1200 } : undefined
         }
         onPointerMove={(e) => {
-          if (reduce) return;
+          if (!lean3d) return;
           if (e.pointerType === 'mouse') lean(e, 1);
           else if (pressed.current) lean(e, 0.55);
         }}
         onPointerDown={(e) => {
-          if (reduce || e.pointerType === 'mouse') return;
+          if (!lean3d || e.pointerType === 'mouse') return;
           pressed.current = true;
           lean(e, 0.55);
         }}
@@ -189,36 +184,39 @@ export function MemoryDeck({
         onPointerLeave={settle}
         onPointerCancel={settle}
       >
-        {artifacts.map((artifact, index) => {
-          const depth = order.indexOf(index);
-          const isTop = depth === 0;
-          const flinging = isTop && fling !== null;
-          /** While the top sheet is in the air, the rest already step up. */
-          const settledDepth = fling !== null && !isTop ? depth - 1 : depth;
-          return (
-            <DeckSlot
-              key={artifact.id}
-              depth={depth}
-              settledDepth={settledDepth}
-              fling={flinging ? fling : null}
-              tilt={tilt}
-              reduce={reduce}
-              onFlung={commit}
-            >
-              <DeckCard
-                artifact={artifact}
-                face={faces[artifact.id]}
-                number={index + 1}
-                active={isTop && fling === null}
-                depth={settledDepth}
-                lifted={flinging}
+        <AnimatePresence initial={false}>
+          {artifacts.map((artifact, index) => {
+            const depth = order.indexOf(index);
+            const isTop = depth === 0;
+            const flinging = isTop && fling !== null;
+            /** While the top sheet is in the air, the rest already step up. */
+            const settledDepth = fling !== null && !isTop ? depth - 1 : depth;
+            if (settledDepth >= MOUNTED_DEPTH) return null;
+            return (
+              <DeckSlot
+                key={artifact.id}
+                depth={depth}
+                settledDepth={settledDepth}
+                fling={flinging ? fling : null}
                 tilt={tilt}
                 reduce={reduce}
-                onLoop={advance}
-              />
-            </DeckSlot>
-          );
-        })}
+                onFlung={commit}
+              >
+                <DeckCard
+                  artifact={artifact}
+                  face={faces[artifact.id]}
+                  number={index + 1}
+                  active={isTop && fling === null}
+                  depth={settledDepth}
+                  lifted={flinging}
+                  tilt={tilt}
+                  reduce={reduce}
+                  onLoop={advance}
+                />
+              </DeckSlot>
+            );
+          })}
+        </AnimatePresence>
       </motion.div>
 
       <div className="mt-4 flex w-full items-center justify-between gap-4">
@@ -226,8 +224,8 @@ export function MemoryDeck({
           {artifacts.map((artifact, index) => (
             <span
               key={artifact.id}
-              className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
-                index === topIndex ? 'w-5 bg-[#fdba74]' : 'w-1.5 bg-[#fce7f3]/20'
+              className={`h-1.5 w-1.5 rounded-full transition-[transform,background-color] duration-300 ease-out ${
+                index === topIndex ? 'scale-[1.6] bg-[#fdba74]' : 'bg-[#fce7f3]/20'
               }`}
             />
           ))}
@@ -240,7 +238,9 @@ export function MemoryDeck({
           className="paper-button inline-flex touch-manipulation items-center gap-2"
           aria-label={`Loop memory — next up: ${artifacts[nextIndex].label}`}
         >
-          <span aria-hidden className="text-sm leading-none">↻</span>
+          <span aria-hidden className="text-sm leading-none">
+            ↻
+          </span>
           Loop memory
         </motion.button>
       </div>
@@ -277,12 +277,10 @@ function DeckSlot({
   const px = useTransform([tilt.y, parallax], ([t, k]: number[]) => t * k);
   const py = useTransform([tilt.x, parallax], ([t, k]: number[]) => -t * k);
 
+  const isPresent = useIsPresent();
+  const touch = useCoarsePointer();
   const wasFlung = useRef(false);
-  const transition = fling
-    ? FLING
-    : wasFlung.current
-      ? TUCK
-      : PROMOTE;
+  const transition = fling ? FLING : touch ? TOUCH_SPRING : wasFlung.current ? TUCK : PROMOTE;
   useEffect(() => {
     wasFlung.current = fling !== null;
   }, [fling]);
@@ -291,11 +289,12 @@ function DeckSlot({
     <motion.div
       className={`deck-slot absolute inset-x-0 bottom-7 top-0 ${depth === 0 ? '' : 'pointer-events-none'}`}
       style={{ zIndex: 10 - depth, transformPerspective: 1100 }}
-      initial={false}
-      animate={fling ? flingPose(fling) : REST[settledDepth]}
+      initial={{ ...REST[MOUNTED_DEPTH], opacity: 0 }}
+      animate={fling ? { ...flingPose(fling), opacity: 1 } : { ...REST[settledDepth], opacity: 1 }}
+      exit={{ ...REST[MOUNTED_DEPTH], opacity: 0, transition: touch ? TOUCH_SPRING : TUCK }}
       transition={transition}
       onAnimationComplete={() => {
-        if (fling) onFlung();
+        if (fling && isPresent) onFlung();
       }}
     >
       <motion.div className="h-full w-full" style={reduce ? undefined : { x: px, y: py }}>
@@ -334,10 +333,7 @@ function DeckCard({
   const dragRotate = useTransform(dragX, [-180, 0, 180], [-9, 0, 9]);
   const dragYaw = useTransform(dragX, [-180, 0, 180], [-16, 0, 16]);
   /** Specular band slides across the surface as the sheet tilts or drags. */
-  const sheenX = useTransform(
-    [tilt.y, dragX],
-    ([t, d]: number[]) => `${t * 5 + d * 0.18}%`,
-  );
+  const sheenX = useTransform([tilt.y, dragX], ([t, d]: number[]) => `${t * 5 + d * 0.18}%`);
 
   return (
     <motion.div
@@ -392,7 +388,9 @@ function DeckCard({
         </div>
 
         {artifact.id === 'letter' ? <span aria-hidden className="deck-card__creases" /> : null}
-        {artifact.id === 'receipt' ? <span aria-hidden className="deck-card__thermal-fade" /> : null}
+        {artifact.id === 'receipt' ? (
+          <span aria-hidden className="deck-card__thermal-fade" />
+        ) : null}
         <span aria-hidden className="deck-card__light" />
         {reduce ? null : (
           <motion.span

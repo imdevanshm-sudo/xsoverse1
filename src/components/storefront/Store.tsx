@@ -1,7 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useTransition, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useTransition,
+  type CSSProperties,
+  type KeyboardEvent,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useXsoStore } from '@/store/useXsoStore';
@@ -17,14 +24,6 @@ const previewHref = (style: GiftStyle, theme: ThemeId) =>
 const customizeHref = (style: GiftStyle) => `/customize?style=${encodeURIComponent(style)}`;
 
 /** Static studio shadow + tinted rim; only the layer's opacity animates between styles. */
-const studioShadow = (glow: string) =>
-  [
-    '0 44px 80px -32px rgba(0,0,0,0.9)',
-    '0 18px 36px -18px rgba(0,0,0,0.7)',
-    `0 0 0 1px ${glow}55`,
-    `0 0 56px -12px ${glow}66`,
-  ].join(', ');
-
 /** Store & template gallery: pick a format, then tap a story deck. */
 export function Store() {
   const router = useRouter();
@@ -189,8 +188,8 @@ export function Store() {
               <motion.div
                 key={`glow-${giftStyle}`}
                 aria-hidden
-                className="pointer-events-none absolute inset-0 rounded-3xl"
-                style={{ boxShadow: studioShadow(format.glow) }}
+                className="studio-glow pointer-events-none absolute inset-0 rounded-3xl"
+                style={{ '--glow': format.glow } as CSSProperties}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}

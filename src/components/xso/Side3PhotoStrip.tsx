@@ -122,6 +122,7 @@ function Strip({
                 className="aspect-[3/4] w-full object-cover mobile-no-filter"
                 width={220}
                 height={293}
+                sizes={compact ? '(max-width: 768px) 28vw, 140px' : '(max-width: 768px) 45vw, 220px'}
                 style={
                   reducedMotion
                     ? undefined

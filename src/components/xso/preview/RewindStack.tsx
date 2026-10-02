@@ -13,6 +13,7 @@ import {
 } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
+import { useTouchSpring } from '@/hooks/useTouchSpring';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
 import {
@@ -29,14 +30,13 @@ const PULL_ELASTIC = 0.35;
 const INTERACTIVE = 'button, a, input, audio, canvas, [role="slider"]';
 
 /**
- * Depth 0 is the memory in focus; older ones recede up and back, softening
- * out of focus the further they sit in the past.
+ * Depth 0 is the memory in focus; older ones recede up and back and fade
+ * the further they sit in the past. Only these depths are mounted.
  */
 const DEPTH = [
-  { y: 0, scale: 1, opacity: 1, blur: 0 },
-  { y: -18, scale: 0.93, opacity: 0.82, blur: 1.2 },
-  { y: -34, scale: 0.86, opacity: 0.62, blur: 2.2 },
-  { y: -48, scale: 0.8, opacity: 0.45, blur: 3.2 },
+  { y: 0, scale: 1, opacity: 1 },
+  { y: -20, scale: 0.92, opacity: 0.72 },
+  { y: -38, scale: 0.84, opacity: 0.42 },
 ];
 const BACK = DEPTH[DEPTH.length - 1];
 
@@ -59,10 +59,8 @@ const SHEET: Variants = {
     rotate: direction * 11,
     scale: 0.97,
     opacity: 0,
-    filter: 'blur(0px)',
     zIndex: 30,
     pointerEvents: 'none',
-    transition: { ...SPRING, opacity: { duration: 0.42, ease: 'easeOut' } },
   }),
 };
 
@@ -108,6 +106,7 @@ export function RewindStack({
     direction: -1,
   }));
   const reduce = Boolean(useReducedMotion());
+  const spring = useTouchSpring(SPRING);
   const stage = useRef<HTMLElement>(null);
   const visible = useInView(stage, { margin: '120px' });
 
@@ -142,7 +141,7 @@ export function RewindStack({
   return (
     <section
       ref={stage}
-      className={`relative isolate flex w-full max-w-[400px] flex-col items-center ${size === 'fill' ? 'h-full' : ''}`}
+      className={`relative isolate flex w-full max-w-[400px] touch-pan-y flex-col items-center ${size === 'fill' ? 'h-full' : ''}`}
       aria-label="Rewind stack"
       aria-roledescription="card stack"
     >
@@ -150,7 +149,7 @@ export function RewindStack({
 
       <div className={`relative w-full ${DECK_HEIGHT[size]}`}>
         <AnimatePresence initial={false} custom={direction}>
-          {order.map((index, depth) => {
+          {order.slice(0, DEPTH.length).map((index, depth) => {
             const artifact = artifacts[index];
             const pose = DEPTH[depth];
             const isFront = depth === 0;
@@ -159,28 +158,24 @@ export function RewindStack({
                 key={`${artifact.id}:${passes[index]}`}
                 custom={direction}
                 variants={SHEET}
-                className={`absolute inset-x-1 bottom-7 top-14 ${isFront ? '' : 'pointer-events-none'}`}
-                style={{
-                  zIndex: 10 - depth,
-                  transformOrigin: '50% 0%',
-                  willChange: 'transform, opacity',
-                }}
+                className={`gpu-layer absolute inset-x-1 bottom-7 top-14 ${isFront ? '' : 'pointer-events-none'}`}
+                style={{ zIndex: 10 - depth, transformOrigin: '50% 0%' }}
                 initial={{
                   y: BACK.y - 14,
                   scale: BACK.scale - 0.04,
                   opacity: 0,
                   rotate: tilts[index],
-                  filter: `blur(${BACK.blur + 2}px)`,
                 }}
                 animate={{
                   y: pose.y,
                   scale: pose.scale,
                   opacity: pose.opacity,
                   rotate: isFront ? tilts[index] * 0.25 : tilts[index],
-                  filter: reduce ? 'blur(0px)' : `blur(${pose.blur}px)`,
                 }}
                 exit={reduce ? { opacity: 0, transition: INSTANT } : 'exit'}
-                transition={reduce ? INSTANT : SPRING}
+                transition={
+                  reduce ? INSTANT : { ...spring, opacity: { duration: 0.42, ease: 'easeOut' } }
+                }
               >
                 <RewindCard
                   artifact={artifact}
@@ -201,8 +196,8 @@ export function RewindStack({
           {artifacts.map((artifact, index) => (
             <span
               key={artifact.id}
-              className={`h-1.5 rounded-full transition-all duration-500 ease-out ${
-                index === front ? 'w-5 bg-[#fdba74]' : 'w-1.5 bg-[#fce7f3]/20'
+              className={`h-1.5 w-1.5 rounded-full transition-[transform,background-color] duration-500 ease-out ${
+                index === front ? 'scale-[1.6] bg-[#fdba74]' : 'bg-[#fce7f3]/20'
               }`}
             />
           ))}

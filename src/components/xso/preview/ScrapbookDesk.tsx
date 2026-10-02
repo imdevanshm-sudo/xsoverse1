@@ -21,6 +21,7 @@ import {
 import { Pause, Play } from 'lucide-react';
 import type { XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
+import { useTouchSpring } from '@/hooks/useTouchSpring';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { seededOffset } from '@/components/xso/viewers/shared';
@@ -137,7 +138,10 @@ export function ScrapbookDesk({
       className={`relative flex w-full max-w-[420px] flex-col ${size === 'fill' ? 'h-full' : ''}`}
       aria-label="Scrapbook desk"
     >
-      <div ref={desk} className={`scrap-desk relative isolate w-full ${DESK_HEIGHT[size]}`}>
+      <div
+        ref={desk}
+        className={`scrap-desk relative isolate w-full touch-pan-y ${DESK_HEIGHT[size]}`}
+      >
         <CoffeeRing className="pointer-events-none absolute bottom-[6%] right-[4%] w-[30%] opacity-[0.16]" />
 
         {items.map((item) => {
@@ -308,6 +312,7 @@ function DeskItem({
   children: ReactNode;
 }) {
   const dragControls = useDragControls();
+  const pickUp = useTouchSpring(PICK_UP);
   /** The click that trails a drag must not also flip, peel or unfold. */
   const droppedAt = useRef(0);
 
@@ -321,7 +326,7 @@ function DeskItem({
   return (
     <motion.div
       ref={itemRef}
-      className="desk-item group absolute touch-none select-none outline-none"
+      className="desk-item gpu-layer group absolute touch-none select-none outline-none"
       style={{ left: spec.left, top: spec.top, width: spec.width, zIndex: z }}
       custom={spec.tilt}
       variants={HANDLED}
@@ -330,7 +335,7 @@ function DeskItem({
       whileHover="hover"
       whileTap="lift"
       whileDrag="lift"
-      transition={reduce ? INSTANT : PICK_UP}
+      transition={reduce ? INSTANT : pickUp}
       drag
       dragControls={dragControls}
       dragListener={false}
@@ -430,6 +435,7 @@ function Polaroid({
   flipped: boolean;
   reduce: boolean;
 }) {
+  const flip = useTouchSpring(FLIP);
   const line = data.lineItems[photo.index];
   const date = data.timestamp.split(' ')[0];
   return (
@@ -439,7 +445,7 @@ function Polaroid({
         style={{ transformStyle: 'preserve-3d' }}
         initial={false}
         animate={{ rotateY: flipped ? 180 : 0 }}
-        transition={reduce ? INSTANT : FLIP}
+        transition={reduce ? INSTANT : flip}
       >
         <div
           className="desk-paper desk-paper--polaroid relative p-[7%] pb-0"
@@ -495,12 +501,20 @@ function Polaroid({
   );
 }
 
-/** Peel stages: flat, a hover-lifted corner, and peeled back far enough to read underneath. */
-const PEEL_AT = [100, 80, 32];
+/**
+ * Peel stages: flat, a hover-lifted corner, and swung aside on its top-right
+ * pin far enough to read underneath. Transform-only so it stays on the GPU.
+ */
+const PEEL = [
+  { rotate: 0, y: 0, scale: 1 },
+  { rotate: 5, y: -1, scale: 1.01 },
+  { rotate: 30, y: -3, scale: 1.02 },
+];
+const PEEL_SHADOW = [0, 0.5, 1];
 
 function StickyNote({ data, peel, reduce }: { data: XsoData; peel: 0 | 1 | 2; reduce: boolean }) {
-  const p = PEEL_AT[peel];
-  const transition = reduce ? INSTANT : { type: 'spring' as const, stiffness: 220, damping: 24 };
+  const spring = useTouchSpring({ type: 'spring' as const, stiffness: 220, damping: 24 });
+  const transition = reduce ? INSTANT : spring;
   const score = overallStars(data.auditMetrics).toFixed(1);
   return (
     <div className="relative aspect-square">
@@ -508,20 +522,26 @@ function StickyNote({ data, peel, reduce }: { data: XsoData; peel: 0 | 1 | 2; re
         className="desk-paper desk-paper--under absolute inset-0 flex flex-col items-end justify-end gap-1.5 p-2 text-right"
         aria-hidden={peel !== 2}
       >
-        <p className="max-w-[62%] font-hand text-[14px] leading-[1.05] text-[#3a2530]">
+        <p className="max-w-[48%] font-hand text-[14px] leading-[1.05] text-[#3a2530]">
           psst… {data.redFlags[0]?.toLowerCase() ?? 'you know what you did'}
         </p>
         <VoiceSnippet data={data} live={peel === 2} />
       </div>
 
       <motion.div
-        className="desk-paper desk-paper--sticky absolute inset-0 p-2.5"
+        className="desk-paper desk-paper--sticky gpu-layer absolute inset-0 p-2.5"
+        style={{ transformOrigin: '100% 0%' }}
         initial={false}
-        animate={{
-          clipPath: `polygon(0% 0%, 100% 0%, 100% ${p}%, ${p}% 100%, 0% 100%)`,
-        }}
+        animate={PEEL[peel]}
         transition={transition}
       >
+        <motion.span
+          aria-hidden
+          className="sticky-lift"
+          initial={false}
+          animate={{ opacity: PEEL_SHADOW[peel] }}
+          transition={transition}
+        />
         <p className="font-receipt text-[8px] uppercase tracking-[0.2em] text-[#8a6a52]">
           Audit · {score}/5
         </p>
@@ -531,13 +551,6 @@ function StickyNote({ data, peel, reduce }: { data: XsoData; peel: 0 | 1 | 2; re
           ))}
         </ul>
       </motion.div>
-      <motion.div
-        aria-hidden
-        className="sticky-curl absolute inset-0"
-        initial={false}
-        animate={{ clipPath: `polygon(100% ${p}%, ${p}% 100%, ${p}% ${p}%)` }}
-        transition={transition}
-      />
     </div>
   );
 }
@@ -714,7 +727,7 @@ function OpenLetter({
         tabIndex={-1}
         aria-hidden
         onClick={onClose}
-        className="absolute inset-0 rounded-[inherit] bg-[#180e15]/70 backdrop-blur-[3px]"
+        className="absolute inset-0 rounded-[inherit] bg-[#180e15]/90 md:bg-[#180e15]/70 md:backdrop-blur-[3px]"
       />
       <motion.div
         className="relative w-full max-w-[340px]"
@@ -771,15 +784,23 @@ function OpenLetter({
 function CoffeeRing({ className }: { className: string }) {
   return (
     <svg viewBox="0 0 100 100" className={className} aria-hidden>
-      <defs>
-        <filter id="coffee-rough">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" />
-          <feDisplacementMap in="SourceGraphic" scale="3.5" />
-        </filter>
-      </defs>
-      <g filter="url(#coffee-rough)" fill="none" stroke="#7a4a2a">
-        <circle cx="50" cy="50" r="38" strokeWidth="3.2" opacity="0.9" />
-        <circle cx="50" cy="50" r="35.5" strokeWidth="1" opacity="0.45" />
+      <g fill="none" stroke="#7a4a2a">
+        <circle
+          cx="50"
+          cy="50"
+          r="38"
+          strokeWidth="3.2"
+          opacity="0.9"
+          strokeDasharray="70 3 40 2 90 4"
+        />
+        <circle
+          cx="50.6"
+          cy="49.4"
+          r="35.5"
+          strokeWidth="1"
+          opacity="0.45"
+          strokeDasharray="30 6 55 4"
+        />
         <path d="M18 62a34 34 0 0 1 4-30" strokeWidth="5" opacity="0.35" strokeLinecap="round" />
       </g>
     </svg>
