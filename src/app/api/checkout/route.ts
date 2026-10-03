@@ -10,6 +10,8 @@ import {
 import { isGiftStyle, pickXsoPayload } from '@/lib/xsoPayload';
 import { managePath, viewPath } from '@/lib/giftLinks';
 import { manageKey } from '@/lib/manageKey';
+import { selectedCards } from '@/lib/formatCards';
+import { isAddOnId, isPriceArm, quote } from '@/lib/pricing';
 import type { XsoData } from '@/types/xso';
 
 export const runtime = 'nodejs';
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = JSON.parse(raw) as { data?: XsoData };
+    const body = JSON.parse(raw) as { data?: XsoData; addOns?: unknown; arm?: unknown };
     if (!body?.data || typeof body.data !== 'object') {
       return NextResponse.json({ error: 'Missing souvenir data' }, { status: 400 });
     }
@@ -47,6 +49,12 @@ export async function POST(request: Request) {
     const payload = pickXsoPayload(body.data);
     const gift = await createPendingGift(payload);
     const appUrl = getAppUrl(request.url);
+    const price = quote({
+      style: gift.data.giftStyle,
+      cardCount: selectedCards(gift.data, gift.data.giftStyle).length,
+      addOns: Array.isArray(body.addOns) ? body.addOns.filter(isAddOnId) : [],
+      arm: isPriceArm(body.arm) ? body.arm : null,
+    });
 
     if (!lemon) {
       await activateGiftPreview(gift.id);
@@ -64,6 +72,7 @@ export async function POST(request: Request) {
       customerName: gift.data.customerName,
       billerName: gift.data.billerName,
       appUrl,
+      quote: price,
     });
 
     return NextResponse.json({ mode: 'lemon', checkoutUrl });

@@ -5,7 +5,8 @@ import { memo, useCallback, useEffect, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { useXsoStore } from '@/store/useXsoStore';
 import { useCustomizerModal } from '@/store/useCustomizerModal';
-import { CARTRIDGE_PRICE, getCartridge } from '@/lib/cartridges';
+import { getCartridge } from '@/lib/cartridges';
+import { tierPrice } from '@/lib/pricing';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { StickyCreateBar } from '@/components/storefront/StickyCreateBar';
 import { XSOCustomizerHost } from '@/components/storefront/XSOCustomizerHost';
@@ -89,7 +90,7 @@ export function Store() {
             onClick={createXso}
             className="matte-cta flex min-h-[4rem] w-full touch-manipulation items-center justify-center gap-2 rounded-full px-6 font-serif text-[20px] font-semibold shadow-[0_14px_40px_rgba(236,72,153,.35)] transition-transform active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
           >
-            Claim yours · {CARTRIDGE_PRICE}
+            Claim yours · {tierPrice('full')}
           </button>
         </div>
 

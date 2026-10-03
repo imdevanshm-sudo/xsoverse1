@@ -4,7 +4,8 @@ import { memo, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
 import { useCustomizerModal } from '@/store/useCustomizerModal';
-import { CARTRIDGE_PRICE, displayTitle, getCartridge } from '@/lib/cartridges';
+import { displayTitle, getCartridge } from '@/lib/cartridges';
+import { tierPrice } from '@/lib/pricing';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 
 /** Mobile-only buy bar pinned to the bottom of the store. */
@@ -28,7 +29,7 @@ export const StickyCreateBar = memo(function StickyCreateBar() {
             {displayTitle(cart)}
           </span>
           <span className="block font-receipt text-[12px] font-bold tabular-nums text-[#fdba74]">
-            {CARTRIDGE_PRICE}
+            {tierPrice('full')}
           </span>
         </span>
         <button

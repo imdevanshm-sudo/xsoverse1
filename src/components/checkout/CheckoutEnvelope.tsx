@@ -8,6 +8,8 @@ import { startCheckout } from '@/lib/startCheckout';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
 import { getTheme, THEMES } from '@/lib/themes';
 import { XSO_PRODUCT } from '@/lib/orders';
+import { formatPrice, TIERS } from '@/lib/pricing';
+import { useDraftQuote } from '@/lib/pricingClient';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { MatteCta } from '@/components/desk/MatteCta';
 import type { GiftStyle } from '@/types/xso';
@@ -30,7 +32,12 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const option = XSO_PRODUCT;
+  const draftQuote = useDraftQuote(lockedStyle);
+  const option = {
+    ...XSO_PRODUCT,
+    label: `${XSO_PRODUCT.label} · ${TIERS[draftQuote.tier].name}`,
+    price: formatPrice(draftQuote.total),
+  };
   const invoice = useMemo(() => invoiceNo(draftId), [draftId]);
 
   const pay = async (event?: FormEvent) => {

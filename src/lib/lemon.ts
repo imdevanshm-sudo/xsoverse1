@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
 import { pickXsoPayload } from '@/lib/xsoPayload';
-import { XSO_PRODUCT } from '@/lib/orders';
+import { TIERS, type Quote, type TierId } from '@/lib/pricing';
 import { markGiftPaid, saveGift, type StoredGift } from '@/lib/giftStore';
 import { managePath } from '@/lib/giftLinks';
 import { manageKey } from '@/lib/manageKey';
@@ -9,20 +9,25 @@ import type { XsoData } from '@/types/xso';
 export interface LemonConfig {
   apiKey: string;
   storeId: string;
-  variantId: string;
+  /** Per-tier variants, each falling back to LEMONSQUEEZY_VARIANT_ID. */
+  variants: Record<TierId, string>;
   webhookSecret?: string;
 }
 
 export function getLemonConfig(): LemonConfig | null {
   const apiKey = process.env.LEMONSQUEEZY_API_KEY;
   const storeId = process.env.LEMONSQUEEZY_STORE_ID;
-  const variantId = process.env.LEMONSQUEEZY_VARIANT_ID;
-  if (!apiKey || !storeId || !variantId) return null;
+  const fallback = process.env.LEMONSQUEEZY_VARIANT_ID;
+  const variant = (tier: TierId) => process.env[TIERS[tier].variantEnv] || fallback;
+  const single = variant('single');
+  const full = variant('full');
+  const deluxe = variant('deluxe');
+  if (!apiKey || !storeId || !single || !full || !deluxe) return null;
 
   return {
     apiKey,
     storeId,
-    variantId,
+    variants: { single, full, deluxe },
     webhookSecret: process.env.LEMONSQUEEZY_WEBHOOK_SECRET,
   };
 }
@@ -74,6 +79,7 @@ export async function createLemonCheckout(options: {
   customerName: string;
   billerName: string;
   appUrl: string;
+  quote: Quote;
 }): Promise<{ checkoutUrl: string }> {
   const config = getLemonConfig();
   if (!config) {
@@ -94,11 +100,13 @@ export async function createLemonCheckout(options: {
       data: {
         type: 'checkouts',
         attributes: {
-          custom_price: XSO_PRODUCT.priceCents,
+          custom_price: options.quote.total,
           checkout_data: {
             custom: {
               gift_id: options.giftId,
               gift_style: options.giftStyle,
+              tier: options.quote.tier,
+              add_ons: options.quote.addOns.map((a) => a.id).join(','),
             },
             name: options.billerName || undefined,
           },
@@ -125,7 +133,7 @@ export async function createLemonCheckout(options: {
           variant: {
             data: {
               type: 'variants',
-              id: String(config.variantId),
+              id: String(config.variants[options.quote.tier]),
             },
           },
         },

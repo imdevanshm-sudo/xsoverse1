@@ -23,7 +23,8 @@ import {
 import { packContent, useXsoStore, type PackContent } from '@/store/useXsoStore';
 import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
-import { CARTRIDGE_PRICE } from '@/lib/cartridges';
+import { formatPrice } from '@/lib/pricing';
+import { useQuote } from '@/lib/pricingClient';
 import type { ThemeId } from '@/lib/themes';
 import type { FormatKey, FormatLayers } from '@/lib/formats';
 import { cardsPatch, normalizeCards, selectedCards, type CardId } from '@/lib/formatCards';
@@ -120,6 +121,7 @@ export function XSOCustomizerModal() {
   const style = toGiftStyle(config.format);
   const { vibe, selectedCards: cards } = config;
   const photos = config.media.photos;
+  const price = useQuote(style, cards.length);
 
   const [step, setStep] = useState(0);
   const [crafted, setCrafted] = useState<CraftSource | null>(null);
@@ -611,9 +613,9 @@ export function XSOCustomizerModal() {
               onClick={checkout}
               loading={paying}
               disabled={crafting !== null}
-              label={`${STEPS[LAST].next} (${CARTRIDGE_PRICE})`}
+              label={`${STEPS[LAST].next} (${formatPrice(price.total)})`}
               loadingLabel="Locking it in…"
-              ariaLabel={`Lock it in and pay ${CARTRIDGE_PRICE}`}
+              ariaLabel={`Lock it in and pay ${formatPrice(price.total)}`}
             />
           )}
           {step === LAST ? (

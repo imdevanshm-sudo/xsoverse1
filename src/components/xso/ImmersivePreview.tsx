@@ -15,7 +15,9 @@ import { Eye } from 'lucide-react';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';
 import { MatteCta } from '@/components/desk/MatteCta';
-import { CARTRIDGE_PRICE, getCartridge } from '@/lib/cartridges';
+import { getCartridge } from '@/lib/cartridges';
+import { formatPrice } from '@/lib/pricing';
+import { useDraftQuote } from '@/lib/pricingClient';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
 const MEMORY_COUNT = 4;
@@ -61,6 +63,7 @@ const PreviewStage = memo(function PreviewStage({
 /** Step 1 — paper keepsake deck, secret offer ticket and sticky CTA. */
 export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const cart = getCartridge(lockedStyle);
+  const draftQuote = useDraftQuote(lockedStyle);
   const data = useXsoData();
   const previewData = useMemo(() => ({ ...data, giftStyle: lockedStyle }), [data, lockedStyle]);
 
@@ -139,9 +142,9 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
           <MatteCta
             onClick={create}
             label="Claim yours"
-            price={CARTRIDGE_PRICE}
+            price={formatPrice(draftQuote.total)}
             loadingLabel="Opening…"
-            ariaLabel={`Create your XSO, ${CARTRIDGE_PRICE}`}
+            ariaLabel={`Create your XSO, ${formatPrice(draftQuote.total)}`}
           />
         </div>
       </DeskDock>

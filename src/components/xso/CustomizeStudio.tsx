@@ -16,7 +16,9 @@ import { FormatPreview } from '@/components/xso/preview/FormatPreview';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';
 import { MatteCta } from '@/components/desk/MatteCta';
-import { CARTRIDGE_PRICE, displayTitle, getCartridge } from '@/lib/cartridges';
+import { displayTitle, getCartridge } from '@/lib/cartridges';
+import { formatPrice } from '@/lib/pricing';
+import { useDraftQuote } from '@/lib/pricingClient';
 import { STUDIO_STEPS, type StudioStepId } from '@/lib/studioSteps';
 import { styleQuery } from '@/lib/styleLock';
 import type { GiftStyle } from '@/types/xso';
@@ -65,6 +67,7 @@ const SeeReceiverButton = memo(function SeeReceiverButton({
 /** Step 2: live deck beside a paper worksheet; phones open the full receiver preview instead. */
 export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
   const cart = getCartridge(lockedStyle);
+  const draftQuote = useDraftQuote(lockedStyle);
   const [tab, setTab] = useState<StudioStepId>('receipt');
   const [visited, setVisited] = useState<Set<StudioStepId>>(
     () => new Set<StudioStepId>(['receipt']),
@@ -178,7 +181,7 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
           href={`/checkout?${styleQuery(lockedStyle)}`}
           label="Lock these memories"
           narrowLabel="Lock it in"
-          price={CARTRIDGE_PRICE}
+          price={formatPrice(draftQuote.total)}
           loadingLabel="Fetching the envelope…"
         />
       </DeskDock>
