@@ -255,10 +255,51 @@ interface Place {
   top: string;
   rotate: number;
   order: number;
+  /** Tidied pieces shrink to fit their cell. */
+  scale: number;
 }
 
-/** Two loose, overlapping columns; an odd one out sits centred on the last row. */
-function tidyPlaces(items: DeskItemSpec[]): Record<string, Place> {
+/**
+ * Squares the pieces up into a grid in reading order (letter last): four across on a wide desk,
+ * two on a phone. Each piece is centred in its cell and shrunk if it would spill out.
+ */
+function tidyGrid(items: DeskItemSpec[], orientation: Orientation): Record<string, Place> {
+  const { width: W, height: H } = DESIGN[orientation];
+  const cols = Math.min(orientation === 'landscape' ? 4 : 2, items.length);
+  const rows = Math.ceil(items.length / cols);
+  const pad = 12;
+  const gap = 14;
+  const cellW = (W - pad * 2 - gap * (cols - 1)) / cols;
+  const cellH = (H - pad * 2 - gap * (rows - 1)) / rows;
+  const ordered = READING_ORDER.flatMap((kind) => items.filter((item) => item.kind === kind));
+  return Object.fromEntries(
+    ordered.map((item, i) => {
+      const row = Math.floor(i / cols);
+      const inRow = Math.min(cols, items.length - row * cols);
+      const col = i % cols;
+      const width = (parseFloat(item.width) / 100) * W;
+      const height = width * ASPECT[item.kind];
+      const scale = Math.min(1, (cellW - 8) / width, (cellH - 8) / height);
+      const cx = pad + ((cols - inRow) * (cellW + gap)) / 2 + col * (cellW + gap) + cellW / 2;
+      const cy = pad + row * (cellH + gap) + cellH / 2;
+      const order = items.indexOf(item);
+      return [
+        item.id,
+        {
+          left: `${((cx - width / 2) / W) * 100}%`,
+          top: `${((cy - height / 2) / H) * 100}%`,
+          rotate: 0,
+          order,
+          scale,
+        },
+      ];
+    }),
+  );
+}
+
+/** The studio's small desk: two columns, an odd one out centred on the last row. */
+function tidyPlaces(items: DeskItemSpec[], composition: Composition): Record<string, Place> {
+  if (composition !== 'studio') return tidyGrid(items, composition);
   const rows = Math.ceil(items.length / 2);
   const rowStep = rows > 1 ? 58 / (rows - 1) : 0;
   return Object.fromEntries(
@@ -269,7 +310,7 @@ function tidyPlaces(items: DeskItemSpec[]): Record<string, Place> {
       const alone = col === 0 && order === items.length - 1;
       const left = alone ? 50 - width / 2 : col === 0 ? 4 : 96 - width;
       const top = 3 + row * rowStep + col * 3;
-      return [item.id, { left: `${left}%`, top: `${top}%`, rotate: order % 2 ? 2.5 : -2.5, order }];
+      return [item.id, { left: `${left}%`, top: `${top}%`, rotate: 0, order, scale: 1 }];
     }),
   );
 }
@@ -281,6 +322,8 @@ interface Focus {
   rotate: number;
   width: number;
   scale: number;
+  /** The scale it rests at on the desk, to land back at. */
+  rest: number;
 }
 
 export const ScrapbookDesk = memo(function ScrapbookDesk({
@@ -351,7 +394,8 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const [focus, setFocus] = useState<Focus | null>(null);
   /** The desk copy stays hidden until the focused copy has landed back on it. */
   const [lifted, setLifted] = useState<string | null>(null);
-  const tidy = useMemo(() => tidyPlaces(items), [items]);
+  const composition: Composition = fill ? orientation : 'studio';
+  const tidy = useMemo(() => tidyPlaces(items, composition), [items, composition]);
 
   /** Pieces present on first paint settle in place; ones checked later drop onto the desk. */
   const seen = useRef<Set<string> | null>(null);
@@ -388,7 +432,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   };
 
   const placeOf = (item: DeskItemSpec, order: number): Place =>
-    tidied ? tidy[item.id] : { left: item.left, top: item.top, rotate: item.tilt, order };
+    tidied ? tidy[item.id] : { left: item.left, top: item.top, rotate: item.tilt, order, scale: 1 };
 
   const openFocus = (item: DeskItemSpec, order: number) => {
     const node = nodes.current[item.id];
@@ -407,6 +451,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       x: (r.left + r.width / 2 - (d.left + d.width / 2)) / k,
       y: (r.top + r.height / 2 - (d.top + d.height / 2)) / k,
       rotate: placeOf(item, order).rotate,
+      rest: placeOf(item, order).scale,
       width,
       scale: Math.max(
         1,
@@ -454,7 +499,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       origin: {
         x: r.left + r.width / 2,
         y: r.top + r.height / 2,
-        width: node.offsetWidth * k,
+        width: node.offsetWidth * k * placeOf(item, order).scale,
         rotate: placeOf(item, order).rotate,
       },
     });
@@ -532,7 +577,9 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       Object.fromEntries(
         items.map((item, order) => [
           item.id,
-          tidied ? tidy[item.id] : { left: item.left, top: item.top, rotate: item.tilt, order },
+          tidied
+            ? tidy[item.id]
+            : { left: item.left, top: item.top, rotate: item.tilt, order, scale: 1 },
         ]),
       ) as Record<string, Place>,
     [items, tidied, tidy],
@@ -676,7 +723,9 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
         type="button"
         onClick={tidyUp}
         className="paper-button shrink-0 touch-manipulation"
-        aria-label={tidied ? 'Scatter the desk again' : 'Tidy the desk into neat rows'}
+        aria-label={tidied ? 'Scatter: spread the board out again' : 'Tidy up: neaten the board'}
+        title={tidied ? 'Scatter: spread the board out again' : 'Tidy up: neaten the board'}
+        aria-pressed={tidied}
       >
         {tidied ? 'Scatter' : 'Tidy up'}
       </button>
@@ -734,10 +783,10 @@ const settle = (p: Place & { reduce?: boolean }) => ({
  * label is what makes Framer re-read it and glide the piece across the desk.
  */
 const HANDLED: Variants = {
-  scattered: (p: Place) => ({ scale: 1, ...settle(p) }),
-  tidy: (p: Place) => ({ scale: 1, ...settle(p) }),
-  hover: (p: Place) => ({ scale: 1.02, rotate: p.rotate }),
-  lift: (p: Place) => ({ scale: 1.08, rotate: p.rotate * 0.5 }),
+  scattered: (p: Place) => ({ scale: p.scale, ...settle(p) }),
+  tidy: (p: Place) => ({ scale: p.scale, ...settle(p) }),
+  hover: (p: Place) => ({ scale: p.scale * 1.02, rotate: p.rotate }),
+  lift: (p: Place) => ({ scale: p.scale * 1.08, rotate: p.rotate * 0.5 }),
 };
 const LIFT_SHADOW: Variants = {
   scattered: { opacity: 0 },
@@ -1391,7 +1440,7 @@ function FocusView({
   children: ReactNode;
 }) {
   const putBack = useRef<HTMLButtonElement>(null);
-  const resting = { x: focus.x, y: focus.y, rotate: focus.rotate, scale: 1 };
+  const resting = { x: focus.x, y: focus.y, rotate: focus.rotate, scale: focus.rest };
   const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
 
   useEffect(() => {
