@@ -14,8 +14,10 @@ import {
 } from 'react';
 import {
   AnimatePresence,
+  animate,
   motion,
   useDragControls,
+  useMotionValue,
   useReducedMotion,
   type Variants,
 } from 'framer-motion';
@@ -30,6 +32,9 @@ import { overallStars } from '@/components/xso/Side2Audit';
 import { seededOffset } from '@/components/xso/viewers/shared';
 
 const PICK_UP = { type: 'spring' as const, stiffness: 300, damping: 25 };
+/** Slow and a little floaty, like sliding paper across felt. */
+const TIDY_SPRING = { type: 'spring' as const, stiffness: 90, damping: 15, mass: 1.1 };
+const FOCUS_SPRING = { type: 'spring' as const, stiffness: 210, damping: 26 };
 const FLIP = SOFT_SPRING;
 const INSTANT = { duration: 0 };
 /** Presses on these stay with the control instead of picking the item up. */
@@ -100,6 +105,39 @@ function buildItems(data: XsoData, layers: ScrapbookLayers): DeskItemSpec[] {
   return items;
 }
 
+interface Place {
+  left: string;
+  top: string;
+  rotate: number;
+  order: number;
+}
+
+/** Two loose, overlapping columns; an odd one out sits centred on the last row. */
+function tidyPlaces(items: DeskItemSpec[]): Record<string, Place> {
+  const rows = Math.ceil(items.length / 2);
+  const rowStep = rows > 1 ? 58 / (rows - 1) : 0;
+  return Object.fromEntries(
+    items.map((item, order) => {
+      const row = Math.floor(order / 2);
+      const col = order % 2;
+      const width = parseFloat(item.width);
+      const alone = col === 0 && order === items.length - 1;
+      const left = alone ? 50 - width / 2 : col === 0 ? 4 : 96 - width;
+      const top = 3 + row * rowStep + col * 3;
+      return [item.id, { left: `${left}%`, top: `${top}%`, rotate: order % 2 ? 2.5 : -2.5, order }];
+    }),
+  );
+}
+
+interface Focus {
+  id: string;
+  x: number;
+  y: number;
+  rotate: number;
+  width: number;
+  scale: number;
+}
+
 export const ScrapbookDesk = memo(function ScrapbookDesk({
   data,
   size = 'hero',
@@ -116,17 +154,24 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   chrome?: boolean;
 }) {
   const desk = useRef<HTMLDivElement>(null);
-  const letterItem = useRef<HTMLDivElement>(null);
+  const nodes = useRef<Record<string, HTMLDivElement | null>>({});
   const layers = useMemo(() => resolveScrapbook(data), [data]);
   const items = useMemo(() => buildItems(data, layers), [data, layers]);
   const reduce = Boolean(useReducedMotion());
   const coarse = useCoarsePointer();
+  /** Touch dragging would trap page scrolls on the storefront, so only the full-screen desk gets it. */
+  const tactile = !coarse || size === 'fill';
   const [stack, setStack] = useState<string[]>(() => items.map((item) => item.id));
-  const [tidy, setTidy] = useState(0);
+  const [tidied, setTidied] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
   const [flipped, setFlipped] = useState<Record<string, boolean>>({});
   const [peel, setPeel] = useState<0 | 1 | 2>(0);
   const [torn, setTorn] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
+  const [focus, setFocus] = useState<Focus | null>(null);
+  /** The desk copy stays hidden until the focused copy has landed back on it. */
+  const [lifted, setLifted] = useState<string | null>(null);
+  const tidy = useMemo(() => tidyPlaces(items), [items]);
 
   /** Pieces present on first paint settle in place; ones checked later drop onto the desk. */
   const seen = useRef<Set<string> | null>(null);
@@ -156,16 +201,126 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
 
   const tidyUp = () => {
     playFoley('shuffle', 0.6);
-    setTidy((n) => n + 1);
+    setTidied((on) => !on);
+    setResetKey((n) => n + 1);
     setStack(items.map((item) => item.id));
     setFlipped({});
     setPeel(0);
   };
 
+  const placeOf = (item: DeskItemSpec, order: number): Place =>
+    tidied ? tidy[item.id] : { left: item.left, top: item.top, rotate: item.tilt, order };
+
+  const openFocus = (item: DeskItemSpec, order: number) => {
+    const node = nodes.current[item.id];
+    const box = desk.current;
+    if (!node || !box) return;
+    const d = box.getBoundingClientRect();
+    const r = node.getBoundingClientRect();
+    /** Rects are in screen pixels; the desk may itself be scaled down inside a preview. */
+    const k = d.width / box.offsetWidth || 1;
+    const width = node.offsetWidth;
+    const height = node.offsetHeight;
+    playFoley('flip', 0.5);
+    setLifted(item.id);
+    setFocus({
+      id: item.id,
+      x: (r.left + r.width / 2 - (d.left + d.width / 2)) / k,
+      y: (r.top + r.height / 2 - (d.top + d.height / 2)) / k,
+      rotate: placeOf(item, order).rotate,
+      width,
+      scale: Math.max(
+        1,
+        Math.min((box.offsetWidth * 0.8) / width, (box.offsetHeight * 0.6) / height, 2.6),
+      ),
+    });
+  };
+
+  const closeFocus = useCallback(() => {
+    playFoley('land', 0.4);
+    setFocus(null);
+  }, []);
+
   const closeLetter = useCallback(() => {
     setLetterOpen(false);
-    letterItem.current?.focus({ preventScroll: true });
+    nodes.current.letter?.focus({ preventScroll: true });
   }, []);
+
+  const flipPolaroid = (id: string) => {
+    playFoley('flip', 0.6);
+    setFlipped((f) => ({ ...f, [id]: !f[id] }));
+  };
+  const togglePeel = () => {
+    playFoley('tap', 0.7);
+    setPeel((p) => (p === 2 ? 0 : 2));
+  };
+  const tear = () => {
+    playFoley('scratch', 0.8);
+    setTorn(true);
+  };
+
+  const content = (item: DeskItemSpec) => {
+    switch (item.kind) {
+      case 'receipt':
+        return <MiniReceipt data={data} />;
+      case 'polaroid':
+        return (
+          <Polaroid
+            data={data}
+            caption={layers.polaroidCaption}
+            photo={item.photo!}
+            flipped={Boolean(flipped[item.id])}
+            reduce={reduce}
+          />
+        );
+      case 'sticky':
+        return (
+          <StickyNote
+            data={data}
+            secret={layers.secretNote}
+            paper={STICKY_COLORS[layers.stickyColor].paper}
+            peel={peel}
+            reduce={reduce}
+          />
+        );
+      case 'ticket':
+        return <TicketStub data={data} layers={layers} torn={torn} reduce={reduce} />;
+      case 'voice':
+        return <SongCard data={data} songUrl={layers.songUrl} />;
+      case 'letter':
+        return <FoldedLetter data={data} />;
+    }
+  };
+
+  /** What tapping the enlarged piece does, and the line that invites it. */
+  const focusAction = (item: DeskItemSpec): { run: () => void; hint: string } | null => {
+    switch (item.kind) {
+      case 'polaroid':
+        return {
+          run: () => flipPolaroid(item.id),
+          hint: flipped[item.id] ? 'Tap to turn it back' : 'Tap to flip it over',
+        };
+      case 'sticky':
+        return {
+          run: togglePeel,
+          hint: peel === 2 ? 'Tap to press it back down' : 'Tap to peel the corner',
+        };
+      case 'ticket':
+        return torn ? null : { run: tear, hint: 'Tap to tear along the dots' };
+      default:
+        return null;
+    }
+  };
+
+  const LABELS: Record<ItemKind, (item: DeskItemSpec) => string> = {
+    receipt: () => 'Receipt — look closer',
+    polaroid: (item) => `Polaroid ${item.photo!.index + 1} — look closer`,
+    sticky: () => 'Sticky note — look closer',
+    ticket: () => 'Ticket stub — look closer',
+    voice: () => 'Voice note and song — look closer',
+    letter: () => `Folded letter for ${data.customerName} — unfold it`,
+  };
+  const focusedItem = focus ? items.find((item) => item.id === focus.id) : undefined;
 
   return (
     <section
@@ -178,125 +333,68 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       >
         <CoffeeRing className="pointer-events-none absolute bottom-[6%] right-[4%] w-[30%] opacity-[0.16]" />
 
-        {items.map((item) => {
-          const z = stack.indexOf(item.id) + 1;
-          const common = {
-            spec: item,
-            z,
-            desk,
-            reduce,
-            tactile: !coarse,
-            entering: !seen.current!.has(item.id),
-            onPickUp: () => pickUp(item),
-          };
-          switch (item.kind) {
-            case 'receipt':
-              return (
-                <DeskItem
-                  key={`${item.id}:${tidy}`}
-                  {...common}
-                  label="Receipt"
-                  hint={coarse ? 'Tap to bring forward' : 'Drag me around'}
-                >
-                  <MiniReceipt data={data} />
-                </DeskItem>
-              );
-            case 'polaroid': {
-              const isFlipped = Boolean(flipped[item.id]);
-              return (
-                <DeskItem
-                  key={`${item.id}:${tidy}`}
-                  {...common}
-                  label={`Polaroid ${item.photo!.index + 1} — ${isFlipped ? 'turn back to the photo' : 'flip to read the back'}`}
-                  hint={isFlipped ? 'Turn it back' : coarse ? 'Tap to flip' : 'Flip me over'}
-                  onActivate={() => {
-                    playFoley('flip', 0.6);
-                    setFlipped((f) => ({ ...f, [item.id]: !f[item.id] }));
-                  }}
-                >
-                  <Polaroid
-                    data={data}
-                    caption={layers.polaroidCaption}
-                    photo={item.photo!}
-                    flipped={isFlipped}
-                    reduce={reduce}
-                  />
-                </DeskItem>
-              );
+        {items.map((item, order) => (
+          <DeskItem
+            key={item.id}
+            spec={item}
+            place={placeOf(item, order)}
+            tidied={tidied}
+            resetKey={resetKey}
+            z={stack.indexOf(item.id) + 1}
+            desk={desk}
+            reduce={reduce}
+            tactile={tactile}
+            hidden={lifted === item.id}
+            entering={!seen.current!.has(item.id)}
+            nodeRef={(node) => {
+              nodes.current[item.id] = node;
+            }}
+            label={LABELS[item.kind](item)}
+            hint={
+              item.kind === 'letter'
+                ? coarse
+                  ? 'Tap to unfold'
+                  : 'Unfold letter'
+                : coarse
+                  ? 'Tap to look closer'
+                  : 'Drag me · click to look'
             }
-            case 'sticky':
-              return (
-                <DeskItem
-                  key={`${item.id}:${tidy}`}
-                  {...common}
-                  label={
-                    peel === 2
-                      ? 'Sticky note — press it back down'
-                      : 'Sticky note — peel the corner'
-                  }
-                  hint={peel === 2 ? 'Press it back' : 'Peel the corner'}
-                  onHover={(on) => setPeel((p) => (p === 2 ? 2 : on ? 1 : 0))}
-                  onActivate={() => {
-                    playFoley('tap', 0.7);
-                    setPeel((p) => (p === 2 ? 0 : 2));
-                  }}
-                >
-                  <StickyNote
-                    data={data}
-                    secret={layers.secretNote}
-                    paper={STICKY_COLORS[layers.stickyColor].paper}
-                    peel={peel}
-                    reduce={reduce}
-                  />
-                </DeskItem>
-              );
-            case 'ticket':
-              return (
-                <DeskItem
-                  key={`${item.id}:${tidy}`}
-                  {...common}
-                  label={
-                    torn
-                      ? 'Ticket stub — secret promise revealed'
-                      : 'Ticket stub — tear along the dots'
-                  }
-                  hint={torn ? undefined : 'Tear along the dots'}
-                  onActivate={
-                    torn
-                      ? undefined
-                      : () => {
-                          playFoley('scratch', 0.8);
-                          setTorn(true);
-                        }
-                  }
-                >
-                  <TicketStub data={data} layers={layers} torn={torn} reduce={reduce} />
-                </DeskItem>
-              );
-            case 'voice':
-              return (
-                <DeskItem key={`${item.id}:${tidy}`} {...common} label="Voice note and song">
-                  <SongCard data={data} songUrl={layers.songUrl} />
-                </DeskItem>
-              );
-            case 'letter':
-              return (
-                <DeskItem
-                  key={`${item.id}:${tidy}`}
-                  {...common}
-                  itemRef={letterItem}
-                  label={`Folded letter for ${data.customerName} — unfold it`}
-                  hint={coarse ? 'Tap to unfold' : 'Unfold letter'}
-                  onActivate={() => {
-                    playFoley('flip', 0.8);
-                    setLetterOpen(true);
-                  }}
-                >
-                  <FoldedLetter data={data} />
-                </DeskItem>
-              );
-          }
-        })}
+            onPickUp={() => pickUp(item)}
+            onHover={
+              item.kind === 'sticky'
+                ? (on) => setPeel((p) => (p === 2 ? 2 : on ? 1 : 0))
+                : undefined
+            }
+            onActivate={() => {
+              if (item.kind !== 'letter') return openFocus(item, order);
+              playFoley('flip', 0.8);
+              setLetterOpen(true);
+            }}
+          >
+            {content(item)}
+          </DeskItem>
+        ))}
+
+        <AnimatePresence
+          onExitComplete={() => {
+            const id = lifted;
+            setLifted(null);
+            if (id) nodes.current[id]?.focus({ preventScroll: true });
+          }}
+        >
+          {focus && focusedItem ? (
+            <FocusView
+              key={focus.id}
+              focus={focus}
+              label={LABELS[focusedItem.kind](focusedItem).replace(' — look closer', '')}
+              action={focusAction(focusedItem)}
+              reduce={reduce}
+              onClose={closeFocus}
+            >
+              {content(focusedItem)}
+            </FocusView>
+          ) : null}
+        </AnimatePresence>
 
         <AnimatePresence>
           {letterOpen && layers.elements.includes('letter') ? (
@@ -309,15 +407,15 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
         className={`mt-3 flex items-center justify-between gap-3 px-1 ${chrome ? '' : 'hidden'}`}
       >
         <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
-          {coarse ? 'Tap anything · flip, peel, unfold' : 'Pick anything up · flip, peel, unfold'}
+          {tactile ? 'Drag anything · tap to look closer' : 'Tap anything to look closer'}
         </p>
         <button
           type="button"
           onClick={tidyUp}
           className="paper-button shrink-0 touch-manipulation"
-          aria-label="Tidy the desk back into place"
+          aria-label={tidied ? 'Scatter the desk again' : 'Tidy the desk into neat rows'}
         >
-          Tidy up
+          {tidied ? 'Scatter' : 'Tidy up'}
         </button>
       </div>
     </section>
@@ -325,61 +423,101 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
 });
 
 /** Picking a print up off the desk: it rises, straightens a touch and its shadow spreads. */
+const settle = (p: Place & { reduce?: boolean }) => ({
+  left: p.left,
+  top: p.top,
+  rotate: p.rotate,
+  transition: p.reduce
+    ? INSTANT
+    : {
+        default: PICK_UP,
+        left: { ...TIDY_SPRING, delay: p.order * 0.045 },
+        top: { ...TIDY_SPRING, delay: p.order * 0.045 },
+        rotate: TIDY_SPRING,
+      },
+});
+/**
+ * `scattered` and `tidy` resolve identically from the current place; switching
+ * label is what makes Framer re-read it and glide the piece across the desk.
+ */
 const HANDLED: Variants = {
-  rest: (tilt: number) => ({ scale: 1, rotate: tilt }),
-  hover: (tilt: number) => ({ scale: 1.015, rotate: tilt }),
-  lift: (tilt: number) => ({ scale: 1.05, rotate: tilt * 0.6 }),
+  scattered: (p: Place) => ({ scale: 1, ...settle(p) }),
+  tidy: (p: Place) => ({ scale: 1, ...settle(p) }),
+  hover: (p: Place) => ({ scale: 1.02, rotate: p.rotate }),
+  lift: (p: Place) => ({ scale: 1.08, rotate: p.rotate * 0.5 }),
 };
 const LIFT_SHADOW: Variants = {
-  rest: { opacity: 0 },
-  hover: { opacity: 0.4 },
+  scattered: { opacity: 0 },
+  tidy: { opacity: 0 },
+  hover: { opacity: 0.45 },
   lift: { opacity: 1 },
 };
 /** Tape catches more lamp light the closer it's held to it. */
 const TAPE_LIGHT: Variants = {
-  rest: { opacity: 0.55 },
+  scattered: { opacity: 0.55 },
+  tidy: { opacity: 0.55 },
   hover: { opacity: 0.65 },
   lift: { opacity: 0.85 },
 };
 
 function DeskItem({
   spec,
+  place,
+  tidied,
+  resetKey,
   z,
   desk,
   reduce,
   tactile,
+  hidden,
   entering,
   label,
   hint,
-  itemRef,
+  nodeRef,
   onPickUp,
   onActivate,
   onHover,
   children,
 }: {
   spec: DeskItemSpec;
+  place: Place;
+  tidied: boolean;
+  /** Bumped by tidy/scatter: any hand-dragged offset glides back to zero. */
+  resetKey: number;
   z: number;
   desk: RefObject<HTMLDivElement>;
   reduce: boolean;
-  /** Free 2D dragging (fine pointers only); touch screens get tap-only items. */
+  /** Free 2D dragging; off on the storefront for touch so the page can scroll. */
   tactile: boolean;
+  hidden: boolean;
   entering: boolean;
   label: string;
   hint?: string;
-  itemRef?: RefObject<HTMLDivElement>;
+  nodeRef: (node: HTMLDivElement | null) => void;
   onPickUp: () => void;
-  onActivate?: () => void;
+  onActivate: () => void;
   onHover?: (on: boolean) => void;
   children: ReactNode;
 }) {
   const dragControls = useDragControls();
   const pickUp = useTouchSpring(PICK_UP);
-  /** The click that trails a drag must not also flip, peel or unfold. */
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  /** The click that trails a drag must not also open the piece. */
   const droppedAt = useRef(0);
   const [enter] = useState(entering);
+  const firstReset = useRef(resetKey);
+
+  useEffect(() => {
+    if (resetKey === firstReset.current) return;
+    const spring = reduce ? INSTANT : { ...TIDY_SPRING, delay: place.order * 0.045 };
+    const moves = [animate(x, 0, spring), animate(y, 0, spring)];
+    return () => moves.forEach((move) => move.stop());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!onActivate || (event.key !== 'Enter' && event.key !== ' ')) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
     onPickUp();
     onActivate();
@@ -387,15 +525,22 @@ function DeskItem({
 
   return (
     <motion.div
-      ref={itemRef}
+      ref={nodeRef}
       className={`desk-item gpu-layer group absolute select-none outline-none ${
         tactile ? 'touch-none' : 'touch-pan-y'
       }`}
-      style={{ left: spec.left, top: spec.top, width: spec.width, zIndex: z }}
-      custom={spec.tilt}
+      style={{
+        x,
+        y,
+        width: spec.width,
+        zIndex: z,
+        opacity: hidden ? 0 : 1,
+        pointerEvents: hidden ? 'none' : undefined,
+      }}
+      custom={{ ...place, reduce }}
       variants={HANDLED}
-      initial="rest"
-      animate="rest"
+      initial={false}
+      animate={tidied ? 'tidy' : 'scattered'}
       whileHover="hover"
       whileTap="lift"
       whileDrag="lift"
@@ -418,20 +563,15 @@ function DeskItem({
       }}
       onClick={(event) => {
         if ((event.target as Element).closest(INTERACTIVE)) return;
-        if (!tactile) {
-          onPickUp();
-          if (onActivate) onActivate();
-          else playFoley('tap', 0.35);
-          return;
-        }
-        if (!onActivate || performance.now() - droppedAt.current < 220) return;
+        if (!tactile) onPickUp();
+        else if (performance.now() - droppedAt.current < 220) return;
         onActivate();
       }}
       onHoverStart={() => onHover?.(true)}
       onHoverEnd={() => onHover?.(false)}
       onKeyDown={onKeyDown}
-      tabIndex={onActivate ? 0 : -1}
-      role={onActivate ? 'button' : 'group'}
+      tabIndex={hidden ? -1 : 0}
+      role="button"
       aria-label={label}
     >
       <motion.span aria-hidden className="desk-item__lift" variants={LIFT_SHADOW} />
@@ -494,10 +634,13 @@ const MiniReceipt = memo(function MiniReceipt({ data }: { data: XsoData }) {
 });
 
 const GLOSS: Variants = {
-  rest: { opacity: 0.22, x: '-12%' },
+  scattered: { opacity: 0.22, x: '-12%' },
+  tidy: { opacity: 0.22, x: '-12%' },
   hover: { opacity: 0.32, x: '0%' },
   lift: { opacity: 0.5, x: '14%' },
 };
+
+const BACK_NOTES = ['always remember this ♡', 'my favourite version of us', 'proof we were here'];
 
 const Polaroid = memo(function Polaroid({
   data,
@@ -535,7 +678,7 @@ const Polaroid = memo(function Polaroid({
                 src={photo.src}
                 alt={`Memory ${photo.index + 1}`}
                 fill
-                sizes="160px"
+                sizes="360px"
                 className="absolute inset-0 h-full w-full object-cover"
               />
             ) : (
@@ -563,12 +706,15 @@ const Polaroid = memo(function Polaroid({
           <p className="font-receipt text-[8px] uppercase tracking-[0.2em] text-[#9a6a7e]">
             Frame {String(photo.index + 1).padStart(2, '0')} · {date}
           </p>
-          <p className="mt-2 line-clamp-4 flex-1 break-words font-hand text-[18px] leading-[1.05] text-[#3a2530]">
+          <p className="mt-2 line-clamp-3 break-words font-hand text-[18px] leading-[1.05] text-[#3a2530]">
             {photo.index === 0 && caption
               ? caption
               : line
                 ? `the ${line.description.toLowerCase()} era.`
                 : 'one I keep coming back to.'}
+          </p>
+          <p className="mt-1 flex-1 -rotate-2 font-hand text-[15px] leading-none text-[#b4234a]">
+            {BACK_NOTES[photo.index % BACK_NOTES.length]}
           </p>
           <p className="font-receipt text-[8px] uppercase tracking-[0.18em] text-[#9a6a7e]">
             {data.occasion}
@@ -806,6 +952,106 @@ const FoldedLetter = memo(function FoldedLetter({ data }: { data: XsoData }) {
     </article>
   );
 });
+
+/**
+ * A piece lifted off the desk into the lamp light. It springs out of the exact
+ * spot (and tilt) it was resting in, and the exit retraces the same path.
+ */
+function FocusView({
+  focus,
+  label,
+  action,
+  reduce,
+  onClose,
+  children,
+}: {
+  focus: Focus;
+  label: string;
+  action: { run: () => void; hint: string } | null;
+  reduce: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const putBack = useRef<HTMLButtonElement>(null);
+  const resting = { x: focus.x, y: focus.y, rotate: focus.rotate, scale: 1 };
+  const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
+
+  useEffect(() => {
+    putBack.current?.focus({ preventScroll: true });
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="absolute inset-0 z-[60] grid place-items-center rounded-[inherit]"
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
+    >
+      <motion.button
+        type="button"
+        tabIndex={-1}
+        aria-hidden
+        onClick={onClose}
+        className="absolute inset-0 rounded-[inherit] bg-[#180e15]/55 backdrop-blur-[3px]"
+        {...fade}
+        transition={{ duration: 0.3 }}
+      />
+
+      <AnimatePresence mode="wait" initial={false}>
+        {action ? (
+          <motion.p
+            key={action.hint}
+            aria-live="polite"
+            className="pointer-events-none absolute inset-x-0 top-4 text-center font-hand text-[22px] leading-none text-[#fde7d4]"
+            {...fade}
+            transition={{ duration: 0.2 }}
+          >
+            {action.hint}
+          </motion.p>
+        ) : null}
+      </AnimatePresence>
+
+      <motion.div
+        className="relative"
+        style={{ width: focus.width }}
+        initial={reduce ? { ...resting, opacity: 0 } : resting}
+        animate={{ x: 0, y: -12, rotate: 0, scale: focus.scale, opacity: 1 }}
+        exit={reduce ? { opacity: 0 } : resting}
+        transition={reduce ? { duration: 0.15 } : FOCUS_SPRING}
+      >
+        <span aria-hidden className="desk-focus-glow" />
+        <motion.div
+          initial="hover"
+          animate="hover"
+          className="cursor-pointer"
+          onClick={(event) => {
+            if ((event.target as Element).closest(INTERACTIVE)) return;
+            if (action) action.run();
+            else onClose();
+          }}
+        >
+          {children}
+        </motion.div>
+      </motion.div>
+
+      <motion.button
+        ref={putBack}
+        type="button"
+        onClick={onClose}
+        className="absolute bottom-4 left-1/2 min-h-11 -translate-x-1/2 touch-manipulation whitespace-nowrap rounded-full border border-[#fde7d4]/25 bg-[#2d1b22]/70 px-5 font-receipt text-[10px] uppercase tracking-[0.2em] text-[#fde7d4] shadow-[0_6px_20px_-6px_rgba(253,186,116,0.35)] backdrop-blur-sm"
+        {...fade}
+        transition={{ duration: 0.25, delay: reduce ? 0 : 0.15 }}
+      >
+        Tap to put back
+      </motion.button>
+    </div>
+  );
+}
 
 const UNFOLD = { ...SOFT_SPRING, damping: 18 };
 
