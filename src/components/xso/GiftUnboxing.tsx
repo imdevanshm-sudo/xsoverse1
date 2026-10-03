@@ -28,6 +28,7 @@ import {
   useAssetPreloader,
 } from '@/hooks/useAssetPreloader';
 import { PreviewWatermark } from '@/components/xso/PreviewWatermark';
+import { FitStage } from '@/components/xso/stage/FitStage';
 import type { GiftWrapper } from '@/lib/giftWrapper';
 import { RECIPIENT_OFFER } from '@/lib/pricing';
 import { track } from '@/lib/analytics';
@@ -199,8 +200,8 @@ const OpeningDot = memo(function OpeningDot() {
 });
 
 /**
- * Every pixel belongs to the gift. Phones are full-bleed; wider screens get a phone-width
- * column on black so the formats keep the proportions they were composed for.
+ * Every pixel belongs to the gift. Phones are full-bleed; wider screens get one wide canvas
+ * (up to 1200px) that the format scales up to fill, on a dim backdrop instead of dead black.
  */
 const RecipientCanvas = memo(function RecipientCanvas({
   children,
@@ -212,14 +213,14 @@ const RecipientCanvas = memo(function RecipientCanvas({
 }) {
   return (
     <div
-      className={`fixed inset-0 bg-black ${wide ? '' : 'md:py-6'}`}
+      className={`recipient-stage fixed inset-0 bg-black ${wide ? '' : 'recipient-backdrop md:p-6'}`}
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
       <div
-        className={`relative mx-auto h-full w-full overflow-hidden ${wide ? '' : 'max-w-[520px] md:rounded-3xl'}`}
+        className={`relative mx-auto h-full w-full overflow-hidden ${wide ? '' : 'max-w-[1200px] md:rounded-[28px] md:shadow-[0_40px_120px_-30px_rgba(0,0,0,.9)]'}`}
       >
         {children}
       </div>
@@ -229,29 +230,39 @@ const RecipientCanvas = memo(function RecipientCanvas({
 
 /** Card stacks stay vertically centred inside a phone-height band instead of running edge to edge. */
 const CARD_STAGE = 'flex h-full max-h-[600px] w-full items-center justify-center max-md:h-[80svh]';
+/** The phone-sized box the card formats are composed in; FitStage scales it to the canvas. */
+const CARD_DESIGN = { width: 420, height: 600 };
 
 const Souvenir = memo(function Souvenir({ data, cta }: { data: XsoData; cta: boolean }) {
   switch (data.giftStyle) {
     case 'rewind':
       return (
-        <div className="flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
-          <div className={CARD_STAGE}>
-            <RewindStack data={data} size="fill" />
-          </div>
+        <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
+          <FitStage {...CARD_DESIGN}>
+            <div className={CARD_STAGE}>
+              <RewindStack data={data} size="fill" />
+            </div>
+          </FitStage>
         </div>
       );
     case 'scrapbook':
       return (
-        <div className="flex h-full items-center justify-center overflow-hidden bg-[#180e15] px-2 pb-14 pt-3">
-          <div className="flex h-full w-full touch-manipulation justify-center max-md:max-h-[65dvh]">
-            <ScrapbookDesk data={data} size="fill" />
-          </div>
+        <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#180e15] px-2 pb-14 pt-3">
+          <FitStage width={440} height={680}>
+            <div className="flex h-full w-full touch-manipulation justify-center max-md:max-h-[65dvh]">
+              <ScrapbookDesk data={data} size="fill" />
+            </div>
+          </FitStage>
         </div>
       );
     case 'accordion':
       return (
-        <div className="flex h-full justify-center overflow-hidden bg-[#180e15] px-4 pb-16 pt-6">
-          <AccordionRibbon data={data} size="fill" />
+        <div className="stage-surface flex h-full justify-center overflow-hidden bg-[#180e15] px-4 pb-16 pt-6">
+          <FitStage width={420} height={680}>
+            <div className="flex h-full w-full justify-center">
+              <AccordionRibbon data={data} size="fill" />
+            </div>
+          </FitStage>
         </div>
       );
     case 'moviebox':
@@ -262,10 +273,12 @@ const Souvenir = memo(function Souvenir({ data, cta }: { data: XsoData; cta: boo
       );
     default:
       return (
-        <div className="flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
-          <div className={CARD_STAGE}>
-            <MemoryDeck data={data} size="fill" />
-          </div>
+        <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
+          <FitStage {...CARD_DESIGN}>
+            <div className={CARD_STAGE}>
+              <MemoryDeck data={data} size="fill" />
+            </div>
+          </FitStage>
         </div>
       );
   }

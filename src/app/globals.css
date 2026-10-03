@@ -2867,3 +2867,25 @@ html.is-landscape .xso-dock {
   pointer-events: none;
   background: radial-gradient(ellipse 85% 80% at 50% 50%, transparent 60%, rgba(5, 2, 3, 0.45));
 }
+
+/* Recipient viewer: the wide canvas sits on a dim, warm backdrop rather than flat black. */
+.recipient-backdrop {
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 40%, rgba(60, 26, 38, 0.55), transparent 70%), #050304;
+}
+
+/* The format's own surface fills the whole canvas: a lamp glow, faint grain and a soft vignette. */
+.stage-surface {
+  position: relative;
+  isolation: isolate;
+}
+.stage-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 30%, rgba(253, 186, 116, 0.1), transparent 70%),
+    radial-gradient(ellipse 110% 90% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55));
+}
