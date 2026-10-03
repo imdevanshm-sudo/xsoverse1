@@ -552,8 +552,8 @@ function MovieReel({
             className="grid h-5 w-4 place-items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
           >
             <span
-              className={`block w-1 rounded-full transition-all duration-300 ${
-                i === active ? 'h-4 bg-[#fdba74]' : 'h-1 bg-[#fffaf0]/40'
+              className={`block h-4 w-1 rounded-full transition-[transform,background-color] duration-300 ${
+                i === active ? 'scale-y-100 bg-[#fdba74]' : 'scale-y-[0.25] bg-[#fffaf0]/40'
               }`}
             />
           </button>

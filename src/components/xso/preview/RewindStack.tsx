@@ -28,7 +28,8 @@ import {
 const PULL_DISTANCE = 90;
 const PULL_VELOCITY = 550;
 const PULL_ELASTIC = 0.35;
-const INTERACTIVE = 'button, a, input, audio, canvas, [role="slider"]';
+/** Presses on these stay with the control; photo thumbnails still drag the card. */
+const INTERACTIVE = 'button:not([data-polaroid]), a, input, audio, canvas, [role="slider"]';
 
 /**
  * Depth 0 is the memory in focus; older ones recede up and back and fade

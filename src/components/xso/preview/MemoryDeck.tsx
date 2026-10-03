@@ -35,8 +35,8 @@ const FLICK_DISTANCE = 90;
 const FLICK_VELOCITY = 550;
 /** Far enough to clear the gift canvas from the middle of the pile in any direction. */
 const FLIGHT = 720;
-/** Presses on these stay with the card content (voice note, scratch foil, links). */
-const INTERACTIVE = 'button, a, input, audio, canvas, [role="slider"]';
+/** Presses on these stay with the card content; photo thumbnails still drag the card. */
+const INTERACTIVE = 'button:not([data-polaroid]), a, input, audio, canvas, [role="slider"]';
 
 const SPRING = { type: 'spring', stiffness: 300, damping: 20 } as const;
 const FLY_OUT = { duration: 0.34, ease: [0.4, 0, 1, 1] } as const;
@@ -195,7 +195,7 @@ function Deck({
       <div aria-hidden className="deck-desk" />
 
       <motion.div
-        className={`deck-stage relative w-full ${size === 'studio' ? 'memory-deck--studio' : size === 'fill' ? 'min-h-0 flex-1' : 'memory-deck'}`}
+        className={`deck-stage relative w-full will-change-transform ${size === 'studio' ? 'memory-deck--studio' : size === 'fill' ? 'min-h-0 flex-1' : 'memory-deck'}`}
         style={lean3d ? { rotateX: tiltX, rotateY: tiltY, transformPerspective: 1200 } : undefined}
         onPointerMove={(e) => {
           if (lean3d && e.pointerType === 'mouse') lean(e, 1);

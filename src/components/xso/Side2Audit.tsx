@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import type { CSSProperties } from 'react';
 import type { AuditMetrics, XsoData } from '@/types/xso';
 import { auditLabel, overallStars } from '@/lib/formats';
@@ -45,7 +46,7 @@ function radarPolygon(metrics: AuditMetrics, cx: number, cy: number, maxR: numbe
     .join(' ');
 }
 
-export function Side2Audit({ data }: Side2AuditProps) {
+export const Side2Audit = memo(function Side2Audit({ data }: Side2AuditProps) {
   const stars = overallStars(data.auditMetrics);
   const fullStars = Math.floor(stars);
   const hasHalf = stars - fullStars >= 0.4;
@@ -135,7 +136,7 @@ export function Side2Audit({ data }: Side2AuditProps) {
       </div>
     </article>
   );
-}
+});
 
 function StarIcon({ filled, half, gradId }: { filled: boolean; half: boolean; gradId: string }) {
   return (

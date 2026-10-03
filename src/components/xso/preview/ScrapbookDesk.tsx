@@ -4,6 +4,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -30,12 +31,12 @@ import { SOFT_SPRING } from '@/lib/motion';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { seededOffset } from '@/components/xso/viewers/shared';
+import { usePolaroidStore, type PolaroidBack } from '@/store/usePolaroidStore';
 
 const PICK_UP = { type: 'spring' as const, stiffness: 300, damping: 25 };
 /** Slow and a little floaty, like sliding paper across felt. */
 const TIDY_SPRING = { type: 'spring' as const, stiffness: 90, damping: 15, mass: 1.1 };
 const FOCUS_SPRING = { type: 'spring' as const, stiffness: 210, damping: 26 };
-const FLIP = SOFT_SPRING;
 const INSTANT = { duration: 0 };
 /** Presses on these stay with the control instead of picking the item up. */
 const INTERACTIVE = 'button, a, input, audio, [data-no-drag]';
@@ -164,7 +165,6 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const [stack, setStack] = useState<string[]>(() => items.map((item) => item.id));
   const [tidied, setTidied] = useState(false);
   const [resetKey, setResetKey] = useState(0);
-  const [flipped, setFlipped] = useState<Record<string, boolean>>({});
   const [peel, setPeel] = useState<0 | 1 | 2>(0);
   const [torn, setTorn] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
@@ -204,7 +204,6 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     setTidied((on) => !on);
     setResetKey((n) => n + 1);
     setStack(items.map((item) => item.id));
-    setFlipped({});
     setPeel(0);
   };
 
@@ -246,9 +245,31 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     nodes.current.letter?.focus({ preventScroll: true });
   }, []);
 
-  const flipPolaroid = (id: string) => {
-    playFoley('flip', 0.6);
-    setFlipped((f) => ({ ...f, [id]: !f[id] }));
+  const scope = useId();
+  const openPolaroid = usePolaroidStore((state) => state.open);
+  /** The desk print stays hidden while its enlarged copy is out in the lightbox. */
+  const lightboxId = usePolaroidStore((state) => state.activePolaroidData?.id);
+  const showPolaroid = (item: DeskItemSpec, order: number) => {
+    const node = nodes.current[item.id];
+    const box = desk.current;
+    if (!node || !box || !item.photo?.src) return;
+    const r = node.getBoundingClientRect();
+    const k = box.getBoundingClientRect().width / box.offsetWidth || 1;
+    const { index, src } = item.photo;
+    playFoley('flip', 0.5);
+    openPolaroid({
+      id: `${scope}${item.id}`,
+      src,
+      alt: `Memory ${index + 1}`,
+      caption: polaroidCaption(data, index),
+      back: polaroidBack(data, layers.polaroidCaption, index),
+      origin: {
+        x: r.left + r.width / 2,
+        y: r.top + r.height / 2,
+        width: node.offsetWidth * k,
+        rotate: placeOf(item, order).rotate,
+      },
+    });
   };
   const togglePeel = () => {
     playFoley('tap', 0.7);
@@ -264,15 +285,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       case 'receipt':
         return <MiniReceipt data={data} />;
       case 'polaroid':
-        return (
-          <Polaroid
-            data={data}
-            caption={layers.polaroidCaption}
-            photo={item.photo!}
-            flipped={Boolean(flipped[item.id])}
-            reduce={reduce}
-          />
-        );
+        return <Polaroid data={data} photo={item.photo!} />;
       case 'sticky':
         return (
           <StickyNote
@@ -295,11 +308,6 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   /** What tapping the enlarged piece does, and the line that invites it. */
   const focusAction = (item: DeskItemSpec): { run: () => void; hint: string } | null => {
     switch (item.kind) {
-      case 'polaroid':
-        return {
-          run: () => flipPolaroid(item.id),
-          hint: flipped[item.id] ? 'Tap to turn it back' : 'Tap to flip it over',
-        };
       case 'sticky':
         return {
           run: togglePeel,
@@ -336,19 +344,20 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const contents = useMemo(
     () => Object.fromEntries(items.map((item) => [item.id, content(item)])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, data, layers, flipped, peel, torn, reduce],
+    [items, data, layers, peel, torn, reduce],
   );
 
-  const latest = useRef({ items, pickUp, openFocus });
-  latest.current = { items, pickUp, openFocus };
+  const latest = useRef({ items, pickUp, openFocus, showPolaroid });
+  latest.current = { items, pickUp, openFocus, showPolaroid };
   const handlePickUp = useCallback((id: string) => {
     const item = latest.current.items.find((it) => it.id === id);
     if (item) latest.current.pickUp(item);
   }, []);
   const handleActivate = useCallback((id: string) => {
-    const { items: all, openFocus: open } = latest.current;
+    const { items: all, openFocus: open, showPolaroid: show } = latest.current;
     const order = all.findIndex((it) => it.id === id);
     if (order < 0) return;
+    if (all[order].kind === 'polaroid') return show(all[order], order);
     if (all[order].kind !== 'letter') return open(all[order], order);
     playFoley('flip', 0.8);
     setLetterOpen(true);
@@ -383,7 +392,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
             desk={desk}
             reduce={reduce}
             tactile={tactile}
-            hidden={lifted === item.id}
+            hidden={lifted === item.id || lightboxId === `${scope}${item.id}`}
             entering={!seen.current!.has(item.id)}
             onNode={registerNode}
             label={LABELS[item.kind](item)}
@@ -453,17 +462,8 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
 
 /** Picking a print up off the desk: it rises, straightens a touch and its shadow spreads. */
 const settle = (p: Place & { reduce?: boolean }) => ({
-  left: p.left,
-  top: p.top,
   rotate: p.rotate,
-  transition: p.reduce
-    ? INSTANT
-    : {
-        default: PICK_UP,
-        left: { ...TIDY_SPRING, delay: p.order * 0.045 },
-        top: { ...TIDY_SPRING, delay: p.order * 0.045 },
-        rotate: TIDY_SPRING,
-      },
+  transition: p.reduce ? INSTANT : { default: PICK_UP, rotate: TIDY_SPRING },
 });
 /**
  * `scattered` and `tidy` resolve identically from the current place; switching
@@ -554,65 +554,76 @@ const DeskItem = memo(function DeskItem({
     onActivate(id);
   };
 
+  /**
+   * Placement rides on a desk-sized layer, so its percent translate equals the old
+   * left/top and tidy/scatter glides stay on the compositor.
+   */
   return (
     <motion.div
-      ref={nodeRef}
-      className={`desk-item gpu-layer group absolute select-none outline-none ${
-        tactile ? 'touch-none' : 'touch-pan-y'
-      }`}
-      style={{
-        x,
-        y,
-        width: spec.width,
-        zIndex: z,
-        opacity: hidden ? 0 : 1,
-        pointerEvents: hidden ? 'none' : undefined,
-        willChange: 'transform, opacity',
-      }}
-      custom={{ ...place, reduce }}
-      variants={HANDLED}
+      className="pointer-events-none absolute inset-0 will-change-transform"
+      style={{ zIndex: z }}
       initial={false}
-      animate={tidied ? 'tidy' : 'scattered'}
-      whileHover="hover"
-      whileTap="lift"
-      whileDrag="lift"
-      transition={reduce ? INSTANT : pickUp}
-      drag={tactile}
-      dragControls={dragControls}
-      dragListener={false}
-      dragConstraints={desk}
-      dragElastic={0.1}
-      dragTransition={{ power: 0.18, timeConstant: 200 }}
-      onPointerDown={(event) => {
-        if (!tactile || (event.target as Element).closest(INTERACTIVE)) return;
-        onPickUp(id);
-        playFoley('tap', 0.35);
-        dragControls.start(event);
-      }}
-      onDragEnd={() => {
-        droppedAt.current = performance.now();
-        playFoley('land', 0.45);
-      }}
-      onClick={(event) => {
-        if ((event.target as Element).closest(INTERACTIVE)) return;
-        if (!tactile) onPickUp(id);
-        else if (performance.now() - droppedAt.current < 220) return;
-        onActivate(id);
-      }}
-      onHoverStart={() => onHover?.(true)}
-      onHoverEnd={() => onHover?.(false)}
-      onKeyDown={onKeyDown}
-      tabIndex={hidden ? -1 : 0}
-      role="button"
-      aria-label={label}
+      animate={{ x: place.left, y: place.top }}
+      transition={reduce ? INSTANT : { ...TIDY_SPRING, delay: place.order * 0.045 }}
     >
-      <motion.span aria-hidden className="desk-item__lift" variants={LIFT_SHADOW} />
-      <div className={enter ? 'desk-enter' : undefined}>{children}</div>
-      {hint ? (
-        <span aria-hidden className="desk-hint">
-          {hint}
-        </span>
-      ) : null}
+      <motion.div
+        ref={nodeRef}
+        className={`desk-item gpu-layer group pointer-events-auto absolute left-0 top-0 select-none outline-none ${
+          tactile ? 'touch-none' : 'touch-pan-y'
+        }`}
+        style={{
+          x,
+          y,
+          width: spec.width,
+          opacity: hidden ? 0 : 1,
+          pointerEvents: hidden ? 'none' : undefined,
+          willChange: 'transform, opacity',
+        }}
+        custom={{ ...place, reduce }}
+        variants={HANDLED}
+        initial={false}
+        animate={tidied ? 'tidy' : 'scattered'}
+        whileHover="hover"
+        whileTap="lift"
+        whileDrag="lift"
+        transition={reduce ? INSTANT : pickUp}
+        drag={tactile}
+        dragControls={dragControls}
+        dragListener={false}
+        dragConstraints={desk}
+        dragElastic={0.1}
+        dragTransition={{ power: 0.18, timeConstant: 200 }}
+        onPointerDown={(event) => {
+          if (!tactile || (event.target as Element).closest(INTERACTIVE)) return;
+          onPickUp(id);
+          playFoley('tap', 0.35);
+          dragControls.start(event);
+        }}
+        onDragEnd={() => {
+          droppedAt.current = performance.now();
+          playFoley('land', 0.45);
+        }}
+        onClick={(event) => {
+          if ((event.target as Element).closest(INTERACTIVE)) return;
+          if (!tactile) onPickUp(id);
+          else if (performance.now() - droppedAt.current < 220) return;
+          onActivate(id);
+        }}
+        onHoverStart={() => onHover?.(true)}
+        onHoverEnd={() => onHover?.(false)}
+        onKeyDown={onKeyDown}
+        tabIndex={hidden ? -1 : 0}
+        role="button"
+        aria-label={label}
+      >
+        <motion.span aria-hidden className="desk-item__lift" variants={LIFT_SHADOW} />
+        <div className={enter ? 'desk-enter' : undefined}>{children}</div>
+        {hint ? (
+          <span aria-hidden className="desk-hint">
+            {hint}
+          </span>
+        ) : null}
+      </motion.div>
     </motion.div>
   );
 });
@@ -674,88 +685,62 @@ const GLOSS: Variants = {
 
 const BACK_NOTES = ['always remember this ♡', 'my favourite version of us', 'proof we were here'];
 
+/** Handwriting under the photo. */
+function polaroidCaption(data: XsoData, index: number) {
+  return index === 0
+    ? `${data.customerName} & ${data.billerName}`
+    : `'${data.timestamp.split(' ')[0].slice(-2)} ♡`;
+}
+
+/** What's written on the back, shown when the print is flipped in the lightbox. */
+function polaroidBack(data: XsoData, caption: string, index: number): PolaroidBack {
+  const line = data.lineItems[index];
+  const date = data.timestamp.split(' ')[0];
+  return {
+    meta: `Frame ${String(index + 1).padStart(2, '0')} · ${date}`,
+    text:
+      index === 0 && caption
+        ? caption
+        : line
+          ? `the ${line.description.toLowerCase()} era.`
+          : 'one I keep coming back to.',
+    note: BACK_NOTES[index % BACK_NOTES.length],
+    footer: data.occasion,
+    signoff: `— ${data.billerName.charAt(0)}.`,
+  };
+}
+
 const Polaroid = memo(function Polaroid({
   data,
-  caption,
   photo,
-  flipped,
-  reduce,
 }: {
   data: XsoData;
-  caption: string;
   photo: { src: string; index: number };
-  flipped: boolean;
-  reduce: boolean;
 }) {
-  const flip = FLIP;
-  const line = data.lineItems[photo.index];
-  const date = data.timestamp.split(' ')[0];
   return (
-    <div style={{ perspective: 900 }}>
-      <motion.div
-        className="relative"
-        style={{ transformStyle: 'preserve-3d' }}
-        initial={false}
-        animate={{ rotateY: flipped ? 180 : 0 }}
-        transition={reduce ? INSTANT : flip}
-      >
-        <div
-          className="desk-paper desk-paper--polaroid relative p-[7%] pb-0"
-          style={{ backfaceVisibility: 'hidden' }}
-          aria-hidden={flipped}
-        >
-          <div className="relative aspect-[4/5] overflow-hidden bg-[#2d1b22]">
-            {photo.src ? (
-              <LazyMedia
-                src={photo.src}
-                alt={`Memory ${photo.index + 1}`}
-                fill
-                sizes="360px"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            ) : (
-              <p className="absolute inset-0 grid place-items-center font-hand text-lg text-[#f7f3ed]/70">
-                your photo here
-              </p>
-            )}
-            <motion.span aria-hidden className="polaroid-gloss" variants={GLOSS} />
-          </div>
-          <p className="truncate py-[9%] text-center font-hand text-[17px] leading-none text-[#3a2530]">
-            {photo.index === 0
-              ? `${data.customerName} & ${data.billerName}`
-              : `'${date.slice(-2)} ♡`}
+    <div className="desk-paper desk-paper--polaroid relative p-[7%] pb-0 will-change-transform">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[#2d1b22]">
+        {photo.src ? (
+          <LazyMedia
+            src={photo.src}
+            alt={`Memory ${photo.index + 1}`}
+            fill
+            sizes="(max-width: 768px) 40vw, 170px"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <p className="absolute inset-0 grid place-items-center font-hand text-lg text-[#f7f3ed]/70">
+            your photo here
           </p>
-          {photo.index === 0 ? (
-            <Tape style={{ right: '-10%', top: 6, transform: 'rotate(38deg)', width: '42%' }} />
-          ) : null}
-        </div>
-
-        <div
-          className="desk-paper desk-paper--back absolute inset-0 flex flex-col p-[9%]"
-          style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden' }}
-          aria-hidden={!flipped}
-        >
-          <p className="font-receipt text-[8px] uppercase tracking-[0.2em] text-[#9a6a7e]">
-            Frame {String(photo.index + 1).padStart(2, '0')} · {date}
-          </p>
-          <p className="mt-2 line-clamp-3 break-words font-hand text-[18px] leading-[1.05] text-[#3a2530]">
-            {photo.index === 0 && caption
-              ? caption
-              : line
-                ? `the ${line.description.toLowerCase()} era.`
-                : 'one I keep coming back to.'}
-          </p>
-          <p className="mt-1 flex-1 -rotate-2 font-hand text-[15px] leading-none text-[#b4234a]">
-            {BACK_NOTES[photo.index % BACK_NOTES.length]}
-          </p>
-          <p className="font-receipt text-[8px] uppercase tracking-[0.18em] text-[#9a6a7e]">
-            {data.occasion}
-          </p>
-          <p className="text-right font-hand text-[16px] leading-none text-[#b4234a]">
-            — {data.billerName.charAt(0)}.
-          </p>
-        </div>
-      </motion.div>
+        )}
+        <motion.span aria-hidden className="polaroid-gloss" variants={GLOSS} />
+      </div>
+      <p className="truncate py-[9%] text-center font-hand text-[17px] leading-none text-[#3a2530]">
+        {polaroidCaption(data, photo.index)}
+      </p>
+      {photo.index === 0 ? (
+        <Tape style={{ right: '-10%', top: 6, transform: 'rotate(38deg)', width: '42%' }} />
+      ) : null}
     </div>
   );
 });

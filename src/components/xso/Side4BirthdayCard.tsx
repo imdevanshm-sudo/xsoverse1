@@ -1,19 +1,9 @@
 'use client';
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
+import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Pause, Play } from 'lucide-react';
 import type { XsoData } from '@/types/xso';
-import {
-  CoffeeStain,
-  DateStamp,
-  HandNote,
-  PaperGrain,
-} from '@/components/xso/paper/PaperCraft';
+import { CoffeeStain, DateStamp, HandNote, PaperGrain } from '@/components/xso/paper/PaperCraft';
 import { ScratchReveal } from '@/components/xso/paper/ScratchReveal';
 
 export interface Side4BirthdayCardProps {
@@ -22,11 +12,12 @@ export interface Side4BirthdayCardProps {
   bare?: boolean;
 }
 
-export function Side4BirthdayCard({ data, bare = false }: Side4BirthdayCardProps) {
+export const Side4BirthdayCard = memo(function Side4BirthdayCard({
+  data,
+  bare = false,
+}: Side4BirthdayCardProps) {
   const stamp = data.timestamp.split(/[\s/]/)[0] || '03.15';
-  const voice = (
-    <VoiceNotePlayer label={`${data.billerName} voice note`} src={data.voiceNoteUrl} />
-  );
+  const voice = <VoiceNotePlayer label={`${data.billerName} voice note`} src={data.voiceNoteUrl} />;
   const scratch = (
     <div className="relative z-10">
       <p className={`font-hand text-[13px] text-[#2a4a7a]/75 ${bare ? 'mb-1' : 'mb-2'}`}>
@@ -66,8 +57,7 @@ export function Side4BirthdayCard({ data, bare = false }: Side4BirthdayCardProps
       <div
         className="pointer-events-none absolute right-0 top-0 z-30 h-5 w-5"
         style={{
-          background:
-            'linear-gradient(135deg, transparent 49%, rgba(0,0,0,0.08) 50%, #e8e2d4 51%)',
+          background: 'linear-gradient(135deg, transparent 49%, rgba(0,0,0,0.08) 50%, #e8e2d4 51%)',
         }}
         aria-hidden
       />
@@ -110,7 +100,7 @@ export function Side4BirthdayCard({ data, bare = false }: Side4BirthdayCardProps
       )}
     </article>
   );
-}
+});
 
 function VoiceNotePlayer({ label, src }: { label: string; src?: string }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);

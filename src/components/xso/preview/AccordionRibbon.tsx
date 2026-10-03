@@ -1,6 +1,15 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   animate,
   motion,
@@ -20,6 +29,7 @@ import { stackCards } from '@/lib/formatCards';
 import { playFoley } from '@/lib/foley';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { LazyMedia } from '@/components/xso/LazyMedia';
+import { PolaroidThumb } from '@/components/xso/PolaroidThumb';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
 
@@ -708,6 +718,7 @@ function PullTab({
 }
 
 const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; index: number }) {
+  const scope = useId();
   if (index === 0) {
     return (
       <div className="flex h-full flex-col font-receipt text-[11px] leading-snug">
@@ -784,13 +795,22 @@ const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; inde
             >
               <div className="relative aspect-[4/5] overflow-hidden bg-[#2d1b22]">
                 {photos[slot] ? (
-                  <LazyMedia
+                  <PolaroidThumb
+                    id={`${scope}${slot}`}
                     src={photos[slot]}
                     alt={`Memory ${slot + 1}`}
-                    fill
-                    sizes="110px"
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
+                    caption={slot === 0 ? `${data.customerName} & ${data.billerName}` : undefined}
+                    rotate={[-4, 2, -1][slot]}
+                    className="absolute inset-0 h-full w-full"
+                  >
+                    <LazyMedia
+                      src={photos[slot]}
+                      alt={`Memory ${slot + 1}`}
+                      fill
+                      sizes="110px"
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  </PolaroidThumb>
                 ) : (
                   <p className="absolute inset-0 grid place-items-center font-hand text-sm text-[#faf6f0]/70">
                     photo

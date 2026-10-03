@@ -1,9 +1,11 @@
 'use client';
 
+import { memo, useId } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
 import { FRAMES_PER_STRIP, toStrips } from '@/lib/photoStrips';
 import { LazyMedia } from '@/components/xso/LazyMedia';
+import { PolaroidThumb } from '@/components/xso/PolaroidThumb';
 import { LIGHT_TWEEN } from '@/components/xso/viewers/shared';
 
 export interface Side3PhotoStripProps {
@@ -32,7 +34,8 @@ const STICKERS: Array<{
 /** Alternating tilt so several strips read as a loose hand of photo-booth prints. */
 const STRIP_TILT = [-2, 1.6, -1.2];
 
-export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
+export const Side3PhotoStrip = memo(function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
+  const scope = useId();
   const strips = toStrips(data.photos);
   const multi = strips.length > 1;
 
@@ -50,6 +53,7 @@ export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
           style={multi ? { transform: `rotate(${STRIP_TILT[s] ?? 0}deg)` } : undefined}
         >
           <Strip
+            scope={scope}
             data={data}
             panels={panels}
             offset={s * FRAMES_PER_STRIP}
@@ -60,15 +64,17 @@ export function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
       ))}
     </article>
   );
-}
+});
 
-function Strip({
+const Strip = memo(function Strip({
+  scope,
   data,
   panels,
   offset,
   decorated,
   compact,
 }: {
+  scope: string;
   data: XsoData;
   panels: string[];
   offset: number;
@@ -111,26 +117,36 @@ function Strip({
               initial={reducedMotion ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={reducedMotion ? LIGHT_TWEEN : { delay: 0.08 * i, duration: 0.35 }}
-              className="relative overflow-hidden"
+              className="relative overflow-hidden will-change-transform"
               style={{
                 border: '3px solid rgba(255,255,255,0.95)',
               }}
             >
-              <LazyMedia
+              <PolaroidThumb
+                id={`${scope}${offset + i}`}
                 src={src}
                 alt={`Photo ${offset + i + 1}`}
-                className="aspect-[3/4] w-full object-cover mobile-no-filter"
-                width={220}
-                height={293}
-                sizes={compact ? '(max-width: 768px) 28vw, 140px' : '(max-width: 768px) 45vw, 220px'}
-                style={
-                  reducedMotion
-                    ? undefined
-                    : {
-                        filter: 'contrast(1.1) saturate(1.15) brightness(1.08)',
-                      }
-                }
-              />
+                caption={`frame ${String(offset + i + 1).padStart(2, '0')} ♡`}
+                className="w-full"
+              >
+                <LazyMedia
+                  src={src}
+                  alt={`Photo ${offset + i + 1}`}
+                  className="block aspect-[3/4] w-full object-cover mobile-no-filter"
+                  width={220}
+                  height={293}
+                  sizes={
+                    compact ? '(max-width: 768px) 28vw, 140px' : '(max-width: 768px) 45vw, 220px'
+                  }
+                  style={
+                    reducedMotion
+                      ? undefined
+                      : {
+                          filter: 'contrast(1.1) saturate(1.15) brightness(1.08)',
+                        }
+                  }
+                />
+              </PolaroidThumb>
               <div
                 className="pointer-events-none absolute inset-0 max-md:hidden"
                 style={{
@@ -181,4 +197,4 @@ function Strip({
       </div>
     </>
   );
-}
+});
