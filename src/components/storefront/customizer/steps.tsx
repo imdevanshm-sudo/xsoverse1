@@ -1,11 +1,12 @@
 'use client';
 
 import { memo } from 'react';
-import { Check, Lock, RotateCcw } from 'lucide-react';
+import { Check, Clapperboard, Lock, RotateCcw } from 'lucide-react';
 import { CARTRIDGES, displayTitle } from '@/lib/cartridges';
 import { DEFAULT_CARDS, FORMAT_CARDS, MIN_CARDS, type CardId } from '@/lib/formatCards';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { ORDER_FORMATS, toGiftStyle, type OrderFormat } from '@/types/order';
+import { formatPrice, TIERS, type Quote } from '@/lib/pricing';
 
 const LABEL = 'font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]';
 
@@ -176,6 +177,72 @@ export const CardChecklist = memo(function CardChecklist({
           );
         })}
       </ul>
+    </div>
+  );
+});
+
+/** Live total under the stack: which tier the picks land in, and the one step up from it. */
+export const TierMeter = memo(function TierMeter({
+  format,
+  cards,
+  price,
+  onDeluxe,
+}: {
+  format: OrderFormat;
+  cards: CardId[];
+  price: Quote;
+  onDeluxe: () => void;
+}) {
+  const total = FORMAT_CARDS[toGiftStyle(format)].length;
+  const tier = TIERS[price.tier];
+  const step =
+    price.tier === 'single'
+      ? `Add another card for the Full Stack (+${formatPrice(TIERS.full.prices[price.currency] - price.base, price.currency)}).`
+      : price.tier === 'full' && cards.length < total
+        ? 'The Full Stack includes every card. Add the rest at no extra cost.'
+        : price.tier === 'deluxe'
+          ? 'Deluxe includes background music.'
+          : null;
+  return (
+    <div className="mt-4 grid gap-3">
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#21131b] px-4 py-3"
+      >
+        <span className="min-w-0">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="font-serif text-[16px] font-semibold text-[#fdf2f8]">{tier.name}</span>
+            {tier.badge ? (
+              <span className="rounded-full bg-[#ec4899]/20 px-2 py-0.5 font-receipt text-[10px] uppercase tracking-[0.14em] text-[#f9a8d4]">
+                {tier.badge}
+              </span>
+            ) : null}
+          </span>
+          {step ? (
+            <span className="mt-0.5 block text-[12.5px] leading-snug text-[#c99aae]">{step}</span>
+          ) : null}
+        </span>
+        <span className="shrink-0 font-receipt text-[17px] font-bold tabular-nums text-[#fdba74]">
+          {formatPrice(price.base, price.currency)}
+        </span>
+      </div>
+      {price.tier !== 'deluxe' ? (
+        <button
+          type="button"
+          onClick={onDeluxe}
+          className="flex min-h-[3rem] items-center gap-3 rounded-2xl border border-dashed border-[#fbbf24]/40 px-4 py-2.5 text-left transition-colors hover:border-[#fbbf24]/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]"
+        >
+          <Clapperboard className="h-4 w-4 shrink-0 text-[#fbbf24]" aria-hidden />
+          <span className="min-w-0 flex-1 text-[13px] leading-snug text-[#e0b4c6]">
+            <span className="font-semibold text-[#fde68a]">Go Deluxe</span>: play it as a Movie Box,
+            with background music.
+          </span>
+          <span className="shrink-0 font-receipt text-[12px] font-bold tabular-nums text-[#fde68a]">
+            {formatPrice(TIERS.deluxe.prices[price.currency], price.currency)}
+          </span>
+        </button>
+      ) : null}
     </div>
   );
 });

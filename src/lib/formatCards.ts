@@ -73,13 +73,13 @@ export const DEFAULT_CARDS: Record<GiftStyle, CardId[]> = {
   moviebox: [...LOOP_CARDS],
 };
 
-/** Below this the format stops making sense (a loop of one, an empty desk). */
+/** Every format can be bought as a Single Card. */
 export const MIN_CARDS: Record<GiftStyle, number> = {
-  loop: 2,
-  rewind: 2,
+  loop: 1,
+  rewind: 1,
   scrapbook: 1,
-  accordion: 2,
-  moviebox: 2,
+  accordion: 1,
+  moviebox: 1,
 };
 
 /** Keeps only this format's cards, in canonical order, with the minimum enforced. */

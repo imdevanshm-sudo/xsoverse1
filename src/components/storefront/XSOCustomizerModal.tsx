@@ -34,7 +34,8 @@ import { pickXsoPayload } from '@/lib/xsoPayload';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { CardDetailsEditor, type FormatPatch } from '@/components/xso/FormatEditor';
 import { personalize } from '@/lib/personalize';
-import { CardChecklist, FormatStep } from '@/components/storefront/customizer/steps';
+import { CardChecklist, FormatStep, TierMeter } from '@/components/storefront/customizer/steps';
+import { track } from '@/lib/analytics';
 import { FormatThumb } from '@/components/storefront/customizer/FormatThumb';
 import { MAX_PHOTOS, PhotoPicker } from '@/components/storefront/customizer/PhotoPicker';
 import {
@@ -149,6 +150,7 @@ export function XSOCustomizerModal() {
     (format: OrderFormat) => {
       if (format === config.format) return;
       const next = toGiftStyle(format);
+      track('aesthetic_chosen', { aesthetic: next });
       setConfig((c) => ({
         ...c,
         format,
@@ -158,6 +160,17 @@ export function XSOCustomizerModal() {
     },
     [config.format, draft],
   );
+
+  const goDeluxe = useCallback(() => pickFormat('movie_box'), [pickFormat]);
+  const lastTier = useRef(price.tier);
+  useEffect(() => {
+    if (lastTier.current === price.tier) return;
+    lastTier.current = price.tier;
+    track('tier_selected', { tier: price.tier, aesthetic: style, cards: cards.length });
+  }, [cards.length, price.tier, style]);
+  useEffect(() => {
+    track('wizard_step', { step: step + 1, name: STEPS[step].title });
+  }, [step]);
 
   useBodyScrollLock();
   useEffect(() => {
@@ -511,7 +524,15 @@ export function XSOCustomizerModal() {
               {step === 0 ? <FormatStep format={config.format} onFormat={pickFormat} /> : null}
 
               {step === 1 ? (
-                <CardChecklist format={config.format} cards={cards} onCards={setCards} />
+                <>
+                  <CardChecklist format={config.format} cards={cards} onCards={setCards} />
+                  <TierMeter
+                    format={config.format}
+                    cards={cards}
+                    price={price}
+                    onDeluxe={goDeluxe}
+                  />
+                </>
               ) : null}
 
               {step === 2 ? (
