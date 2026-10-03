@@ -2127,27 +2127,40 @@ html.is-landscape .xso-dock {
   }
 }
 
-/* Scrapbook: a late-night flat-lay on a dark wooden desk under a warm lamp. */
+/*
+ * Scrapbook: a late-night flat-lay on a dark walnut desk under a warm lamp. Horizontal planks with
+ * running grain (a stitched SVG noise tile wider than any canvas), a lamp pool top-left and a soft vignette, all
+ * CSS so it costs no image download.
+ */
+.scrap-wood {
+  --wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1800' height='480'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0018 0.11' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.025 0 0 0 0 0.012 1.5 0 0 0 -0.6'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
+  background-color: #23150f;
+  background-image:
+    radial-gradient(ellipse 55% 45% at 28% 18%, rgba(253, 186, 116, 0.17), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 78% 92%, rgba(236, 72, 153, 0.07), transparent 70%),
+    radial-gradient(ellipse 120% 100% at 50% 45%, transparent 48%, rgba(6, 2, 3, 0.62) 100%),
+    var(--wood-grain),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 148px,
+      rgba(0, 0, 0, 0.5) 148px 149px,
+      rgba(255, 220, 190, 0.035) 149px 150px
+    ),
+    linear-gradient(180deg, #2a1912, #22140e 30%, #2b1a13 55%, #21130d 80%, #281812);
+  background-size:
+    auto,
+    auto,
+    auto,
+    1800px 480px,
+    auto,
+    auto;
+}
+
 .scrap-desk {
   border-radius: 22px;
-  background:
-    radial-gradient(ellipse 70% 55% at 32% 16%, rgba(253, 186, 116, 0.2), transparent 62%),
-    radial-gradient(ellipse 60% 50% at 72% 88%, rgba(236, 72, 153, 0.11), transparent 66%),
-    repeating-linear-gradient(91deg, rgba(255, 222, 196, 0.022) 0 2px, transparent 2px 9px),
-    repeating-linear-gradient(88.5deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 27px), #180e15;
   box-shadow:
     inset 0 0 0 1px rgba(253, 186, 116, 0.06),
     inset 0 -40px 80px -30px rgba(0, 0, 0, 0.6);
-}
-
-.scrap-desk::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  pointer-events: none;
-  background: radial-gradient(ellipse 85% 75% at 40% 30%, transparent 50%, rgba(0, 0, 0, 0.5) 100%);
 }
 
 .scrap-desk--hero {
@@ -2221,12 +2234,12 @@ html.is-landscape .xso-dock {
   background-size:
     auto,
     128px 128px;
-  /* Paper under a warm lamp: brown-tinted contact shadow plus a soft amber halo. */
+  /* Paper on wood under a warm lamp: a tight contact shadow, a soft spread and an amber halo. */
   box-shadow:
-    0 1px 1px rgba(40, 18, 8, 0.4),
-    0 4px 8px -2px rgba(60, 26, 10, 0.35),
-    0 14px 26px -10px rgba(50, 20, 8, 0.55),
-    0 0 34px -12px rgba(253, 186, 116, 0.32);
+    0 1px 1px rgba(20, 8, 4, 0.55),
+    0 4px 8px -2px rgba(20, 8, 4, 0.45),
+    0 16px 30px -10px rgba(10, 4, 2, 0.7),
+    0 0 34px -12px rgba(253, 186, 116, 0.28);
 }
 
 .desk-focus-glow {

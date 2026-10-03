@@ -389,7 +389,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     >
       <div
         ref={desk}
-        className={`scrap-desk relative isolate w-full touch-pan-y ${DESK_HEIGHT[size]}`}
+        className={`scrap-desk scrap-wood relative isolate w-full touch-pan-y ${DESK_HEIGHT[size]}`}
       >
         <CoffeeRing className="pointer-events-none absolute bottom-[6%] right-[4%] w-[30%] opacity-[0.16]" />
 

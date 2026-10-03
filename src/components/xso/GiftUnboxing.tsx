@@ -342,7 +342,7 @@ const Souvenir = memo(function Souvenir({
       );
     case 'scrapbook':
       return (
-        <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#180e15] px-2 pb-14 pt-3">
+        <div className="scrap-wood flex h-full items-center justify-center overflow-hidden px-2 pb-14 pt-3">
           <FitStage width={440} height={680}>
             <div className="flex h-full w-full touch-manipulation justify-center max-md:max-h-[65dvh]">
               <ScrapbookDesk data={data} size="fill" onFinish={onFinish} />
