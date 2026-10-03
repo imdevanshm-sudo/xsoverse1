@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import type { XsoData } from '@/types/xso';
+import { completeXso } from '@/lib/xsoRecord';
 import { getSupabaseServer, isSupabaseConfigured } from '@/lib/supabaseServer';
 
 export type GiftStatus = 'pending' | 'paid';
@@ -28,7 +29,7 @@ const TABLE = 'gifts';
 function fromRow(row: GiftRow): StoredGift {
   return {
     id: row.id,
-    data: row.data,
+    data: completeXso(row.data),
     status: row.status,
     createdAt: row.created_at,
     paidAt: row.paid_at ?? undefined,
@@ -81,10 +82,7 @@ export async function getGift(id: string): Promise<StoredGift | null> {
   return data ? fromRow(data) : null;
 }
 
-export async function markGiftPaid(
-  id: string,
-  lemonOrderId?: string,
-): Promise<StoredGift | null> {
+export async function markGiftPaid(id: string, lemonOrderId?: string): Promise<StoredGift | null> {
   if (!shouldUseSupabase()) return fileStore.markPaid(id, lemonOrderId);
 
   const update: Partial<GiftRow> = {
@@ -133,7 +131,8 @@ const fileStore = {
 
   async get(id: string): Promise<StoredGift | null> {
     const gifts = await fileStore.readAll();
-    return gifts[id] ?? null;
+    const gift = gifts[id];
+    return gift ? { ...gift, data: completeXso(gift.data) } : null;
   },
 
   async markPaid(id: string, lemonOrderId?: string): Promise<StoredGift | null> {

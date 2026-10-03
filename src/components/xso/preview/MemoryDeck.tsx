@@ -2,6 +2,7 @@
 
 import {
   memo,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -11,68 +12,46 @@ import {
 } from 'react';
 import {
   animate,
-  AnimatePresence,
   motion,
-  useIsPresent,
   useDragControls,
   useMotionValue,
   useReducedMotion,
   useSpring,
   useTransform,
   type MotionValue,
+  type PanInfo,
 } from 'framer-motion';
 import { LOOP_CARDS, type XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
 import { resolveLoop } from '@/lib/formats';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
-import { CINEMA_EASE, CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
 import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
 
 const TILT_MAX = 6;
-const SWIPE_DISTANCE = 70;
-const SWIPE_VELOCITY = 500;
+/** Release past this distance, or this fast, and the card is flicked off the pile. */
+const FLICK_DISTANCE = 90;
+const FLICK_VELOCITY = 550;
+/** Far enough to clear the gift canvas from the middle of the pile in any direction. */
+const FLIGHT = 720;
 /** Presses on these stay with the card content (voice note, scratch foil, links). */
 const INTERACTIVE = 'button, a, input, audio, canvas, [role="slider"]';
 
-type Direction = 1 | -1;
+const SPRING = { type: 'spring', stiffness: 300, damping: 20 } as const;
+const FLY_OUT = { duration: 0.34, ease: [0.4, 0, 1, 1] } as const;
 
 /** Resting pose per depth: a hand-stacked pile, each sheet slightly off-square. */
 const REST = [
-  { x: 0, y: 0, rotate: 0, rotateX: 0, rotateY: 0, scale: 1 },
-  { x: 7, y: 10, rotate: 2.8, rotateX: 0, rotateY: 0, scale: 0.97 },
-  { x: -6, y: 19, rotate: -2.4, rotateX: 0, rotateY: 0, scale: 0.945 },
-  { x: 4, y: 27, rotate: 1.6, rotateX: 0, rotateY: 0, scale: 0.92 },
+  { x: 0, y: 0, rotate: 0, scale: 1 },
+  { x: 7, y: 12, rotate: 2.8, scale: 0.95 },
+  { x: -6, y: 22, rotate: -2.4, scale: 0.91 },
+  { x: 4, y: 31, rotate: 1.6, scale: 0.87 },
 ];
-/** Top sheet is thumbed off the pile toward the swipe, tipping up off the desk. */
-const flingPose = (dir: Direction) => ({
-  x: dir * 210,
-  y: -30,
-  rotate: dir * 17,
-  rotateX: 10,
-  rotateY: dir * -30,
-  scale: 1.05,
-});
-const FLING = { duration: 0.7, ease: CINEMA_EASE };
-/** Finger-down lift stays immediate; only the stack change itself is slow. */
-const LIFT = { duration: 0.3, ease: CINEMA_EASE };
-/** Sheets underneath drift up; the flung sheet glides back under with a little weight. */
-const PROMOTE = CINEMATIC;
-const TUCK = SOFT_SPRING;
-
-/** Deeper sheets sit in shade from the top-down light and move less with tilt. */
-const DIM = [0, 0.1, 0.18, 0.26];
-/** Sheets at this depth or deeper are unmounted; they're fully hidden under the pile anyway. */
-const MOUNTED_DEPTH = 3;
-const PARALLAX = [1.3, 0.85, 0.5, 0.22];
-const SHADOW = [
-  { opacity: 1, y: 0, scale: 1 },
-  { opacity: 0.8, y: 0, scale: 1 },
-  { opacity: 0.65, y: 0, scale: 1 },
-  { opacity: 0.5, y: 0, scale: 1 },
-];
-const LIFTED_SHADOW = { opacity: 0.45, y: 30, scale: 1.05 };
+const restAt = (depth: number) => REST[Math.min(depth, REST.length - 1)];
+/** Deeper sheets sit in shade from the top-down light. */
+const DIM = [0, 0.12, 0.22, 0.3];
+const SHADOW = [1, 0.8, 0.65, 0.5];
 
 type Material = { surface: string; sheen: number };
 const MATERIALS: Record<Artifact['id'], Material> = {
@@ -81,11 +60,6 @@ const MATERIALS: Record<Artifact['id'], Material> = {
   photos: { surface: 'mat-photo', sheen: 0.9 },
   letter: { surface: 'mat-letter', sheen: 0.14 },
 };
-
-interface Tilt {
-  x: MotionValue<number>;
-  y: MotionValue<number>;
-}
 
 interface DeckProps {
   data: XsoData;
@@ -138,49 +112,67 @@ function Deck({
     }),
     [artifacts, data],
   );
+  const count = artifacts.length;
+  /** Every card stays mounted for the life of the deck; only its depth in the pile changes. */
   const [order, setOrder] = useState(() => artifacts.map((_, i) => i));
-  const [fling, setFling] = useState<Direction | null>(null);
+  /** The card currently in the air; the rest have already stepped up beneath it. */
+  const [flying, setFlying] = useState<number | null>(null);
   const reduce = Boolean(useReducedMotion());
-  /** Whole-stage 3D lean is a mouse nicety; on touch it only costs compositor time. */
   const coarse = useCoarsePointer();
+  /** Whole-stage 3D lean is a mouse nicety; on touch it only costs compositor time. */
   const lean3d = !reduce && !coarse;
+  /** The recipient sees only the pile: no buttons, counters or dots. */
+  const chrome = size !== 'fill';
 
   const rawTiltX = useMotionValue(0);
   const rawTiltY = useMotionValue(0);
-  const tilt: Tilt = {
-    x: useSpring(rawTiltX, { stiffness: 150, damping: 18, mass: 0.6 }),
-    y: useSpring(rawTiltY, { stiffness: 150, damping: 18, mass: 0.6 }),
-  };
-  const pressed = useRef(false);
+  const tiltX = useSpring(rawTiltX, { stiffness: 150, damping: 18, mass: 0.6 });
+  const tiltY = useSpring(rawTiltY, { stiffness: 150, damping: 18, mass: 0.6 });
 
   useEffect(() => {
     if (focusIndex === undefined) return;
-    setFling(null);
+    setFlying(null);
     setOrder((current) => {
       const at = current.indexOf(focusIndex);
       return at <= 0 ? current : [...current.slice(at), ...current.slice(0, at)];
     });
   }, [focusIndex]);
 
-  const topIndex = order[0];
-  const nextIndex = order[1];
+  const latest = useRef({ order, flying, artifacts, onChange, reduce });
+  latest.current = { order, flying, artifacts, onChange, reduce };
 
-  const commit = () => {
-    if (!reduce) playFoley('land', 0.8);
-    setFling(null);
-    setOrder((current) => [...current.slice(1), current[0]]);
-    onChange?.(nextIndex, artifacts[nextIndex].label);
-  };
-
-  const advance = (dir: Direction = 1) => {
-    if (fling) return;
+  const launch = useCallback((index: number) => {
+    const { order: current, flying: inAir } = latest.current;
+    if (inAir !== null || current[0] !== index) return false;
     playMechanicalCue('click');
-    if (reduce) {
-      commit();
-      return;
-    }
-    setFling(dir);
-  };
+    setFlying(index);
+    return true;
+  }, []);
+
+  /** The flicked card is out of frame: it drops to the back of the pile and glides in under it. */
+  const land = useCallback((index: number) => {
+    const {
+      order: current,
+      flying: inAir,
+      artifacts: cards,
+      onChange: notify,
+      reduce: still,
+    } = latest.current;
+    if (inAir !== index) return;
+    if (!still) playFoley('land', 0.7);
+    const next = [...current.filter((i) => i !== index), index];
+    setOrder(next);
+    setFlying(null);
+    notify?.(next[0], cards[next[0]].label);
+  }, []);
+
+  const topIndex = order[0];
+  const nextIndex = order[1] ?? order[0];
+  /** Each card's own throw, so the Loop button flicks whichever card is on top. */
+  const throws = useRef<Record<number, () => void>>({});
+  const register = useCallback((index: number, fly: () => void) => {
+    throws.current[index] = fly;
+  }, []);
 
   const lean = (e: PointerEvent<HTMLDivElement>, strength: number) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -190,7 +182,6 @@ function Deck({
     rawTiltX.set(-py * TILT_MAX * 2 * strength);
   };
   const settle = () => {
-    pressed.current = false;
     rawTiltX.set(0);
     rawTiltY.set(0);
   };
@@ -205,249 +196,240 @@ function Deck({
 
       <motion.div
         className={`deck-stage relative w-full ${size === 'studio' ? 'memory-deck--studio' : size === 'fill' ? 'min-h-0 flex-1' : 'memory-deck'}`}
-        style={
-          lean3d ? { rotateX: tilt.x, rotateY: tilt.y, transformPerspective: 1200 } : undefined
-        }
+        style={lean3d ? { rotateX: tiltX, rotateY: tiltY, transformPerspective: 1200 } : undefined}
         onPointerMove={(e) => {
-          if (!lean3d) return;
-          if (e.pointerType === 'mouse') lean(e, 1);
-          else if (pressed.current) lean(e, 0.55);
+          if (lean3d && e.pointerType === 'mouse') lean(e, 1);
         }}
-        onPointerDown={(e) => {
-          if (!lean3d || e.pointerType === 'mouse') return;
-          pressed.current = true;
-          lean(e, 0.55);
-        }}
-        onPointerUp={settle}
         onPointerLeave={settle}
-        onPointerCancel={settle}
       >
-        <AnimatePresence initial={false}>
-          {artifacts.map((artifact, index) => {
-            const depth = order.indexOf(index);
-            const isTop = depth === 0;
-            const flinging = isTop && fling !== null;
-            /** While the top sheet is in the air, the rest already step up. */
-            const settledDepth = fling !== null && !isTop ? depth - 1 : depth;
-            if (settledDepth >= MOUNTED_DEPTH) return null;
-            return (
-              <DeckSlot
-                key={artifact.id}
-                depth={depth}
-                settledDepth={settledDepth}
-                fling={flinging ? fling : null}
-                tilt={tilt}
-                reduce={reduce}
-                onFlung={commit}
-              >
-                <DeckCard
-                  artifact={artifact}
-                  face={faces[artifact.id]}
-                  number={index + 1}
-                  active={isTop && fling === null}
-                  depth={settledDepth}
-                  lifted={flinging}
-                  tilt={tilt}
-                  reduce={reduce}
-                  onLoop={advance}
-                />
-              </DeckSlot>
-            );
-          })}
-        </AnimatePresence>
+        {artifacts.map((artifact, index) => {
+          const depth = order.indexOf(index);
+          const inAir = flying === index;
+          /** While the top card is in the air, everything under it has already moved up one. */
+          const shown = inAir ? 0 : flying !== null ? depth - 1 : depth;
+          return (
+            <DeckCard
+              key={artifact.id}
+              index={index}
+              artifact={artifact}
+              face={faces[artifact.id]}
+              depth={shown}
+              zIndex={inAir ? count + 1 : count - depth}
+              active={shown === 0 && flying === null}
+              inAir={inAir}
+              reduce={reduce}
+              tiltY={tiltY}
+              onLaunch={launch}
+              onLand={land}
+              onRegister={register}
+            />
+          );
+        })}
       </motion.div>
 
-      <div className="mt-4 flex w-full items-center justify-between gap-4">
-        <div className="flex items-center gap-1.5" aria-hidden>
-          {artifacts.map((artifact, index) => (
-            <span
-              key={artifact.id}
-              className={`h-1.5 w-1.5 rounded-full transition-[transform,background-color] duration-300 ease-out ${
-                index === topIndex ? 'scale-[1.6] bg-[#fdba74]' : 'bg-[#fce7f3]/20'
-              }`}
-            />
-          ))}
+      {chrome ? (
+        <div className="mt-4 flex w-full items-center justify-between gap-4">
+          <div className="flex items-center gap-1.5" aria-hidden>
+            {artifacts.map((artifact, index) => (
+              <span
+                key={artifact.id}
+                className={`h-1.5 w-1.5 rounded-full transition-[transform,background-color] duration-300 ease-out ${
+                  index === topIndex ? 'scale-[1.6] bg-[#fdba74]' : 'bg-[#fce7f3]/20'
+                }`}
+              />
+            ))}
+          </div>
+          <motion.button
+            type="button"
+            onClick={() => throws.current[topIndex]?.()}
+            whileTap={reduce ? undefined : { scale: 0.97, y: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="paper-button inline-flex touch-manipulation items-center gap-2"
+            aria-label={`Loop memory — next up: ${artifacts[nextIndex].label}`}
+          >
+            <span aria-hidden className="text-sm leading-none">
+              ↻
+            </span>
+            Loop memory
+          </motion.button>
         </div>
-        <motion.button
-          type="button"
-          onClick={() => advance(1)}
-          whileTap={reduce ? undefined : { scale: 0.97, y: 1 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          className="paper-button inline-flex touch-manipulation items-center gap-2"
-          aria-label={`Loop memory — next up: ${artifacts[nextIndex].label}`}
-        >
-          <span aria-hidden className="text-sm leading-none">
-            ↻
-          </span>
-          Loop memory
-        </motion.button>
-      </div>
+      ) : null}
       <p className="sr-only" aria-live="polite">
-        Memory {topIndex + 1} of {artifacts.length}: {artifacts[topIndex].label}
+        Memory {topIndex + 1} of {count}: {artifacts[topIndex].label}
       </p>
     </section>
   );
 }
 
-/** Positions one sheet in the pile and gives it depth parallax against the stage tilt. */
-function DeckSlot({
+const DeckCard = memo(function DeckCard({
+  index,
+  artifact,
+  face,
   depth,
-  settledDepth,
-  fling,
-  tilt,
+  zIndex,
+  active,
+  inAir,
   reduce,
-  onFlung,
-  children,
+  tiltY,
+  onLaunch,
+  onLand,
+  onRegister,
 }: {
+  index: number;
+  artifact: Artifact;
+  face: ReactNode;
   depth: number;
-  settledDepth: number;
-  fling: Direction | null;
-  tilt: Tilt;
+  zIndex: number;
+  active: boolean;
+  inAir: boolean;
   reduce: boolean;
-  onFlung: () => void;
-  children: ReactNode;
+  tiltY: MotionValue<number>;
+  onLaunch: (index: number) => boolean;
+  onLand: (index: number) => void;
+  onRegister: (index: number, fly: () => void) => void;
 }) {
-  const parallax = useMotionValue(PARALLAX[settledDepth]);
-  useEffect(() => {
-    const controls = animate(parallax, PARALLAX[settledDepth], PROMOTE);
-    return () => controls.stop();
-  }, [parallax, settledDepth]);
-  const px = useTransform([tilt.y, parallax], ([t, k]: number[]) => t * k);
-  const py = useTransform([tilt.x, parallax], ([t, k]: number[]) => -t * k);
+  const material = MATERIALS[artifact.id];
+  const number = index + 1;
+  /** Hand offset: follows the finger while held, carries the flight, springs home under the pile. */
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const rotate = useTransform(x, [-220, 0, 220], [-14, 0, 14]);
+  const dragControls = useDragControls();
+  /** The click that trails a swipe must not loop a second time. */
+  const dragEndedAt = useRef(0);
+  const flight = useRef<ReturnType<typeof animate>[]>([]);
+  /** Specular band slides across the surface as the sheet tilts or drags. */
+  const sheenX = useTransform([tiltY, x], ([t, d]: number[]) => `${t * 5 + d * 0.18}%`);
 
-  const isPresent = useIsPresent();
-  const wasFlung = useRef(false);
-  const transition = fling ? FLING : wasFlung.current ? TUCK : PROMOTE;
+  const stopFlight = () => {
+    flight.current.forEach((a) => a.stop());
+    flight.current = [];
+  };
+
+  const fly = useCallback(
+    (dx: number, dy: number, vx = 0, vy = 0) => {
+      if (!onLaunch(index)) return;
+      stopFlight();
+      if (reduce) {
+        onLand(index);
+        return;
+      }
+      const length = Math.hypot(dx, dy) || 1;
+      const tx = (dx / length) * FLIGHT;
+      const ty = (dy / length) * FLIGHT;
+      flight.current = [
+        animate(x, tx, { ...FLY_OUT, velocity: vx }),
+        animate(y, ty, {
+          ...FLY_OUT,
+          velocity: vy,
+          onComplete: () => {
+            onLand(index);
+            flight.current = [animate(x, 0, SPRING), animate(y, 0, SPRING)];
+          },
+        }),
+      ];
+    },
+    [index, onLaunch, onLand, reduce, x, y],
+  );
+
   useEffect(() => {
-    wasFlung.current = fling !== null;
-  }, [fling]);
+    onRegister(index, () => fly(1, -0.3));
+  }, [onRegister, index, fly]);
+  useEffect(() => () => flight.current.forEach((a) => a.stop()), []);
+
+  const onDragEnd = (_: unknown, info: PanInfo) => {
+    dragEndedAt.current = performance.now();
+    const { offset, velocity } = info;
+    const far = Math.hypot(offset.x, offset.y) > FLICK_DISTANCE;
+    const fast = Math.hypot(velocity.x, velocity.y) > FLICK_VELOCITY;
+    if (far || fast) {
+      const dx = fast ? velocity.x : offset.x;
+      const dy = fast ? velocity.y : offset.y;
+      fly(dx, dy, velocity.x, velocity.y);
+      return;
+    }
+    flight.current = [animate(x, 0, SPRING), animate(y, 0, SPRING)];
+  };
+
+  const pose = restAt(Math.max(0, depth));
 
   return (
     <motion.div
-      className={`deck-slot absolute inset-x-0 bottom-7 top-0 ${depth === 0 ? '' : 'pointer-events-none'}`}
-      style={{ zIndex: 10 - depth, transformPerspective: 1100, willChange: 'transform, opacity' }}
-      initial={{ ...REST[MOUNTED_DEPTH], opacity: 0 }}
-      animate={fling ? { ...flingPose(fling), opacity: 1 } : { ...REST[settledDepth], opacity: 1 }}
-      exit={{ ...REST[MOUNTED_DEPTH], opacity: 0, transition: TUCK }}
-      transition={transition}
-      onAnimationComplete={() => {
-        if (fling && isPresent) onFlung();
-      }}
+      className={`deck-slot absolute inset-x-0 bottom-7 top-0 ${active ? '' : 'pointer-events-none'}`}
+      style={{ zIndex, willChange: 'transform, opacity, z-index' }}
+      initial={false}
+      animate={pose}
+      transition={reduce ? { duration: 0 } : SPRING}
     >
-      <motion.div className="h-full w-full" style={reduce ? undefined : { x: px, y: py }}>
-        {children}
+      <motion.div
+        className={`deck-drag relative h-full w-full ${active && !reduce ? 'touch-none' : 'touch-pan-y'}`}
+        style={{ x, y, rotate, willChange: 'transform' }}
+        drag={active && !reduce}
+        dragControls={dragControls}
+        dragListener={false}
+        dragMomentum={false}
+        onPointerDown={(event) => {
+          if (!active || reduce) return;
+          if ((event.target as Element).closest(INTERACTIVE)) return;
+          stopFlight();
+          dragControls.start(event);
+        }}
+        whileDrag={{ scale: 1.03 }}
+        onDragEnd={onDragEnd}
+        onClick={(event) => {
+          if (!active || performance.now() - dragEndedAt.current < 250) return;
+          if ((event.target as Element).closest(INTERACTIVE)) return;
+          fly(1, -0.3);
+        }}
+      >
+        <motion.div
+          aria-hidden
+          className={`deck-shadow ${artifact.id === 'receipt' ? 'deck-shadow--receipt' : ''}`}
+          initial={false}
+          animate={
+            inAir
+              ? { opacity: 0.45, y: 30, scale: 1.05 }
+              : { opacity: SHADOW[Math.min(depth, 3)], y: 0, scale: 1 }
+          }
+          transition={reduce ? { duration: 0 } : SPRING}
+        />
+
+        <div className={`deck-card ${material.surface} ${active ? 'cursor-grab' : ''}`}>
+          {artifact.id === 'receipt' ? <ReceiptTelemetry number={number} /> : null}
+
+          <div className="deck-card__body">{face}</div>
+
+          <div className="deck-card__footer">
+            <span className="truncate">
+              No. {String(number).padStart(2, '0')} · {artifact.label}
+            </span>
+            {active ? <span className="shrink-0 text-[#ec4899]">Flick · tap</span> : null}
+          </div>
+
+          {artifact.id === 'letter' ? <span aria-hidden className="deck-card__creases" /> : null}
+          {artifact.id === 'receipt' ? (
+            <span aria-hidden className="deck-card__thermal-fade" />
+          ) : null}
+          <span aria-hidden className="deck-card__light" />
+          {reduce ? null : (
+            <motion.span
+              aria-hidden
+              className="deck-card__sheen"
+              style={{ x: sheenX, opacity: material.sheen }}
+            />
+          )}
+          <motion.span
+            aria-hidden
+            className="deck-card__dim"
+            initial={false}
+            animate={{ opacity: inAir ? 0 : DIM[Math.min(depth, 3)] }}
+            transition={reduce ? { duration: 0 } : SPRING}
+          />
+        </div>
       </motion.div>
     </motion.div>
   );
-}
-
-function DeckCard({
-  artifact,
-  face,
-  number,
-  active,
-  depth,
-  lifted,
-  tilt,
-  reduce,
-  onLoop,
-}: {
-  artifact: Artifact;
-  face: ReactNode;
-  number: number;
-  active: boolean;
-  depth: number;
-  lifted: boolean;
-  tilt: Tilt;
-  reduce: boolean;
-  onLoop: (dir: Direction) => void;
-}) {
-  const material = MATERIALS[artifact.id];
-  /** The click that trails a swipe must not loop a second time. */
-  const dragEndedAt = useRef(0);
-  const dragControls = useDragControls();
-  const dragX = useMotionValue(0);
-  const dragRotate = useTransform(dragX, [-180, 0, 180], [-9, 0, 9]);
-  const dragYaw = useTransform(dragX, [-180, 0, 180], [-16, 0, 16]);
-  /** Specular band slides across the surface as the sheet tilts or drags. */
-  const sheenX = useTransform([tilt.y, dragX], ([t, d]: number[]) => `${t * 5 + d * 0.18}%`);
-
-  return (
-    <motion.div
-      className="deck-drag relative h-full w-full touch-pan-y"
-      style={{ x: dragX, rotate: dragRotate, rotateY: dragYaw, willChange: 'transform' }}
-      drag={active && !reduce ? 'x' : false}
-      dragDirectionLock
-      dragControls={dragControls}
-      dragListener={false}
-      onPointerDown={(event) => {
-        if (!active || reduce) return;
-        if ((event.target as Element).closest(INTERACTIVE)) return;
-        dragControls.start(event);
-      }}
-      dragSnapToOrigin
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.6}
-      dragTransition={{ bounceStiffness: 380, bounceDamping: 24 }}
-      whileDrag={{ scale: 1.02 }}
-      onDragEnd={(_, info) => {
-        dragEndedAt.current = performance.now();
-        if (
-          Math.abs(info.offset.x) > SWIPE_DISTANCE ||
-          Math.abs(info.velocity.x) > SWIPE_VELOCITY
-        ) {
-          onLoop((info.offset.x || info.velocity.x) < 0 ? -1 : 1);
-        }
-      }}
-      onClick={(event) => {
-        if (!active || performance.now() - dragEndedAt.current < 250) return;
-        if ((event.target as Element).closest(INTERACTIVE)) return;
-        onLoop(1);
-      }}
-    >
-      <motion.div
-        aria-hidden
-        className={`deck-shadow ${artifact.id === 'receipt' ? 'deck-shadow--receipt' : ''}`}
-        initial={false}
-        animate={lifted ? LIFTED_SHADOW : SHADOW[depth]}
-        transition={lifted ? LIFT : PROMOTE}
-      />
-
-      <div className={`deck-card ${material.surface} ${active ? 'cursor-pointer' : ''}`}>
-        {artifact.id === 'receipt' ? <ReceiptTelemetry number={number} /> : null}
-
-        <div className="deck-card__body">{face}</div>
-
-        <div className="deck-card__footer">
-          <span className="truncate">
-            No. {String(number).padStart(2, '0')} · {artifact.label}
-          </span>
-          {active ? <span className="shrink-0 text-[#ec4899]">Tap · swipe</span> : null}
-        </div>
-
-        {artifact.id === 'letter' ? <span aria-hidden className="deck-card__creases" /> : null}
-        {artifact.id === 'receipt' ? (
-          <span aria-hidden className="deck-card__thermal-fade" />
-        ) : null}
-        <span aria-hidden className="deck-card__light" />
-        {reduce ? null : (
-          <motion.span
-            aria-hidden
-            className="deck-card__sheen"
-            style={{ x: sheenX, opacity: material.sheen }}
-          />
-        )}
-        <motion.span
-          aria-hidden
-          className="deck-card__dim"
-          initial={false}
-          animate={{ opacity: lifted ? 0 : DIM[depth] }}
-          transition={PROMOTE}
-        />
-      </div>
-    </motion.div>
-  );
-}
+});
 
 /** Faded print-head header, like the machine line on a real thermal slip. */
 function ReceiptTelemetry({ number }: { number: number }) {
