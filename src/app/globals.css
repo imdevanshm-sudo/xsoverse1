@@ -2858,3 +2858,12 @@ html.is-landscape .xso-dock {
     opacity: 0;
   }
 }
+
+/* A light lens falloff over the Movie Box stage; the palette stays dark, the centre stays clear. */
+.movie-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 26;
+  pointer-events: none;
+  background: radial-gradient(ellipse 85% 80% at 50% 50%, transparent 60%, rgba(5, 2, 3, 0.45));
+}

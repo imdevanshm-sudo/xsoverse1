@@ -9,8 +9,8 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from 'react';
-import { useReducedMotion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { soundtrackSrc } from '@/lib/soundtracks';
 import { useSoundtrack } from '@/components/xso/movie/useSoundtrack';
 import type { MovieLayers, XsoData } from '@/types/xso';
@@ -36,6 +36,14 @@ export interface MovieFrame {
 }
 
 const SWIPE_PX = 40;
+
+/** How long each scene holds before the film moves on; the letter ends itself. */
+function sceneMs(scene: number, photos: number): number | null {
+  if (scene === 0) return 8000;
+  if (scene === 1) return 9000;
+  if (scene === 2) return Math.min(30000, Math.max(10000, photos * 5000));
+  return null;
+}
 
 /** The recipient's Movie Box: a fitted cinematic stage that plays one scene at a time. */
 export const MovieFeature = memo(function MovieFeature({
@@ -91,6 +99,17 @@ export const MovieFeature = memo(function MovieFeature({
     goTo(0);
   }, [goTo, replayMusic]);
   const finish = useCallback(() => setFinished(true), []);
+
+  /** Plays on by itself like a film; pause stops it, and reduced motion leaves it to the viewer. */
+  const [paused, setPaused] = useState(false);
+  const photoCount = montagePhotos(data, movie).length;
+  useEffect(() => {
+    if (!started || finished || paused || reduce || focusIndex !== undefined) return;
+    const ms = sceneMs(frame.scene, photoCount);
+    if (!ms) return;
+    const timer = window.setTimeout(() => goTo(index + 1), ms);
+    return () => window.clearTimeout(timer);
+  }, [finished, focusIndex, frame.scene, goTo, index, paused, photoCount, reduce, started]);
 
   useEffect(() => {
     if (focusIndex === undefined) return;
@@ -152,23 +171,58 @@ export const MovieFeature = memo(function MovieFeature({
             <EndScreen stage={stage} reduce={reduce} onReplay={replay} />
           ) : (
             <>
-              <article
-                aria-label={`Scene ${index + 1} of ${count}: ${frame.label}`}
-                className="absolute inset-0"
-              >
-                <SceneBody {...props} />
-              </article>
-
-              {frame.scene !== 3 && caption ? (
-                <div className="pointer-events-none absolute inset-x-0 bottom-20 z-10 px-6">
-                  <Subtitle big={stage.big}>{caption}</Subtitle>
-                </div>
-              ) : null}
+              <AnimatePresence initial={false}>
+                <motion.article
+                  key={index}
+                  aria-label={`Scene ${index + 1} of ${count}: ${frame.label}`}
+                  className="absolute inset-0"
+                  initial={reduce ? false : { opacity: 0, scale: 1.04 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={
+                    reduce
+                      ? { opacity: 0, transition: { duration: 0 } }
+                      : { opacity: 0, scale: 0.985 }
+                  }
+                  transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <SceneBody {...props} />
+                  {frame.scene !== 3 && caption ? (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-20 z-10 px-6">
+                      <Subtitle big={stage.big}>{caption}</Subtitle>
+                    </div>
+                  ) : null}
+                </motion.article>
+              </AnimatePresence>
+              {reduce ? null : (
+                <motion.span
+                  key={`flash-${index}`}
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 z-[12] bg-[#fff4e0]"
+                  initial={{ opacity: index === 0 ? 0 : 0.14 }}
+                  animate={{ opacity: 0 }}
+                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                />
+              )}
 
               <nav
                 aria-label="Scenes"
                 className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-center gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
               >
+                {reduce ? null : (
+                  <button
+                    type="button"
+                    onClick={() => setPaused((p) => !p)}
+                    aria-pressed={paused}
+                    aria-label={paused ? 'Resume' : 'Pause'}
+                    className="movie-control absolute left-4"
+                  >
+                    {paused ? (
+                      <Play className="h-5 w-5" aria-hidden />
+                    ) : (
+                      <Pause className="h-5 w-5" aria-hidden />
+                    )}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => goTo(index - 1)}
@@ -223,6 +277,8 @@ export const MovieFeature = memo(function MovieFeature({
               </nav>
             </>
           )}
+          <span aria-hidden className="film-grain" style={{ zIndex: 25, opacity: 0.07 }} />
+          <span aria-hidden className="movie-vignette" />
         </div>
       ) : null}
       <p className="sr-only" aria-live="polite">
