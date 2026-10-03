@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, animate, motion } from 'framer-motion';
 import type { AuditMetrics, MovieLayers, XsoData } from '@/types/xso';
 import { auditLabel } from '@/lib/formats';
 import { LazyMedia } from '@/components/xso/LazyMedia';
@@ -112,15 +112,34 @@ export const ReceiptScene = memo(function ReceiptScene({
   );
 });
 
+const BAR_START = 0.5;
+const BAR_STAGGER = 0.28;
+
+/** The audit: bars fill one after another while the star rating counts up to its score. */
 export const AuditScene = memo(function AuditScene({
   data,
   movie,
   scene,
   index,
   stage,
+  active,
+  reduce,
 }: SceneProps) {
   const { big } = stage;
   const metrics = Object.entries(data.auditMetrics) as [keyof AuditMetrics, number][];
+  const [rating, setRating] = useState(reduce ? movie.stars : 0);
+  useEffect(() => {
+    if (reduce || !active) {
+      setRating(movie.stars);
+      return;
+    }
+    const controls = animate(0, movie.stars, {
+      duration: BAR_START + BAR_STAGGER * metrics.length + 0.6,
+      ease: 'easeOut',
+      onUpdate: setRating,
+    });
+    return () => controls.stop();
+  }, [active, metrics.length, movie.stars, reduce]);
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-6">
       <Slate index={index} title={sceneTitle(movie, scene, data)} big={big} />
@@ -128,10 +147,15 @@ export const AuditScene = memo(function AuditScene({
         className={`font-serif font-semibold text-[#fffaf0] ${big ? 'text-[56px]' : 'text-[44px]'}`}
         aria-label={`Rated ${movie.stars} out of 5`}
       >
-        {movie.stars.toFixed(1)} <span className="text-[#fdba74]">★</span>
+        <span className="tabular-nums" aria-hidden>
+          {rating.toFixed(1)}
+        </span>{' '}
+        <span className="text-[#fdba74]" aria-hidden>
+          ★
+        </span>
       </p>
       <ul className={`w-full space-y-3 ${big ? 'max-w-[520px]' : 'max-w-[330px]'}`}>
-        {metrics.map(([key, score]) => (
+        {metrics.map(([key, score], i) => (
           <li
             key={key}
             className="grid grid-cols-[minmax(0,8.5rem)_1fr_2.25rem] items-center gap-3"
@@ -140,9 +164,15 @@ export const AuditScene = memo(function AuditScene({
               {auditLabel(data, key)}
             </span>
             <span className="h-2 overflow-hidden rounded-full bg-[#fffaf0]/10">
-              <span
+              <motion.span
                 className="block h-full origin-left rounded-full bg-gradient-to-r from-[#fdba74] to-[#f472b6]"
-                style={{ transform: `scaleX(${score / 100})` }}
+                initial={reduce ? false : { scaleX: 0 }}
+                animate={{ scaleX: score / 100 }}
+                transition={{
+                  duration: reduce ? 0 : 0.9,
+                  delay: reduce ? 0 : BAR_START + i * BAR_STAGGER,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
               />
             </span>
             <span className="text-right font-receipt text-[14px] tabular-nums text-[#fffaf0]/85">
