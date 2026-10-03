@@ -1,6 +1,13 @@
 import { randomBytes } from 'crypto';
 import { pickXsoPayload } from '@/lib/xsoPayload';
-import { ADD_ONS, formatPrice, TIERS, type Quote, type TierId } from '@/lib/pricing';
+import {
+  ADD_ONS,
+  formatPrice,
+  RECIPIENT_OFFER,
+  TIERS,
+  type Quote,
+  type TierId,
+} from '@/lib/pricing';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
 import type { GiftStyle } from '@/types/xso';
 import { markGiftPaid, saveGift, type StoredGift } from '@/lib/giftStore';
@@ -124,7 +131,8 @@ export async function createLemonCheckout(options: {
       data: {
         type: 'checkouts',
         attributes: {
-          custom_price: options.quote.total,
+          // The recipient offer is taken off by its Lemon Squeezy discount code, not the price.
+          custom_price: options.quote.total + options.quote.discount,
           checkout_data: {
             custom: {
               gift_id: options.giftId,
@@ -136,6 +144,7 @@ export async function createLemonCheckout(options: {
               deliver_at: options.deliverAt ?? undefined,
             },
             name: options.billerName || undefined,
+            discount_code: options.quote.discount ? RECIPIENT_OFFER.code : undefined,
           },
           product_options: {
             name: `XSO Keepsake for ${recipient} · ${aesthetic}`,

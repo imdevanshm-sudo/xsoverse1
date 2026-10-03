@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       arm?: unknown;
       deliverAt?: unknown;
       overlay?: unknown;
+      recipient?: unknown;
     };
     if (!body?.data || typeof body.data !== 'object') {
       return NextResponse.json({ error: 'Missing souvenir data' }, { status: 400 });
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
       cardCount: cards.length,
       addOns: Array.isArray(body.addOns) ? body.addOns.filter(isAddOnId) : [],
       arm: isPriceArm(body.arm) ? body.arm : null,
+      recipient: body.recipient === true,
     });
     const deliverAt = price.addOns.some((a) => a.id === 'schedule')
       ? scheduledTime(body.deliverAt)

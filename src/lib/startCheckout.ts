@@ -1,6 +1,6 @@
 import { useXsoStore } from '@/store/useXsoStore';
 import { pickXsoPayload } from '@/lib/xsoPayload';
-import { priceArm } from '@/lib/pricingClient';
+import { isRecipientVisitor, priceArm } from '@/lib/pricingClient';
 import { loadLemonJs, openLemonOverlay } from '@/lib/lemonJs';
 import type { AddOnId } from '@/lib/pricing';
 import type { GiftStyle, XsoData } from '@/types/xso';
@@ -26,7 +26,13 @@ export async function startCheckout(
   const response = await fetch('/api/checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data, ...extras, arm: priceArm(), overlay }),
+    body: JSON.stringify({
+      data,
+      ...extras,
+      arm: priceArm(),
+      recipient: isRecipientVisitor(),
+      overlay,
+    }),
   });
   const json = (await response.json().catch(() => ({}))) as {
     mode?: 'lemon' | 'preview';

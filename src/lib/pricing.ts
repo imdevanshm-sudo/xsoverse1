@@ -156,10 +156,12 @@ export function isPriceArm(value: unknown): value is string {
 
 /**
  * Offer for people who received an XSO (`/?ref=recipient`). The discount itself is a Lemon
- * Squeezy discount code (LEMONSQUEEZY_RECIPIENT_DISCOUNT_CODE) worth `full - offerPrice`.
+ * Squeezy discount code worth `full - offerPrice` (a fixed $5.00 off by default), limited to the
+ * Full Stack and Deluxe variants. The offer is live only while the code is set.
  */
 export const RECIPIENT_OFFER = {
   ref: 'recipient',
+  code: process.env.NEXT_PUBLIC_RECIPIENT_DISCOUNT_CODE || '',
   tiers: ['full', 'deluxe'] as TierId[],
   offerPrices: { USD: 999, INR: 19900 } as Amounts,
 };
@@ -200,7 +202,7 @@ export function quote(options: {
       amount: ADD_ONS[id].includedWith?.includes(tier) ? 0 : ADD_ONS[id].prices[currency],
     }));
   const discount =
-    options.recipient && RECIPIENT_OFFER.tiers.includes(tier)
+    options.recipient && RECIPIENT_OFFER.code && RECIPIENT_OFFER.tiers.includes(tier)
       ? Math.min(base, recipientDiscount(currency))
       : 0;
   const total = base + addOns.reduce((sum, a) => sum + a.amount, 0) - discount;

@@ -7,6 +7,7 @@ import { useXsoStore } from '@/store/useXsoStore';
 import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { getCartridge } from '@/lib/cartridges';
 import { track } from '@/lib/analytics';
+import { captureRef } from '@/lib/pricingClient';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { StickyCreateBar } from '@/components/storefront/StickyCreateBar';
 import { XSOCustomizerHost } from '@/components/storefront/XSOCustomizerHost';
@@ -59,6 +60,7 @@ export function Store() {
 
   /** `/?order=<style>` (the checkout page's edit link) lands straight in the customizer. */
   useEffect(() => {
+    captureRef();
     const params = new URLSearchParams(window.location.search);
     const order = params.get('order');
     if (!params.has('order')) return;

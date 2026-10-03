@@ -1,6 +1,14 @@
 'use client';
 
-import { memo, useCallback, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { PhoneFrame } from '@/components/xso/PhoneFrame';
 import {
@@ -21,6 +29,8 @@ import {
 } from '@/hooks/useAssetPreloader';
 import { PreviewWatermark } from '@/components/xso/PreviewWatermark';
 import type { GiftWrapper } from '@/lib/giftWrapper';
+import { RECIPIENT_OFFER } from '@/lib/pricing';
+import { track } from '@/lib/analytics';
 import type { XsoData } from '@/types/xso';
 
 type Phase = 'wrapped' | 'opening';
@@ -112,6 +122,7 @@ export function GiftUnboxing({
             transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
           >
             <Souvenir data={contents} />
+            {framed || draft ? null : <MakeOneBack />}
           </motion.div>
         ) : wrapGone ? (
           <OpeningDot key="opening" />
@@ -139,6 +150,32 @@ export function GiftUnboxing({
     </>
   );
 }
+
+/** The one way back to the store from a received gift: quiet, and only once it's been opened. */
+const MakeOneBack = memo(function MakeOneBack() {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShown(true), 6000);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return (
+    <AnimatePresence>
+      {shown ? (
+        <motion.a
+          key="make-one-back"
+          href={`/?ref=${RECIPIENT_OFFER.ref}`}
+          onClick={() => track('make_one_back')}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top,0px))] z-40 rounded-full border border-white/15 bg-black/40 px-3.5 py-2 font-receipt text-[11px] uppercase tracking-[0.16em] text-white/75 backdrop-blur-sm transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70"
+        >
+          Make one back
+        </motion.a>
+      ) : null}
+    </AnimatePresence>
+  );
+});
 
 /** Held between the wrap clearing and the contents arriving, if the network is slower than the animation. */
 const OpeningDot = memo(function OpeningDot() {
