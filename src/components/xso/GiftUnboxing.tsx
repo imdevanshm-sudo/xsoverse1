@@ -121,7 +121,7 @@ export function GiftUnboxing({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Souvenir data={contents} cta={!framed && !draft} />
+            <Souvenir data={contents} cta={!framed} />
             {framed || draft || contents.giftStyle === 'moviebox' ? null : <MakeOneBack />}
           </motion.div>
         ) : wrapGone ? (
