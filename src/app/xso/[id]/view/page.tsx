@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { GiftUnboxing } from '@/components/xso/GiftUnboxing';
 import { GiftPendingPoller } from '@/components/xso/GiftPendingPoller';
 import { getGift } from '@/lib/giftStore';
+import { wrapperOf } from '@/lib/giftWrapper';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,7 +42,7 @@ export default async function ViewPage({ params }: ViewPageProps) {
   return (
     <main className="min-app-h bg-black">
       {gift.status === 'paid' ? (
-        <GiftUnboxing giftId={gift.id} initialData={gift.data} />
+        <GiftUnboxing giftId={gift.id} wrapper={wrapperOf(gift.id, gift.data)} />
       ) : (
         <GiftPendingPoller giftId={gift.id} />
       )}

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import type { XsoData } from '@/types/xso';
 
 /** Paper and film grain tiles the formats paint with (see globals.css). */
-const TEXTURES = [
+export const TEXTURES = [
   '/textures/noise-warm.png',
   '/textures/noise-light.png',
   '/textures/noise-mono.png',
@@ -20,12 +20,16 @@ const FONT_VARS = [
 ];
 const FONT_WEIGHTS = ['400', '700'];
 
-/** Every image this payload will paint: photos, movie stills and the grain textures. */
+/** Images this payload paints beyond the textures: photos and movie stills. */
 export function collectImageUrls(data: XsoData): string[] {
-  const urls = new Set<string>(TEXTURES);
+  const urls = new Set<string>();
   data.photos?.forEach((src) => src && urls.add(src));
   data.moviebox?.scenes?.forEach((scene) => scene.image && urls.add(scene.image));
   return Array.from(urls);
+}
+
+export function preloadImages(urls: string[]) {
+  return Promise.all(urls.map(loadImage)).then(() => undefined);
 }
 
 /** Resolves once the image is downloaded and decoded; a broken image never blocks the gift. */
@@ -62,19 +66,20 @@ async function loadFonts() {
 const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 /**
- * True once every image and font the gift needs is in memory, plus a short hold so a fast
+ * True once the given images and every font are in memory, plus a short hold so a fast
  * connection doesn't flash. `ceiling` keeps a stalled request from leaving the screen black forever.
  */
 export function useAssetPreloader(
-  data: XsoData,
+  urls: readonly string[],
   { enabled = true, hold = 500, ceiling = 15_000 } = {},
 ) {
   const [isReady, setReady] = useState(!enabled);
+  const key = urls.join('\n');
 
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    const assets = Promise.all([...collectImageUrls(data).map(loadImage), loadFonts()]);
+    const assets = Promise.all([...key.split('\n').filter(Boolean).map(loadImage), loadFonts()]);
     Promise.race([assets, wait(ceiling)])
       .then(() => wait(hold))
       .then(() => {
@@ -83,7 +88,7 @@ export function useAssetPreloader(
     return () => {
       cancelled = true;
     };
-  }, [data, enabled, hold, ceiling]);
+  }, [key, enabled, hold, ceiling]);
 
   return isReady;
 }

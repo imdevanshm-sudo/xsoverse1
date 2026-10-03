@@ -7,6 +7,7 @@ import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { useXsoData } from '@/store/useXsoData';
 import { pickXsoPayload } from '@/lib/xsoPayload';
 import { GiftUnboxing } from '@/components/xso/GiftUnboxing';
+import { wrapperOf } from '@/lib/giftWrapper';
 import type { GiftStyle } from '@/types/xso';
 
 /**
@@ -49,7 +50,13 @@ export function ReceiverPreview({ style, onClose }: { style: GiftStyle; onClose:
         <X className="h-3.5 w-3.5" aria-hidden />
         Exit preview
       </button>
-      <GiftUnboxing giftId="preview" initialData={data} preview />
+      <GiftUnboxing
+        giftId="preview"
+        wrapper={wrapperOf('preview', data)}
+        draft={data}
+        framed
+        watermark
+      />
     </div>,
     document.body,
   );

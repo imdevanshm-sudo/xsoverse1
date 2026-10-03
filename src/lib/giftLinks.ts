@@ -9,3 +9,8 @@ export function viewPath(giftId: string) {
 export function managePath(giftId: string, key: string) {
   return `/xso/${encodeURIComponent(giftId)}/manage?key=${encodeURIComponent(key)}`;
 }
+
+/** The sender's watermarked run-through of the recipient flow; same key as the dashboard. */
+export function previewPath(giftId: string, key: string) {
+  return `/xso/${encodeURIComponent(giftId)}/preview?key=${encodeURIComponent(key)}`;
+}

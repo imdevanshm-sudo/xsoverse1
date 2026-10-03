@@ -3,10 +3,7 @@ import { getGift } from '@/lib/giftStore';
 
 export const runtime = 'nodejs';
 
-export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } },
-) {
+export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const gift = await getGift(params.id);
   if (!gift) {
     return NextResponse.json({ error: 'Gift not found' }, { status: 404 });
@@ -19,9 +16,6 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({
-    id: gift.id,
-    status: gift.status,
-    data: gift.data,
-  });
+  /** Status only: the contents are released by POST /open, after the unwrap. */
+  return NextResponse.json({ id: gift.id, status: gift.status });
 }

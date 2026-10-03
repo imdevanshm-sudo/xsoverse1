@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { PhoneFrame } from '@/components/xso/PhoneFrame';
 import { RewindStack } from '@/components/xso/preview/RewindStack';
@@ -10,53 +10,106 @@ import { MovieBox } from '@/components/xso/preview/MovieBox';
 import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { ImmersivePrompt } from '@/components/xso/ImmersivePrompt';
 import { RecipientPreloader } from '@/components/xso/RecipientPreloader';
-import { useAssetPreloader } from '@/hooks/useAssetPreloader';
+import {
+  TEXTURES,
+  collectImageUrls,
+  preloadImages,
+  useAssetPreloader,
+} from '@/hooks/useAssetPreloader';
+import { PreviewWatermark } from '@/components/xso/PreviewWatermark';
+import type { GiftWrapper } from '@/lib/giftWrapper';
 import type { XsoData } from '@/types/xso';
 
+type Phase = 'wrapped' | 'opening';
+
+async function fetchContents(giftId: string): Promise<XsoData> {
+  const response = await fetch(`/api/gifts/${encodeURIComponent(giftId)}/open`, {
+    method: 'POST',
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error(`open failed: ${response.status}`);
+  const body = (await response.json()) as { data: XsoData };
+  return body.data;
+}
+
 /**
- * The unboxing. For the recipient it is chromeless: a black full-viewport canvas holding only
- * the wrap and then the format, with no branding, codes or utilities (the "no price tag" rule).
- * `preview` is the sender's mock of exactly that, shown inside a phone frame.
+ * The unboxing. It starts sealed with nothing but the wrapper: the contents are fetched only when
+ * the gift is unwrapped, and the format mounts only once the wrap has fully cleared. There is no
+ * URL, hash or stored flag that opens it, so every visit (recipient or sender) goes through the
+ * wrap.
+ *
+ * - Recipient: chromeless black canvas, no branding, codes or utilities.
+ * - `watermark`: the sender's full-screen preview of that same flow, stamped as a preview.
+ * - `draft` + `framed`: the studio's pre-purchase preview of an unsaved gift, in a phone frame.
  */
 export function GiftUnboxing({
   giftId,
-  initialData,
-  preview = false,
+  wrapper,
+  draft,
+  framed = false,
+  watermark = false,
 }: {
   giftId: string;
-  initialData: XsoData;
-  preview?: boolean;
+  wrapper: GiftWrapper;
+  /** Local contents for a gift that isn't stored yet; otherwise they're fetched on unwrap. */
+  draft?: XsoData;
+  framed?: boolean;
+  watermark?: boolean;
 }) {
-  const data = initialData;
-  const [isUnwrapped, setIsUnwrapped] = useState(false);
-  const note = useMemo(() => giftTagNote(data, giftId), [data, giftId]);
-  const ready = useAssetPreloader(data, { enabled: !preview });
+  const reduce = Boolean(useReducedMotion());
+  const [phase, setPhase] = useState<Phase>('wrapped');
+  const [wrapGone, setWrapGone] = useState(false);
+  const [contents, setContents] = useState<XsoData | null>(null);
+  const [failed, setFailed] = useState(false);
+  const attempt = useRef(0);
+  const ready = useAssetPreloader(TEXTURES, { enabled: !framed });
 
   const unwrap = () => {
-    if (isUnwrapped) return;
+    if (phase !== 'wrapped') return;
     playPaperUnwrap();
-    setIsUnwrapped(true);
+    setFailed(false);
+    setPhase('opening');
+    const run = ++attempt.current;
+    const load = draft ? Promise.resolve(draft) : fetchContents(giftId);
+    load
+      .then(async (data) => {
+        await preloadImages(collectImageUrls(data));
+        if (run === attempt.current) setContents(data);
+      })
+      .catch(() => {
+        if (run !== attempt.current) return;
+        setFailed(true);
+        setWrapGone(false);
+        setPhase('wrapped');
+      });
   };
 
   const content = (
-    <AnimatePresence>
-      {isUnwrapped ? (
-        <motion.div
-          key="souvenir"
-          className="absolute inset-0"
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <Souvenir data={data} />
-        </motion.div>
-      ) : (
-        <GiftWrap key="gift-wrap" data={data} note={note} onUnwrap={unwrap} />
-      )}
-    </AnimatePresence>
+    <>
+      <AnimatePresence onExitComplete={() => setWrapGone(true)}>
+        {phase === 'wrapped' ? (
+          <GiftWrap key="gift-wrap" wrapper={wrapper} failed={failed} onUnwrap={unwrap} />
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {wrapGone && contents ? (
+          <motion.div
+            key="souvenir"
+            className="absolute inset-0"
+            initial={reduce ? false : { opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Souvenir data={contents} />
+          </motion.div>
+        ) : wrapGone ? (
+          <OpeningDot key="opening" />
+        ) : null}
+      </AnimatePresence>
+    </>
   );
 
-  if (preview) {
+  if (framed) {
     return (
       <div className="mx-auto my-auto flex w-full max-w-md flex-1 flex-col justify-between gap-4 p-4 sm:p-6 md:max-w-sm md:flex-none md:py-8">
         <p className="min-h-8 content-center pr-32 text-left font-mono text-[9px] uppercase tracking-[0.24em] text-white/40 md:pr-0 md:text-center">
@@ -66,6 +119,7 @@ export function GiftUnboxing({
         <p className="text-center text-[12px] leading-snug text-white/45">
           Their link opens straight into this, on any phone, no app needed.
         </p>
+        {watermark ? <PreviewWatermark /> : null}
       </div>
     );
   }
@@ -76,7 +130,29 @@ export function GiftUnboxing({
         <RecipientCanvas>{content}</RecipientCanvas>
       </ImmersivePrompt>
       <AnimatePresence>{ready ? null : <RecipientPreloader key="preloader" />}</AnimatePresence>
+      {watermark ? <PreviewWatermark /> : null}
     </>
+  );
+}
+
+/** Held between the wrap clearing and the contents arriving, if the network is slower than the animation. */
+function OpeningDot() {
+  return (
+    <motion.div
+      className="absolute inset-0 grid place-items-center bg-black"
+      role="status"
+      aria-label="Opening"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <motion.span
+        className="block h-1.5 w-1.5 rounded-full bg-white"
+        animate={{ opacity: [0.15, 0.85, 0.15] }}
+        transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity }}
+      />
+    </motion.div>
   );
 }
 
@@ -139,9 +215,17 @@ function Souvenir({ data }: { data: XsoData }) {
   }
 }
 
-function GiftWrap({ data, note, onUnwrap }: { data: XsoData; note: string; onUnwrap: () => void }) {
-  const matte = data.giftStyle === 'moviebox';
-  const presentation = data.giftStyle === 'accordion' ? 'booklet' : data.giftStyle;
+function GiftWrap({
+  wrapper,
+  failed,
+  onUnwrap,
+}: {
+  wrapper: GiftWrapper;
+  failed: boolean;
+  onUnwrap: () => void;
+}) {
+  const matte = wrapper.giftStyle === 'moviebox';
+  const presentation = wrapper.giftStyle === 'accordion' ? 'booklet' : wrapper.giftStyle;
 
   return (
     <motion.section
@@ -153,7 +237,7 @@ function GiftWrap({ data, note, onUnwrap }: { data: XsoData; note: string; onUnw
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 1.035 }}
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-      aria-label={`Wrapped ${presentation} gift for ${data.customerName}`}
+      aria-label={`Wrapped ${presentation} gift for ${wrapper.customerName}`}
     >
       <motion.div
         className="absolute inset-y-0 left-0 w-[51%] origin-left"
@@ -169,7 +253,7 @@ function GiftWrap({ data, note, onUnwrap }: { data: XsoData; note: string; onUnw
       />
 
       {!matte && <CraftFibers />}
-      <Postmark matte={matte} occasion={data.occasion} date={data.timestamp.split(' ')[0]} />
+      <Postmark matte={matte} occasion={wrapper.occasion} date={wrapper.date} />
 
       <motion.div
         className={`absolute inset-y-0 left-1/2 w-7 -translate-x-1/2 ${
@@ -198,7 +282,7 @@ function GiftWrap({ data, note, onUnwrap }: { data: XsoData; note: string; onUnw
         exit={{ y: 120, rotate: 9, opacity: 0, scale: 0.85 }}
         transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
       >
-        <GiftTag data={data} note={note} matte={matte} />
+        <GiftTag wrapper={wrapper} matte={matte} />
         <motion.button
           type="button"
           onClick={onUnwrap}
@@ -213,12 +297,20 @@ function GiftWrap({ data, note, onUnwrap }: { data: XsoData; note: string; onUnw
           <span aria-hidden>✨</span>
           {matte ? 'Break Seal' : 'Unwrap Gift'}
         </motion.button>
+        {failed ? (
+          <p
+            role="alert"
+            className={`mt-3 text-center text-[13px] ${matte ? 'text-rose-100/70' : 'text-[#2e2c27]/75'}`}
+          >
+            It didn&apos;t open. Check your connection and try again.
+          </p>
+        ) : null}
       </motion.div>
     </motion.section>
   );
 }
 
-function GiftTag({ data, note, matte }: { data: XsoData; note: string; matte: boolean }) {
+function GiftTag({ wrapper, matte }: { wrapper: GiftWrapper; matte: boolean }) {
   return (
     <article
       className={`relative rotate-[-1.5deg] border p-5 shadow-[0_4px_8px_rgba(40,24,13,.2),0_20px_50px_rgba(40,24,13,.4)] ${
@@ -242,18 +334,18 @@ function GiftTag({ data, note, matte }: { data: XsoData; note: string; matte: bo
       </p>
       <div className="mt-4 grid grid-cols-[52px_1fr] gap-y-2 font-receipt text-sm">
         <span className="font-bold uppercase opacity-55">To:</span>
-        <strong className="text-base">{data.customerName}</strong>
+        <strong className="text-base">{wrapper.customerName}</strong>
         <span className="font-bold uppercase opacity-55">From:</span>
-        <strong className="text-base">{data.billerName}</strong>
+        <strong className="text-base">{wrapper.billerName}</strong>
       </div>
       <p
         className="mt-5 border-t border-current/15 pt-4 text-[15px] leading-relaxed"
         style={{ fontFamily: '"Bradley Hand", "Segoe Print", cursive' }}
       >
-        “{note}”
+        “{wrapper.note}”
       </p>
       <p className="mt-4 text-right font-mono text-[8px] uppercase tracking-wider opacity-45">
-        {data.occasion} · {data.timestamp.split(' ')[0]}
+        {wrapper.occasion} · {wrapper.date}
       </p>
     </article>
   );
@@ -327,25 +419,6 @@ function wrapSurface(matte: boolean): CSSProperties {
     background: 'linear-gradient(145deg, rgba(255,255,255,.1), transparent 32%), #ad8153',
     boxShadow: 'inset 0 0 42px rgba(66,39,18,.25)',
   };
-}
-
-function giftTagNote(data: XsoData, giftId: string) {
-  const initial = data.billerName?.charAt(0) ?? '';
-  if (!data.lineItems?.length) {
-    return `Made just for you. — ${initial}`;
-  }
-  const index = hashString(giftId) % data.lineItems.length;
-  const memory = (data.lineItems[index].description || 'memories').toLowerCase();
-  return `Open this when you miss our ${memory}. — ${initial}`;
-}
-
-function hashString(value: string) {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function playPaperUnwrap() {

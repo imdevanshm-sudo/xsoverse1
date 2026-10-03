@@ -27,7 +27,7 @@ export default async function ManagePage({ params, searchParams }: ManagePagePro
   return (
     <main className="desk grid min-app-h place-items-center px-4 py-10">
       {gift.status === 'paid' ? (
-        <SenderDashboard gift={gift} />
+        <SenderDashboard gift={gift} manageKey={String(searchParams.key)} />
       ) : (
         <ManagePending giftId={gift.id} preview={searchParams.preview === '1'} />
       )}

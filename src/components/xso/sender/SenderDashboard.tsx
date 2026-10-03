@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { StoredGift } from '@/lib/giftStore';
-import { viewPath } from '@/lib/giftLinks';
+import { previewPath } from '@/lib/giftLinks';
 import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
 
 const FORMAT_NAMES: Record<string, string> = {
@@ -23,7 +23,7 @@ function formatDate(iso?: string) {
 }
 
 /** The sender's post-purchase screen: everything the recipient's link deliberately leaves out. */
-export function SenderDashboard({ gift }: { gift: StoredGift }) {
+export function SenderDashboard({ gift, manageKey }: { gift: StoredGift; manageKey: string }) {
   const { data } = gift;
   const details: Array<[string, string]> = [
     ['Mint ID', gift.id],
@@ -57,9 +57,9 @@ export function SenderDashboard({ gift }: { gift: StoredGift }) {
           <ShareGiftLink giftId={gift.id} recipientName={data.customerName} tone="paper" />
         </div>
         <Link
-          href={viewPath(gift.id)}
+          href={previewPath(gift.id, manageKey)}
           target="_blank"
-          rel="noopener"
+          rel="noopener noreferrer"
           className="matte-cta mt-4 flex min-h-[3.25rem] w-full items-center justify-center rounded-full px-6 font-serif text-[17px] font-semibold"
         >
           Preview what they&apos;ll see
