@@ -121,8 +121,8 @@ export function GiftUnboxing({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Souvenir data={contents} />
-            {framed || draft ? null : <MakeOneBack />}
+            <Souvenir data={contents} cta={!framed && !draft} />
+            {framed || draft || contents.giftStyle === 'moviebox' ? null : <MakeOneBack />}
           </motion.div>
         ) : wrapGone ? (
           <OpeningDot key="opening" />
@@ -230,7 +230,7 @@ const RecipientCanvas = memo(function RecipientCanvas({
 /** Card stacks stay vertically centred inside a phone-height band instead of running edge to edge. */
 const CARD_STAGE = 'flex h-full max-h-[600px] w-full items-center justify-center max-md:h-[80svh]';
 
-const Souvenir = memo(function Souvenir({ data }: { data: XsoData }) {
+const Souvenir = memo(function Souvenir({ data, cta }: { data: XsoData; cta: boolean }) {
   switch (data.giftStyle) {
     case 'rewind':
       return (
@@ -257,7 +257,7 @@ const Souvenir = memo(function Souvenir({ data }: { data: XsoData }) {
     case 'moviebox':
       return (
         <div className="h-full overflow-hidden bg-[#050203]">
-          <MovieBox data={data} size="fill" />
+          <MovieBox data={data} size="fill" cta={cta} />
         </div>
       );
     default:

@@ -52,12 +52,15 @@ export const MovieFeature = memo(function MovieFeature({
   frames,
   focusIndex,
   onChange,
+  cta = false,
 }: {
   data: XsoData;
   movie: MovieLayers;
   frames: MovieFrame[];
   focusIndex?: number;
   onChange?: (index: number, label: string) => void;
+  /** The real gift (not a studio draft): the end screen offers Make one back and sharing. */
+  cta?: boolean;
 }) {
   const reduce = Boolean(useReducedMotion());
   const [room, stage] = useStage<HTMLDivElement>();
@@ -168,7 +171,14 @@ export const MovieFeature = memo(function MovieFeature({
           {!started ? (
             <OpeningSlate data={data} stage={stage} reduce={reduce} onPlay={play} />
           ) : finished ? (
-            <EndScreen stage={stage} reduce={reduce} onReplay={replay} />
+            <EndScreen
+              stage={stage}
+              reduce={reduce}
+              onReplay={replay}
+              giftId={data.id}
+              recipientName={data.customerName}
+              cta={cta}
+            />
           ) : (
             <>
               <AnimatePresence initial={false}>

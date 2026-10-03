@@ -80,6 +80,8 @@ interface ProjectorProps {
   /** Scene index (0–3), so the scene editor can bring its frame into the gate. */
   focusIndex?: number;
   onChange?: (index: number, label: string) => void;
+  /** The recipient's gift, so the end screen can offer Make one back and sharing. */
+  cta?: boolean;
 }
 
 /** Each frame remembers which of the four scenes it plays, since cards can be left out. */
@@ -110,6 +112,7 @@ export const MovieBox = memo(function MovieBox(props: ProjectorProps) {
         onChange={props.onChange}
         movie={movie}
         frames={artifacts}
+        cta={props.cta}
         focusIndex={focused === undefined || focused < 0 ? undefined : focused}
       />
     );

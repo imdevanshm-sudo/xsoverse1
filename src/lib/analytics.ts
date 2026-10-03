@@ -8,7 +8,8 @@ export type TrackEvent =
   | 'addon_toggled'
   | 'checkout_started'
   | 'checkout_completed'
-  | 'make_one_back';
+  | 'make_one_back'
+  | 'movie_shared';
 
 type Props = Record<string, string | number | boolean | null | undefined>;
 
