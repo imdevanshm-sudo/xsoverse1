@@ -16,6 +16,7 @@ import { useSoundtrack } from '@/components/xso/movie/useSoundtrack';
 import type { MovieLayers, XsoData } from '@/types/xso';
 import { useStage } from '@/components/xso/movie/useStage';
 import { OpeningSlate } from '@/components/xso/movie/OpeningSlate';
+import { EndScreen } from '@/components/xso/movie/EndScreen';
 import {
   AuditScene,
   LetterScene,
@@ -54,6 +55,7 @@ export const MovieFeature = memo(function MovieFeature({
   const [room, stage] = useStage<HTMLDivElement>();
   const [index, setIndex] = useState(0);
   const [started, setStarted] = useState(false);
+  const [finished, setFinished] = useState(false);
   const startTimer = useRef<number | null>(null);
   const music = useSoundtrack(soundtrackSrc(movie.soundtrack));
   const startMusic = music.start;
@@ -67,12 +69,28 @@ export const MovieFeature = memo(function MovieFeature({
 
   const goTo = useCallback(
     (next: number) => {
-      const clamped = Math.max(0, Math.min(count - 1, next));
+      if (next >= count) {
+        setFinished(true);
+        return;
+      }
+      setFinished(false);
+      const clamped = Math.max(0, next);
       setIndex(clamped);
       onChange?.(clamped, frames[clamped].label);
     },
     [count, frames, onChange],
   );
+
+  const finishMusic = music.finish;
+  useEffect(() => {
+    if (finished) finishMusic();
+  }, [finished, finishMusic]);
+  const replayMusic = music.replay;
+  const replay = useCallback(() => {
+    replayMusic();
+    goTo(0);
+  }, [goTo, replayMusic]);
+  const finish = useCallback(() => setFinished(true), []);
 
   useEffect(() => {
     if (focusIndex === undefined) return;
@@ -107,8 +125,9 @@ export const MovieFeature = memo(function MovieFeature({
     scene: frame.scene,
     index,
     stage,
-    active: true,
+    active: !finished,
     reduce,
+    onDone: index === count - 1 ? finish : undefined,
   };
   const caption = movie.scenes[frame.scene]?.caption;
 
@@ -129,6 +148,8 @@ export const MovieFeature = memo(function MovieFeature({
         >
           {!started ? (
             <OpeningSlate data={data} stage={stage} reduce={reduce} onPlay={play} />
+          ) : finished ? (
+            <EndScreen stage={stage} reduce={reduce} onReplay={replay} />
           ) : (
             <>
               <article
@@ -179,8 +200,7 @@ export const MovieFeature = memo(function MovieFeature({
                 <button
                   type="button"
                   onClick={() => goTo(index + 1)}
-                  disabled={index === count - 1}
-                  aria-label="Next scene"
+                  aria-label={index === count - 1 ? 'End' : 'Next scene'}
                   className="movie-control"
                 >
                   <ChevronRight className="h-5 w-5" aria-hidden />

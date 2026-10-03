@@ -1861,7 +1861,6 @@ html.is-landscape .xso-dock {
 
 /* Movie Box reel: celluloid edges with perforations that scroll with the film */
 
-
 /* Half of the black bar between two frames; neighbours meet to make one 8px line. */
 
 .film-face {
@@ -2843,4 +2842,19 @@ html.is-landscape .xso-dock {
 .movie-control:focus-visible {
   outline: 2px solid #fdba74;
   outline-offset: 2px;
+}
+
+.movie-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.12em;
+  background: #fdba74;
+  animation: movie-caret 0.9s steps(1) infinite;
+}
+@keyframes movie-caret {
+  50% {
+    opacity: 0;
+  }
 }

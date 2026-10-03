@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useEffect, useState, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { AuditMetrics, MovieLayers, XsoData } from '@/types/xso';
 import { auditLabel } from '@/lib/formats';
@@ -18,6 +18,8 @@ export interface SceneProps {
   /** On screen now; animations start when this turns true. */
   active: boolean;
   reduce: boolean;
+  /** The scene has played out (the letter's last line has landed). */
+  onDone?: () => void;
 }
 
 export const Slate = memo(function Slate({
@@ -260,27 +262,89 @@ export function letterLines(message: string): string[] {
     .filter(Boolean);
 }
 
-export const LetterScene = memo(function LetterScene({ data, stage }: SceneProps) {
+const CHAR_MS = 24;
+const LINE_PAUSE = 450;
+/** A breath before the last line lands. */
+const FINAL_PAUSE = 1400;
+const AFTER_LETTER = 2600;
+
+/**
+ * The letter types itself out line by line, holds before the final line, then signs off. A tap
+ * finishes it at once; reduced motion shows it whole. Screen readers get the full text up front.
+ */
+export const LetterScene = memo(function LetterScene({
+  data,
+  stage,
+  active,
+  reduce,
+  onDone,
+}: SceneProps) {
   const { big } = stage;
-  const lines = letterLines(data.birthdayMessage);
+  const lines = useMemo(() => letterLines(data.birthdayMessage), [data.birthdayMessage]);
+  const total = lines.length;
+  const [line, setLine] = useState(reduce ? total : 0);
+  const [chars, setChars] = useState(0);
+  const done = line >= total;
+
+  useEffect(() => {
+    if (!active || done) return;
+    const text = lines[line];
+    if (chars < text.length) {
+      const timer = window.setTimeout(() => setChars((c) => c + 1), CHAR_MS);
+      return () => window.clearTimeout(timer);
+    }
+    const timer = window.setTimeout(
+      () => {
+        setLine((l) => l + 1);
+        setChars(0);
+      },
+      line === total - 2 ? FINAL_PAUSE : LINE_PAUSE,
+    );
+    return () => window.clearTimeout(timer);
+  }, [active, chars, done, line, lines, total]);
+
+  useEffect(() => {
+    if (!active || !done || !onDone) return;
+    const timer = window.setTimeout(onDone, AFTER_LETTER);
+    return () => window.clearTimeout(timer);
+  }, [active, done, onDone]);
+
   return (
-    <div className="flex h-full w-full items-center justify-center overflow-y-auto px-7 py-20">
+    <div
+      className="flex h-full w-full items-center justify-center overflow-y-auto px-7 py-20"
+      onClick={() => setLine(total)}
+    >
       <div className={`w-full ${big ? 'max-w-[640px]' : 'max-w-[340px]'}`}>
         <p
           className={`font-hand leading-none text-[#fffaf0] ${big ? 'text-[44px]' : 'text-[34px]'}`}
         >
           Dear {data.customerName},
         </p>
+        <p className="sr-only">{data.birthdayMessage}</p>
         <div
+          aria-hidden
           className={`mt-5 space-y-2 font-serif italic text-[#fffaf0]/90 ${big ? 'text-[20px] leading-relaxed' : 'text-[17px] leading-snug'}`}
         >
-          {lines.map((line, i) => (
-            <p key={i}>{line}</p>
-          ))}
+          {lines.map((text, i) => {
+            if (i < line) return <p key={i}>{text}</p>;
+            if (i > line)
+              return (
+                <p key={i} className="invisible">
+                  {text}
+                </p>
+              );
+            return (
+              <p key={i}>
+                {text.slice(0, chars)}
+                <span className="movie-caret" />
+                <span className="invisible">{text.slice(chars)}</span>
+              </p>
+            );
+          })}
         </div>
         {data.billerName ? (
           <p
-            className={`mt-6 text-right font-hand text-[#fdba74] ${big ? 'text-[32px]' : 'text-[26px]'}`}
+            className={`mt-6 text-right font-hand text-[#fdba74] transition-opacity duration-700 ${done ? 'opacity-100' : 'opacity-0'} ${big ? 'text-[32px]' : 'text-[26px]'}`}
           >
             — {data.billerName}
           </p>

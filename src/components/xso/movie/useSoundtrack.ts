@@ -56,6 +56,21 @@ export function useSoundtrack(src: string | null) {
     });
   }, [ramp]);
 
+  /** Back to the top for "Watch again", fading in like the first time. */
+  const replay = useCallback(() => {
+    const node = audio.current;
+    if (!node) return;
+    node.currentTime = 0;
+    node.volume = 0;
+    void node
+      .play()
+      .then(() => {
+        setPlaying(true);
+        ramp(VOLUME, 1500);
+      })
+      .catch(() => {});
+  }, [ramp]);
+
   const toggleMute = useCallback(() => {
     setMuted((m) => {
       if (audio.current) audio.current.muted = !m;
@@ -83,5 +98,5 @@ export function useSoundtrack(src: string | null) {
     [],
   );
 
-  return { start, finish, muted, toggleMute, playing, available: Boolean(src) };
+  return { start, finish, replay, muted, toggleMute, playing, available: Boolean(src) };
 }
