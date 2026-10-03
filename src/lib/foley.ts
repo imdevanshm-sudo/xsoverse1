@@ -1,3 +1,5 @@
+import { soundOn } from '@/lib/sound';
+
 /**
  * Small, realistic interaction sounds made from filtered noise (paper, card,
  * foil, tape) instead of oscillator beeps. One shared AudioContext and one
@@ -23,8 +25,7 @@ function getContext(): AudioContext | null {
   if (!context) {
     const Ctor =
       window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
     context = new Ctor();
   }
@@ -90,6 +91,7 @@ function burst(ctx: AudioContext, out: AudioNode, b: Burst) {
 const jitter = (v: number, amount = 0.12) => v * (1 - amount + Math.random() * amount * 2);
 
 export function playFoley(cue: FoleyCue, volume = 1) {
+  if (!soundOn()) return;
   try {
     const ctx = getContext();
     if (!ctx) return;
@@ -100,7 +102,13 @@ export function playFoley(cue: FoleyCue, volume = 1) {
     switch (cue) {
       case 'flip':
         // Crisp edge snap, then air as the card sweeps away.
-        burst(ctx, out, { duration: 0.035, gain: 0.22, filter: 'highpass', freq: jitter(2600), q: 0.7 });
+        burst(ctx, out, {
+          duration: 0.035,
+          gain: 0.22,
+          filter: 'highpass',
+          freq: jitter(2600),
+          q: 0.7,
+        });
         burst(ctx, out, {
           at: 0.012,
           duration: 0.16,
@@ -113,14 +121,32 @@ export function playFoley(cue: FoleyCue, volume = 1) {
         });
         break;
       case 'tap':
-        burst(ctx, out, { duration: 0.028, gain: 0.16, filter: 'bandpass', freq: jitter(1400), q: 1.2 });
+        burst(ctx, out, {
+          duration: 0.028,
+          gain: 0.16,
+          filter: 'bandpass',
+          freq: jitter(1400),
+          q: 1.2,
+        });
         break;
       case 'land':
-        burst(ctx, out, { duration: 0.06, gain: 0.14, filter: 'lowpass', freq: jitter(900), q: 0.7 });
+        burst(ctx, out, {
+          duration: 0.06,
+          gain: 0.14,
+          filter: 'lowpass',
+          freq: jitter(900),
+          q: 0.7,
+        });
         burst(ctx, out, { duration: 0.03, gain: 0.05, filter: 'highpass', freq: 3000 });
         break;
       case 'thunk':
-        burst(ctx, out, { duration: 0.09, gain: 0.3, filter: 'lowpass', freq: jitter(320), q: 1.1 });
+        burst(ctx, out, {
+          duration: 0.09,
+          gain: 0.3,
+          filter: 'lowpass',
+          freq: jitter(320),
+          q: 1.1,
+        });
         burst(ctx, out, { duration: 0.025, gain: 0.08, filter: 'bandpass', freq: 1800, q: 1 });
         break;
       case 'scratch':
@@ -169,8 +195,21 @@ export function playFoley(cue: FoleyCue, volume = 1) {
         }
         break;
       case 'reel':
-        burst(ctx, out, { duration: 0.018, gain: 0.14, filter: 'bandpass', freq: jitter(3200), q: 2.4 });
-        burst(ctx, out, { at: 0.01, duration: 0.05, gain: 0.08, filter: 'lowpass', freq: jitter(520), q: 1 });
+        burst(ctx, out, {
+          duration: 0.018,
+          gain: 0.14,
+          filter: 'bandpass',
+          freq: jitter(3200),
+          q: 2.4,
+        });
+        burst(ctx, out, {
+          at: 0.01,
+          duration: 0.05,
+          gain: 0.08,
+          filter: 'lowpass',
+          freq: jitter(520),
+          q: 1,
+        });
         break;
     }
   } catch {
@@ -183,6 +222,7 @@ export function playFoley(cue: FoleyCue, volume = 1) {
  * function that fades it out; calling it twice is harmless.
  */
 export function startHum(volume = 0.05): () => void {
+  if (!soundOn()) return () => {};
   try {
     const ctx = getContext();
     if (!ctx) return () => {};

@@ -30,6 +30,8 @@ import {
 import { PreviewWatermark } from '@/components/xso/PreviewWatermark';
 import { FitStage } from '@/components/xso/stage/FitStage';
 import { FirstVisitHint } from '@/components/xso/stage/FirstVisitHint';
+import { SoundToggle } from '@/components/xso/stage/SoundToggle';
+import { soundOn } from '@/lib/sound';
 import type { GiftWrapper } from '@/lib/giftWrapper';
 import { RECIPIENT_OFFER, recipientOfferPrice } from '@/lib/pricing';
 import { track } from '@/lib/analytics';
@@ -137,7 +139,12 @@ export function GiftUnboxing({
             {framed || !HINTS[contents.giftStyle] ? null : (
               <FirstVisitHint text={HINTS[contents.giftStyle]!} />
             )}
-            {framed || contents.giftStyle === 'moviebox' ? null : <MakeOneBack ended={finished} />}
+            {framed || contents.giftStyle === 'moviebox' ? null : (
+              <>
+                <SoundToggle />
+                <MakeOneBack ended={finished} />
+              </>
+            )}
           </motion.div>
         ) : wrapGone ? (
           <OpeningDot key="opening" />
@@ -590,6 +597,7 @@ function wrapSurface(matte: boolean): CSSProperties {
 }
 
 function playPaperUnwrap() {
+  if (!soundOn()) return;
   try {
     const AudioContextCtor =
       window.AudioContext ||
