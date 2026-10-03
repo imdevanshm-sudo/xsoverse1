@@ -27,6 +27,7 @@ import {
 import { Pause, Play } from 'lucide-react';
 import type { ScrapbookLayers, XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
+import { playSfx } from '@/lib/sfx';
 import { STICKY_COLORS, resolveScrapbook } from '@/lib/scrapbook';
 import { useCoarsePointer, useTouchSpring } from '@/hooks/useTouchSpring';
 import { SOFT_SPRING } from '@/lib/motion';
@@ -40,7 +41,10 @@ import { usePauseOffscreen } from '@/hooks/usePauseOffscreen';
 const PICK_UP = { type: 'spring' as const, stiffness: 300, damping: 25 };
 /** Slow and a little floaty, like sliding paper across felt. */
 const TIDY_SPRING = { type: 'spring' as const, stiffness: 90, damping: 15, mass: 1.1 };
-const FOCUS_SPRING = { type: 'spring' as const, stiffness: 210, damping: 26 };
+/** Lifted off the desk: quick, with a little overshoot, like a hand picking up paper. */
+const FOCUS_SPRING = { type: 'spring' as const, stiffness: 240, damping: 21, mass: 0.9 };
+/** Set back down: slower and settled, so it lands in its spot instead of snapping there. */
+const PUT_BACK_SPRING = { type: 'spring' as const, stiffness: 160, damping: 24, mass: 1 };
 const INSTANT = { duration: 0 };
 /** Presses on these stay with the control instead of picking the item up. */
 const INTERACTIVE = 'button, a, input, audio, [data-no-drag]';
@@ -395,7 +399,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     const k = d.width / box.offsetWidth || 1;
     const width = node.offsetWidth;
     const height = node.offsetHeight;
-    playFoley('flip', 0.5);
+    playSfx('paper-rustle', 0.6);
     setLifted(item.id);
     setFocus({
       id: item.id,
@@ -438,7 +442,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     const r = node.getBoundingClientRect();
     const k = box.getBoundingClientRect().width / box.offsetWidth || 1;
     const { index, src } = item.photo;
-    playFoley('flip', 0.5);
+    playSfx('polaroid-slide', 0.7);
     openPolaroid({
       id: `${scope}${item.id}`,
       src,
@@ -674,6 +678,12 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   return (
     <section className="relative h-full w-full" aria-label="Scrapbook desk">
       <div
+        className="absolute inset-x-0 bottom-0 flex items-center px-4"
+        style={{ height: FILL_BANDS.bottom }}
+      >
+        <div className="mx-auto w-full max-w-[900px]">{toolbar}</div>
+      </div>
+      <div
         ref={area}
         className="absolute inset-x-0 flex items-center justify-center"
         style={{ top: FILL_BANDS.top, bottom: FILL_BANDS.bottom }}
@@ -692,12 +702,6 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
             </div>
           </MotionConfig>
         ) : null}
-      </div>
-      <div
-        className="absolute inset-x-0 bottom-0 flex items-center px-4"
-        style={{ height: FILL_BANDS.bottom }}
-      >
-        <div className="mx-auto w-full max-w-[900px]">{toolbar}</div>
       </div>
     </section>
   );
@@ -1318,9 +1322,9 @@ function FocusView({
         tabIndex={-1}
         aria-hidden
         onClick={onClose}
-        className="absolute inset-0 rounded-[inherit] bg-[#180e15]/55 backdrop-blur-[3px]"
+        className="desk-dim absolute bg-[#120a0e]/60 backdrop-blur-[6px]"
         {...fade}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.35 }}
       />
 
       <AnimatePresence mode="wait" initial={false}>
@@ -1346,7 +1350,11 @@ function FocusView({
         style={{ width: focus.width }}
         initial={reduce ? { ...resting, opacity: 0 } : resting}
         animate={{ x: 0, y: -12, rotate: 0, scale: focus.scale, opacity: 1 }}
-        exit={reduce ? { opacity: 0 } : resting}
+        exit={
+          reduce
+            ? { opacity: 0, transition: { duration: 0.15 } }
+            : { ...resting, transition: PUT_BACK_SPRING }
+        }
         transition={reduce ? { duration: 0.15 } : FOCUS_SPRING}
       >
         <span aria-hidden className="desk-focus-glow" />
@@ -1428,7 +1436,7 @@ function OpenLetter({
         tabIndex={-1}
         aria-hidden
         onClick={onClose}
-        className="absolute inset-0 rounded-[inherit] bg-[#180e15]/90"
+        className="desk-dim absolute bg-[#120a0e]/85 backdrop-blur-[6px]"
       />
       <motion.div
         className="relative w-full max-w-[340px]"

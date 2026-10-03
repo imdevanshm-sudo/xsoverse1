@@ -2941,3 +2941,16 @@ html.is-landscape .xso-dock {
 .desk-pin--amber {
   background: radial-gradient(circle at 35% 30%, #ffe4ad, #dd9a33 45%, #7d520f 100%);
 }
+
+/*
+ * The dim behind a lifted scrapbook piece reaches past the scaled desk to the whole board (the
+ * viewer clips it at the canvas edge).
+ */
+.desk-dim {
+  inset: -2000px;
+}
+
+.scrap-desk .desk-dim {
+  inset: 0;
+  border-radius: inherit;
+}

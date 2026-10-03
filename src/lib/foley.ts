@@ -15,12 +15,14 @@ export type FoleyCue =
   | 'shuffle' // riffle of a few cards
   | 'whir' // tape rewind
   | 'crank' // projector ratchet
-  | 'reel'; // one claw pull-down of the film gate
+  | 'reel' // one claw pull-down of the film gate
+  | 'crack' // wax seal snapping
+  | 'slide'; // a print sliding out across the desk
 
 let context: AudioContext | null = null;
 let noise: AudioBuffer | null = null;
 
-function getContext(): AudioContext | null {
+export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!context) {
     const Ctor =
@@ -93,7 +95,7 @@ const jitter = (v: number, amount = 0.12) => v * (1 - amount + Math.random() * a
 export function playFoley(cue: FoleyCue, volume = 1) {
   if (!soundOn()) return;
   try {
-    const ctx = getContext();
+    const ctx = getAudioContext();
     if (!ctx) return;
     const out = ctx.createGain();
     out.gain.value = volume;
@@ -194,6 +196,53 @@ export function playFoley(cue: FoleyCue, volume = 1) {
           });
         }
         break;
+      case 'crack':
+        // A brittle snap, a dull knock through the paper, then a few crumbs.
+        burst(ctx, out, {
+          duration: 0.022,
+          gain: 0.32,
+          filter: 'highpass',
+          freq: jitter(3200),
+          q: 0.9,
+        });
+        burst(ctx, out, {
+          at: 0.004,
+          duration: 0.05,
+          gain: 0.18,
+          filter: 'bandpass',
+          freq: jitter(1300),
+          q: 1.4,
+        });
+        burst(ctx, out, {
+          at: 0.01,
+          duration: 0.09,
+          gain: 0.2,
+          filter: 'lowpass',
+          freq: jitter(260),
+          q: 1,
+        });
+        for (let i = 0; i < 3; i += 1) {
+          burst(ctx, out, {
+            at: 0.06 + i * jitter(0.035, 0.4),
+            duration: 0.018,
+            gain: 0.05,
+            filter: 'bandpass',
+            freq: jitter(4200, 0.25),
+            q: 2,
+          });
+        }
+        break;
+      case 'slide':
+        burst(ctx, out, {
+          duration: 0.3,
+          gain: 0.06,
+          attack: 0.07,
+          filter: 'bandpass',
+          freq: jitter(900),
+          freqEnd: 2600,
+          q: 0.9,
+        });
+        break;
       case 'reel':
         burst(ctx, out, {
           duration: 0.018,
@@ -224,7 +273,7 @@ export function playFoley(cue: FoleyCue, volume = 1) {
 export function startHum(volume = 0.05): () => void {
   if (!soundOn()) return () => {};
   try {
-    const ctx = getContext();
+    const ctx = getAudioContext();
     if (!ctx) return () => {};
     const source = ctx.createBufferSource();
     source.buffer = getNoise(ctx);
