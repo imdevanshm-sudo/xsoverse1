@@ -2766,3 +2766,36 @@ html.is-landscape .xso-dock {
     touch-action: pan-y;
   }
 }
+
+/* Immersive prompt: a hairline pill that breathes a soft halo in the dark. */
+.immersive-cta {
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 22px -6px rgba(255, 255, 255, 0.28);
+  animation: immersive-breathe 3.6s ease-in-out infinite;
+  transition:
+    border-color 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.immersive-cta:hover,
+.immersive-cta:focus-visible {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+  outline: none;
+}
+
+@keyframes immersive-breathe {
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 0 34px -4px rgba(255, 255, 255, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .immersive-cta {
+    animation: none;
+  }
+}

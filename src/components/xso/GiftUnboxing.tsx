@@ -9,6 +9,7 @@ import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
 import { MovieBox } from '@/components/xso/preview/MovieBox';
 import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
+import { ImmersivePrompt } from '@/components/xso/ImmersivePrompt';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
 /**
@@ -34,7 +35,7 @@ export function GiftUnboxing({
     setIsUnwrapped(true);
   };
 
-  return (
+  const stage = (
     <div
       className={`mx-auto my-auto flex w-full max-w-md flex-col justify-between gap-4 p-4 sm:p-6 md:max-w-sm md:py-8 ${
         preview
@@ -111,6 +112,8 @@ export function GiftUnboxing({
       )}
     </div>
   );
+
+  return preview ? stage : <ImmersivePrompt id={giftId}>{stage}</ImmersivePrompt>;
 }
 
 function GiftWrap({

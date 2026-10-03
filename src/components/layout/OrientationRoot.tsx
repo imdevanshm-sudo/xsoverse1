@@ -57,7 +57,22 @@ export function OrientationRoot() {
     };
     window.addEventListener('orientationchange', onOrient);
 
+    /** Entering or leaving fullscreen only moves the height by a toolbar, so force a re-measure. */
+    const force = () => {
+      lastH = -1;
+      schedule();
+    };
+    const onFullscreen = () => {
+      root.classList.toggle('is-fullscreen', Boolean(document.fullscreenElement));
+      force();
+      timers.push(window.setTimeout(force, 120), window.setTimeout(force, 500));
+    };
+    document.addEventListener('fullscreenchange', onFullscreen);
+    document.addEventListener('webkitfullscreenchange', onFullscreen);
+
     return () => {
+      document.removeEventListener('fullscreenchange', onFullscreen);
+      document.removeEventListener('webkitfullscreenchange', onFullscreen);
       cancelAnimationFrame(frame);
       timers.forEach((id) => window.clearTimeout(id));
       vv?.removeEventListener('resize', schedule);
