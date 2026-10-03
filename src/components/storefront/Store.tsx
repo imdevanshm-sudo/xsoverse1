@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useXsoStore } from '@/store/useXsoStore';
 import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { getCartridge } from '@/lib/cartridges';
-import { tierPrice } from '@/lib/pricing';
+import { track } from '@/lib/analytics';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { StickyCreateBar } from '@/components/storefront/StickyCreateBar';
 import { XSOCustomizerHost } from '@/components/storefront/XSOCustomizerHost';
@@ -38,12 +38,23 @@ export function Store() {
     () => openCustomizer({ format: useXsoStore.getState().giftStyle }),
     [openCustomizer],
   );
+  const onHeroCta = useCallback(() => {
+    track('cta_click', { source: 'hero' });
+    createXso();
+  }, [createXso]);
   const createWithFormat = useCallback(
     (style: GiftStyle) => {
       setField('giftStyle', style);
       openCustomizer({ format: style });
     },
     [openCustomizer, setField],
+  );
+  const pickFromCard = useCallback(
+    (style: GiftStyle) => {
+      track('cta_click', { source: 'aesthetic_card', aesthetic: style });
+      createWithFormat(style);
+    },
+    [createWithFormat],
   );
 
   /** `/?order=<style>` (the checkout page's edit link) lands straight in the customizer. */
@@ -87,11 +98,14 @@ export function Store() {
         <div className="z-30 mt-8 md:sticky md:top-4">
           <button
             type="button"
-            onClick={createXso}
+            onClick={onHeroCta}
             className="matte-cta flex min-h-[4rem] w-full touch-manipulation items-center justify-center gap-2 rounded-full px-6 font-serif text-[20px] font-semibold shadow-[0_14px_40px_rgba(236,72,153,.35)] transition-transform active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
           >
-            Claim yours · {tierPrice('full')}
+            Make yours
           </button>
+          <p className="mt-2.5 text-center font-receipt text-[11px] uppercase tracking-[0.16em] text-[#c99aae]">
+            Ready in about 60 seconds. No shipping, no waiting.
+          </p>
         </div>
 
         <section className="mt-10" aria-labelledby="formats-heading">
@@ -108,7 +122,7 @@ export function Store() {
                   format={format}
                   wide={i === BENTO.length - 1}
                   priority={i < 2}
-                  onPick={createWithFormat}
+                  onPick={pickFromCard}
                 />
               </li>
             ))}

@@ -5,17 +5,17 @@ import { Sparkles } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
 import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
-import { tierPrice } from '@/lib/pricing';
+import { track } from '@/lib/analytics';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 
 /** Mobile-only buy bar pinned to the bottom of the store. */
 export const StickyCreateBar = memo(function StickyCreateBar() {
   const giftStyle = useXsoStore((s) => s.giftStyle);
   const openCustomizer = useCustomizerModal((s) => s.open);
-  const open = useCallback(
-    () => openCustomizer({ format: giftStyle }),
-    [openCustomizer, giftStyle],
-  );
+  const open = useCallback(() => {
+    track('cta_click', { source: 'sticky_bar', aesthetic: giftStyle });
+    openCustomizer({ format: giftStyle });
+  }, [openCustomizer, giftStyle]);
   const cart = getCartridge(giftStyle);
 
   return (
@@ -28,8 +28,8 @@ export const StickyCreateBar = memo(function StickyCreateBar() {
           <span className="block truncate font-serif text-[15px] font-semibold leading-tight text-[#fdf2f8]">
             {displayTitle(cart)}
           </span>
-          <span className="block font-receipt text-[12px] font-bold tabular-nums text-[#fdba74]">
-            {tierPrice('full')}
+          <span className="block font-receipt text-[11px] uppercase tracking-[0.12em] text-[#c99aae]">
+            Ready in 60 seconds
           </span>
         </span>
         <button
@@ -38,7 +38,7 @@ export const StickyCreateBar = memo(function StickyCreateBar() {
           className="matte-cta flex min-h-[48px] shrink-0 touch-manipulation items-center gap-2 rounded-full px-5 font-serif text-[16px] font-semibold"
         >
           <Sparkles className="h-4 w-4" aria-hidden />
-          Claim yours
+          Make yours
         </button>
       </div>
     </div>
