@@ -391,6 +391,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const [torn, setTorn] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
   const [seal, setSeal] = useState<SealState>('whole');
+  const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
   const [focus, setFocus] = useState<Focus | null>(null);
   /** The desk copy stays hidden until the focused copy has landed back on it. */
   const [lifted, setLifted] = useState<string | null>(null);
@@ -604,6 +605,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     const { items: all, openFocus: open, showPolaroid: show } = latest.current;
     const order = all.findIndex((it) => it.id === id);
     if (order < 0) return;
+    setOpened((current) => (current.has(id) ? current : new Set(current).add(id)));
     if (all[order].kind === 'polaroid') return show(all[order], order);
     if (all[order].kind !== 'letter') return open(all[order], order);
     const unfold = () => {
@@ -653,6 +655,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
           reduce={reduce}
           tactile={tactile}
           hidden={lifted === item.id || lightboxId === `${scope}${item.id}`}
+          unopened={fill && !opened.has(item.id)}
           entering={!seen.current!.has(item.id)}
           onNode={registerNode}
           label={LABELS[item.kind](item)}
@@ -710,10 +713,25 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       </AnimatePresence>
     </div>
   );
+  const openedCount = items.filter((item) => opened.has(item.id)).length;
+  const letterLeft =
+    items.some((item) => item.kind === 'letter') &&
+    !opened.has('letter') &&
+    openedCount === items.length - 1;
+  const progress = fill ? (
+    <p
+      aria-live="polite"
+      className="min-w-0 font-receipt text-[11px] uppercase leading-relaxed tracking-[0.16em] text-[#e9c9b4] md:text-[12px]"
+    >
+      Opened {openedCount} of {items.length}
+      {letterLeft ? <span className="text-[#f5a3b8]"> · Now the letter</span> : null}
+    </p>
+  ) : null;
   const toolbar = chrome ? (
     <div
-      className={`flex items-center gap-3 px-1 ${fill ? '' : 'mt-3'} ${quiet ? 'justify-end' : 'justify-between'}`}
+      className={`flex items-center gap-3 px-1 ${fill ? '' : 'mt-3'} ${quiet && !progress ? 'justify-end' : 'justify-between'}`}
     >
+      {progress}
       {quiet ? null : (
         <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
           {tactile ? 'Drag anything · tap to look closer' : 'Tap anything to look closer'}
@@ -812,6 +830,7 @@ const DeskItem = memo(function DeskItem({
   reduce,
   tactile,
   hidden,
+  unopened,
   entering,
   label,
   hint,
@@ -832,6 +851,8 @@ const DeskItem = memo(function DeskItem({
   /** Free 2D dragging; off on the storefront for touch so the page can scroll. */
   tactile: boolean;
   hidden: boolean;
+  /** Not looked at yet: a small glowing dot invites a tap. */
+  unopened?: boolean;
   entering: boolean;
   label: string;
   hint?: string;
@@ -927,10 +948,11 @@ const DeskItem = memo(function DeskItem({
         onKeyDown={onKeyDown}
         tabIndex={hidden ? -1 : 0}
         role="button"
-        aria-label={label}
+        aria-label={unopened ? `${label} (not opened yet)` : label}
       >
         <motion.span aria-hidden className="desk-item__lift" variants={LIFT_SHADOW} />
         <div className={enter ? 'desk-enter' : undefined}>{children}</div>
+        {unopened ? <span aria-hidden className="desk-unopened" /> : null}
         {hint ? (
           <span aria-hidden className="desk-hint">
             {hint}
