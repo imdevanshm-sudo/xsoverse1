@@ -78,7 +78,16 @@ const COPY: Variants = {
  * A black interstitial before the unwrap that offers to drop the browser chrome.
  * The gift renders underneath from the start, so the reveal is just the shroud lifting.
  */
-export function ImmersivePrompt({ id, children }: { id: string; children: ReactNode }) {
+export function ImmersivePrompt({
+  id,
+  hold = false,
+  children,
+}: {
+  id: string;
+  /** Stay plain black (e.g. under the preloader) and only begin the prompt once released. */
+  hold?: boolean;
+  children: ReactNode;
+}) {
   const reduce = useReducedMotion();
   const [mode, setMode] = useState<Mode>('checking');
   const [exit, setExit] = useState<Exit>('instant');
@@ -88,6 +97,7 @@ export function ImmersivePrompt({ id, children }: { id: string; children: ReactN
   const storageKey = `xso:immersive:${id}`;
 
   useEffect(() => {
+    if (hold) return;
     let seen = false;
     try {
       seen = sessionStorage.getItem(storageKey) === '1';
@@ -100,7 +110,7 @@ export function ImmersivePrompt({ id, children }: { id: string; children: ReactN
     }
     setIosHint(isIOS());
     setMode(canFullscreen() ? 'fullscreen' : 'toolbars');
-  }, [storageKey]);
+  }, [storageKey, hold]);
 
   useEffect(() => {
     const el = content.current;
@@ -135,7 +145,9 @@ export function ImmersivePrompt({ id, children }: { id: string; children: ReactN
         {children}
       </div>
       <noscript>
-        <style>{'[data-immersive-prompt]{display:none!important}'}</style>
+        <style>
+          {'[data-immersive-prompt],[data-recipient-preloader]{display:none!important}'}
+        </style>
       </noscript>
       <AnimatePresence custom={exit}>
         {mode === 'done' ? null : (

@@ -9,6 +9,8 @@ import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
 import { MovieBox } from '@/components/xso/preview/MovieBox';
 import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
 import { ImmersivePrompt } from '@/components/xso/ImmersivePrompt';
+import { RecipientPreloader } from '@/components/xso/RecipientPreloader';
+import { useAssetPreloader } from '@/hooks/useAssetPreloader';
 import type { XsoData } from '@/types/xso';
 
 /**
@@ -28,6 +30,7 @@ export function GiftUnboxing({
   const data = initialData;
   const [isUnwrapped, setIsUnwrapped] = useState(false);
   const note = useMemo(() => giftTagNote(data, giftId), [data, giftId]);
+  const ready = useAssetPreloader(data, { enabled: !preview });
 
   const unwrap = () => {
     if (isUnwrapped) return;
@@ -68,9 +71,12 @@ export function GiftUnboxing({
   }
 
   return (
-    <ImmersivePrompt id={giftId}>
-      <RecipientCanvas>{content}</RecipientCanvas>
-    </ImmersivePrompt>
+    <>
+      <ImmersivePrompt id={giftId} hold={!ready}>
+        <RecipientCanvas>{content}</RecipientCanvas>
+      </ImmersivePrompt>
+      <AnimatePresence>{ready ? null : <RecipientPreloader key="preloader" />}</AnimatePresence>
+    </>
   );
 }
 
