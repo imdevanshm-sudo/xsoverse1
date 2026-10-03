@@ -28,8 +28,8 @@ export const StickyCreateBar = memo(function StickyCreateBar() {
           <span className="block truncate font-serif text-[15px] font-semibold leading-tight text-[#fdf2f8]">
             {displayTitle(cart)}
           </span>
-          <span className="block font-receipt text-[11px] uppercase tracking-[0.12em] text-[#c99aae]">
-            Ready in 60 seconds
+          <span className="block truncate font-receipt text-[11px] uppercase tracking-[0.12em] text-[#c99aae]">
+            No shipping
           </span>
         </span>
         <button

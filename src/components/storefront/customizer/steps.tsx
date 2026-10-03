@@ -6,7 +6,7 @@ import { CARTRIDGES, displayTitle } from '@/lib/cartridges';
 import { DEFAULT_CARDS, FORMAT_CARDS, MIN_CARDS, type CardId } from '@/lib/formatCards';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { ORDER_FORMATS, toGiftStyle, type OrderFormat } from '@/types/order';
-import { formatPrice, TIERS, type Quote } from '@/lib/pricing';
+import { formatPrice, styleTier, TIERS, type Quote } from '@/lib/pricing';
 
 const LABEL = 'font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]';
 
@@ -25,6 +25,7 @@ export const FormatStep = memo(function FormatStep({
         const cart = CARTRIDGES.find((c) => c.id === style);
         if (!cart) return null;
         const selected = id === format;
+        const deluxe = styleTier(style) === 'deluxe';
         return (
           <button
             key={id}
@@ -33,7 +34,13 @@ export const FormatStep = memo(function FormatStep({
             aria-checked={selected}
             onClick={() => onFormat(id)}
             className={`flex items-stretch gap-3 rounded-2xl border p-2.5 text-left transition-transform active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] ${
-              selected ? 'border-[#ec4899] bg-[#2e1620]' : 'border-white/10 bg-[#21131b]'
+              selected
+                ? deluxe
+                  ? 'border-[#fbbf24] bg-[#2a1a10]'
+                  : 'border-[#ec4899] bg-[#2e1620]'
+                : deluxe
+                  ? 'border-[#fbbf24]/35 bg-[#21131b]'
+                  : 'border-white/10 bg-[#21131b]'
             }`}
           >
             <span className="relative w-[4.5rem] shrink-0 overflow-hidden rounded-xl bg-[#1a0f14] [aspect-ratio:4/5]">
@@ -41,16 +48,34 @@ export const FormatStep = memo(function FormatStep({
             </span>
             <span className="min-w-0 flex-1 py-0.5">
               <span className="flex items-center justify-between gap-2">
-                <span className="font-receipt text-[12px] font-bold uppercase tracking-[0.12em] text-[#fdf2f8]">
-                  {displayTitle(cart)}
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate font-receipt text-[12px] font-bold uppercase tracking-[0.12em] text-[#fdf2f8]">
+                    {displayTitle(cart)}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 font-receipt text-[9.5px] font-bold uppercase tracking-[0.14em] ${
+                      deluxe ? 'bg-[#fbbf24] text-[#2a1a10]' : 'bg-white/10 text-[#c99aae]'
+                    }`}
+                  >
+                    {deluxe ? TIERS.deluxe.name : 'Included'}
+                  </span>
                 </span>
                 <span
                   aria-hidden
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                    selected ? 'border-[#ec4899] bg-[#ec4899]' : 'border-white/25'
+                    selected
+                      ? deluxe
+                        ? 'border-[#fbbf24] bg-[#fbbf24]'
+                        : 'border-[#ec4899] bg-[#ec4899]'
+                      : 'border-white/25'
                   }`}
                 >
-                  {selected ? <Check className="h-3 w-3 text-white" strokeWidth={3} /> : null}
+                  {selected ? (
+                    <Check
+                      className={`h-3 w-3 ${deluxe ? 'text-[#2a1a10]' : 'text-white'}`}
+                      strokeWidth={3}
+                    />
+                  ) : null}
                 </span>
               </span>
               <span className="mt-0.5 block font-serif text-[15px] font-semibold leading-snug text-[#fed7aa]">
