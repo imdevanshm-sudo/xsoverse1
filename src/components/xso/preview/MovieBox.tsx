@@ -18,6 +18,7 @@ import {
   useInView,
   useMotionValueEvent,
   useReducedMotion,
+  useScroll,
   useTransform,
   type AnimationPlaybackControls,
   type MotionValue,
@@ -101,6 +102,18 @@ export const MovieBox = memo(function MovieBox(props: ProjectorProps) {
   );
   const focused =
     focusIndex === undefined ? undefined : artifacts.findIndex((a) => a.scene === focusIndex);
+  if (props.size === 'fill') {
+    return (
+      <MovieReel
+        key={key}
+        data={data}
+        onChange={props.onChange}
+        movie={movie}
+        artifacts={artifacts}
+        focusIndex={focused === undefined || focused < 0 ? undefined : focused}
+      />
+    );
+  }
   return (
     <Projector
       key={key}
@@ -402,6 +415,286 @@ function Projector({
   );
 }
 
+/**
+ * The recipient's reel: one scene per screen, scrolled vertically through a strip of
+ * celluloid. Snap stops on every frame, so a swipe pulls exactly one scene through.
+ */
+function MovieReel({
+  data,
+  onChange,
+  focusIndex,
+  movie,
+  artifacts,
+}: {
+  data: XsoData;
+  onChange?: (index: number, label: string) => void;
+  focusIndex?: number;
+  movie: MovieLayers;
+  artifacts: Frame[];
+}) {
+  const story = useMemo(() => storyFor(data, movie), [data, movie]);
+  const reduce = Boolean(useReducedMotion());
+  const fx = useProjectorFx();
+  const scroller = useRef<HTMLDivElement>(null);
+  const { scrollY } = useScroll({ container: scroller });
+  const [height, setHeight] = useState(0);
+  const [active, setActive] = useState(0);
+  const [notes, setNotes] = useState<number | null>(null);
+  const [moved, setMoved] = useState(false);
+  const activeRef = useRef(0);
+  const count = artifacts.length;
+
+  useEffect(() => {
+    const node = scroller.current;
+    if (!node) return;
+    const measure = () => setHeight(node.clientHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useMotionValueEvent(scrollY, 'change', (y) => {
+    if (!height) return;
+    if (y > 4) setMoved(true);
+    const next = clamp(Math.round(y / height), 0, count - 1);
+    if (next === activeRef.current) return;
+    fx.step(next > activeRef.current ? 1 : -1);
+    activeRef.current = next;
+    setActive(next);
+    setNotes(null);
+    onChange?.(next, artifacts[next].label);
+  });
+
+  const goTo = useCallback(
+    (index: number) => {
+      const node = scroller.current;
+      if (!node) return;
+      node.scrollTo({ top: index * node.clientHeight, behavior: reduce ? 'auto' : 'smooth' });
+    },
+    [reduce],
+  );
+
+  useEffect(() => {
+    if (focusIndex !== undefined) goTo(focusIndex);
+  }, [focusIndex, goTo]);
+
+  return (
+    <section
+      className="movie-reel relative isolate h-full w-full overflow-hidden bg-[#050203] text-[#fffaf0]"
+      aria-label="Film reel"
+      aria-roledescription="film reel"
+    >
+      <div
+        ref={scroller}
+        tabIndex={0}
+        aria-label={`Scene ${active + 1} of ${count}. Scroll or swipe up for the next scene.`}
+        className="film-reel-scroll h-full snap-y snap-mandatory overflow-y-auto focus-visible:outline-none"
+      >
+        <div className="relative">
+          <span aria-hidden className="film-rail left-0" />
+          <span aria-hidden className="film-rail right-0" />
+          {artifacts.map((artifact, i) => (
+            <ReelFrame
+              key={artifact.id}
+              index={i}
+              height={height}
+              scrollY={scrollY}
+              reduce={reduce}
+              active={i === active}
+              data={data}
+              artifact={artifact}
+              movie={movie}
+              subtitle={story.subtitles[artifact.scene]}
+              notes={story.notes[artifact.scene]}
+              notesOpen={notes === i}
+              onNotes={() => {
+                setNotes((open) => (open === i ? null : i));
+                fx.note();
+              }}
+              hint={i === 0 && !moved && count > 1}
+            />
+          ))}
+        </div>
+      </div>
+
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[9%] bg-gradient-to-b from-[#050203] to-transparent"
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[9%] bg-gradient-to-t from-[#050203] to-transparent"
+      />
+      <span aria-hidden className="film-grain" style={{ zIndex: 20, opacity: 0.1 }} />
+
+      <nav
+        aria-label="Scenes"
+        className="absolute right-0.5 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-2 rounded-full bg-[#050203] px-0 py-2 shadow-[0_0_0_1px_rgba(253,186,116,0.12)]"
+      >
+        {artifacts.map((artifact, i) => (
+          <button
+            key={artifact.id}
+            type="button"
+            onClick={() => goTo(i)}
+            aria-label={`Scene ${i + 1}: ${artifact.label}`}
+            aria-current={i === active ? 'step' : undefined}
+            className="grid h-5 w-4 place-items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+          >
+            <span
+              className={`block w-1 rounded-full transition-all duration-300 ${
+                i === active ? 'h-4 bg-[#fdba74]' : 'h-1 bg-[#fffaf0]/40'
+              }`}
+            />
+          </button>
+        ))}
+      </nav>
+
+      <p className="sr-only" aria-live="polite">
+        Scene {active + 1} of {count}: {artifacts[active]?.label}.{' '}
+        {story.subtitles[artifacts[active]?.scene ?? 0]}
+      </p>
+    </section>
+  );
+}
+
+const ReelFrame = memo(function ReelFrame({
+  index,
+  height,
+  scrollY,
+  reduce,
+  active,
+  data,
+  artifact,
+  movie,
+  subtitle,
+  notes,
+  notesOpen,
+  onNotes,
+  hint,
+}: {
+  index: number;
+  height: number;
+  scrollY: MotionValue<number>;
+  reduce: boolean;
+  active: boolean;
+  data: XsoData;
+  artifact: Frame;
+  movie: MovieLayers;
+  subtitle: string;
+  notes: readonly [string, string];
+  notesOpen: boolean;
+  onNotes: () => void;
+  hint: boolean;
+}) {
+  const h = height || 1;
+  const range = [(index - 1) * h, index * h, (index + 1) * h];
+  const scale = useTransform(scrollY, range, reduce ? [1, 1, 1] : [0.9, 1, 0.9]);
+  const dim = useTransform(scrollY, range, reduce ? [1, 1, 1] : [0.35, 1, 0.35]);
+  const shot = movie.scenes[artifact.scene];
+  const show = reduce
+    ? { opacity: 1 }
+    : { opacity: active ? 1 : 0, y: active ? 0 : 10, filter: active ? 'blur(0px)' : 'blur(3px)' };
+  const textIn = (delay: number) => ({
+    duration: reduce ? 0 : 0.6,
+    ease: CINEMA_EASE,
+    delay: active && !reduce ? delay : 0,
+  });
+
+  return (
+    <article
+      aria-label={`Scene ${index + 1}: ${artifact.label}`}
+      className="relative h-full snap-center snap-always px-7 py-[7%]"
+      style={{ height: height || '100%' }}
+    >
+      <motion.div
+        className="gpu-layer relative h-full overflow-hidden rounded-[4px] bg-[#1b0e0b] shadow-[0_0_0_1px_rgba(253,186,116,0.08),0_20px_50px_-20px_rgba(0,0,0,0.9)]"
+        style={{ scale, opacity: dim }}
+      >
+        <div className="absolute inset-0 [&_.film-face]:flex [&_.film-face]:flex-col [&_.film-face]:justify-center [&_.film-face]:px-6 [&_.film-face]:pb-24 [&_.film-face]:pt-14 [&_.film-face__letter]:[-webkit-line-clamp:12]">
+          <FrameFace
+            data={data}
+            index={artifact.scene}
+            scene={shot}
+            stars={movie.stars}
+            titled={Boolean(data.moviebox)}
+            slate={false}
+          />
+        </div>
+        <span aria-hidden className="film-vignette" style={{ animation: 'none' }} />
+
+        <motion.div
+          className="absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-3"
+          initial={false}
+          animate={show}
+          transition={textIn(0.1)}
+        >
+          <p className="min-w-0 font-receipt text-[10px] uppercase leading-snug tracking-[0.3em] text-[#fdba74]">
+            Scene {String(artifact.scene + 1).padStart(2, '0')}
+            {data.moviebox && shot?.title ? (
+              <span className="block truncate tracking-[0.18em] text-[#fffaf0]/60">
+                {shot.title}
+              </span>
+            ) : null}
+          </p>
+          <button
+            type="button"
+            onClick={onNotes}
+            aria-expanded={notesOpen}
+            tabIndex={active ? 0 : -1}
+            className="shrink-0 rounded-full border border-[#fffaf0]/15 bg-[#0d0608]/60 px-2.5 py-1 font-receipt text-[9px] uppercase tracking-[0.2em] text-[#fffaf0]/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+          >
+            {notesOpen ? 'Hide notes' : "Director's notes"}
+          </button>
+        </motion.div>
+
+        <AnimatePresence>
+          {notesOpen ? (
+            <motion.div
+              key="notes"
+              className="pointer-events-none absolute inset-0 z-10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DirectorNote className="left-3 top-14 -rotate-3" delay={0} reduce={reduce}>
+                {notes[0]}
+              </DirectorNote>
+              <DirectorNote
+                className="bottom-24 right-3 rotate-2 text-right"
+                delay={0.12}
+                reduce={reduce}
+              >
+                {notes[1]}
+              </DirectorNote>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <motion.p
+          className="film-subtitle !bottom-5 !text-[15px]"
+          initial={false}
+          animate={show}
+          transition={textIn(0.3)}
+        >
+          {subtitle}
+        </motion.p>
+        {hint ? (
+          <motion.span
+            aria-hidden
+            className="absolute inset-x-0 bottom-1 z-10 text-center font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80"
+            animate={reduce ? undefined : { y: [0, -4, 0] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            ↑ swipe up
+          </motion.span>
+        ) : null}
+      </motion.div>
+    </article>
+  );
+});
+
 function DirectorNote({
   className,
   delay,
@@ -594,6 +887,7 @@ const FrameFace = memo(function FrameFace({
   scene: shot,
   stars,
   titled,
+  slate = true,
 }: {
   data: XsoData;
   index: number;
@@ -601,8 +895,10 @@ const FrameFace = memo(function FrameFace({
   stars: number;
   /** Older gifts have no scene titles; their slate reads just "Scene 01". */
   titled: boolean;
+  /** The reel pins its own slate over the frame. */
+  slate?: boolean;
 }) {
-  const scene = (
+  const scene = !slate ? null : (
     <p className="truncate font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80">
       Scene {String(index + 1).padStart(2, '0')}
       {titled && shot?.title ? ` · ${shot.title}` : ''}

@@ -76,7 +76,7 @@ export function GiftUnboxing({
                   <AccordionRibbon data={data} size="fill" />
                 </div>
               ) : data.giftStyle === 'moviebox' ? (
-                <div className="flex h-full touch-manipulation justify-center overflow-hidden bg-[#140a0d] px-3 pb-16 pt-5">
+                <div className="h-full overflow-hidden bg-[#050203]">
                   <MovieBox data={data} size="fill" />
                 </div>
               ) : (
@@ -87,6 +87,7 @@ export function GiftUnboxing({
                 </div>
               )}
               <motion.p
+                hidden={data.giftStyle === 'moviebox'}
                 className="pointer-events-none absolute bottom-4 left-4 z-30 rounded-full border border-white/10 bg-black/80 px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-white/60"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
