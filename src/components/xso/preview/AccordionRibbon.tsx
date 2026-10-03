@@ -32,6 +32,7 @@ import { LazyMedia } from '@/components/xso/LazyMedia';
 import { PolaroidThumb } from '@/components/xso/PolaroidThumb';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
+import { useProgress } from '@/components/xso/stage/useProgress';
 
 const RIBBON_HEIGHT = {
   hero: 'memory-deck',
@@ -147,6 +148,8 @@ interface RibbonProps {
   /** Index into `LOOP_CARDS`, so editors can bring a panel forward. */
   focusIndex?: number;
   onChange?: (index: number, label: string) => void;
+  /** Fires once every card has been on top, so the viewer can offer what comes next. */
+  onFinish?: () => void;
 }
 
 export const AccordionRibbon = memo(function AccordionRibbon(props: RibbonProps) {
@@ -173,11 +176,13 @@ export const AccordionRibbon = memo(function AccordionRibbon(props: RibbonProps)
 
 const Ribbon = memo(function Ribbon({
   data,
-  onChange,
+  onChange: report,
+  onFinish,
   size = 'hero',
   focusIndex,
   artifacts,
 }: RibbonProps & { artifacts: Artifact[] }) {
+  const onChange = useProgress(artifacts.length, report, onFinish);
   const count = artifacts.length;
   const last = count - 1;
   const reduce = Boolean(useReducedMotion());

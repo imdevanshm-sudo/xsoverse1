@@ -147,6 +147,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   focusIndex,
   onChange,
   chrome = true,
+  onFinish,
 }: {
   data: XsoData;
   /** `fill` stretches to its container, e.g. inside the gift phone frame. */
@@ -155,6 +156,8 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   onChange?: (index: number, label: string) => void;
   /** Hides the tidy-up row, for thumbnails. */
   chrome?: boolean;
+  /** Fires the first time the letter is folded back up: the end of the desk. */
+  onFinish?: () => void;
 }) {
   const desk = useRef<HTMLDivElement>(null);
   const nodes = useRef<Record<string, HTMLDivElement | null>>({});
@@ -244,9 +247,12 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     setFocus(null);
   }, []);
 
+  const finish = useRef(onFinish);
+  finish.current = onFinish;
   const closeLetter = useCallback(() => {
     setLetterOpen(false);
     nodes.current.letter?.focus({ preventScroll: true });
+    finish.current?.();
   }, []);
 
   const scope = useId();

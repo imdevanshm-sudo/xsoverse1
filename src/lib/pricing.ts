@@ -154,6 +154,11 @@ export function recipientDiscount(currency: CurrencyCode = DEFAULT_CURRENCY): nu
   return TIERS.full.prices[currency] - RECIPIENT_OFFER.offerPrices[currency];
 }
 
+/** The gift-back price to show recipients, or null while the offer isn't live. */
+export function recipientOfferPrice(currency: CurrencyCode = DEFAULT_CURRENCY): string | null {
+  return RECIPIENT_OFFER.code ? formatPrice(RECIPIENT_OFFER.offerPrices[currency], currency) : null;
+}
+
 export interface Quote {
   tier: TierId;
   currency: CurrencyCode;

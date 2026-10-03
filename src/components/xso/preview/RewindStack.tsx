@@ -23,6 +23,7 @@ import {
   seededOffset,
   type Artifact,
 } from '@/components/xso/viewers/shared';
+import { useProgress } from '@/components/xso/stage/useProgress';
 
 /** Pointer travel needed to let go of a memory; the card itself only gives ~⅓ of that. */
 const PULL_DISTANCE = 90;
@@ -84,6 +85,8 @@ interface StackProps {
   /** 0–3 are the four keepsakes; 4 is the liner notes when present. */
   focusIndex?: number;
   onChange?: (index: number, label: string) => void;
+  /** Fires once every card has been on top, so the viewer can offer what comes next. */
+  onFinish?: () => void;
 }
 
 const SHEET_ORDER: Sheet['id'][] = ['receipt', 'audit', 'photos', 'letter', 'liner'];
@@ -128,10 +131,12 @@ export const RewindStack = memo(function RewindStack(props: StackProps) {
 const Stack = memo(function Stack({
   data,
   artifacts,
-  onChange,
+  onChange: report,
+  onFinish,
   size = 'hero',
   focusIndex,
 }: StackProps & { artifacts: Sheet[] }) {
+  const onChange = useProgress(artifacts.length, report, onFinish);
   const faces = useMemo(() => {
     const out: Partial<Record<Sheet['id'], ReactNode>> = {};
     for (const a of artifacts) out[a.id] = a.content;

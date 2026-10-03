@@ -4,7 +4,7 @@ import { memo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCcw, Share2 } from 'lucide-react';
 import type { StageSize } from '@/components/xso/movie/useStage';
-import { DEFAULT_CURRENCY, formatPrice, RECIPIENT_OFFER } from '@/lib/pricing';
+import { RECIPIENT_OFFER, recipientOfferPrice } from '@/lib/pricing';
 import { viewPath } from '@/lib/giftLinks';
 import { track } from '@/lib/analytics';
 
@@ -29,9 +29,7 @@ export const EndScreen = memo(function EndScreen({
 }) {
   const { big } = stage;
   const [copied, setCopied] = useState(false);
-  const offer = RECIPIENT_OFFER.code
-    ? formatPrice(RECIPIENT_OFFER.offerPrices[DEFAULT_CURRENCY], DEFAULT_CURRENCY)
-    : null;
+  const offer = recipientOfferPrice();
 
   /** Always the recipient's link, never the page URL (the sender's preview carries a key). */
   const share = async () => {

@@ -31,7 +31,7 @@ import { PreviewWatermark } from '@/components/xso/PreviewWatermark';
 import { FitStage } from '@/components/xso/stage/FitStage';
 import { FirstVisitHint } from '@/components/xso/stage/FirstVisitHint';
 import type { GiftWrapper } from '@/lib/giftWrapper';
-import { RECIPIENT_OFFER } from '@/lib/pricing';
+import { RECIPIENT_OFFER, recipientOfferPrice } from '@/lib/pricing';
 import { track } from '@/lib/analytics';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
@@ -87,6 +87,8 @@ export function GiftUnboxing({
   const attempt = useRef(0);
   const ready = useAssetPreloader(TEXTURES, { enabled: !framed });
   const opening = useRef(false);
+  const [finished, setFinished] = useState(false);
+  const finish = useCallback(() => setFinished(true), []);
   const latest = useRef({ giftId, draft, style: wrapper.giftStyle });
   latest.current = { giftId, draft, style: wrapper.giftStyle };
 
@@ -131,11 +133,11 @@ export function GiftUnboxing({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Souvenir data={contents} cta={!framed} />
+            <Souvenir data={contents} cta={!framed} onFinish={finish} />
             {framed || !HINTS[contents.giftStyle] ? null : (
               <FirstVisitHint text={HINTS[contents.giftStyle]!} />
             )}
-            {framed || draft || contents.giftStyle === 'moviebox' ? null : <MakeOneBack />}
+            {framed || contents.giftStyle === 'moviebox' ? null : <MakeOneBack ended={finished} />}
           </motion.div>
         ) : wrapGone ? (
           <OpeningDot key="opening" />
@@ -164,29 +166,95 @@ export function GiftUnboxing({
   );
 }
 
-/** The one way back to the store from a received gift: quiet, and only once it's been opened. */
-const MakeOneBack = memo(function MakeOneBack() {
-  const [shown, setShown] = useState(false);
+/**
+ * The way back to the store from a received gift, in two sizes: a quiet pill that stays in the
+ * corner once the gift has been open a while, and a clear call to action when the viewer reaches
+ * the end of it. Both carry the gift-back price while that offer is live.
+ */
+const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
+  const reduce = Boolean(useReducedMotion());
+  const [pill, setPill] = useState(false);
+  const [sheet, setSheet] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const offer = recipientOfferPrice();
+  const href = `/?ref=${RECIPIENT_OFFER.ref}`;
+
   useEffect(() => {
-    const timer = window.setTimeout(() => setShown(true), 6000);
+    const timer = window.setTimeout(() => setPill(true), 6000);
     return () => window.clearTimeout(timer);
   }, []);
+  useEffect(() => {
+    if (!ended || dismissed) return;
+    const timer = window.setTimeout(() => setSheet(true), 1200);
+    return () => window.clearTimeout(timer);
+  }, [ended, dismissed]);
+
+  const dismiss = () => {
+    setSheet(false);
+    setDismissed(true);
+  };
+
   return (
-    <AnimatePresence>
-      {shown ? (
-        <motion.a
-          key="make-one-back"
-          href={`/?ref=${RECIPIENT_OFFER.ref}`}
-          onClick={() => track('make_one_back')}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top,0px))] z-40 rounded-full border border-white/15 bg-black/40 px-3.5 py-2 font-receipt text-[11px] uppercase tracking-[0.16em] text-white/75 backdrop-blur-sm transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70"
-        >
-          Make one back
-        </motion.a>
-      ) : null}
-    </AnimatePresence>
+    <>
+      <AnimatePresence>
+        {pill && !sheet ? (
+          <motion.a
+            key="make-one-back"
+            href={href}
+            onClick={() => track('make_one_back', { source: 'pill' })}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+            className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top,0px))] z-40 inline-flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-black/45 px-4 font-receipt text-[12px] uppercase tracking-[0.14em] text-white/85 backdrop-blur-sm transition-colors hover:border-[#fdba74]/50 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70"
+          >
+            Make one back
+            {offer ? <span className="text-[#fdba74]">{offer}</span> : null}
+          </motion.a>
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {sheet ? (
+          <motion.aside
+            key="make-one-back-sheet"
+            aria-label="Make one back"
+            className="absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-[70] mx-auto max-w-[420px] rounded-[28px] border border-white/10 bg-[#1b0f15]/95 p-5 text-center shadow-[0_30px_80px_-20px_rgba(0,0,0,.9)] backdrop-blur-md"
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, y: 40 }}
+            transition={
+              reduce ? { duration: 0.2 } : { type: 'spring', stiffness: 220, damping: 26 }
+            }
+          >
+            <p className="font-receipt text-[12px] uppercase tracking-[0.2em] text-[#e0b4c6]">
+              Your turn
+            </p>
+            <p className="mt-1 font-serif text-[22px] font-semibold leading-tight text-[#fffaf0]">
+              Someone you love deserves one too.
+            </p>
+            <a
+              href={href}
+              onClick={() => track('make_one_back', { source: 'end' })}
+              className="matte-cta mt-4 flex min-h-[3.75rem] w-full flex-col items-center justify-center rounded-full px-6 font-serif text-[20px] font-semibold leading-tight shadow-[0_14px_40px_rgba(236,72,153,.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fdba74]"
+            >
+              Make one back
+              {offer ? (
+                <span className="mt-0.5 font-receipt text-[12px] font-normal uppercase tracking-[0.16em] opacity-90">
+                  Yours for {offer}
+                </span>
+              ) : null}
+            </a>
+            <button
+              type="button"
+              onClick={dismiss}
+              className="mt-2 min-h-11 px-4 font-receipt text-[12px] uppercase tracking-[0.18em] text-white/60 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70"
+            >
+              Keep looking
+            </button>
+          </motion.aside>
+        ) : null}
+      </AnimatePresence>
+    </>
   );
 });
 
@@ -245,14 +313,22 @@ const CARD_STAGE = 'flex h-full max-h-[600px] w-full items-center justify-center
 /** The phone-sized box the card formats are composed in; FitStage scales it to the canvas. */
 const CARD_DESIGN = { width: 420, height: 600 };
 
-const Souvenir = memo(function Souvenir({ data, cta }: { data: XsoData; cta: boolean }) {
+const Souvenir = memo(function Souvenir({
+  data,
+  cta,
+  onFinish,
+}: {
+  data: XsoData;
+  cta: boolean;
+  onFinish: () => void;
+}) {
   switch (data.giftStyle) {
     case 'rewind':
       return (
         <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
           <FitStage {...CARD_DESIGN}>
             <div className={CARD_STAGE}>
-              <RewindStack data={data} size="fill" />
+              <RewindStack data={data} size="fill" onFinish={onFinish} />
             </div>
           </FitStage>
         </div>
@@ -262,7 +338,7 @@ const Souvenir = memo(function Souvenir({ data, cta }: { data: XsoData; cta: boo
         <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#180e15] px-2 pb-14 pt-3">
           <FitStage width={440} height={680}>
             <div className="flex h-full w-full touch-manipulation justify-center max-md:max-h-[65dvh]">
-              <ScrapbookDesk data={data} size="fill" />
+              <ScrapbookDesk data={data} size="fill" onFinish={onFinish} />
             </div>
           </FitStage>
         </div>
@@ -272,7 +348,7 @@ const Souvenir = memo(function Souvenir({ data, cta }: { data: XsoData; cta: boo
         <div className="stage-surface flex h-full justify-center overflow-hidden bg-[#180e15] px-4 pb-16 pt-6">
           <FitStage width={420} height={680}>
             <div className="flex h-full w-full justify-center">
-              <AccordionRibbon data={data} size="fill" />
+              <AccordionRibbon data={data} size="fill" onFinish={onFinish} />
             </div>
           </FitStage>
         </div>
@@ -288,7 +364,7 @@ const Souvenir = memo(function Souvenir({ data, cta }: { data: XsoData; cta: boo
         <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
           <FitStage {...CARD_DESIGN}>
             <div className={CARD_STAGE}>
-              <MemoryDeck data={data} size="fill" />
+              <MemoryDeck data={data} size="fill" onFinish={onFinish} />
             </div>
           </FitStage>
         </div>

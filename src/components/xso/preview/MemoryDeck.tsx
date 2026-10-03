@@ -28,6 +28,7 @@ import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
 import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
+import { useProgress } from '@/components/xso/stage/useProgress';
 
 const TILT_MAX = 6;
 /** Release past this distance, or this fast, and the card is flicked off the pile. */
@@ -69,6 +70,8 @@ interface DeckProps {
   focusIndex?: number;
   /** Fires with the new top card after each loop. */
   onChange?: (index: number, label: string) => void;
+  /** Fires once every card has been on top, so the viewer can offer what comes next. */
+  onFinish?: () => void;
 }
 
 export const MemoryDeck = memo(function MemoryDeck(props: DeckProps) {
@@ -98,10 +101,12 @@ export const MemoryDeck = memo(function MemoryDeck(props: DeckProps) {
 const Deck = memo(function Deck({
   data,
   artifacts,
-  onChange,
+  onChange: report,
+  onFinish,
   size = 'hero',
   focusIndex,
 }: DeckProps & { artifacts: Artifact[] }) {
+  const onChange = useProgress(artifacts.length, report, onFinish);
   /** Receipt and letter render bare so the deck card itself is the paper. */
   const faces = useMemo<Record<Artifact['id'], ReactNode>>(
     () => ({
