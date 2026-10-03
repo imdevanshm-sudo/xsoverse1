@@ -79,7 +79,6 @@ export const AddOnPicker = memo(function AddOnPicker({
       <ul className="grid gap-2">
         {addOnsFor(price.tier).map((addOn) => {
           const on = selected.includes(addOn.id);
-          const included = addOn.includedWith?.includes(price.tier);
           return (
             <li key={addOn.id}>
               <label
@@ -110,9 +109,7 @@ export const AddOnPicker = memo(function AddOnPicker({
                   </span>
                 </span>
                 <span className="shrink-0 font-receipt text-[12.5px] font-bold tabular-nums text-[#fdba74]">
-                  {included
-                    ? 'Included'
-                    : `+${formatPrice(addOn.prices[price.currency], price.currency)}`}
+                  +{formatPrice(addOn.prices[price.currency], price.currency)}
                 </span>
               </label>
               {addOn.id === 'schedule' && on ? (

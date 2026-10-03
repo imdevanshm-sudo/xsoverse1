@@ -29,7 +29,7 @@ export const DEFAULT_CURRENCY: CurrencyCode = 'USD';
 /** Amounts are in the currency's minor unit (cents, paise). */
 export type Amounts = Record<CurrencyCode, number>;
 
-export type TierId = 'single' | 'full' | 'deluxe';
+export type TierId = 'single' | 'full' | 'moviebox';
 
 export interface TierSpec {
   id: TierId;
@@ -57,39 +57,34 @@ export const TIERS: Record<TierId, TierSpec> = {
     badge: 'Most popular',
     variantEnv: 'LEMONSQUEEZY_VARIANT_FULL',
   },
-  deluxe: {
-    id: 'deluxe',
-    name: 'Deluxe',
-    blurb: 'Full Stack as a Movie Box, with background music',
-    prices: { USD: 2499, INR: 29900 },
-    variantEnv: 'LEMONSQUEEZY_VARIANT_DELUXE',
+  moviebox: {
+    id: 'moviebox',
+    name: 'Movie Box',
+    blurb: 'The full stack as a film, with a soundtrack',
+    // TODO(pricing): test $19.99 (1999) once the cinematic Movie Box upgrades have shipped.
+    prices: { USD: 1499, INR: 24900 },
+    variantEnv: 'LEMONSQUEEZY_VARIANT_MOVIEBOX',
   },
 };
 
-export const TIER_ORDER: TierId[] = ['single', 'full', 'deluxe'];
+export const TIER_ORDER: TierId[] = ['single', 'full', 'moviebox'];
 
-/** Aesthetics that only come with Deluxe. */
-export const DELUXE_STYLES: readonly GiftStyle[] = ['moviebox'];
+/** Aesthetics with their own tier (and price) once they hold more than one card. */
+export const FEATURE_STYLES: readonly GiftStyle[] = ['moviebox'];
 
-export function styleTier(style: GiftStyle): 'included' | 'deluxe' {
-  return DELUXE_STYLES.includes(style) ? 'deluxe' : 'included';
-}
-
-/** The tier an order lands in: Deluxe aesthetics are Deluxe, one card is Single, more is Full. */
+/** The tier an order lands in: one card is Single, more is Full, or the aesthetic's own tier. */
 export function resolveTier(style: GiftStyle, cardCount: number): TierId {
-  if (DELUXE_STYLES.includes(style)) return 'deluxe';
-  return cardCount <= 1 ? 'single' : 'full';
+  if (cardCount <= 1) return 'single';
+  return FEATURE_STYLES.includes(style) ? 'moviebox' : 'full';
 }
 
-export type AddOnId = 'schedule' | 'regenerations' | 'video' | 'pdf' | 'music';
+export type AddOnId = 'schedule' | 'regenerations' | 'video' | 'pdf';
 
 export interface AddOnSpec {
   id: AddOnId;
   name: string;
   detail: string;
   prices: Amounts;
-  /** Included at no charge with these tiers and hidden from the others. */
-  includedWith?: TierId[];
 }
 
 export const ADD_ONS: Record<AddOnId, AddOnSpec> = {
@@ -117,13 +112,6 @@ export const ADD_ONS: Record<AddOnId, AddOnSpec> = {
     detail: 'High-resolution cards to print at home',
     prices: { USD: 299, INR: 7900 },
   },
-  music: {
-    id: 'music',
-    name: 'Background music',
-    detail: 'A soft score while they open it',
-    prices: { USD: 0, INR: 0 },
-    includedWith: ['deluxe'],
-  },
 };
 
 export const ADD_ON_ORDER: AddOnId[] = ['schedule', 'regenerations', 'video', 'pdf'];
@@ -132,12 +120,8 @@ export function isAddOnId(value: unknown): value is AddOnId {
   return typeof value === 'string' && value in ADD_ONS;
 }
 
-/** Add-ons that make sense for a tier: paid ones always, included ones only with their tier. */
-export function addOnsFor(tier: TierId): AddOnSpec[] {
-  const included = (Object.values(ADD_ONS) as AddOnSpec[]).filter((a) =>
-    a.includedWith?.includes(tier),
-  );
-  return [...ADD_ON_ORDER.map((id) => ADD_ONS[id]), ...included];
+export function addOnsFor(_tier: TierId): AddOnSpec[] {
+  return ADD_ON_ORDER.map((id) => ADD_ONS[id]);
 }
 
 /**
@@ -157,12 +141,12 @@ export function isPriceArm(value: unknown): value is string {
 /**
  * Offer for people who received an XSO (`/?ref=recipient`). The discount itself is a Lemon
  * Squeezy discount code worth `full - offerPrice` (a fixed $5.00 off by default), limited to the
- * Full Stack and Deluxe variants. The offer is live only while the code is set.
+ * Full Stack and Movie Box variants. The offer is live only while the code is set.
  */
 export const RECIPIENT_OFFER = {
   ref: 'recipient',
   code: process.env.NEXT_PUBLIC_RECIPIENT_DISCOUNT_CODE || '',
-  tiers: ['full', 'deluxe'] as TierId[],
+  tiers: ['full', 'moviebox'] as TierId[],
   offerPrices: { USD: 999, INR: 19900 } as Amounts,
 };
 
@@ -199,7 +183,7 @@ export function quote(options: {
     .filter((id) => allowed.has(id))
     .map((id) => ({
       id,
-      amount: ADD_ONS[id].includedWith?.includes(tier) ? 0 : ADD_ONS[id].prices[currency],
+      amount: ADD_ONS[id].prices[currency],
     }));
   const discount =
     options.recipient && RECIPIENT_OFFER.code && RECIPIENT_OFFER.tiers.includes(tier)

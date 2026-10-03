@@ -6,7 +6,7 @@ import { CARTRIDGES, displayTitle } from '@/lib/cartridges';
 import { DEFAULT_CARDS, FORMAT_CARDS, MIN_CARDS, type CardId } from '@/lib/formatCards';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { ORDER_FORMATS, toGiftStyle, type OrderFormat } from '@/types/order';
-import { formatPrice, styleTier, TIERS, type Quote } from '@/lib/pricing';
+import { FEATURE_STYLES, formatPrice, TIERS, type Quote } from '@/lib/pricing';
 
 const LABEL = 'font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]';
 
@@ -25,7 +25,7 @@ export const FormatStep = memo(function FormatStep({
         const cart = CARTRIDGES.find((c) => c.id === style);
         if (!cart) return null;
         const selected = id === format;
-        const deluxe = styleTier(style) === 'deluxe';
+        const feature = FEATURE_STYLES.includes(style);
         return (
           <button
             key={id}
@@ -35,10 +35,10 @@ export const FormatStep = memo(function FormatStep({
             onClick={() => onFormat(id)}
             className={`flex items-stretch gap-3 rounded-2xl border p-2.5 text-left transition-transform active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4] ${
               selected
-                ? deluxe
+                ? feature
                   ? 'border-[#fbbf24] bg-[#2a1a10]'
                   : 'border-[#ec4899] bg-[#2e1620]'
-                : deluxe
+                : feature
                   ? 'border-[#fbbf24]/35 bg-[#21131b]'
                   : 'border-white/10 bg-[#21131b]'
             }`}
@@ -54,17 +54,17 @@ export const FormatStep = memo(function FormatStep({
                   </span>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 font-receipt text-[9.5px] font-bold uppercase tracking-[0.14em] ${
-                      deluxe ? 'bg-[#fbbf24] text-[#2a1a10]' : 'bg-white/10 text-[#c99aae]'
+                      feature ? 'bg-[#fbbf24] text-[#2a1a10]' : 'bg-white/10 text-[#c99aae]'
                     }`}
                   >
-                    {deluxe ? TIERS.deluxe.name : 'Included'}
+                    {feature ? 'Soundtrack' : 'Included'}
                   </span>
                 </span>
                 <span
                   aria-hidden
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
                     selected
-                      ? deluxe
+                      ? feature
                         ? 'border-[#fbbf24] bg-[#fbbf24]'
                         : 'border-[#ec4899] bg-[#ec4899]'
                       : 'border-white/25'
@@ -72,7 +72,7 @@ export const FormatStep = memo(function FormatStep({
                 >
                   {selected ? (
                     <Check
-                      className={`h-3 w-3 ${deluxe ? 'text-[#2a1a10]' : 'text-white'}`}
+                      className={`h-3 w-3 ${feature ? 'text-[#2a1a10]' : 'text-white'}`}
                       strokeWidth={3}
                     />
                   ) : null}
@@ -211,12 +211,12 @@ export const TierMeter = memo(function TierMeter({
   format,
   cards,
   price,
-  onDeluxe,
+  onMovieBox,
 }: {
   format: OrderFormat;
   cards: CardId[];
   price: Quote;
-  onDeluxe: () => void;
+  onMovieBox: () => void;
 }) {
   const total = FORMAT_CARDS[toGiftStyle(format)].length;
   const tier = TIERS[price.tier];
@@ -225,8 +225,8 @@ export const TierMeter = memo(function TierMeter({
       ? `Add another card for the Full Stack (+${formatPrice(TIERS.full.prices[price.currency] - price.base, price.currency)}).`
       : price.tier === 'full' && cards.length < total
         ? 'The Full Stack includes every card. Add the rest at no extra cost.'
-        : price.tier === 'deluxe'
-          ? 'Deluxe includes background music.'
+        : price.tier === 'moviebox'
+          ? 'Plays as a film, with a soundtrack.'
           : null;
   return (
     <div className="mt-4 grid gap-3">
@@ -252,19 +252,19 @@ export const TierMeter = memo(function TierMeter({
           {formatPrice(price.base, price.currency)}
         </span>
       </div>
-      {price.tier !== 'deluxe' ? (
+      {!FEATURE_STYLES.includes(toGiftStyle(format)) ? (
         <button
           type="button"
-          onClick={onDeluxe}
+          onClick={onMovieBox}
           className="flex min-h-[3rem] items-center gap-3 rounded-2xl border border-dashed border-[#fbbf24]/40 px-4 py-2.5 text-left transition-colors hover:border-[#fbbf24]/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]"
         >
           <Clapperboard className="h-4 w-4 shrink-0 text-[#fbbf24]" aria-hidden />
           <span className="min-w-0 flex-1 text-[13px] leading-snug text-[#e0b4c6]">
-            <span className="font-semibold text-[#fde68a]">Go Deluxe</span>: play it as a Movie Box,
-            with background music.
+            <span className="font-semibold text-[#fde68a]">Try the Movie Box</span>: the same stack
+            as a film, with a soundtrack.
           </span>
           <span className="shrink-0 font-receipt text-[12px] font-bold tabular-nums text-[#fde68a]">
-            {formatPrice(TIERS.deluxe.prices[price.currency], price.currency)}
+            {formatPrice(TIERS.moviebox.prices[price.currency], price.currency)}
           </span>
         </button>
       ) : null}

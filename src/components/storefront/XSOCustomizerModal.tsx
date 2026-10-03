@@ -128,8 +128,7 @@ export function XSOCustomizerModal() {
   const style = toGiftStyle(config.format);
   const { vibe, selectedCards: cards } = config;
   const photos = config.media.photos;
-  /** Included add-ons (music with Deluxe) start on; the quote drops any the tier doesn't offer. */
-  const [addOns, setAddOns] = useState<AddOnId[]>(['music']);
+  const [addOns, setAddOns] = useState<AddOnId[]>([]);
   const [deliverAt, setDeliverAt] = useState('');
   const price = useQuote(style, cards.length, addOns);
   const scheduled = price.addOns.some((a) => a.id === 'schedule');
@@ -178,7 +177,7 @@ export function XSOCustomizerModal() {
     [config.format, draft],
   );
 
-  const goDeluxe = useCallback(() => pickFormat('movie_box'), [pickFormat]);
+  const tryMovieBox = useCallback(() => pickFormat('movie_box'), [pickFormat]);
   const lastTier = useRef(price.tier);
   useEffect(() => {
     if (lastTier.current === price.tier) return;
@@ -565,7 +564,7 @@ export function XSOCustomizerModal() {
                     format={config.format}
                     cards={cards}
                     price={price}
-                    onDeluxe={goDeluxe}
+                    onMovieBox={tryMovieBox}
                   />
                 </>
               ) : null}

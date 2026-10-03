@@ -30,13 +30,13 @@ export function getLemonConfig(): LemonConfig | null {
   const variant = (tier: TierId) => process.env[TIERS[tier].variantEnv] || fallback;
   const single = variant('single');
   const full = variant('full');
-  const deluxe = variant('deluxe');
-  if (!apiKey || !storeId || !single || !full || !deluxe) return null;
+  const moviebox = variant('moviebox');
+  if (!apiKey || !storeId || !single || !full || !moviebox) return null;
 
   return {
     apiKey,
     storeId,
-    variants: { single, full, deluxe },
+    variants: { single, full, moviebox },
     webhookSecret: process.env.LEMONSQUEEZY_WEBHOOK_SECRET,
   };
 }
@@ -139,7 +139,7 @@ export async function createLemonCheckout(options: {
               gift_style: options.giftStyle,
               tier: options.quote.tier,
               // TODO(fulfillment): add-ons are recorded on the order but not fulfilled yet:
-              // scheduled unlock (deliver_at), extra rewrites, Stories video, print PDF, music.
+              // scheduled unlock (deliver_at), extra rewrites, Stories video, print PDF.
               add_ons: options.quote.addOns.map((a) => a.id).join(','),
               deliver_at: options.deliverAt ?? undefined,
             },
