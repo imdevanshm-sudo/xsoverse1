@@ -1,5 +1,13 @@
 /** Fields that hold media or ids, never prose. */
-const SKIP = new Set(['id', 'photos', 'image', 'voiceNoteUrl', 'voiceUrl', 'spotifyUrl']);
+const SKIP = new Set([
+  'id',
+  'photos',
+  'image',
+  'voiceNoteUrl',
+  'voiceUrl',
+  'spotifyUrl',
+  'soundtrack',
+]);
 /** Signatures that are also everyday words; renaming them would rewrite every "me" in the copy. */
 const COMMON = new Set(['me', 'you', 'us', 'i', 'we']);
 

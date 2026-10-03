@@ -10,7 +10,9 @@ import {
   type PointerEvent,
 } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
+import { soundtrackSrc } from '@/lib/soundtracks';
+import { useSoundtrack } from '@/components/xso/movie/useSoundtrack';
 import type { MovieLayers, XsoData } from '@/types/xso';
 import { useStage } from '@/components/xso/movie/useStage';
 import { OpeningSlate } from '@/components/xso/movie/OpeningSlate';
@@ -53,9 +55,12 @@ export const MovieFeature = memo(function MovieFeature({
   const [index, setIndex] = useState(0);
   const [started, setStarted] = useState(false);
   const startTimer = useRef<number | null>(null);
+  const music = useSoundtrack(soundtrackSrc(movie.soundtrack));
+  const startMusic = music.start;
   const play = useCallback(() => {
+    startMusic();
     startTimer.current = window.setTimeout(() => setStarted(true), reduce ? 0 : 450);
-  }, [reduce]);
+  }, [reduce, startMusic]);
   useEffect(() => () => window.clearTimeout(startTimer.current ?? undefined), []);
   const count = frames.length;
   const frame = frames[Math.min(index, count - 1)];
@@ -180,6 +185,21 @@ export const MovieFeature = memo(function MovieFeature({
                 >
                   <ChevronRight className="h-5 w-5" aria-hidden />
                 </button>
+                {music.available ? (
+                  <button
+                    type="button"
+                    onClick={music.toggleMute}
+                    aria-pressed={music.muted}
+                    aria-label={music.muted ? 'Unmute soundtrack' : 'Mute soundtrack'}
+                    className="movie-control absolute right-4"
+                  >
+                    {music.muted ? (
+                      <VolumeX className="h-5 w-5" aria-hidden />
+                    ) : (
+                      <Volume2 className="h-5 w-5" aria-hidden />
+                    )}
+                  </button>
+                ) : null}
               </nav>
             </>
           )}

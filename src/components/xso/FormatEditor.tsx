@@ -35,6 +35,8 @@ import {
   type ToneName,
 } from '@/components/xso/editors/kit';
 import { FORMAT_CARDS, type CardId } from '@/lib/formatCards';
+import { SOUNDTRACKS } from '@/lib/soundtracks';
+import { SoundtrackField } from '@/components/xso/editors/SoundtrackField';
 
 export type FormatFields = Omit<XsoData, 'id' | 'giftStyle' | FormatKey> & FormatLayers;
 export type FormatPatch = Partial<Omit<XsoData, 'id' | 'giftStyle' | FormatKey>>;
@@ -480,7 +482,7 @@ function AccordionEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard 
   );
 }
 
-type MovieSection = 'rating' | 'faces' | `scene-${number}`;
+type MovieSection = 'rating' | 'faces' | 'music' | `scene-${number}`;
 
 function MovieEditor({ t, fields, onFormat, photoSlot, onFocusCard }: EditorProps) {
   const [open, setOpen] = useOpenSet<MovieSection>(['faces']);
@@ -523,8 +525,27 @@ function MovieEditor({ t, fields, onFormat, photoSlot, onFocusCard }: EditorProp
         photoSlot={photoSlot}
         detail="Scene 03's strip and the film reel"
       />
+      <EditorRow
+        t={t}
+        label="Soundtrack"
+        detail={soundtrackLabel(fields.moviebox.soundtrack)}
+        open={open.has('music')}
+        onExpand={() => setOpen('music')}
+      >
+        <SoundtrackField
+          t={t}
+          value={fields.moviebox.soundtrack ?? ''}
+          onChange={(soundtrack) => onFormat('moviebox', { soundtrack })}
+        />
+      </EditorRow>
     </ul>
   );
+}
+
+function soundtrackLabel(value: string | undefined) {
+  if (!value) return 'No music';
+  if (value.startsWith('data:')) return 'Your track';
+  return SOUNDTRACKS.find((track) => `track:${track.id}` === value)?.name ?? 'No music';
 }
 
 type FieldProps = Pick<EditorProps, 't' | 'fields' | 'onFormat'>;

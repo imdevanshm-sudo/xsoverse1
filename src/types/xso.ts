@@ -78,6 +78,8 @@ export interface MovieScene {
 export interface MovieLayers {
   scenes: MovieScene[];
   stars: number;
+  /** `track:<id>` for a bundled soundtrack, an uploaded audio data URL, or '' for silence. */
+  soundtrack?: string;
   cards?: LoopCard[];
 }
 

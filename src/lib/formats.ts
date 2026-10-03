@@ -11,6 +11,7 @@ import {
   type XsoData,
 } from '@/types/xso';
 import { scrapbookDefaults } from '@/lib/scrapbook';
+import { DEFAULT_SOUNDTRACK, sanitizeSoundtrack } from '@/lib/soundtracks';
 
 export const AUDIT_KEYS = ['chaos', 'loyalty', 'snacking', 'advice', 'support'] as const;
 export const AUDIT_LABEL_MAX = 20;
@@ -84,6 +85,7 @@ function movieDefaults(content: Pack, titles: string[], stars: number): MovieLay
   return {
     scenes: captions.map((caption, i) => ({ title: titles[i], caption, image: '' })),
     stars,
+    soundtrack: DEFAULT_SOUNDTRACK,
   };
 }
 
@@ -173,7 +175,14 @@ export function sanitizeFormat(style: GiftStyle, data: XsoData): Partial<XsoData
       };
     });
     const stars = typeof m.stars === 'number' && Number.isFinite(m.stars) ? halfStar(m.stars) : 4;
-    return { moviebox: { scenes, stars, ...stackCardsField(m.cards, LOOP_CARDS) } };
+    return {
+      moviebox: {
+        scenes,
+        stars,
+        soundtrack: sanitizeSoundtrack(m.soundtrack),
+        ...stackCardsField(m.cards, LOOP_CARDS),
+      },
+    };
   }
   return {};
 }
