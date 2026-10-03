@@ -29,12 +29,21 @@ import {
 } from '@/hooks/useAssetPreloader';
 import { PreviewWatermark } from '@/components/xso/PreviewWatermark';
 import { FitStage } from '@/components/xso/stage/FitStage';
+import { FirstVisitHint } from '@/components/xso/stage/FirstVisitHint';
 import type { GiftWrapper } from '@/lib/giftWrapper';
 import { RECIPIENT_OFFER } from '@/lib/pricing';
 import { track } from '@/lib/analytics';
-import type { XsoData } from '@/types/xso';
+import type { GiftStyle, XsoData } from '@/types/xso';
 
 type Phase = 'wrapped' | 'opening';
+
+/** What to do first, per format; the Movie Box has its own Play button instead. */
+const HINTS: Partial<Record<GiftStyle, string>> = {
+  scrapbook: 'Tap anything to open it',
+  loop: 'Tap or swipe the top card',
+  rewind: 'Tap or swipe to rewind',
+  accordion: 'Scroll to unfold it',
+};
 
 async function fetchContents(giftId: string): Promise<XsoData> {
   const response = await fetch(`/api/gifts/${encodeURIComponent(giftId)}/open`, {
@@ -123,6 +132,9 @@ export function GiftUnboxing({
             transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
           >
             <Souvenir data={contents} cta={!framed} />
+            {framed || !HINTS[contents.giftStyle] ? null : (
+              <FirstVisitHint text={HINTS[contents.giftStyle]!} />
+            )}
             {framed || draft || contents.giftStyle === 'moviebox' ? null : <MakeOneBack />}
           </motion.div>
         ) : wrapGone ? (
