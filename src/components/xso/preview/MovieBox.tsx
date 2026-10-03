@@ -440,8 +440,6 @@ const MovieReel = memo(function MovieReel({
   const [height, setHeight] = useState(0);
   const [active, setActive] = useState(0);
   const [notes, setNotes] = useState<number | null>(null);
-  const [moved, setMoved] = useState(false);
-  const movedRef = useRef(false);
   const activeRef = useRef(0);
   const count = artifacts.length;
 
@@ -457,10 +455,6 @@ const MovieReel = memo(function MovieReel({
 
   useMotionValueEvent(scrollY, 'change', (y) => {
     if (!height) return;
-    if (y > 4 && !movedRef.current) {
-      movedRef.current = true;
-      setMoved(true);
-    }
     const next = clamp(Math.round(y / height), 0, count - 1);
     if (next === activeRef.current) return;
     fx.step(next > activeRef.current ? 1 : -1);
@@ -522,7 +516,6 @@ const MovieReel = memo(function MovieReel({
               notes={story.notes[artifact.scene]}
               notesOpen={notes === i}
               onNotes={toggleNotes}
-              hint={i === 0 && !moved && count > 1}
             />
           ))}
         </div>
@@ -582,7 +575,6 @@ const ReelFrame = memo(function ReelFrame({
   notes,
   notesOpen,
   onNotes,
-  hint,
 }: {
   index: number;
   height: number;
@@ -598,7 +590,6 @@ const ReelFrame = memo(function ReelFrame({
   notes: readonly [string, string];
   notesOpen: boolean;
   onNotes: (index: number) => void;
-  hint: boolean;
 }) {
   const h = height || 1;
   const range = [(index - 1) * h, index * h, (index + 1) * h];
@@ -733,16 +724,6 @@ const ReelFrame = memo(function ReelFrame({
               </motion.p>
             ) : null}
           </AnimatePresence>
-          {hint ? (
-            <motion.span
-              aria-hidden
-              className="absolute inset-x-0 bottom-8 z-10 text-center font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80"
-              animate={reduce ? undefined : { y: [0, -4, 0] }}
-              transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              ↑ swipe up
-            </motion.span>
-          ) : null}
         </motion.div>
       )}
     </article>

@@ -122,14 +122,8 @@ export function GiftUnboxing({
 
   if (framed) {
     return (
-      <div className="mx-auto my-auto flex w-full max-w-md flex-1 flex-col justify-between gap-4 p-4 sm:p-6 md:max-w-sm md:flex-none md:py-8">
-        <p className="min-h-8 content-center pr-32 text-left font-mono text-[9px] uppercase tracking-[0.24em] text-white/40 md:pr-0 md:text-center">
-          Receiver preview · exactly what they&apos;ll open
-        </p>
+      <div className="mx-auto my-auto flex w-full max-w-md flex-1 flex-col justify-center p-4 pt-16 sm:p-6 sm:pt-16 md:max-w-sm md:flex-none md:py-8">
         <PhoneFrame className="receiver-stage">{content}</PhoneFrame>
-        <p className="text-center text-[12px] leading-snug text-white/45">
-          Their link opens straight into this, on any phone, no app needed.
-        </p>
         {watermark ? <PreviewWatermark /> : null}
       </div>
     );
@@ -351,10 +345,7 @@ const GiftTag = memo(function GiftTag({
         className="absolute -right-3 -top-3 h-14 w-5 rotate-12 rounded-full border-[3px] border-slate-500/70 shadow-md"
         aria-hidden
       />
-      <p className="font-mono text-[8px] uppercase tracking-[0.23em] opacity-50">
-        Private delivery
-      </p>
-      <div className="mt-4 grid grid-cols-[52px_1fr] gap-y-2 font-receipt text-sm">
+      <div className="grid grid-cols-[52px_1fr] gap-y-2 font-receipt text-sm">
         <span className="font-bold uppercase opacity-55">To:</span>
         <strong className="text-base">{wrapper.customerName}</strong>
         <span className="font-bold uppercase opacity-55">From:</span>

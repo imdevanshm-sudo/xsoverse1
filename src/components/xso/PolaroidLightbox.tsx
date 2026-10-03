@@ -162,14 +162,9 @@ function Lightbox({ data }: { data: PolaroidData }) {
         </motion.div>
 
         {data.back ? (
-          <motion.p
-            className="pointer-events-none absolute inset-x-0 -bottom-9 text-center font-receipt text-[10px] uppercase tracking-[0.2em] text-white/70"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            {flipped ? 'Tap to turn it back' : 'Tap to flip it over'}
-          </motion.p>
+          <p className="sr-only" aria-live="polite">
+            {flipped ? 'Showing the back. Tap to turn it over.' : 'Tap the photo to see the back.'}
+          </p>
         ) : null}
       </motion.div>
 

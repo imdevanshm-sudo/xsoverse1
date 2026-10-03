@@ -72,13 +72,6 @@ export const Side2Audit = memo(function Side2Audit({ data }: Side2AuditProps) {
         aria-hidden
       />
       <PaperGrain opacity={0.22} />
-      <p
-        className="pointer-events-none absolute bottom-3 left-3 z-20 max-w-[10rem] font-hand text-[14px] leading-snug text-[#5a2a2a]/80"
-        style={{ transform: 'rotate(-4deg)' }}
-        aria-hidden
-      >
-        never let them navigate
-      </p>
 
       <header className="relative z-10 mb-3 border-b-2 border-black pb-3 text-center">
         <p className="font-mono text-[9px] font-bold uppercase tracking-[0.22em] text-black/70">

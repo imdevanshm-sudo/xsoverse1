@@ -58,7 +58,6 @@ export function GiftPendingPoller({ giftId }: { giftId: string }) {
         <p className="font-display text-[15px] font-light tracking-[0.06em] text-white/70">
           {exhausted ? 'Still being wrapped.' : 'Someone is still wrapping this for you.'}
         </p>
-        <p className="mt-3 text-[13px] text-white/40">It will open here on its own.</p>
         {exhausted && (
           <button
             type="button"

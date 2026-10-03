@@ -45,11 +45,7 @@ export function ShareGiftLink({
 
   const share = async () => {
     try {
-      await navigator.share({
-        title: recipientName ? `A gift for ${recipientName}` : 'Your XSO gift',
-        text: 'Someone turned the words they couldn’t say into something you can hold.',
-        url,
-      });
+      await navigator.share({ title: recipientName ? `For ${recipientName}` : 'For you', url });
     } catch (error) {
       if ((error as DOMException)?.name !== 'AbortError') void copy();
     }
@@ -101,11 +97,6 @@ export function ShareGiftLink({
           </button>
         )}
       </div>
-      {!compact && (
-        <p className={`text-[12px] leading-snug ${paper ? 'text-[#9a6b7b]' : 'text-white/45'}`}>
-          This link contains no XSOverse branding or buttons. Just your gift.
-        </p>
-      )}
     </div>
   );
 }

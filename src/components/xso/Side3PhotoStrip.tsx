@@ -185,15 +185,6 @@ const Strip = memo(function Strip({
               {sticker.text}
             </span>
           ))}
-        {decorated && !compact ? (
-          <p
-            className="pointer-events-none absolute bottom-10 left-3 z-30 max-w-[7rem] font-hand text-[12px] leading-snug text-[#2a4a7a]/85 max-md:hidden"
-            style={{ transform: 'rotate(-7deg)' }}
-            aria-hidden
-          >
-            this one tho ✨
-          </p>
-        ) : null}
       </div>
     </>
   );

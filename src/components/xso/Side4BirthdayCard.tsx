@@ -3,7 +3,7 @@
 import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Pause, Play } from 'lucide-react';
 import type { XsoData } from '@/types/xso';
-import { CoffeeStain, DateStamp, HandNote, PaperGrain } from '@/components/xso/paper/PaperCraft';
+import { CoffeeStain, DateStamp, PaperGrain } from '@/components/xso/paper/PaperCraft';
 import { ScratchReveal } from '@/components/xso/paper/ScratchReveal';
 import { usePauseOffscreen } from '@/hooks/usePauseOffscreen';
 
@@ -18,15 +18,17 @@ export const Side4BirthdayCard = memo(function Side4BirthdayCard({
   bare = false,
 }: Side4BirthdayCardProps) {
   const stamp = data.timestamp.split(/[\s/]/)[0] || '03.15';
-  const voice = <VoiceNotePlayer label={`${data.billerName} voice note`} src={data.voiceNoteUrl} />;
-  const scratch = (
+  /** Only what the sender actually added: no stand-in player or empty foil. */
+  const voice = data.voiceNoteUrl ? (
+    <div className={`relative z-10 ${bare ? 'mt-3' : 'mb-5'}`}>
+      <VoiceNotePlayer label={`${data.billerName} voice note`} src={data.voiceNoteUrl} />
+    </div>
+  ) : null;
+  const scratch = data.scratchOffReward ? (
     <div className="relative z-10">
-      <p className={`font-hand text-[13px] text-[#2a4a7a]/75 ${bare ? 'mb-1' : 'mb-2'}`}>
-        scratch the silver — a little secret
-      </p>
       <ScratchReveal key={data.scratchOffReward} reward={data.scratchOffReward} compact={bare} />
     </div>
-  );
+  ) : null;
 
   return (
     <article
@@ -50,9 +52,6 @@ export const Side4BirthdayCard = memo(function Side4BirthdayCard({
       {bare ? null : <PaperGrain opacity={0.32} />}
       <CoffeeStain className="right-3 top-6" />
       <DateStamp label={`${stamp} · LOVE`} className="bottom-28 right-3" />
-      <HandNote className="right-4 top-[42%]" rotate={8}>
-        ps. bring snacks
-      </HandNote>
 
       {/* Dog-ear */}
       <div
@@ -66,17 +65,12 @@ export const Side4BirthdayCard = memo(function Side4BirthdayCard({
       <header
         className={`relative z-10 border-b border-[#e0d8c8] ${bare ? 'mb-2.5 pb-2' : 'mb-4 pb-3'}`}
       >
-        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8a7e6e]">
-          Warm letter · side 4
-        </p>
         <h2
-          className={`mt-1 font-display font-extrabold tracking-tight text-ink ${bare ? 'text-lg' : 'text-xl'}`}
+          className={`font-display font-extrabold tracking-tight text-ink ${bare ? 'text-lg' : 'text-xl'}`}
         >
-          Birthday Letter
+          For {data.customerName}
         </h2>
-        <p className="text-sm text-ink/60">
-          From {data.billerName} → {data.customerName}
-        </p>
+        <p className="text-sm text-ink/60">From {data.billerName}</p>
       </header>
 
       <p
@@ -91,11 +85,11 @@ export const Side4BirthdayCard = memo(function Side4BirthdayCard({
       {bare ? (
         <>
           {scratch}
-          <div className="relative z-10 mt-3">{voice}</div>
+          {voice}
         </>
       ) : (
         <>
-          <div className="relative z-10 mb-5">{voice}</div>
+          {voice}
           {scratch}
         </>
       )}
@@ -192,10 +186,6 @@ const VoiceNotePlayer = memo(function VoiceNotePlayer({
           ))}
         </div>
       </div>
-
-      <span className="shrink-0 font-mono text-[10px] text-ink/45">
-        {playing ? '0:12' : '0:18'}
-      </span>
     </div>
   );
 });

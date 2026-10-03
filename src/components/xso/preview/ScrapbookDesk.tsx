@@ -77,7 +77,7 @@ const DESK_HEIGHT = {
   fill: 'min-h-0 flex-1',
 };
 
-function buildItems(data: XsoData, layers: ScrapbookLayers): DeskItemSpec[] {
+function buildItems(data: XsoData, layers: ScrapbookLayers, quiet: boolean): DeskItemSpec[] {
   const on = new Set(layers.elements);
   const photos = data.photos.filter(Boolean).slice(0, 3);
   const jitter = (id: string, base: number) =>
@@ -95,7 +95,7 @@ function buildItems(data: XsoData, layers: ScrapbookLayers): DeskItemSpec[] {
   const items: DeskItemSpec[] = [];
   if (on.has('receipt')) items.push(at('receipt', 'receipt', 0));
   if (on.has('polaroids')) {
-    (photos.length ? photos : ['']).forEach((src, index) =>
+    (photos.length || quiet ? photos : ['']).forEach((src, index) =>
       items.push(at(`polaroid-${index}`, 'polaroid', 2, { photo: { src, index } })),
     );
   }
@@ -159,7 +159,9 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const desk = useRef<HTMLDivElement>(null);
   const nodes = useRef<Record<string, HTMLDivElement | null>>({});
   const layers = useMemo(() => resolveScrapbook(data), [data]);
-  const items = useMemo(() => buildItems(data, layers), [data, layers]);
+  /** The recipient's desk carries no gesture hints or instructions, only the pieces. */
+  const quiet = size === 'fill';
+  const items = useMemo(() => buildItems(data, layers, quiet), [data, layers, quiet]);
   const reduce = Boolean(useReducedMotion());
   const coarse = useCoarsePointer();
   /** Touch dragging would trap page scrolls on the storefront, so only the full-screen desk gets it. */
@@ -401,13 +403,15 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
             onNode={registerNode}
             label={LABELS[item.kind](item)}
             hint={
-              item.kind === 'letter'
-                ? coarse
-                  ? 'Tap to unfold'
-                  : 'Unfold letter'
-                : coarse
-                  ? 'Tap to look closer'
-                  : 'Drag me · click to look'
+              quiet
+                ? undefined
+                : item.kind === 'letter'
+                  ? coarse
+                    ? 'Tap to unfold'
+                    : 'Unfold letter'
+                  : coarse
+                    ? 'Tap to look closer'
+                    : 'Drag me · click to look'
             }
             onPickUp={handlePickUp}
             onHover={item.kind === 'sticky' ? handleStickyHover : undefined}
@@ -430,6 +434,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
               focus={focus}
               label={LABELS[focusedItem.kind](focusedItem).replace(' — look closer', '')}
               action={focusAction(focusedItem)}
+              quiet={quiet}
               reduce={reduce}
               onClose={closeFocus}
             >
@@ -446,10 +451,14 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       </div>
 
       {chrome ? (
-        <div className="mt-3 flex items-center justify-between gap-3 px-1">
-          <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
-            {tactile ? 'Drag anything · tap to look closer' : 'Tap anything to look closer'}
-          </p>
+        <div
+          className={`mt-3 flex items-center gap-3 px-1 ${quiet ? 'justify-end' : 'justify-between'}`}
+        >
+          {quiet ? null : (
+            <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
+              {tactile ? 'Drag anything · tap to look closer' : 'Tap anything to look closer'}
+            </p>
+          )}
           <button
             type="button"
             onClick={tidyUp}
@@ -992,6 +1001,7 @@ function FocusView({
   focus,
   label,
   action,
+  quiet,
   reduce,
   onClose,
   children,
@@ -999,6 +1009,8 @@ function FocusView({
   focus: Focus;
   label: string;
   action: { run: () => void; hint: string } | null;
+  /** Keeps the hint for screen readers only. */
+  quiet: boolean;
   reduce: boolean;
   onClose: () => void;
   children: ReactNode;
@@ -1038,7 +1050,11 @@ function FocusView({
           <motion.p
             key={action.hint}
             aria-live="polite"
-            className="pointer-events-none absolute inset-x-0 top-4 text-center font-hand text-[22px] leading-none text-[#fde7d4]"
+            className={
+              quiet
+                ? 'sr-only'
+                : 'pointer-events-none absolute inset-x-0 top-4 text-center font-hand text-[22px] leading-none text-[#fde7d4]'
+            }
             {...fade}
             transition={{ duration: 0.2 }}
           >
@@ -1078,7 +1094,7 @@ function FocusView({
         {...fade}
         transition={{ duration: 0.25, delay: reduce ? 0 : 0.15 }}
       >
-        Tap to put back
+        Put back
       </motion.button>
     </div>
   );

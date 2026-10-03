@@ -3,7 +3,7 @@
 import { memo } from 'react';
 import type { CSSProperties } from 'react';
 import type { LineItem, XsoData } from '@/types/xso';
-import { CoffeeStain, HandNote, InkStamp, PaperGrain } from '@/components/xso/paper/PaperCraft';
+import { CoffeeStain, InkStamp, PaperGrain } from '@/components/xso/paper/PaperCraft';
 import { formatReceiptQty } from '@/lib/receiptFormat';
 
 export interface Side1ReceiptProps {
@@ -52,16 +52,13 @@ export const Side1Receipt = memo(function Side1Receipt({ data, bare = false }: S
       >
         {bare ? null : <PaperGrain opacity={0.18} />}
         <CoffeeStain className="bottom-16 left-4" />
-        <HandNote className="bottom-8 right-3 normal-case" rotate={-8}>
-          lol remember this??
-        </HandNote>
 
         <div className="relative z-10">
           <p className="mb-2 text-center text-[13px] font-bold tracking-[0.06em]">
             {data.merchantName}
           </p>
-          <ReceiptMeta label="Cashier" value={data.cashier} />
-          <ReceiptMeta label="Customer" value={data.customerName} />
+          {data.cashier ? <ReceiptMeta label="Cashier" value={data.cashier} /> : null}
+          {data.customerName ? <ReceiptMeta label="Customer" value={data.customerName} /> : null}
           <p style={{ color: MUTED }}>{data.timestamp}</p>
           {data.occasion ? <ReceiptMeta label="Occasion" value={data.occasion} /> : null}
 
@@ -175,7 +172,6 @@ const BarcodeSvg = memo(function BarcodeSvg({ id }: { id: string }) {
           return rect;
         })}
       </svg>
-      <p className="text-center text-[10px] tracking-[0.12em] opacity-70">{id.toUpperCase()}</p>
     </div>
   );
 });

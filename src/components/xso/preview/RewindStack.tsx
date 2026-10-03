@@ -151,6 +151,8 @@ const Stack = memo(function Stack({
     direction: -1,
   }));
   const reduce = Boolean(useReducedMotion());
+  /** The recipient sees only the tape and the pile: no buttons, counters, tags or hints. */
+  const chrome = size !== 'fill';
   const stage = useRef<HTMLElement>(null);
   const visible = useInView(stage, { margin: '120px' });
 
@@ -248,6 +250,7 @@ const Stack = memo(function Stack({
                   number={index + 1}
                   active={isFront}
                   reduce={reduce}
+                  chrome={chrome}
                   onRewind={rewind}
                 />
               </motion.div>
@@ -256,31 +259,33 @@ const Stack = memo(function Stack({
         </AnimatePresence>
       </div>
 
-      <div className="mt-4 flex w-full items-center justify-between gap-4">
-        <div className="flex items-center gap-1.5" aria-hidden>
-          {artifacts.map((artifact, index) => (
-            <span
-              key={artifact.id}
-              className={`h-1.5 w-1.5 rounded-full transition-[transform,background-color] duration-500 ease-out ${
-                index === front ? 'scale-[1.6] bg-[#fdba74]' : 'bg-[#fce7f3]/20'
-              }`}
-            />
-          ))}
+      {chrome ? (
+        <div className="mt-4 flex w-full items-center justify-between gap-4">
+          <div className="flex items-center gap-1.5" aria-hidden>
+            {artifacts.map((artifact, index) => (
+              <span
+                key={artifact.id}
+                className={`h-1.5 w-1.5 rounded-full transition-[transform,background-color] duration-500 ease-out ${
+                  index === front ? 'scale-[1.6] bg-[#fdba74]' : 'bg-[#fce7f3]/20'
+                }`}
+              />
+            ))}
+          </div>
+          <motion.button
+            type="button"
+            onClick={() => rewind()}
+            whileTap={reduce ? undefined : { scale: 0.97, y: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="paper-button inline-flex touch-manipulation items-center gap-2"
+            aria-label={`Rewind — bring back: ${artifacts[next].label}`}
+          >
+            <span aria-hidden className="text-sm leading-none">
+              ↺
+            </span>
+            Rewind
+          </motion.button>
         </div>
-        <motion.button
-          type="button"
-          onClick={() => rewind()}
-          whileTap={reduce ? undefined : { scale: 0.97, y: 1 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          className="paper-button inline-flex touch-manipulation items-center gap-2"
-          aria-label={`Rewind — bring back: ${artifacts[next].label}`}
-        >
-          <span aria-hidden className="text-sm leading-none">
-            ↺
-          </span>
-          Rewind
-        </motion.button>
-      </div>
+      ) : null}
       <p className="sr-only" aria-live="polite">
         Memory {front + 1} of {artifacts.length}: {artifacts[front].label}
       </p>
@@ -404,6 +409,7 @@ const RewindCard = memo(function RewindCard({
   number,
   active,
   reduce,
+  chrome,
   onRewind,
 }: {
   artifact: Sheet;
@@ -411,6 +417,7 @@ const RewindCard = memo(function RewindCard({
   number: number;
   active: boolean;
   reduce: boolean;
+  chrome: boolean;
   onRewind: (towards?: Direction) => void;
 }) {
   /** The click that trails a swipe must not rewind a second time. */
@@ -469,12 +476,14 @@ const RewindCard = memo(function RewindCard({
       />
       <div className={`rewind-card ${active ? 'cursor-pointer' : ''}`}>
         <div className="rewind-card__body">{face}</div>
-        <div className="deck-card__footer">
-          <span className="truncate">
-            No. {String(number).padStart(2, '0')} · {artifact.label}
-          </span>
-          {active ? <span className="shrink-0 text-[#ec4899]">Tap · pull back</span> : null}
-        </div>
+        {chrome ? (
+          <div className="deck-card__footer">
+            <span className="truncate">
+              No. {String(number).padStart(2, '0')} · {artifact.label}
+            </span>
+            {active ? <span className="shrink-0 text-[#ec4899]">Tap · pull back</span> : null}
+          </div>
+        ) : null}
         <span aria-hidden className="rewind-card__glow" />
         <span aria-hidden className="rewind-card__grain" />
       </div>

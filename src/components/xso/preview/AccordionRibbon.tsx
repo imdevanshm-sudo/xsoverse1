@@ -556,7 +556,7 @@ const Ribbon = memo(function Ribbon({
           </button>
         </div>
       </div>
-      {coarse ? (
+      {coarse && size !== 'fill' ? (
         <p className="mt-2 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#c99aae]">
           {!opened
             ? 'Tap to unfold'
@@ -811,18 +811,11 @@ const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; inde
                       className="absolute inset-0 h-full w-full object-cover"
                     />
                   </PolaroidThumb>
-                ) : (
-                  <p className="absolute inset-0 grid place-items-center font-hand text-sm text-[#faf6f0]/70">
-                    photo
-                  </p>
-                )}
+                ) : null}
               </div>
             </div>
           ))}
         </div>
-        <p className="mt-1 text-center font-hand text-lg leading-none text-[#3a2530]">
-          us, in every era
-        </p>
       </div>
     );
   }

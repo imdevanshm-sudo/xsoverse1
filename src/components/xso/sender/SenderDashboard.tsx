@@ -3,14 +3,6 @@ import type { StoredGift } from '@/lib/giftStore';
 import { previewPath } from '@/lib/giftLinks';
 import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
 
-const FORMAT_NAMES: Record<string, string> = {
-  loop: 'Memory Deck',
-  rewind: 'Rewind',
-  scrapbook: 'Scrapbook',
-  accordion: 'Accordion',
-  moviebox: 'Movie Box',
-};
-
 function formatDate(iso?: string) {
   if (!iso) return '—';
   return new Date(iso).toLocaleString('en-US', {
@@ -26,34 +18,21 @@ function formatDate(iso?: string) {
 export function SenderDashboard({ gift, manageKey }: { gift: StoredGift; manageKey: string }) {
   const { data } = gift;
   const details: Array<[string, string]> = [
-    ['Mint ID', gift.id],
-    ['Format', FORMAT_NAMES[data.giftStyle] ?? data.giftStyle],
-    ['For', data.customerName || '—'],
-    ['From', data.billerName || '—'],
-    ['Occasion', data.occasion || '—'],
+    ['Gift ID', gift.id],
     ['Sealed', formatDate(gift.paidAt)],
     ['Order', gift.lemonOrderId === 'preview' ? 'Preview (no charge)' : gift.lemonOrderId || '—'],
   ];
 
   return (
     <div className="paper-panel w-full max-w-md p-6 sm:p-8">
-      <p className="text-center font-receipt text-[11px] uppercase tracking-[0.24em] text-[#9a6b7b]">
-        XSO · Receipt of delivery
-      </p>
-      <h1 className="mt-2 text-center font-serif text-[32px] font-semibold leading-tight text-[#2d1b22]">
-        Sealed. It&apos;s theirs now.
-      </h1>
-
-      <section className="mt-6" aria-labelledby="send-heading">
-        <h2 id="send-heading" className="font-serif text-xl font-semibold text-[#2d1b22]">
-          Send their gift
-        </h2>
-        <p className="mt-1 text-[15px] leading-snug text-[#7a5563]">
-          {data.customerName
-            ? `This link is the only way in. Send it to ${data.customerName} when the moment feels right.`
-            : 'This link is the only way in. Send it when the moment feels right.'}
-        </p>
-        <div className="mt-4">
+      <section aria-labelledby="send-heading">
+        <h1
+          id="send-heading"
+          className="text-center font-serif text-[30px] font-semibold leading-tight text-[#2d1b22]"
+        >
+          {data.customerName ? `Send ${data.customerName} their gift` : 'Send their gift'}
+        </h1>
+        <div className="mt-5">
           <ShareGiftLink giftId={gift.id} recipientName={data.customerName} tone="paper" />
         </div>
         <Link
@@ -76,7 +55,7 @@ export function SenderDashboard({ gift, manageKey }: { gift: StoredGift; manageK
               <dt className="text-[#b48799]">{label}</dt>
               <dd
                 className={`min-w-0 break-all text-right text-[#2d1b22] ${
-                  label === 'Mint ID' || label === 'Order' ? 'normal-case tracking-normal' : ''
+                  label === 'Gift ID' || label === 'Order' ? 'normal-case tracking-normal' : ''
                 }`}
               >
                 {value}
@@ -85,8 +64,7 @@ export function SenderDashboard({ gift, manageKey }: { gift: StoredGift; manageK
           ))}
         </dl>
         <p className="mt-4 text-[12px] leading-snug text-[#9a6b7b]">
-          Bookmark this page: it&apos;s your private receipt. Only share the link above, never this
-          page&apos;s address.
+          Keep this page private. Share only the link above.
         </p>
       </section>
     </div>

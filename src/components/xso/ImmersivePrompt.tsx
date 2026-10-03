@@ -33,14 +33,6 @@ function alreadyImmersive() {
   );
 }
 
-/** iPhone Safari has no element fullscreen; iPadOS reports itself as a Mac with touch. */
-function isIOS() {
-  return (
-    /iP(hone|od|ad)/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  );
-}
-
 async function requestFullscreen() {
   const el = document.documentElement as FullscreenElement;
   try {
@@ -92,7 +84,6 @@ export function ImmersivePrompt({
   const [mode, setMode] = useState<Mode>('checking');
   const [exit, setExit] = useState<Exit>('instant');
   const [pending, setPending] = useState(false);
-  const [iosHint, setIosHint] = useState(false);
   const content = useRef<HTMLDivElement>(null);
   const storageKey = `xso:immersive:${id}`;
 
@@ -108,7 +99,6 @@ export function ImmersivePrompt({
       setMode('done');
       return;
     }
-    setIosHint(isIOS());
     setMode(canFullscreen() ? 'fullscreen' : 'toolbars');
   }, [storageKey, hold]);
 
@@ -162,7 +152,7 @@ export function ImmersivePrompt({
             exit="hidden"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="immersive-headline"
+            aria-label={fullscreen ? 'Enter full screen' : 'Continue'}
           >
             {mode === 'checking' ? null : (
               <motion.div
@@ -174,27 +164,12 @@ export function ImmersivePrompt({
                 exit="hidden"
                 transition={{ duration: 1.1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
               >
-                <h1
-                  id="immersive-headline"
-                  className="max-w-[18rem] font-display text-[15px] font-light leading-relaxed tracking-[0.06em] text-white/70"
-                >
-                  {fullscreen
-                    ? 'Best experienced without borders.'
-                    : 'Hide toolbars for the best experience.'}
-                </h1>
-                {!fullscreen && iosHint ? (
-                  <p className="mt-3 max-w-[16rem] font-mono text-[10px] uppercase leading-relaxed tracking-[0.18em] text-white/35">
-                    Tap <span className="normal-case text-white/55">aA</span> in the address bar,
-                    then Hide Toolbar
-                  </p>
-                ) : null}
-
                 <motion.button
                   type="button"
                   onClick={enter}
                   disabled={pending}
                   autoFocus
-                  className="immersive-cta mt-10 flex min-h-12 touch-manipulation items-center gap-2.5 rounded-full border border-white/25 px-7 font-mono text-[11px] uppercase tracking-[0.24em] text-white/90 disabled:opacity-60"
+                  className="immersive-cta flex min-h-12 touch-manipulation items-center gap-2.5 rounded-full border border-white/25 px-7 font-mono text-[11px] uppercase tracking-[0.24em] text-white/90 disabled:opacity-60"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
                 >

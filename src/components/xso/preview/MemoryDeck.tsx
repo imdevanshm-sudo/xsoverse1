@@ -220,6 +220,7 @@ const Deck = memo(function Deck({
               active={shown === 0 && flying === null}
               inAir={inAir}
               reduce={reduce}
+              chrome={chrome}
               tiltY={tiltY}
               onLaunch={launch}
               onLand={land}
@@ -272,6 +273,7 @@ const DeckCard = memo(function DeckCard({
   active,
   inAir,
   reduce,
+  chrome,
   tiltY,
   onLaunch,
   onLand,
@@ -285,6 +287,8 @@ const DeckCard = memo(function DeckCard({
   active: boolean;
   inAir: boolean;
   reduce: boolean;
+  /** Card numbers, tags and gesture hints; off for the recipient. */
+  chrome: boolean;
   tiltY: MotionValue<number>;
   onLaunch: (index: number) => boolean;
   onLand: (index: number) => void;
@@ -440,18 +444,20 @@ const DeckCard = memo(function DeckCard({
         />
 
         <div className={`deck-card ${material.surface} ${active ? 'cursor-grab' : ''}`}>
-          {artifact.id === 'receipt' ? <ReceiptTelemetry number={number} /> : null}
+          {chrome && artifact.id === 'receipt' ? <ReceiptTelemetry number={number} /> : null}
 
           <div ref={body} className="deck-card__body">
             {face}
           </div>
 
-          <div className="deck-card__footer">
-            <span className="truncate">
-              No. {String(number).padStart(2, '0')} · {artifact.label}
-            </span>
-            {active ? <span className="shrink-0 text-[#ec4899]">Flick · tap</span> : null}
-          </div>
+          {chrome ? (
+            <div className="deck-card__footer">
+              <span className="truncate">
+                No. {String(number).padStart(2, '0')} · {artifact.label}
+              </span>
+              {active ? <span className="shrink-0 text-[#ec4899]">Flick · tap</span> : null}
+            </div>
+          ) : null}
 
           {artifact.id === 'letter' ? <span aria-hidden className="deck-card__creases" /> : null}
           {artifact.id === 'receipt' ? (
