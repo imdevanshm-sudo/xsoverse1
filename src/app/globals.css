@@ -1782,6 +1782,17 @@ html.is-landscape .xso-dock {
     inset -1px 0 0 rgba(253, 186, 116, 0.08);
 }
 
+/* Half of the black bar between two frames; neighbours meet to make one 8px line. */
+.film-frame-line {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  z-index: 2;
+  height: 4px;
+  background: #000;
+  pointer-events: none;
+}
+
 .film-face {
   position: absolute;
   inset: 0;

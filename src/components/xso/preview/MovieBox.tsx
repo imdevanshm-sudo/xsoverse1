@@ -491,7 +491,7 @@ function MovieReel({
         aria-label={`Scene ${active + 1} of ${count}. Scroll or swipe up for the next scene.`}
         className="film-reel-scroll h-full snap-y snap-mandatory overflow-y-auto focus-visible:outline-none"
       >
-        <div className="relative">
+        <div className="relative bg-[#140a0c] shadow-[inset_0_0_40px_rgba(0,0,0,0.7)]">
           <span aria-hidden className="film-rail left-0" />
           <span aria-hidden className="film-rail right-0" />
           {artifacts.map((artifact, i) => (
@@ -520,11 +520,11 @@ function MovieReel({
 
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[9%] bg-gradient-to-b from-[#050203] to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[6%] bg-gradient-to-b from-[#050203] to-transparent"
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[9%] bg-gradient-to-t from-[#050203] to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[6%] bg-gradient-to-t from-[#050203] to-transparent"
       />
       <span aria-hidden className="film-grain" style={{ zIndex: 20, opacity: 0.1 }} />
 
@@ -592,6 +592,13 @@ const ReelFrame = memo(function ReelFrame({
   const scale = useTransform(scrollY, range, reduce ? [1, 1, 1] : [0.9, 1, 0.9]);
   const dim = useTransform(scrollY, range, reduce ? [1, 1, 1] : [0.35, 1, 0.35]);
   const shot = movie.scenes[artifact.scene];
+  /** "Our faces" runs its photos down the strip, one frame each, like the film itself. */
+  const stills =
+    artifact.scene !== 2
+      ? []
+      : shot?.image
+        ? [shot.image]
+        : data.photos.slice(0, 3).filter(Boolean);
   const show = reduce
     ? { opacity: 1 }
     : { opacity: active ? 1 : 0, y: active ? 0 : 10, filter: active ? 'blur(0px)' : 'blur(3px)' };
@@ -604,32 +611,54 @@ const ReelFrame = memo(function ReelFrame({
   return (
     <article
       aria-label={`Scene ${index + 1}: ${artifact.label}`}
-      className="relative h-full snap-center snap-always px-7 py-[7%]"
+      className="relative flex snap-center snap-always items-center justify-center px-[30px] py-1"
       style={{ height: height || '100%' }}
     >
+      <span aria-hidden className="film-frame-line top-0" />
+      <span aria-hidden className="film-frame-line bottom-0" />
       <motion.div
-        className="gpu-layer relative h-full overflow-hidden rounded-[4px] bg-[#1b0e0b] shadow-[0_0_0_1px_rgba(253,186,116,0.08),0_20px_50px_-20px_rgba(0,0,0,0.9)]"
+        className="gpu-layer relative h-full w-full overflow-hidden rounded-[3px] bg-[#1b0e0b]"
         style={{ scale, opacity: dim }}
       >
-        <div className="absolute inset-0 [&_.film-face]:flex [&_.film-face]:flex-col [&_.film-face]:justify-center [&_.film-face]:px-6 [&_.film-face]:pb-24 [&_.film-face]:pt-14 [&_.film-face__letter]:[-webkit-line-clamp:12]">
-          <FrameFace
-            data={data}
-            index={artifact.scene}
-            scene={shot}
-            stars={movie.stars}
-            titled={Boolean(data.moviebox)}
-            slate={false}
-          />
-        </div>
+        {stills.length ? (
+          <div className="absolute inset-0 flex flex-col gap-1.5 bg-black">
+            {stills.map((src, i) => (
+              <div key={i} className="relative min-h-0 flex-1 overflow-hidden bg-[#2a1712]">
+                <LazyMedia
+                  src={src}
+                  alt={`Memory ${i + 1}`}
+                  fill
+                  sizes="(max-width: 480px) 90vw, 360px"
+                  className="film-photo absolute inset-0 h-full w-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="absolute inset-0 [&_.film-face]:flex [&_.film-face]:flex-col [&_.film-face]:justify-center [&_.film-face]:px-6 [&_.film-face]:pb-28 [&_.film-face]:pt-20 [&_.film-face__letter]:[-webkit-line-clamp:12]">
+            <FrameFace
+              data={data}
+              index={artifact.scene}
+              scene={shot}
+              stars={movie.stars}
+              titled={Boolean(data.moviebox)}
+              slate={false}
+            />
+          </div>
+        )}
         <span aria-hidden className="film-vignette" style={{ animation: 'none' }} />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-[7] rounded-[3px] shadow-[inset_0_0_28px_rgba(0,0,0,0.85),inset_0_0_0_1px_rgba(253,186,116,0.1)]"
+        />
 
         <motion.div
-          className="absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-3"
+          className="absolute inset-x-3 top-10 z-10 flex items-start justify-between gap-3"
           initial={false}
           animate={show}
           transition={textIn(0.1)}
         >
-          <p className="min-w-0 font-receipt text-[10px] uppercase leading-snug tracking-[0.3em] text-[#fdba74]">
+          <p className="min-w-0 rounded-md bg-[#0d0608]/60 px-2 py-1 font-receipt text-[10px] uppercase leading-snug tracking-[0.3em] text-[#fdba74]">
             Scene {String(artifact.scene + 1).padStart(2, '0')}
             {data.moviebox && shot?.title ? (
               <span className="block truncate tracking-[0.18em] text-[#fffaf0]/60">
@@ -658,11 +687,11 @@ const ReelFrame = memo(function ReelFrame({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <DirectorNote className="left-3 top-14 -rotate-3" delay={0} reduce={reduce}>
+              <DirectorNote className="left-3 top-24 -rotate-3" delay={0} reduce={reduce}>
                 {notes[0]}
               </DirectorNote>
               <DirectorNote
-                className="bottom-24 right-3 rotate-2 text-right"
+                className="bottom-32 right-3 rotate-2 text-right"
                 delay={0.12}
                 reduce={reduce}
               >
@@ -673,7 +702,7 @@ const ReelFrame = memo(function ReelFrame({
         </AnimatePresence>
 
         <motion.p
-          className="film-subtitle !bottom-5 !text-[15px]"
+          className="film-subtitle !bottom-14 !text-[15px] [text-shadow:0_1px_6px_rgba(0,0,0,0.95)]"
           initial={false}
           animate={show}
           transition={textIn(0.3)}
@@ -683,7 +712,7 @@ const ReelFrame = memo(function ReelFrame({
         {hint ? (
           <motion.span
             aria-hidden
-            className="absolute inset-x-0 bottom-1 z-10 text-center font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80"
+            className="absolute inset-x-0 bottom-8 z-10 text-center font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80"
             animate={reduce ? undefined : { y: [0, -4, 0] }}
             transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
           >
