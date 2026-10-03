@@ -83,13 +83,15 @@ const DESK_HEIGHT = {
   fill: 'min-h-0 flex-1',
 };
 
-type Orientation = 'portrait' | 'landscape';
+/** Phones, tablets held upright (near square), and wide screens. */
+type Orientation = 'portrait' | 'square' | 'landscape';
 /** The studio's fixed-height desk keeps its hand-placed spots; the recipient's desk is laid out. */
 type Composition = Orientation | 'studio';
 
 /** The recipient's desk is composed at one of these sizes, then scaled to fill the screen. */
 const DESIGN: Record<Orientation, { width: number; height: number }> = {
   portrait: { width: 380, height: 680 },
+  square: { width: 600, height: 680 },
   landscape: { width: 900, height: 560 },
 };
 /** Kept clear above (the viewer's sound and Make one back) and below (the desk toolbar). */
@@ -148,29 +150,43 @@ const ASPECT: Record<ItemKind, number> = {
   letter: 0.8,
 };
 
+/** Staggered column starts (desk px) and piece size for the upright layouts. */
+const TALL_COLUMNS: Record<'portrait' | 'square', { starts: number[]; widthScale: number }> = {
+  portrait: { starts: [10, 46], widthScale: 1 },
+  square: { starts: [10, 44, 24], widthScale: 0.68 },
+};
+
 /**
- * Two staggered columns down a phone, in reading order with the letter last. Each piece drops
- * into the shorter column; if everything can't fit, the gaps close up evenly rather than piling
- * the last pieces on top of each other.
+ * Staggered columns down an upright screen (two on a phone, three on a tablet), in reading order
+ * with the letter last. Each piece drops into the shortest column; if everything can't fit, the
+ * gaps close up evenly rather than piling the last pieces on top of each other.
  */
-function spreadTall(items: DeskItemSpec[], jitter: (id: string, base: number) => number) {
-  const { width: W, height: H } = DESIGN.portrait;
+function spreadTall(
+  items: DeskItemSpec[],
+  jitter: (id: string, base: number) => number,
+  orientation: 'portrait' | 'square',
+) {
+  const { width: W, height: H } = DESIGN[orientation];
+  const { starts, widthScale } = TALL_COLUMNS[orientation];
   const gap = 16;
   const ordered = READING_ORDER.flatMap((kind) => items.filter((item) => item.kind === kind));
-  const columns = [10, 46];
+  const columns = [...starts];
+  const last = columns.length - 1;
   const raw = ordered.map((item) => {
-    const width = TALL_WIDTH[item.kind];
-    const col = columns[0] <= columns[1] ? 0 : 1;
+    const width = TALL_WIDTH[item.kind] * widthScale;
+    const col = columns.indexOf(Math.min(...columns));
     const top = columns[col];
     columns[col] += (width / 100) * W * ASPECT[item.kind] + gap;
     return { item, width, col, top };
   });
+  const leftOf = (col: number, width: number) =>
+    col === 0 ? 4 : col === last ? 96 - width : 50 - width / 2;
   const squeeze = Math.min(1, (H - 10) / (Math.max(...columns) - gap));
   const placed = new Map<string, DeskItemSpec>();
   raw.forEach(({ item, width, col, top }, i) =>
     placed.set(item.id, {
       ...item,
-      left: `${col === 0 ? 4 : 96 - width}%`,
+      left: `${leftOf(col, width)}%`,
       top: `${((top * squeeze) / H) * 100}%`,
       width: `${width}%`,
       tilt: jitter(item.id, (col ? 5 : -4) * (i % 4 < 2 ? 1 : -1)),
@@ -246,7 +262,9 @@ function buildItems(
   }
   if (on.has('letter')) items.push(at('letter', 'letter', 3));
   if (composition === 'landscape') return spreadWide(items, jitter);
-  if (composition === 'portrait') return spreadTall(items, jitter);
+  if (composition === 'portrait' || composition === 'square') {
+    return spreadTall(items, jitter, composition);
+  }
   return items;
 }
 
@@ -265,7 +283,7 @@ interface Place {
  */
 function tidyGrid(items: DeskItemSpec[], orientation: Orientation): Record<string, Place> {
   const { width: W, height: H } = DESIGN[orientation];
-  const cols = Math.min(orientation === 'landscape' ? 4 : 2, items.length);
+  const cols = Math.min({ landscape: 4, square: 3, portrait: 2 }[orientation], items.length);
   const rows = Math.ceil(items.length / cols);
   const pad = 12;
   const gap = 14;
@@ -366,7 +384,8 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     const measure = () => {
       const { width, height } = node.getBoundingClientRect();
       if (!width || !height) return;
-      const next: Orientation = width / height >= 1.05 ? 'landscape' : 'portrait';
+      const ratio = width / height;
+      const next: Orientation = ratio >= 1.05 ? 'landscape' : ratio >= 0.72 ? 'square' : 'portrait';
       const box = DESIGN[next];
       const scale = Math.min(width / box.width, height / box.height, 1.9);
       setFit((current) =>
@@ -397,6 +416,16 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const [lifted, setLifted] = useState<string | null>(null);
   const composition: Composition = fill ? orientation : 'studio';
   const tidy = useMemo(() => tidyPlaces(items, composition), [items, composition]);
+  /** Drag constraints re-clamp pieces on window resize against the old layout; set them back down. */
+  const firstFit = useRef(true);
+  useEffect(() => {
+    if (!fit) return;
+    if (firstFit.current) {
+      firstFit.current = false;
+      return;
+    }
+    setResetKey((n) => n + 1);
+  }, [fit]);
 
   /** Pieces present on first paint settle in place; ones checked later drop onto the desk. */
   const seen = useRef<Set<string> | null>(null);
