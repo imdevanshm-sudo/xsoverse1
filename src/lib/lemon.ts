@@ -80,6 +80,7 @@ export async function createLemonCheckout(options: {
   billerName: string;
   appUrl: string;
   quote: Quote;
+  deliverAt?: string | null;
 }): Promise<{ checkoutUrl: string }> {
   const config = getLemonConfig();
   if (!config) {
@@ -106,7 +107,10 @@ export async function createLemonCheckout(options: {
               gift_id: options.giftId,
               gift_style: options.giftStyle,
               tier: options.quote.tier,
+              // TODO(fulfillment): add-ons are recorded on the order but not fulfilled yet:
+              // scheduled unlock (deliver_at), extra rewrites, Stories video, print PDF, music.
               add_ons: options.quote.addOns.map((a) => a.id).join(','),
+              deliver_at: options.deliverAt ?? undefined,
             },
             name: options.billerName || undefined,
           },

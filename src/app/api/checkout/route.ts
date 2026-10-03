@@ -19,6 +19,16 @@ export const runtime = 'nodejs';
 /** Photos and voice notes are inline data URIs; stay under the 4.5 MB platform cap. */
 const MAX_BODY_BYTES = 4_000_000;
 
+/** Scheduled delivery must be in the future and within a year. */
+function scheduledTime(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time) || time <= Date.now() || time > Date.now() + 366 * 86_400_000) {
+    return null;
+  }
+  return new Date(time).toISOString();
+}
+
 export async function POST(request: Request) {
   try {
     const raw = await request.text();
@@ -29,7 +39,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = JSON.parse(raw) as { data?: XsoData; addOns?: unknown; arm?: unknown };
+    const body = JSON.parse(raw) as {
+      data?: XsoData;
+      addOns?: unknown;
+      arm?: unknown;
+      deliverAt?: unknown;
+    };
     if (!body?.data || typeof body.data !== 'object') {
       return NextResponse.json({ error: 'Missing souvenir data' }, { status: 400 });
     }
@@ -55,6 +70,12 @@ export async function POST(request: Request) {
       addOns: Array.isArray(body.addOns) ? body.addOns.filter(isAddOnId) : [],
       arm: isPriceArm(body.arm) ? body.arm : null,
     });
+    const deliverAt = price.addOns.some((a) => a.id === 'schedule')
+      ? scheduledTime(body.deliverAt)
+      : null;
+    if (price.addOns.some((a) => a.id === 'schedule') && !deliverAt) {
+      return NextResponse.json({ error: 'Pick a delivery time in the future.' }, { status: 400 });
+    }
 
     if (!lemon) {
       await activateGiftPreview(gift.id);
@@ -73,6 +94,7 @@ export async function POST(request: Request) {
       billerName: gift.data.billerName,
       appUrl,
       quote: price,
+      deliverAt,
     });
 
     return NextResponse.json({ mode: 'lemon', checkoutUrl });

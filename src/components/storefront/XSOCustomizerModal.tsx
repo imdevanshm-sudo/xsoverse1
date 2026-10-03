@@ -23,7 +23,12 @@ import {
 import { packContent, useXsoStore, type PackContent } from '@/store/useXsoStore';
 import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
-import { formatPrice } from '@/lib/pricing';
+import { formatPrice, TIERS, type AddOnId } from '@/lib/pricing';
+import {
+  AddOnPicker,
+  OrderReceipt,
+  validDeliverAt,
+} from '@/components/storefront/customizer/OrderSummary';
 import { useQuote } from '@/lib/pricingClient';
 import type { ThemeId } from '@/lib/themes';
 import type { FormatKey, FormatLayers } from '@/lib/formats';
@@ -122,7 +127,18 @@ export function XSOCustomizerModal() {
   const style = toGiftStyle(config.format);
   const { vibe, selectedCards: cards } = config;
   const photos = config.media.photos;
-  const price = useQuote(style, cards.length);
+  /** Included add-ons (music with Deluxe) start on; the quote drops any the tier doesn't offer. */
+  const [addOns, setAddOns] = useState<AddOnId[]>(['music']);
+  const [deliverAt, setDeliverAt] = useState('');
+  const price = useQuote(style, cards.length, addOns);
+  const scheduled = price.addOns.some((a) => a.id === 'schedule');
+  const toggleAddOn = useCallback((id: AddOnId) => {
+    setAddOns((current) => {
+      const on = !current.includes(id);
+      track('addon_toggled', { addon: id, on });
+      return on ? [...current, id] : current.filter((a) => a !== id);
+    });
+  }, []);
 
   const [step, setStep] = useState(0);
   const [crafted, setCrafted] = useState<CraftSource | null>(null);
@@ -406,12 +422,24 @@ export function XSOCustomizerModal() {
     setError(null);
     try {
       commit();
-      await startCheckout(style, order);
+      const chosen = price.addOns.map((a) => a.id);
+      track('checkout_started', {
+        tier: price.tier,
+        total: price.total,
+        currency: price.currency,
+        aesthetic: style,
+        cards: cards.length,
+        add_ons: chosen.join(','),
+      });
+      await startCheckout(style, order, {
+        addOns: chosen,
+        deliverAt: scheduled ? new Date(deliverAt).toISOString() : undefined,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
       setPaying(false);
     }
-  }, [busy, commit, order, style]);
+  }, [busy, cards.length, commit, deliverAt, order, price, scheduled, style]);
 
   const canNext = step === 0 || step === 1;
   const photoPicker = (
@@ -494,7 +522,7 @@ export function XSOCustomizerModal() {
 
         <div
           ref={bodyRef}
-          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-4 ${step === LAST ? 'pb-32' : 'pb-6'}`}
+          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-4 ${step === LAST ? 'pb-8' : 'pb-6'}`}
         >
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,380px)] md:items-start md:gap-8">
             <aside
@@ -583,14 +611,24 @@ export function XSOCustomizerModal() {
               ) : null}
 
               {step === LAST ? (
-                <section>
-                  <p className={`mb-2 ${LABEL}`}>Not quite it?</p>
-                  <AdjustBar busy={crafting} onAdjust={(a) => void generate(a)} />
-                  <p role="status" className="mt-2 text-[12px] font-semibold text-[#f9a8d4]">
-                    {adjusted
-                      ? `${adjusted === 'sweeter' ? '🥹 Sweeter' : '😂 Funnier'}. Done.`
-                      : null}
-                  </p>
+                <section className="grid gap-6">
+                  <OrderReceipt style={style} cards={cards} price={price} />
+                  <AddOnPicker
+                    price={price}
+                    selected={addOns}
+                    onToggle={toggleAddOn}
+                    deliverAt={deliverAt}
+                    onDeliverAt={setDeliverAt}
+                  />
+                  <div>
+                    <p className={`mb-2 ${LABEL}`}>Not quite it?</p>
+                    <AdjustBar busy={crafting} onAdjust={(a) => void generate(a)} />
+                    <p role="status" className="mt-2 text-[12px] font-semibold text-[#f9a8d4]">
+                      {adjusted
+                        ? `${adjusted === 'sweeter' ? '🥹 Sweeter' : '😂 Funnier'}. Done.`
+                        : null}
+                    </p>
+                  </div>
                 </section>
               ) : null}
             </div>
@@ -630,20 +668,41 @@ export function XSOCustomizerModal() {
               label={STEPS[DETAILS].next}
             />
           ) : (
-            <MatteCta
-              onClick={checkout}
-              loading={paying}
-              disabled={crafting !== null}
-              label={`${STEPS[LAST].next} (${formatPrice(price.total)})`}
-              loadingLabel="Locking it in…"
-              ariaLabel={`Lock it in and pay ${formatPrice(price.total)}`}
-            />
+            <>
+              <p className="mb-2.5 flex items-baseline justify-between gap-3 text-[13px] text-[#e0b4c6]">
+                <span className="min-w-0 truncate">
+                  <span className="font-semibold text-[#fdf2f8]">{TIERS[price.tier].name}</span> ·{' '}
+                  {cards.length} {cards.length === 1 ? 'card' : 'cards'}
+                  {price.addOns.length
+                    ? ` · ${price.addOns.length} add-on${price.addOns.length === 1 ? '' : 's'}`
+                    : ''}
+                </span>
+                <span className="shrink-0 font-receipt text-[15px] font-bold tabular-nums text-[#fdf2f8]">
+                  {formatPrice(price.total, price.currency)}
+                </span>
+              </p>
+              <MatteCta
+                onClick={checkout}
+                loading={paying}
+                disabled={crafting !== null || (scheduled && !validDeliverAt(deliverAt))}
+                label={`${STEPS[LAST].next} (${formatPrice(price.total)})`}
+                loadingLabel="Locking it in…"
+                ariaLabel={`Lock it in and pay ${formatPrice(price.total)}`}
+              />
+            </>
           )}
           {step === LAST ? (
-            <p className="mt-2.5 flex items-center justify-center gap-1.5 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6a7e]">
-              <Lock className="h-3 w-3" aria-hidden /> Your private link drops instantly after
-              checkout.
-            </p>
+            <div className="mt-3 text-center text-[13.5px] leading-snug text-[#e0b4c6]">
+              <p className="flex items-center justify-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                {scheduled
+                  ? 'Your private link is ready instantly and opens for them on your date.'
+                  : 'Your private link is ready the moment you check out.'}
+              </p>
+              <p className="mt-1 font-semibold text-[#fdf2f8]">
+                Not happy? We&apos;ll redo it or refund you.
+              </p>
+            </div>
           ) : null}
         </footer>
       </motion.div>
