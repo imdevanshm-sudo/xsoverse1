@@ -347,6 +347,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const [peel, setPeel] = useState<0 | 1 | 2>(0);
   const [torn, setTorn] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
+  const [seal, setSeal] = useState<SealState>('whole');
   const [focus, setFocus] = useState<Focus | null>(null);
   /** The desk copy stays hidden until the focused copy has landed back on it. */
   const [lifted, setLifted] = useState<string | null>(null);
@@ -426,6 +427,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const finish = useRef(onFinish);
   finish.current = onFinish;
   const closeLetter = useCallback(() => {
+    playSfx('paper-rustle', 0.4);
     setLetterOpen(false);
     nodes.current.letter?.focus({ preventScroll: true });
     finish.current?.();
@@ -494,7 +496,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       case 'voice':
         return <SongCard data={data} songUrl={layers.songUrl} />;
       case 'letter':
-        return <FoldedLetter data={data} />;
+        return <FoldedLetter data={data} seal={seal} reduce={reduce} />;
     }
   };
 
@@ -538,11 +540,13 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const contents = useMemo(
     () => Object.fromEntries(items.map((item) => [item.id, content(item)])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, data, layers, peel, torn, reduce],
+    [items, data, layers, peel, torn, reduce, seal],
   );
 
-  const latest = useRef({ items, pickUp, openFocus, showPolaroid });
-  latest.current = { items, pickUp, openFocus, showPolaroid };
+  const latest = useRef({ items, pickUp, openFocus, showPolaroid, seal, reduce });
+  latest.current = { items, pickUp, openFocus, showPolaroid, seal, reduce };
+  const crack = useRef<number>();
+  useEffect(() => () => window.clearTimeout(crack.current), []);
   const handlePickUp = useCallback((id: string) => {
     const item = latest.current.items.find((it) => it.id === id);
     if (!item) return;
@@ -555,8 +559,21 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     if (order < 0) return;
     if (all[order].kind === 'polaroid') return show(all[order], order);
     if (all[order].kind !== 'letter') return open(all[order], order);
-    playFoley('flip', 0.8);
-    setLetterOpen(true);
+    const unfold = () => {
+      playSfx('paper-rustle', 0.8);
+      setLetterOpen(true);
+    };
+    if (latest.current.seal === 'cracking') return;
+    if (latest.current.seal === 'broken' || latest.current.reduce) {
+      setSeal('broken');
+      return unfold();
+    }
+    playSfx('seal-crack', 0.9);
+    setSeal('cracking');
+    crack.current = window.setTimeout(() => {
+      setSeal('broken');
+      unfold();
+    }, SEAL_CRACK_MS);
   }, []);
   const handleStickyHover = useCallback(
     (on: boolean) => setPeel((p) => (p === 2 ? 2 : on ? 1 : 0)),
@@ -1258,7 +1275,85 @@ const TicketStub = memo(function TicketStub({
   );
 });
 
-const FoldedLetter = memo(function FoldedLetter({ data }: { data: XsoData }) {
+type SealState = 'whole' | 'cracking' | 'broken';
+/** How long the seal takes to split before the letter starts unfolding. */
+const SEAL_CRACK_MS = 650;
+const SEAL_LEFT = 'polygon(0 0, 54% 0, 45% 28%, 57% 52%, 46% 76%, 53% 100%, 0 100%)';
+const SEAL_RIGHT = 'polygon(54% 0, 100% 0, 100% 100%, 53% 100%, 46% 76%, 57% 52%, 45% 28%)';
+const SEAL_CRUMBS = [
+  { x: -14, y: -10, size: 4 },
+  { x: 13, y: -12, size: 3 },
+  { x: -10, y: 12, size: 3 },
+  { x: 15, y: 9, size: 4 },
+  { x: 2, y: -16, size: 2.5 },
+];
+
+/** The sender's wax seal. Opening the letter cracks it in two, and it stays broken after. */
+function WaxSeal({
+  initial,
+  state,
+  reduce,
+}: {
+  initial: string;
+  state: SealState;
+  reduce: boolean;
+}) {
+  const place = 'absolute bottom-[14%] left-1/2 -translate-x-1/2';
+  if (state === 'whole') {
+    return (
+      <span aria-hidden className={`wax-seal ${place}`}>
+        {initial}
+      </span>
+    );
+  }
+  const split = (side: -1 | 1) => ({
+    initial: reduce || state === 'broken' ? false : ({ x: 0, y: 0, rotate: 0 } as const),
+    animate: { x: 4 * side, y: side === 1 ? 2 : 1, rotate: side === 1 ? 13 : -16 },
+    transition: reduce
+      ? INSTANT
+      : { type: 'spring' as const, stiffness: 420, damping: 16, delay: 0.08 },
+  });
+  return (
+    <span aria-hidden className={`${place} h-[30px] w-[30px]`}>
+      <motion.span
+        className="wax-seal absolute inset-0"
+        style={{ clipPath: SEAL_LEFT }}
+        {...split(-1)}
+      >
+        {initial}
+      </motion.span>
+      <motion.span
+        className="wax-seal absolute inset-0"
+        style={{ clipPath: SEAL_RIGHT }}
+        {...split(1)}
+      >
+        {initial}
+      </motion.span>
+      {state === 'cracking' && !reduce
+        ? SEAL_CRUMBS.map((crumb, i) => (
+            <motion.span
+              key={i}
+              className="absolute left-1/2 top-1/2 rounded-full bg-[#a01d42]"
+              style={{ width: crumb.size, height: crumb.size }}
+              initial={{ x: 0, y: 0, opacity: 1 }}
+              animate={{ x: crumb.x, y: crumb.y + 10, opacity: 0 }}
+              transition={{ duration: 0.55, delay: 0.08, ease: 'easeOut' }}
+            />
+          ))
+        : null}
+    </span>
+  );
+}
+
+const FoldedLetter = memo(function FoldedLetter({
+  data,
+  seal,
+  reduce,
+}: {
+  data: XsoData;
+  seal: SealState;
+  reduce: boolean;
+}) {
   return (
     <article className="desk-paper desk-paper--letter relative aspect-[5/4] px-3 pt-2.5">
       <Tape style={{ left: '-8%', top: 8, transform: 'rotate(-32deg)', width: '38%' }} />
@@ -1268,9 +1363,7 @@ const FoldedLetter = memo(function FoldedLetter({ data }: { data: XsoData }) {
       <p className="mt-1 font-hand text-[21px] leading-none text-[#3a2530]">
         for {data.customerName}
       </p>
-      <span aria-hidden className="wax-seal absolute bottom-[14%] left-1/2 -translate-x-1/2">
-        {data.billerName.charAt(0)}
-      </span>
+      <WaxSeal initial={data.billerName.charAt(0)} state={seal} reduce={reduce} />
     </article>
   );
 });
@@ -1387,6 +1480,71 @@ function FocusView({
 }
 
 const UNFOLD = { ...SOFT_SPRING, damping: 18 };
+/** The pen starts once the flaps have opened, and long letters are written faster. */
+const WRITE_DELAY_MS = 650;
+const writeDuration = (length: number) => Math.min(Math.max(length * 32, 1800), 6500);
+
+/**
+ * The letter body, written out at a pen's pace. The unwritten rest is laid out
+ * invisibly so lines never reflow, screen readers get the whole text at once,
+ * and a tap finishes it.
+ */
+function HandwrittenBody({
+  text,
+  reduce,
+  bodyMax,
+}: {
+  text: string;
+  reduce: boolean;
+  bodyMax?: number;
+}) {
+  const [shown, setShown] = useState(reduce ? text.length : 0);
+  const box = useRef<HTMLDivElement>(null);
+  const pen = useRef<HTMLSpanElement>(null);
+  const done = shown >= text.length;
+
+  useEffect(() => {
+    if (reduce) return setShown(text.length);
+    const total = writeDuration(text.length);
+    let frame = 0;
+    const start = performance.now() + WRITE_DELAY_MS;
+    const tick = (now: number) => {
+      const next = Math.round(text.length * Math.min(Math.max((now - start) / total, 0), 1));
+      setShown((current) => Math.max(current, next));
+      if (next < text.length) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [text, reduce]);
+
+  useEffect(() => {
+    const container = box.current;
+    const tip = pen.current;
+    if (!container || !tip || done) return;
+    const below = tip.offsetTop + tip.offsetHeight - container.clientHeight + 8;
+    if (below > container.scrollTop) container.scrollTop = below;
+  }, [shown, done]);
+
+  return (
+    <div
+      ref={box}
+      className={`desk-paper desk-paper--sheet letter-panel letter-panel--mid relative overflow-y-auto px-5 py-2 ${bodyMax ? '' : 'max-h-[38vh]'}`}
+      style={bodyMax ? { maxHeight: bodyMax } : undefined}
+      onClick={() => setShown(text.length)}
+      data-no-drag
+    >
+      <p className="sr-only">{text}</p>
+      <p
+        aria-hidden
+        className="whitespace-pre-line font-hand text-[21px] leading-[1.15] text-[#3a2530]"
+      >
+        {text.slice(0, shown)}
+        <span ref={pen} />
+        <span className="opacity-0">{text.slice(shown)}</span>
+      </p>
+    </div>
+  );
+}
 
 function OpenLetter({
   data,
@@ -1462,15 +1620,7 @@ function OpenLetter({
             Dear {data.customerName},
           </p>
         </motion.div>
-        <div
-          className={`desk-paper desk-paper--sheet letter-panel letter-panel--mid overflow-y-auto px-5 py-2 ${bodyMax ? '' : 'max-h-[38vh]'}`}
-          style={bodyMax ? { maxHeight: bodyMax } : undefined}
-          data-no-drag
-        >
-          <p className="whitespace-pre-line font-hand text-[21px] leading-[1.15] text-[#3a2530]">
-            {data.birthdayMessage}
-          </p>
-        </div>
+        <HandwrittenBody text={data.birthdayMessage} reduce={reduce} bodyMax={bodyMax} />
         <motion.div
           className="desk-paper desk-paper--sheet letter-panel flex items-end justify-between gap-3 rounded-b-[4px] px-5 pb-4 pt-2"
           style={{ transformOrigin: '50% 0%', backfaceVisibility: 'hidden' }}
