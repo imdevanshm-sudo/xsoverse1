@@ -140,7 +140,8 @@ export async function createLemonCheckout(options: {
               tier: options.quote.tier,
               // TODO(fulfillment): add-ons are recorded on the order but not fulfilled yet:
               // scheduled unlock (deliver_at), extra rewrites, Stories video, print PDF.
-              add_ons: options.quote.addOns.map((a) => a.id).join(','),
+              // Lemon turns '' into null and rejects it, so no add-ons means no field.
+              add_ons: options.quote.addOns.map((a) => a.id).join(',') || undefined,
               deliver_at: options.deliverAt ?? undefined,
             },
             name: options.billerName || undefined,
