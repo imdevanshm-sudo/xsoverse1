@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -15,6 +16,7 @@ import {
 } from 'react';
 import {
   AnimatePresence,
+  MotionConfig,
   animate,
   motion,
   useDragControls,
@@ -77,7 +79,132 @@ const DESK_HEIGHT = {
   fill: 'min-h-0 flex-1',
 };
 
-function buildItems(data: XsoData, layers: ScrapbookLayers, quiet: boolean): DeskItemSpec[] {
+type Orientation = 'portrait' | 'landscape';
+/** The studio's fixed-height desk keeps its hand-placed spots; the recipient's desk is laid out. */
+type Composition = Orientation | 'studio';
+
+/** The recipient's desk is composed at one of these sizes, then scaled to fill the screen. */
+const DESIGN: Record<Orientation, { width: number; height: number }> = {
+  portrait: { width: 380, height: 680 },
+  landscape: { width: 900, height: 560 },
+};
+/** Kept clear above (the viewer's sound and Make one back) and below (the desk toolbar). */
+const FILL_BANDS = { top: 56, bottom: 64 };
+
+/** Landscape widths, as a share of the desk, so each piece reads at a glance. */
+const WIDE_WIDTH: Record<ItemKind, number> = {
+  receipt: 22,
+  polaroid: 19,
+  card: 19,
+  sticky: 18,
+  voice: 21,
+  ticket: 23,
+  letter: 22,
+};
+const TOP_ROW: ItemKind[] = ['receipt', 'polaroid', 'card'];
+/** The letter comes last in reading order: bottom right. */
+const BOTTOM_ROW: ItemKind[] = ['sticky', 'voice', 'ticket', 'letter'];
+const ROW_TILT = [
+  [-5, 6, -3, 5],
+  [4, -6, 7, -4],
+];
+const ROW_DROP = [
+  [0, 3, -1, 4],
+  [2, -2, 3, 0],
+];
+
+/** Portrait widths, as a share of the desk. */
+const TALL_WIDTH: Record<ItemKind, number> = {
+  receipt: 47,
+  polaroid: 41,
+  card: 41,
+  sticky: 41,
+  voice: 45,
+  ticket: 47,
+  letter: 44,
+};
+const READING_ORDER: ItemKind[] = [
+  'receipt',
+  'polaroid',
+  'card',
+  'sticky',
+  'voice',
+  'ticket',
+  'letter',
+];
+
+/** Rough height over width for each piece, to pack the phone layout without measuring. */
+const ASPECT: Record<ItemKind, number> = {
+  receipt: 1.3,
+  polaroid: 1.45,
+  card: 1.25,
+  sticky: 1,
+  voice: 0.45,
+  ticket: 0.6,
+  letter: 0.8,
+};
+
+/**
+ * Two staggered columns down a phone, in reading order with the letter last. Each piece drops
+ * into the shorter column; if everything can't fit, the gaps close up evenly rather than piling
+ * the last pieces on top of each other.
+ */
+function spreadTall(items: DeskItemSpec[], jitter: (id: string, base: number) => number) {
+  const { width: W, height: H } = DESIGN.portrait;
+  const gap = 16;
+  const ordered = READING_ORDER.flatMap((kind) => items.filter((item) => item.kind === kind));
+  const columns = [10, 46];
+  const raw = ordered.map((item) => {
+    const width = TALL_WIDTH[item.kind];
+    const col = columns[0] <= columns[1] ? 0 : 1;
+    const top = columns[col];
+    columns[col] += (width / 100) * W * ASPECT[item.kind] + gap;
+    return { item, width, col, top };
+  });
+  const squeeze = Math.min(1, (H - 10) / (Math.max(...columns) - gap));
+  const placed = new Map<string, DeskItemSpec>();
+  raw.forEach(({ item, width, col, top }, i) =>
+    placed.set(item.id, {
+      ...item,
+      left: `${col === 0 ? 4 : 96 - width}%`,
+      top: `${((top * squeeze) / H) * 100}%`,
+      width: `${width}%`,
+      tilt: jitter(item.id, (col ? 5 : -4) * (i % 4 < 2 ? 1 : -1)),
+    }),
+  );
+  return items.map((item) => placed.get(item.id) ?? item);
+}
+
+/** Two loose rows across a wide desk: photos along the top, notes and the letter below. */
+function spreadWide(items: DeskItemSpec[], jitter: (id: string, base: number) => number) {
+  const rows = [
+    items.filter((item) => TOP_ROW.includes(item.kind)),
+    BOTTOM_ROW.flatMap((kind) => items.filter((item) => item.kind === kind)),
+  ];
+  const placed = new Map<string, DeskItemSpec>();
+  rows.forEach((row, r) =>
+    row.forEach((item, i) => {
+      const width = WIDE_WIDTH[item.kind];
+      const slot = 94 / row.length;
+      const centre = 3 + slot * (i + 0.5);
+      placed.set(item.id, {
+        ...item,
+        left: `${centre - width / 2}%`,
+        top: `${(r === 0 ? 4 : 60) + ROW_DROP[r][i % 4]}%`,
+        width: `${width}%`,
+        tilt: jitter(item.id, ROW_TILT[r][i % 4]),
+      });
+    }),
+  );
+  return items.map((item) => placed.get(item.id) ?? item);
+}
+
+function buildItems(
+  data: XsoData,
+  layers: ScrapbookLayers,
+  quiet: boolean,
+  composition: Composition,
+): DeskItemSpec[] {
   const on = new Set(layers.elements);
   const photos = data.photos.filter(Boolean).slice(0, 3);
   const jitter = (id: string, base: number) =>
@@ -114,6 +241,8 @@ function buildItems(data: XsoData, layers: ScrapbookLayers, quiet: boolean): Des
     items.push(at('voice', 'voice', 3, undefined, on.has('ticket') ? 'voice' : 'ticket'));
   }
   if (on.has('letter')) items.push(at('letter', 'letter', 3));
+  if (composition === 'landscape') return spreadWide(items, jitter);
+  if (composition === 'portrait') return spreadTall(items, jitter);
   return items;
 }
 
@@ -169,11 +298,41 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   onFinish?: () => void;
 }) {
   const desk = useRef<HTMLDivElement>(null);
+  const area = useRef<HTMLDivElement>(null);
   const nodes = useRef<Record<string, HTMLDivElement | null>>({});
   const layers = useMemo(() => resolveScrapbook(data), [data]);
   /** The recipient's desk carries no gesture hints or instructions, only the pieces. */
   const quiet = size === 'fill';
-  const items = useMemo(() => buildItems(data, layers, quiet), [data, layers, quiet]);
+  const fill = size === 'fill';
+  const [fit, setFit] = useState<{ orientation: Orientation; scale: number } | null>(null);
+  const orientation = fit?.orientation ?? 'portrait';
+  const design = DESIGN[orientation];
+  const items = useMemo(
+    () => buildItems(data, layers, quiet, fill ? orientation : 'studio'),
+    [data, layers, quiet, fill, orientation],
+  );
+
+  /** Picks the composition that suits the space, then scales it to fill without cropping. */
+  useLayoutEffect(() => {
+    const node = area.current;
+    if (!fill || !node) return;
+    const measure = () => {
+      const { width, height } = node.getBoundingClientRect();
+      if (!width || !height) return;
+      const next: Orientation = width / height >= 1.05 ? 'landscape' : 'portrait';
+      const box = DESIGN[next];
+      const scale = Math.min(width / box.width, height / box.height, 1.9);
+      setFit((current) =>
+        current?.orientation === next && Math.abs(current.scale - scale) < 0.005
+          ? current
+          : { orientation: next, scale },
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [fill]);
   const reduce = Boolean(useReducedMotion());
   const coarse = useCoarsePointer();
   /** Touch dragging would trap page scrolls on the storefront, so only the full-screen desk gets it. */
@@ -246,7 +405,11 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       width,
       scale: Math.max(
         1,
-        Math.min((box.offsetWidth * 0.8) / width, (box.offsetHeight * 0.6) / height, 2.6),
+        Math.min(
+          (box.offsetWidth * 0.8) / width,
+          (box.offsetHeight * (fill ? 0.76 : 0.6)) / height,
+          2.6,
+        ),
       ),
     });
   };
@@ -399,99 +562,143 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     nodes.current[id] = node;
   }, []);
 
-  return (
-    <section
-      className={`relative flex w-full max-w-[420px] flex-col ${size === 'fill' ? 'h-full' : ''}`}
-      aria-label="Scrapbook desk"
+  const deskNode = (
+    <div
+      ref={desk}
+      className={
+        fill
+          ? 'relative isolate h-full w-full touch-pan-y'
+          : `scrap-desk scrap-wood relative isolate w-full touch-pan-y ${DESK_HEIGHT[size]}`
+      }
     >
-      <div
-        ref={desk}
-        className={`scrap-desk scrap-wood relative isolate w-full touch-pan-y ${DESK_HEIGHT[size]}`}
+      <CoffeeRing className="pointer-events-none absolute bottom-[6%] right-[4%] w-[30%] opacity-[0.16]" />
+
+      {items.map((item) => (
+        <DeskItem
+          key={item.id}
+          spec={item}
+          place={places[item.id]}
+          tidied={tidied}
+          resetKey={resetKey}
+          z={stack.indexOf(item.id) + 1}
+          desk={desk}
+          reduce={reduce}
+          tactile={tactile}
+          hidden={lifted === item.id || lightboxId === `${scope}${item.id}`}
+          entering={!seen.current!.has(item.id)}
+          onNode={registerNode}
+          label={LABELS[item.kind](item)}
+          hint={
+            quiet
+              ? undefined
+              : item.kind === 'letter'
+                ? coarse
+                  ? 'Tap to unfold'
+                  : 'Unfold letter'
+                : coarse
+                  ? 'Tap to look closer'
+                  : 'Drag me · click to look'
+          }
+          onPickUp={handlePickUp}
+          onHover={item.kind === 'sticky' ? handleStickyHover : undefined}
+          onActivate={handleActivate}
+        >
+          {contents[item.id]}
+        </DeskItem>
+      ))}
+
+      <AnimatePresence
+        onExitComplete={() => {
+          const id = lifted;
+          setLifted(null);
+          if (id) nodes.current[id]?.focus({ preventScroll: true });
+        }}
       >
-        <CoffeeRing className="pointer-events-none absolute bottom-[6%] right-[4%] w-[30%] opacity-[0.16]" />
-
-        {items.map((item) => (
-          <DeskItem
-            key={item.id}
-            spec={item}
-            place={places[item.id]}
-            tidied={tidied}
-            resetKey={resetKey}
-            z={stack.indexOf(item.id) + 1}
-            desk={desk}
+        {focus && focusedItem ? (
+          <FocusView
+            key={focus.id}
+            focus={focus}
+            label={LABELS[focusedItem.kind](focusedItem).replace(' — look closer', '')}
+            action={focusAction(focusedItem)}
+            quiet={quiet}
             reduce={reduce}
-            tactile={tactile}
-            hidden={lifted === item.id || lightboxId === `${scope}${item.id}`}
-            entering={!seen.current!.has(item.id)}
-            onNode={registerNode}
-            label={LABELS[item.kind](item)}
-            hint={
-              quiet
-                ? undefined
-                : item.kind === 'letter'
-                  ? coarse
-                    ? 'Tap to unfold'
-                    : 'Unfold letter'
-                  : coarse
-                    ? 'Tap to look closer'
-                    : 'Drag me · click to look'
-            }
-            onPickUp={handlePickUp}
-            onHover={item.kind === 'sticky' ? handleStickyHover : undefined}
-            onActivate={handleActivate}
+            onClose={closeFocus}
           >
-            {contents[item.id]}
-          </DeskItem>
-        ))}
+            {contents[focusedItem.id]}
+          </FocusView>
+        ) : null}
+      </AnimatePresence>
 
-        <AnimatePresence
-          onExitComplete={() => {
-            const id = lifted;
-            setLifted(null);
-            if (id) nodes.current[id]?.focus({ preventScroll: true });
-          }}
-        >
-          {focus && focusedItem ? (
-            <FocusView
-              key={focus.id}
-              focus={focus}
-              label={LABELS[focusedItem.kind](focusedItem).replace(' — look closer', '')}
-              action={focusAction(focusedItem)}
-              quiet={quiet}
-              reduce={reduce}
-              onClose={closeFocus}
+      <AnimatePresence>
+        {letterOpen && layers.elements.includes('letter') ? (
+          <OpenLetter
+            key="letter"
+            data={data}
+            reduce={reduce}
+            bodyMax={fill ? design.height * 0.42 : undefined}
+            onClose={closeLetter}
+          />
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+  const toolbar = chrome ? (
+    <div
+      className={`flex items-center gap-3 px-1 ${fill ? '' : 'mt-3'} ${quiet ? 'justify-end' : 'justify-between'}`}
+    >
+      {quiet ? null : (
+        <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
+          {tactile ? 'Drag anything · tap to look closer' : 'Tap anything to look closer'}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={tidyUp}
+        className="paper-button shrink-0 touch-manipulation"
+        aria-label={tidied ? 'Scatter the desk again' : 'Tidy the desk into neat rows'}
+      >
+        {tidied ? 'Scatter' : 'Tidy up'}
+      </button>
+    </div>
+  ) : null;
+
+  if (!fill) {
+    return (
+      <section className="relative flex w-full max-w-[420px] flex-col" aria-label="Scrapbook desk">
+        {deskNode}
+        {toolbar}
+      </section>
+    );
+  }
+
+  return (
+    <section className="relative h-full w-full" aria-label="Scrapbook desk">
+      <div
+        ref={area}
+        className="absolute inset-x-0 flex items-center justify-center"
+        style={{ top: FILL_BANDS.top, bottom: FILL_BANDS.bottom }}
+      >
+        {fit ? (
+          <MotionConfig transformPagePoint={(p) => ({ x: p.x / fit.scale, y: p.y / fit.scale })}>
+            <div
+              className="shrink-0"
+              style={{
+                width: design.width,
+                height: design.height,
+                transform: `scale(${fit.scale})`,
+              }}
             >
-              {contents[focusedItem.id]}
-            </FocusView>
-          ) : null}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {letterOpen && layers.elements.includes('letter') ? (
-            <OpenLetter key="letter" data={data} reduce={reduce} onClose={closeLetter} />
-          ) : null}
-        </AnimatePresence>
+              {deskNode}
+            </div>
+          </MotionConfig>
+        ) : null}
       </div>
-
-      {chrome ? (
-        <div
-          className={`mt-3 flex items-center gap-3 px-1 ${quiet ? 'justify-end' : 'justify-between'}`}
-        >
-          {quiet ? null : (
-            <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
-              {tactile ? 'Drag anything · tap to look closer' : 'Tap anything to look closer'}
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={tidyUp}
-            className="paper-button shrink-0 touch-manipulation"
-            aria-label={tidied ? 'Scatter the desk again' : 'Tidy the desk into neat rows'}
-          >
-            {tidied ? 'Scatter' : 'Tidy up'}
-          </button>
-        </div>
-      ) : null}
+      <div
+        className="absolute inset-x-0 bottom-0 flex items-center px-4"
+        style={{ height: FILL_BANDS.bottom }}
+      >
+        <div className="mx-auto w-full max-w-[900px]">{toolbar}</div>
+      </div>
     </section>
   );
 });
@@ -687,14 +894,14 @@ const MiniReceipt = memo(function MiniReceipt({ data }: { data: XsoData }) {
   return (
     <article className="desk-paper desk-paper--receipt relative px-3 pb-4 pt-4 font-receipt text-[#2d1b22]">
       <Tape style={{ left: '30%', top: -9, transform: 'rotate(-4deg)' }} />
-      <p className="text-center text-[10px] font-bold uppercase tracking-[0.12em]">
+      <p className="text-center text-[12px] font-bold uppercase tracking-[0.12em]">
         {data.merchantName}
       </p>
-      <p className="mt-0.5 text-center text-[8px] uppercase tracking-[0.18em] opacity-60">
+      <p className="mt-0.5 text-center text-[9px] uppercase tracking-[0.18em] opacity-60">
         {data.timestamp}
       </p>
       <div className="my-2 border-t border-dashed border-[#2d1b22]/30" />
-      <ul className="space-y-1 text-[9px] uppercase leading-tight">
+      <ul className="space-y-1 text-[10.5px] uppercase leading-tight">
         {data.lineItems.slice(0, RECEIPT_LINES).map((line) => (
           <li key={line.id} className="flex justify-between gap-2">
             <span className="min-w-0 truncate">
@@ -708,11 +915,11 @@ const MiniReceipt = memo(function MiniReceipt({ data }: { data: XsoData }) {
         ) : null}
       </ul>
       <div className="my-2 border-t border-dashed border-[#2d1b22]/30" />
-      <p className="flex justify-between text-[10px] font-bold uppercase">
+      <p className="flex justify-between text-[12px] font-bold uppercase">
         <span>Total</span>
         <span>{data.total}</span>
       </p>
-      <p className="mt-2 font-hand text-[15px] leading-none text-[#b4234a]">worth every cent ♡</p>
+      <p className="mt-2 font-hand text-[17px] leading-none text-[#b4234a]">worth every cent ♡</p>
       <CoffeeRing className="pointer-events-none absolute -bottom-4 -right-5 w-[62%] opacity-[0.18]" />
     </article>
   );
@@ -864,7 +1071,7 @@ const StickyNote = memo(function StickyNote({
         className="desk-paper desk-paper--under absolute inset-0 flex flex-col items-end justify-end p-2 text-right"
         aria-hidden={peel !== 2}
       >
-        <p className="line-clamp-5 max-w-[56%] break-words font-hand text-[14px] leading-[1.05] text-[#3a2530]">
+        <p className="line-clamp-5 max-w-[56%] break-words font-hand text-[15px] leading-[1.05] text-[#3a2530]">
           {secret || '…'}
         </p>
       </div>
@@ -887,7 +1094,7 @@ const StickyNote = memo(function StickyNote({
         <p className="font-receipt text-[9px] uppercase tracking-[0.2em] text-[#8a6a52]">
           Audit · {score}/5
         </p>
-        <ul className="mt-1 space-y-0.5 font-hand text-[15px] leading-[1.05] text-[#3a2530]">
+        <ul className="mt-1 space-y-0.5 font-hand text-[16.5px] leading-[1.05] text-[#3a2530]">
           {data.greenFlags.slice(0, 3).map((flag) => (
             <li key={flag}>✓ {flag.toLowerCase()}</li>
           ))}
@@ -1012,16 +1219,16 @@ const TicketStub = memo(function TicketStub({
         <span>Admit two</span>
         <span>No. 0417</span>
       </div>
-      <p className="mt-0.5 truncate font-serif text-[15px] font-semibold leading-tight">
+      <p className="mt-0.5 truncate font-serif text-[16px] font-semibold leading-tight">
         {layers.ticketTitle || 'Secret promise'}
       </p>
       {where ? (
-        <p className="truncate font-receipt text-[8px] uppercase tracking-[0.14em] text-[#7a5563]">
+        <p className="truncate font-receipt text-[9px] uppercase tracking-[0.14em] text-[#7a5563]">
           {where}
         </p>
       ) : null}
       <div className="relative mt-1.5 min-h-[30px] border-t border-dashed border-[#2d1b22]/30 pt-1.5">
-        <p className="font-hand text-[16px] leading-[1.05] text-[#b4234a]" aria-hidden={!torn}>
+        <p className="font-hand text-[17px] leading-[1.05] text-[#b4234a]" aria-hidden={!torn}>
           {data.scratchOffReward}
         </p>
         <AnimatePresence initial={false}>
@@ -1036,7 +1243,7 @@ const TicketStub = memo(function TicketStub({
               }
               transition={{ type: 'spring', stiffness: 200, damping: 22 }}
             >
-              <span className="font-receipt text-[8px] uppercase tracking-[0.22em] text-[#8a6a52]">
+              <span className="font-receipt text-[9px] uppercase tracking-[0.22em] text-[#8a6a52]">
                 ✂ · · · tear here · · ·
               </span>
             </motion.div>
@@ -1051,10 +1258,10 @@ const FoldedLetter = memo(function FoldedLetter({ data }: { data: XsoData }) {
   return (
     <article className="desk-paper desk-paper--letter relative aspect-[5/4] px-3 pt-2.5">
       <Tape style={{ left: '-8%', top: 8, transform: 'rotate(-32deg)', width: '38%' }} />
-      <p className="font-receipt text-[8px] uppercase tracking-[0.2em] text-[#9a6a7e]">
+      <p className="font-receipt text-[9px] uppercase tracking-[0.2em] text-[#9a6a7e]">
         Do not open till {data.occasion.toLowerCase()}
       </p>
-      <p className="mt-1 font-hand text-[19px] leading-none text-[#3a2530]">
+      <p className="mt-1 font-hand text-[21px] leading-none text-[#3a2530]">
         for {data.customerName}
       </p>
       <span aria-hidden className="wax-seal absolute bottom-[14%] left-1/2 -translate-x-1/2">
@@ -1176,10 +1383,13 @@ const UNFOLD = { ...SOFT_SPRING, damping: 18 };
 function OpenLetter({
   data,
   reduce,
+  bodyMax,
   onClose,
 }: {
   data: XsoData;
   reduce: boolean;
+  /** Body height cap in desk pixels when the desk is scaled; otherwise a share of the screen. */
+  bodyMax?: number;
   onClose: () => void;
 }) {
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -1245,7 +1455,8 @@ function OpenLetter({
           </p>
         </motion.div>
         <div
-          className="desk-paper desk-paper--sheet letter-panel letter-panel--mid max-h-[38vh] overflow-y-auto px-5 py-2"
+          className={`desk-paper desk-paper--sheet letter-panel letter-panel--mid overflow-y-auto px-5 py-2 ${bodyMax ? '' : 'max-h-[38vh]'}`}
+          style={bodyMax ? { maxHeight: bodyMax } : undefined}
           data-no-drag
         >
           <p className="whitespace-pre-line font-hand text-[21px] leading-[1.15] text-[#3a2530]">
