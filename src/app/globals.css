@@ -2889,3 +2889,20 @@ html.is-landscape .xso-dock {
     radial-gradient(ellipse 60% 50% at 50% 30%, rgba(253, 186, 116, 0.1), transparent 70%),
     radial-gradient(ellipse 110% 90% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55));
 }
+
+/*
+ * Reading floors for recipients only (the studio's small previews keep their sizes): letters
+ * 16px on phones and 18px before the desktop stage scales them up past 20px; receipts 13px.
+ */
+.recipient-stage .xso-letter {
+  font-size: 16px;
+  line-height: 1.45;
+}
+.recipient-stage .xso-receipt {
+  font-size: 13px;
+}
+@media (min-width: 768px) {
+  .recipient-stage .xso-letter {
+    font-size: 18px;
+  }
+}

@@ -74,7 +74,7 @@ export const Side4BirthdayCard = memo(function Side4BirthdayCard({
       </header>
 
       <p
-        className={`paper-fade-in relative z-10 whitespace-pre-wrap font-sans text-ink ${
+        className={`xso-letter paper-fade-in relative z-10 whitespace-pre-wrap font-sans text-ink ${
           bare ? 'mb-3 text-[14px] leading-snug' : 'mb-5 text-[15px] leading-relaxed'
         }`}
       >

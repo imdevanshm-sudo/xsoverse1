@@ -721,7 +721,7 @@ const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; inde
   const scope = useId();
   if (index === 0) {
     return (
-      <div className="flex h-full flex-col font-receipt text-[11px] leading-snug">
+      <div className="xso-receipt flex h-full flex-col font-receipt text-[11px] leading-snug">
         <p className="text-[9px] uppercase tracking-[0.24em] opacity-60">Fold 01 · the receipt</p>
         <p className="mt-1.5 font-serif text-lg font-semibold leading-tight">{data.merchantName}</p>
         <p className="text-[9px] uppercase tracking-[0.16em] opacity-60">{data.timestamp}</p>

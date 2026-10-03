@@ -37,7 +37,7 @@ export const Side1Receipt = memo(function Side1Receipt({ data, bare = false }: S
         />
       )}
       <article
-        className="relative px-4 pb-6 pt-6 font-receipt text-[11.5px] uppercase leading-[1.4] tabular-nums"
+        className="xso-receipt relative px-4 pb-6 pt-6 font-receipt text-[11.5px] uppercase leading-[1.4] tabular-nums"
         style={
           bare
             ? { color: INK }
