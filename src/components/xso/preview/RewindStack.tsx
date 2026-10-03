@@ -220,7 +220,7 @@ function Stack({
                 key={`${artifact.id}:${passes[index]}`}
                 custom={direction}
                 variants={SHEET}
-                className={`gpu-layer absolute inset-x-1 bottom-7 top-14 ${isFront ? '' : 'pointer-events-none'}`}
+                className={`gpu-layer absolute inset-x-1 bottom-7 top-14 max-md:[@media(max-height:700px)]:top-11 ${isFront ? '' : 'pointer-events-none'}`}
                 style={{
                   zIndex: 10 - depth,
                   transformOrigin: '50% 0%',

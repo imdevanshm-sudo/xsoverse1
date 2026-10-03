@@ -351,6 +351,27 @@ const DeckCard = memo(function DeckCard({
     flight.current = [animate(x, 0, SPRING), animate(y, 0, SPRING)];
   };
 
+  /**
+   * A body with more paper than fits is a touch scroller: vertical moves scroll it and only a
+   * sideways move picks the card up. Bodies that fit leave every direction to the flick.
+   */
+  const body = useRef<HTMLDivElement>(null);
+  const scrolls = useRef(false);
+  useEffect(() => {
+    const el = body.current;
+    if (!el) return;
+    const measure = () => {
+      scrolls.current = el.scrollHeight > el.clientHeight + 1;
+      el.style.touchAction = scrolls.current ? 'pan-y' : 'none';
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    if (el.firstElementChild) observer.observe(el.firstElementChild);
+    return () => observer.disconnect();
+  }, []);
+  const pending = useRef<{ x: number; y: number } | null>(null);
+
   const pose = restAt(Math.max(0, depth));
 
   return (
@@ -372,7 +393,29 @@ const DeckCard = memo(function DeckCard({
           if (!active || reduce) return;
           if ((event.target as Element).closest(INTERACTIVE)) return;
           stopFlight();
+          const inBody = body.current?.contains(event.target as Node);
+          if (inBody && scrolls.current && event.pointerType !== 'mouse') {
+            pending.current = { x: event.clientX, y: event.clientY };
+            return;
+          }
           dragControls.start(event);
+        }}
+        onPointerMove={(event) => {
+          const start = pending.current;
+          if (!start) return;
+          const dx = Math.abs(event.clientX - start.x);
+          const dy = Math.abs(event.clientY - start.y);
+          if (dy > 10 && dy >= dx) pending.current = null;
+          else if (dx > 10) {
+            pending.current = null;
+            dragControls.start(event);
+          }
+        }}
+        onPointerUp={() => {
+          pending.current = null;
+        }}
+        onPointerCancel={() => {
+          pending.current = null;
         }}
         whileDrag={{ scale: 1.03 }}
         onDragEnd={onDragEnd}
@@ -397,7 +440,9 @@ const DeckCard = memo(function DeckCard({
         <div className={`deck-card ${material.surface} ${active ? 'cursor-grab' : ''}`}>
           {artifact.id === 'receipt' ? <ReceiptTelemetry number={number} /> : null}
 
-          <div className="deck-card__body">{face}</div>
+          <div ref={body} className="deck-card__body">
+            {face}
+          </div>
 
           <div className="deck-card__footer">
             <span className="truncate">

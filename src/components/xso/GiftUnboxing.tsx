@@ -176,12 +176,17 @@ function RecipientCanvas({ children }: { children: ReactNode }) {
   );
 }
 
+/** Card stacks stay vertically centred inside a phone-height band instead of running edge to edge. */
+const CARD_STAGE = 'flex h-full max-h-[600px] w-full items-center justify-center max-md:h-[80svh]';
+
 function Souvenir({ data }: { data: XsoData }) {
   switch (data.giftStyle) {
     case 'rewind':
       return (
-        <div className="flex h-full justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
-          <RewindStack data={data} size="fill" />
+        <div className="flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
+          <div className={CARD_STAGE}>
+            <RewindStack data={data} size="fill" />
+          </div>
         </div>
       );
     case 'scrapbook':
@@ -206,8 +211,8 @@ function Souvenir({ data }: { data: XsoData }) {
       );
     default:
       return (
-        <div className="flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
-          <div className="flex h-full w-full justify-center max-md:max-h-[65dvh]">
+        <div className="flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
+          <div className={CARD_STAGE}>
             <MemoryDeck data={data} size="fill" />
           </div>
         </div>
