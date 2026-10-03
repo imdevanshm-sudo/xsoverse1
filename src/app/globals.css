@@ -1860,47 +1860,9 @@ html.is-landscape .xso-dock {
 }
 
 /* Movie Box reel: celluloid edges with perforations that scroll with the film */
-.film-reel-scroll {
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-.film-reel-scroll::-webkit-scrollbar {
-  display: none;
-}
 
-.film-rail {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 1;
-  width: 20px;
-  pointer-events: none;
-  background-color: #1a0c0f;
-  background-image:
-    linear-gradient(to bottom, #050203 0 12px, transparent 12px 24px),
-    linear-gradient(to right, rgba(253, 186, 116, 0.06), transparent 40%, rgba(253, 186, 116, 0.06));
-  background-size:
-    9px 24px,
-    100% 100%;
-  background-repeat: repeat-y, no-repeat;
-  background-position:
-    center 6px,
-    0 0;
-  box-shadow:
-    inset 1px 0 0 rgba(253, 186, 116, 0.08),
-    inset -1px 0 0 rgba(253, 186, 116, 0.08);
-}
 
 /* Half of the black bar between two frames; neighbours meet to make one 8px line. */
-.film-frame-line {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  z-index: 2;
-  height: 4px;
-  background: #000;
-  pointer-events: none;
-}
 
 .film-face {
   position: absolute;
@@ -2856,4 +2818,29 @@ html.is-landscape .xso-dock {
   .immersive-cta::after {
     animation: none;
   }
+}
+
+/* Movie Box player controls: round, quiet, always keyboard-visible. */
+.movie-control {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 250, 240, 0.18);
+  background: rgba(5, 2, 3, 0.55);
+  color: #fffaf0;
+  transition:
+    opacity 0.2s,
+    border-color 0.2s;
+}
+.movie-control:hover {
+  border-color: rgba(253, 186, 116, 0.6);
+}
+.movie-control:disabled {
+  opacity: 0.3;
+}
+.movie-control:focus-visible {
+  outline: 2px solid #fdba74;
+  outline-offset: 2px;
 }

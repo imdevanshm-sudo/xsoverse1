@@ -143,7 +143,7 @@ export function GiftUnboxing({
   return (
     <>
       <ImmersivePrompt id={giftId} hold={!ready}>
-        <RecipientCanvas>{content}</RecipientCanvas>
+        <RecipientCanvas wide={wrapper.giftStyle === 'moviebox'}>{content}</RecipientCanvas>
       </ImmersivePrompt>
       <AnimatePresence>{ready ? null : <RecipientPreloader key="preloader" />}</AnimatePresence>
       {watermark ? <PreviewWatermark /> : null}
@@ -202,16 +202,25 @@ const OpeningDot = memo(function OpeningDot() {
  * Every pixel belongs to the gift. Phones are full-bleed; wider screens get a phone-width
  * column on black so the formats keep the proportions they were composed for.
  */
-const RecipientCanvas = memo(function RecipientCanvas({ children }: { children: ReactNode }) {
+const RecipientCanvas = memo(function RecipientCanvas({
+  children,
+  wide = false,
+}: {
+  children: ReactNode;
+  /** Full-bleed on every screen, for formats that compose their own stage (the Movie Box). */
+  wide?: boolean;
+}) {
   return (
     <div
-      className="fixed inset-0 bg-black md:py-6"
+      className={`fixed inset-0 bg-black ${wide ? '' : 'md:py-6'}`}
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
-      <div className="relative mx-auto h-full w-full max-w-[520px] overflow-hidden md:rounded-3xl">
+      <div
+        className={`relative mx-auto h-full w-full overflow-hidden ${wide ? '' : 'max-w-[520px] md:rounded-3xl'}`}
+      >
         {children}
       </div>
     </div>

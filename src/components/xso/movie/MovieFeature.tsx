@@ -1,0 +1,195 @@
+'use client';
+
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react';
+import { useReducedMotion } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import type { MovieLayers, XsoData } from '@/types/xso';
+import { useStage } from '@/components/xso/movie/useStage';
+import {
+  AuditScene,
+  LetterScene,
+  PhotoScene,
+  ReceiptScene,
+  Subtitle,
+  TitleCards,
+  montagePhotos,
+  type SceneProps,
+} from '@/components/xso/movie/scenes';
+
+export interface MovieFrame {
+  id: string;
+  label: string;
+  /** Which of the four scenes it plays (receipt, audit, photos, letter). */
+  scene: number;
+}
+
+const SWIPE_PX = 40;
+
+/** The recipient's Movie Box: a fitted cinematic stage that plays one scene at a time. */
+export const MovieFeature = memo(function MovieFeature({
+  data,
+  movie,
+  frames,
+  focusIndex,
+  onChange,
+}: {
+  data: XsoData;
+  movie: MovieLayers;
+  frames: MovieFrame[];
+  focusIndex?: number;
+  onChange?: (index: number, label: string) => void;
+}) {
+  const reduce = Boolean(useReducedMotion());
+  const [room, stage] = useStage<HTMLDivElement>();
+  const [index, setIndex] = useState(0);
+  const count = frames.length;
+  const frame = frames[Math.min(index, count - 1)];
+
+  const goTo = useCallback(
+    (next: number) => {
+      const clamped = Math.max(0, Math.min(count - 1, next));
+      setIndex(clamped);
+      onChange?.(clamped, frames[clamped].label);
+    },
+    [count, frames, onChange],
+  );
+
+  useEffect(() => {
+    if (focusIndex !== undefined) goTo(focusIndex);
+  }, [focusIndex, goTo]);
+
+  const onKey = useCallback(
+    (e: KeyboardEvent<HTMLElement>) => {
+      if (e.key === 'ArrowRight') goTo(index + 1);
+      else if (e.key === 'ArrowLeft') goTo(index - 1);
+      else return;
+      e.preventDefault();
+    },
+    [goTo, index],
+  );
+
+  const downX = useRef<number | null>(null);
+  const onPointerDown = (e: PointerEvent) => {
+    downX.current = e.clientX;
+  };
+  const onPointerUp = (e: PointerEvent) => {
+    if (downX.current === null) return;
+    const dx = e.clientX - downX.current;
+    downX.current = null;
+    if (Math.abs(dx) >= SWIPE_PX) goTo(index + (dx < 0 ? 1 : -1));
+  };
+
+  const props: SceneProps = {
+    data,
+    movie,
+    scene: frame.scene,
+    index,
+    stage,
+    active: true,
+    reduce,
+  };
+  const caption = movie.scenes[frame.scene]?.caption;
+
+  return (
+    <section
+      ref={room}
+      aria-label="Movie Box"
+      aria-roledescription="film"
+      onKeyDown={onKey}
+      className="movie-feature relative flex h-full w-full touch-pan-y items-center justify-center overflow-hidden bg-[#050203] text-[#fffaf0]"
+    >
+      {stage.width ? (
+        <div
+          className="movie-stage relative overflow-hidden bg-[#0b0507]"
+          style={{ width: stage.width, height: stage.height }}
+          onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
+        >
+          <article
+            aria-label={`Scene ${index + 1} of ${count}: ${frame.label}`}
+            className="absolute inset-0"
+          >
+            <SceneBody {...props} />
+          </article>
+
+          {frame.scene !== 3 && caption ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-20 z-10 px-6">
+              <Subtitle big={stage.big}>{caption}</Subtitle>
+            </div>
+          ) : null}
+
+          <nav
+            aria-label="Scenes"
+            className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-center gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
+          >
+            <button
+              type="button"
+              onClick={() => goTo(index - 1)}
+              disabled={index === 0}
+              aria-label="Previous scene"
+              className="movie-control"
+            >
+              <ChevronLeft className="h-5 w-5" aria-hidden />
+            </button>
+            <ol className="flex items-center gap-1.5">
+              {frames.map((f, i) => (
+                <li key={f.id}>
+                  <button
+                    type="button"
+                    onClick={() => goTo(i)}
+                    aria-label={`Scene ${i + 1}: ${f.label}`}
+                    aria-current={i === index ? 'step' : undefined}
+                    className="grid h-8 w-6 place-items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+                  >
+                    <span
+                      className={`block h-1 rounded-full transition-[width,background-color] duration-300 ${
+                        i === index ? 'w-5 bg-[#fdba74]' : 'w-2 bg-[#fffaf0]/35'
+                      }`}
+                    />
+                  </button>
+                </li>
+              ))}
+            </ol>
+            <button
+              type="button"
+              onClick={() => goTo(index + 1)}
+              disabled={index === count - 1}
+              aria-label="Next scene"
+              className="movie-control"
+            >
+              <ChevronRight className="h-5 w-5" aria-hidden />
+            </button>
+          </nav>
+        </div>
+      ) : null}
+      <p className="sr-only" aria-live="polite">
+        Scene {index + 1} of {count}: {frame.label}. {caption}
+      </p>
+    </section>
+  );
+});
+
+function SceneBody(props: SceneProps) {
+  switch (props.scene) {
+    case 0:
+      return <ReceiptScene {...props} />;
+    case 1:
+      return <AuditScene {...props} />;
+    case 2:
+      return montagePhotos(props.data, props.movie).length ? (
+        <PhotoScene {...props} />
+      ) : (
+        <TitleCards {...props} />
+      );
+    default:
+      return <LetterScene {...props} />;
+  }
+}
