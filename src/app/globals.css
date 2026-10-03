@@ -1481,11 +1481,34 @@ html.is-landscape .xso-dock {
 /* Accordion: one unbroken cream ribbon, z-folded in 3D under a sunset glow. */
 .accordion-stage {
   overflow: hidden;
-  perspective: 1200px;
-  perspective-origin: 50% 45%;
   cursor: grab;
   -webkit-mask-image: linear-gradient(transparent, #000 13%, #000 87%, transparent);
   mask-image: linear-gradient(transparent, #000 13%, #000 87%, transparent);
+}
+
+/* The scroll offset is the ribbon's position; snap points sit one fold apart. */
+.accordion-stage--scroll {
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+
+.accordion-stage--scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.accordion-snap {
+  position: absolute;
+  inset-inline: 0;
+  pointer-events: none;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* Perspective lives on the panels' 3D root; a long lens keeps tilted text legible. */
+.accordion-camera {
+  perspective: 1800px;
+  perspective-origin: 50% 50%;
 }
 
 .accordion-stage:active {
@@ -1544,16 +1567,58 @@ html.is-landscape .xso-dock {
 
 .accordion-panel__grain,
 .accordion-panel__light,
+.accordion-panel__crease,
 .accordion-panel__seam {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
+/* Tooth and fibre: noise, faint laid lines and a soft mottle, multiplied into the cream. */
 .accordion-panel__grain {
   z-index: 2;
-  background-image: var(--paper-noise);
-  opacity: 0.8;
+  background-image:
+    var(--paper-noise),
+    repeating-linear-gradient(0deg, rgba(120, 80, 60, 0.035) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse 60% 40% at 30% 20%, rgba(255, 255, 255, 0.35), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 80% 90%, rgba(150, 100, 70, 0.07), transparent 70%);
+  background-size:
+    128px 128px,
+    auto,
+    auto,
+    auto;
+  mix-blend-mode: multiply;
+  opacity: 0.9;
+}
+
+/* Fold shadows: the paper darkens into each crease as it closes, and clears as it lies flat. */
+.accordion-panel__crease {
+  z-index: 5;
+  height: 30%;
+  will-change: opacity;
+}
+
+.accordion-panel__crease--top {
+  bottom: auto;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 246, 236, 0.55) 0,
+    rgba(40, 14, 26, 0.55) 2px,
+    rgba(40, 14, 26, 0.22) 30%,
+    rgba(40, 14, 26, 0.06) 65%,
+    transparent
+  );
+}
+
+.accordion-panel__crease--bottom {
+  top: auto;
+  background: linear-gradient(
+    0deg,
+    rgba(40, 14, 26, 0.6) 0,
+    rgba(40, 14, 26, 0.24) 30%,
+    rgba(40, 14, 26, 0.06) 65%,
+    transparent
+  );
 }
 
 /* Perforation punched along the fold, with the crease's soft valley beneath it. */

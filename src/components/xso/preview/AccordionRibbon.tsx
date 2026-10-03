@@ -2,12 +2,16 @@
 
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
+  animate,
   motion,
   useInView,
   useMotionValue,
+  useMotionValueEvent,
   useReducedMotion,
+  useScroll,
   useSpring,
   useTransform,
+  type AnimationPlaybackControls,
   type MotionValue,
 } from 'framer-motion';
 import { LOOP_CARDS, type AuditMetrics, type XsoData } from '@/types/xso';
@@ -15,14 +19,9 @@ import { auditLabel } from '@/lib/formats';
 import { stackCards } from '@/lib/formatCards';
 import { playFoley } from '@/lib/foley';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
-import { SOFT_SPRING_VALUE } from '@/lib/motion';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { overallStars } from '@/components/xso/Side2Audit';
-import {
-  getArtifacts,
-  playMechanicalCue,
-  type Artifact,
-} from '@/components/xso/viewers/shared';
+import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
 
 const RIBBON_HEIGHT = {
   hero: 'memory-deck',
@@ -41,11 +40,18 @@ const FOLD_STOPS: ReadonlyArray<readonly [number, number]> = [
 /** Angle of every panel when the ribbon is compressed into a bundle. */
 const SHUT = 86;
 
-/** Ribbon travel: glides between panels and settles without wobble. */
-const TRAVEL = SOFT_SPRING_VALUE;
+/** Scroll drives the ribbon almost 1:1; a light spring only takes the edge off wheel steps. */
+const TRAVEL = { stiffness: 320, damping: 36 };
 /** Folds lag the travel a touch and overshoot slightly, like paper settling. */
 const CREASE = { stiffness: 70, damping: 15, mass: 1.2 };
 const SNAPPY = { stiffness: 1000, damping: 100 };
+/** Paper let go of after a pull: springs past its rest once, then settles. */
+const TENSION = { stiffness: 380, damping: 14, mass: 0.8 };
+/** Scroll distance per fold, as a share of a panel's height. */
+const SCROLL_PER_FOLD = 0.9;
+/** How many panels are mid-fold at once while the sheet cascades shut or open. */
+const CASCADE = 1.4;
+const CASCADE_TIME = 1.3;
 
 const TAB_PULL = 140;
 
@@ -63,6 +69,23 @@ function foldAt(distance: number) {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const RAD = Math.PI / 180;
+const smooth = (t: number) => t * t * (3 - 2 * t);
+const between = (v: number, from: number, to: number) =>
+  smooth(clamp((v - from) / (to - from), 0, 1));
+/** Diminishing give past the end of the paper: never quite reaches 1. */
+const rubber = (distance: number) => 1 - 1 / (1 + Math.max(0, distance) / 220);
+
+/**
+ * How shut panel `i` is while the sheet is `shut` of the way to a bundle.
+ * Both directions start at the top fold, so the letter always moves in reading order.
+ */
+function panelShut(shut: number, i: number, last: number, closing: boolean) {
+  const order = closing ? i : last - i;
+  return smooth(clamp((shut * (last + CASCADE) - order) / CASCADE, 0, 1));
+}
+
+/** Darkness of the crease between two panels: zero when they lie flat, deepest when pressed together. */
+const creaseDepth = (a: number, b: number) => Math.min(1, Math.abs(a - b) / 150) ** 0.8;
 
 interface Fold {
   angles: number[];
@@ -73,14 +96,23 @@ interface Fold {
 /**
  * Z-fold geometry. Seams alternate mountain/valley, so each panel hangs off the
  * bottom edge of the one above it; the strip is laid out seam by seam and then
- * shifted so the panel in focus sits flat in the middle of the stage.
+ * shifted so the panel in focus sits flat in the middle of the stage. `taut`
+ * (0–1) pulls every fold a little flatter, as when the paper is stretched.
  */
-function foldRibbon(travel: number, crease: number, open: number, count: number, h: number): Fold {
+function foldRibbon(
+  travel: number,
+  crease: number,
+  shuts: number[],
+  taut: number,
+  count: number,
+  h: number,
+): Fold {
   const angles: number[] = [];
   const ys = [0];
   const zs = [0];
   for (let i = 0; i < count; i += 1) {
-    const magnitude = SHUT + (foldAt(i - crease) - SHUT) * open;
+    const rest = foldAt(i - crease) * (1 - taut * 0.4);
+    const magnitude = rest + (SHUT - rest) * shuts[i];
     const angle = (i % 2 === 0 ? 1 : -1) * magnitude;
     angles.push(angle);
     ys.push(ys[i] + h * Math.cos(angle * RAD));
@@ -140,6 +172,8 @@ function Ribbon({
   const last = count - 1;
   const reduce = Boolean(useReducedMotion());
   const coarse = useCoarsePointer();
+  /** On storefront phones the page owns vertical swipes; everywhere else the ribbon scrolls itself. */
+  const scrolly = size === 'fill' || !coarse;
   const stage = useRef<HTMLDivElement>(null);
   const visible = useInView(stage, { once: true, amount: 0.35 });
   const [box, setBox] = useState({ w: 340, h: 460 });
@@ -155,87 +189,195 @@ function Ribbon({
   }, []);
   const panelW = Math.min(box.w - 24, 360);
   const panelH = clamp(Math.round(box.h * 0.56), 190, 320);
+  const step = Math.round(panelH * SCROLL_PER_FOLD);
 
   const [active, setActive] = useState(0);
   const [opened, setOpened] = useState(reduce);
 
-  /** Targets: gestures write here and the springs below carry the paper there. */
-  const target = useMotionValue(0);
-  const openTarget = useMotionValue(reduce ? 1 : 0);
+  /** The stage is a real scroller: its scroll offset is the ribbon's position, in folds. */
+  const { scrollY } = useScroll({ container: stage });
+  const stepValue = useMotionValue(step);
+  const halfStage = useMotionValue(box.h / 2);
+  const height = useMotionValue(panelH);
+  useEffect(() => {
+    stepValue.set(step);
+    halfStage.set(box.h / 2);
+    height.set(panelH);
+  }, [stepValue, halfStage, height, step, box.h, panelH]);
+  const target = useTransform([scrollY, stepValue], ([y, s]: number[]) => clamp(y / s, 0, last));
   const travel = useSpring(target, reduce ? SNAPPY : TRAVEL);
   const crease = useSpring(target, reduce ? SNAPPY : CREASE);
-  const open = useSpring(openTarget, reduce ? SNAPPY : CREASE);
-  const height = useMotionValue(panelH);
-  useEffect(() => height.set(panelH), [height, panelH]);
 
-  const fold = useTransform([travel, crease, open, height], ([t, c, o, h]: number[]) =>
-    foldRibbon(t, c, o, count, h),
+  /** 0 = laid out, 1 = folded into a bundle; the cascade reads each panel's share off it. */
+  const shut = useMotionValue(reduce ? 0 : 1);
+  const closing = useRef(false);
+  const cascade = useRef<AnimationPlaybackControls | null>(null);
+
+  const stretchTarget = useMotionValue(0);
+  const stretch = useSpring(stretchTarget, reduce ? SNAPPY : TENSION);
+
+  const fold = useTransform([travel, crease, shut, height, stretch], ([t, c, s, h, st]: number[]) =>
+    foldRibbon(
+      t,
+      c,
+      artifacts.map((_, i) => panelShut(s, i, last, closing.current)),
+      Math.abs(st),
+      count,
+      h,
+    ),
   );
 
-  /** Unfurls the first time it scrolls into view. */
-  useEffect(() => {
-    if (!visible || reduce) return;
-    const id = window.setTimeout(() => {
-      openTarget.set(1);
-      setOpened(true);
-      playFoley('shuffle', 0.4);
-    }, 260);
-    return () => window.clearTimeout(id);
-  }, [visible, reduce, openTarget]);
+  /** Pulled past either end, the sheet stretches from the edge being held. */
+  const sheetY = useTransform(stretch, (s) => s * 28);
+  const sheetScaleY = useTransform(stretch, (s) => 1 + Math.abs(s) * 0.05);
+  const sheetOrigin = useTransform(
+    [stretch, halfStage],
+    ([s, half]: number[]) => `50% ${s < 0 ? half : -half}px`,
+  );
+  /** Once the last fold closes, the bundle turns to face the reader and shrinks to a folded card. */
+  const bundleRotate = useTransform(shut, (s) => -SHUT * between(s, 0.62, 1));
+  const bundleScale = useTransform(shut, (s) => 1 - 0.3 * between(s, 0.45, 1));
+  const openness = useTransform(shut, (s) => 1 - s);
 
-  const activeRef = useRef(active);
-  const settle = (index: number) => {
-    const next = clamp(Math.round(index), 0, last);
-    target.set(next);
+  const activeRef = useRef(0);
+  useMotionValueEvent(target, 'change', (value) => {
+    const next = clamp(Math.round(value), 0, last);
     if (next === activeRef.current) return;
     activeRef.current = next;
     setActive(next);
     playMechanicalCue('click');
     if (!reduce) playFoley('flip', 0.35);
     onChange?.(next, artifacts[next].label);
+  });
+
+  const folded = useRef(reduce ? 0 : count);
+  useMotionValueEvent(shut, 'change', (value) => {
+    let n = 0;
+    for (let i = 0; i < count; i += 1) if (panelShut(value, i, last, closing.current) > 0.5) n += 1;
+    if (n === folded.current) return;
+    folded.current = n;
+    if (!reduce) playFoley('tap', 0.22);
+  });
+
+  const goTo = (index: number, instant = false) => {
+    stage.current?.scrollTo({
+      top: clamp(Math.round(index), 0, last) * step,
+      behavior: instant || reduce ? 'auto' : 'smooth',
+    });
   };
 
   const setOpen = (value: boolean) => {
-    openTarget.set(value ? 1 : 0);
+    cascade.current?.stop();
+    closing.current = !value;
     setOpened(value);
-    if (!reduce) playFoley(value ? 'shuffle' : 'thunk', 0.4);
+    const to = value ? 0 : 1;
+    if (reduce) {
+      shut.set(to);
+      return;
+    }
+    playFoley(value ? 'shuffle' : 'flip', 0.4);
+    cascade.current = animate(shut, to, {
+      duration: 0.15 + CASCADE_TIME * Math.abs(shut.get() - to),
+      ease: [0.45, 0, 0.25, 1],
+      onComplete: () => {
+        if (!value) playFoley('thunk', 0.5);
+      },
+    });
   };
+  const setOpenRef = useRef(setOpen);
+  setOpenRef.current = setOpen;
+  const goToRef = useRef(goTo);
+  goToRef.current = goTo;
+
+  /** Unfurls, top fold first, the first time it scrolls into view. */
+  useEffect(() => {
+    if (!visible || reduce) return;
+    const id = window.setTimeout(() => setOpenRef.current(true), 260);
+    return () => window.clearTimeout(id);
+  }, [visible, reduce]);
 
   useEffect(() => {
     if (focusIndex === undefined) return;
-    const next = clamp(focusIndex, 0, last);
-    activeRef.current = next;
-    setActive(next);
-    target.set(next);
-    openTarget.set(1);
-    setOpened(true);
-  }, [focusIndex, last, target, openTarget]);
+    goToRef.current(focusIndex, true);
+    if (shut.get() > 0.01) setOpenRef.current(true);
+  }, [focusIndex, shut]);
 
-  /** Wheel/trackpad scrubs the ribbon, then lets the page scroll once it runs out of paper. */
-  const settleRef = useRef(settle);
-  settleRef.current = settle;
+  /** A resize changes the fold pitch; keep the same panel under the reader. */
+  useEffect(() => {
+    if (stage.current) stage.current.scrollTop = activeRef.current * step;
+  }, [step]);
+
+  /** Rubber-band past the first or last fold, from wheel or touch. */
   useEffect(() => {
     const el = stage.current;
-    if (!el) return;
+    if (!el || !scrolly) return;
+    const atTop = () => el.scrollTop <= 0;
+    const atEnd = () => el.scrollTop >= el.scrollHeight - el.clientHeight - 1;
     let idle = 0;
+    let wheelPull = 0;
     const onWheel = (event: WheelEvent) => {
-      const now = target.get();
-      const atEnd = (now <= 0 && event.deltaY < 0) || (now >= last && event.deltaY > 0);
-      if (atEnd || openTarget.get() < 0.5) return;
-      event.preventDefault();
-      target.set(clamp(now + event.deltaY / (height.get() * 1.4), -0.2, last + 0.2));
+      if (shut.get() > 0.5) return;
+      const up = event.deltaY < 0;
+      if (!((up && atTop()) || (!up && atEnd()))) return;
+      wheelPull -= event.deltaY;
+      stretchTarget.set(Math.sign(wheelPull) * rubber(Math.abs(wheelPull)));
       window.clearTimeout(idle);
-      idle = window.setTimeout(() => settleRef.current(target.get()), 140);
+      idle = window.setTimeout(() => {
+        wheelPull = 0;
+        stretchTarget.set(0);
+      }, 120);
     };
-    el.addEventListener('wheel', onWheel, { passive: false });
+
+    let lastY = 0;
+    let edge: 'top' | 'end' | null = null;
+    let edgeY = 0;
+    const onTouchStart = (event: TouchEvent) => {
+      lastY = event.touches[0].clientY;
+      edge = null;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      const y = event.touches[0].clientY;
+      const down = y > lastY;
+      lastY = y;
+      if (shut.get() > 0.5) return;
+      if (!edge) {
+        if (down && atTop()) edge = 'top';
+        else if (!down && atEnd()) edge = 'end';
+        else return;
+        edgeY = y;
+        return;
+      }
+      const pull = edge === 'top' ? y - edgeY : edgeY - y;
+      if (pull <= 0) {
+        edge = null;
+        stretchTarget.set(0);
+        return;
+      }
+      stretchTarget.set((edge === 'top' ? 1 : -1) * rubber(pull));
+    };
+    const onTouchEnd = () => {
+      edge = null;
+      stretchTarget.set(0);
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: true });
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
+    el.addEventListener('touchend', onTouchEnd);
+    el.addEventListener('touchcancel', onTouchEnd);
     return () => {
       el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
       window.clearTimeout(idle);
     };
-  }, [target, openTarget, height, last]);
+  }, [scrolly, shut, stretchTarget]);
 
   const panStart = useRef(0);
   const pannedAt = useRef(0);
+  const resnap = useRef(0);
 
   return (
     <section
@@ -243,41 +385,54 @@ function Ribbon({
       aria-label="Accordion letter"
       aria-roledescription="folding ribbon"
     >
-      <Aura open={open} />
+      <Aura open={openness} />
 
       <motion.div
         ref={stage}
         tabIndex={0}
-        className={`accordion-stage relative w-full select-none outline-none ${
-          coarse ? 'touch-pan-y' : 'touch-none'
-        } ${RIBBON_HEIGHT[size]}`}
+        className={`accordion-stage relative w-full touch-pan-y select-none outline-none ${
+          scrolly && opened ? 'accordion-stage--scroll' : ''
+        } ${size === 'fill' ? 'overscroll-contain' : ''} ${RIBBON_HEIGHT[size]}`}
         onPanStart={
           coarse
             ? undefined
             : () => {
-                panStart.current = target.get();
+                const el = stage.current;
+                if (!el) return;
+                window.clearTimeout(resnap.current);
+                el.style.scrollSnapType = 'none';
+                panStart.current = el.scrollTop;
               }
         }
         onPan={
           coarse
             ? undefined
             : (_, info) => {
-                if (openTarget.get() < 0.5) return;
-                const raw = panStart.current - info.offset.y / (panelH * 0.8);
-                const give = raw < 0 ? raw * 0.35 : raw > last ? last + (raw - last) * 0.35 : raw;
-                target.set(give);
+                const el = stage.current;
+                if (!el || shut.get() > 0.5) return;
+                const max = el.scrollHeight - el.clientHeight;
+                const raw = panStart.current - info.offset.y;
+                stretchTarget.set(raw < 0 ? rubber(-raw) : raw > max ? -rubber(raw - max) : 0);
+                el.scrollTop = clamp(raw, 0, max);
               }
         }
         onPanEnd={
           coarse
             ? undefined
             : (_, info) => {
+                const el = stage.current;
                 pannedAt.current = performance.now();
-                if (openTarget.get() < 0.5) {
+                stretchTarget.set(0);
+                if (!el) return;
+                if (shut.get() > 0.5) {
+                  el.style.scrollSnapType = '';
                   if (info.offset.y > 40) setOpen(true);
                   return;
                 }
-                settle(target.get() - (info.velocity.y / (panelH * 0.8)) * 0.18);
+                goTo((el.scrollTop - info.velocity.y * 0.18) / step);
+                resnap.current = window.setTimeout(() => {
+                  el.style.scrollSnapType = '';
+                }, 650);
               }
         }
         onKeyDown={(event) => {
@@ -292,36 +447,55 @@ function Ribbon({
           if (!(event.key in keys)) return;
           event.preventDefault();
           if (!opened) setOpen(true);
-          settle(keys[event.key]);
+          goTo(keys[event.key]);
         }}
         aria-label={`Accordion letter, panel ${active + 1} of ${count}. ${
-          coarse ? 'Tap a fold to unfold it.' : 'Drag or use arrow keys to unfold.'
+          coarse ? 'Swipe or tap a fold to unfold it.' : 'Scroll, drag or use arrow keys to unfold.'
         }`}
       >
-        <div
-          className="absolute left-1/2 top-1/2"
-          style={{
-            width: panelW,
-            marginLeft: -panelW / 2,
-            transformStyle: 'preserve-3d',
-          }}
-        >
+        <div className="relative" style={{ height: box.h + last * step }}>
           {artifacts.map((artifact, index) => (
-            <RibbonPanel
+            <span
               key={artifact.id}
-              index={index}
-              fold={fold}
-              height={panelH}
-              onSelect={() => {
-                if (performance.now() - pannedAt.current < 250) return;
-                if (!opened) setOpen(true);
-                else if (index !== active) settle(index);
-                else if (coarse) settle(active === last ? 0 : active + 1);
+              aria-hidden
+              className="accordion-snap"
+              style={{ top: index * step, height: box.h }}
+            />
+          ))}
+          <div className="accordion-camera sticky top-0" style={{ height: box.h }}>
+            <motion.div
+              className="absolute left-1/2 top-1/2"
+              style={{
+                width: panelW,
+                marginLeft: -panelW / 2,
+                transformStyle: 'preserve-3d',
+                y: sheetY,
+                scaleY: sheetScaleY,
+                transformOrigin: sheetOrigin,
               }}
             >
-              <PanelFace data={data} index={index} />
-            </RibbonPanel>
-          ))}
+              <motion.div
+                style={{ transformStyle: 'preserve-3d', rotateX: bundleRotate, scale: bundleScale }}
+              >
+                {artifacts.map((artifact, index) => (
+                  <RibbonPanel
+                    key={artifact.id}
+                    index={index}
+                    fold={fold}
+                    height={panelH}
+                    onSelect={() => {
+                      if (performance.now() - pannedAt.current < 250) return;
+                      if (!opened) setOpen(true);
+                      else if (index !== active) goTo(index);
+                      else if (coarse) goTo(active === last ? 0 : active + 1);
+                    }}
+                  >
+                    <PanelFace data={data} index={index} />
+                  </RibbonPanel>
+                ))}
+              </motion.div>
+            </motion.div>
+          </div>
         </div>
       </motion.div>
 
@@ -333,14 +507,18 @@ function Ribbon({
         <PullTab
           opened={opened}
           reduce={reduce || coarse}
-          openTarget={openTarget}
+          shut={shut}
+          onGrab={() => {
+            cascade.current?.stop();
+            closing.current = opened;
+          }}
           onSet={setOpen}
         />
         <div className="flex w-24 justify-end gap-1.5">
           <button
             type="button"
             className="accordion-step"
-            onClick={() => (opened ? settle(active - 1) : setOpen(true))}
+            onClick={() => (opened ? goTo(active - 1) : setOpen(true))}
             disabled={opened && active === 0}
             aria-label="Previous fold"
           >
@@ -349,7 +527,7 @@ function Ribbon({
           <button
             type="button"
             className="accordion-step"
-            onClick={() => (opened ? settle(active + 1) : setOpen(true))}
+            onClick={() => (opened ? goTo(active + 1) : setOpen(true))}
             disabled={opened && active === last}
             aria-label="Next fold"
           >
@@ -359,7 +537,11 @@ function Ribbon({
       </div>
       {coarse ? (
         <p className="mt-2 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#c99aae]">
-          {opened ? 'Tap a fold to unfold it' : 'Tap to unfold'}
+          {!opened
+            ? 'Tap to unfold'
+            : scrolly
+              ? 'Swipe through the folds'
+              : 'Tap a fold to unfold it'}
         </p>
       ) : null}
       <p className="sr-only" aria-live="polite">
@@ -405,6 +587,12 @@ function RibbonPanel({
     const s = Math.sin(a * RAD);
     return Math.max(0, -s) * 0.62 + Math.abs(s) * 0.08;
   });
+  const creaseTop = useTransform(fold, (f) =>
+    index === 0 ? 0 : creaseDepth(f.angles[index - 1], f.angles[index]),
+  );
+  const creaseBottom = useTransform(fold, (f) =>
+    index === f.angles.length - 1 ? 0 : creaseDepth(f.angles[index], f.angles[index + 1]),
+  );
 
   return (
     <motion.div
@@ -435,6 +623,16 @@ function RibbonPanel({
         className="accordion-panel__light accordion-panel__light--shade"
         style={{ opacity: shade }}
       />
+      <motion.span
+        aria-hidden
+        className="accordion-panel__crease accordion-panel__crease--top"
+        style={{ opacity: creaseTop }}
+      />
+      <motion.span
+        aria-hidden
+        className="accordion-panel__crease accordion-panel__crease--bottom"
+        style={{ opacity: creaseBottom }}
+      />
     </motion.div>
   );
 }
@@ -443,12 +641,14 @@ function RibbonPanel({
 function PullTab({
   opened,
   reduce,
-  openTarget,
+  shut,
+  onGrab,
   onSet,
 }: {
   opened: boolean;
   reduce: boolean;
-  openTarget: MotionValue<number>;
+  shut: MotionValue<number>;
+  onGrab: () => void;
   onSet: (open: boolean) => void;
 }) {
   const start = useRef(0);
@@ -462,15 +662,16 @@ function PullTab({
       dragElastic={0.45}
       dragSnapToOrigin
       onDragStart={() => {
-        start.current = openTarget.get();
+        onGrab();
+        start.current = shut.get();
       }}
       onDrag={(_, info) => {
-        openTarget.set(clamp(start.current + info.offset.y / TAB_PULL, 0, 1));
+        shut.set(clamp(start.current - info.offset.y / TAB_PULL, 0, 1));
       }}
       onDragEnd={(_, info) => {
         draggedAt.current = performance.now();
-        const projected = openTarget.get() + (info.velocity.y / TAB_PULL) * 0.15;
-        onSet(projected > 0.5);
+        const projected = shut.get() - (info.velocity.y / TAB_PULL) * 0.15;
+        onSet(projected < 0.5);
       }}
       onClick={() => {
         if (performance.now() - draggedAt.current < 250) return;
