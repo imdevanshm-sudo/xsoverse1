@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { viewPath } from '@/lib/giftLinks';
 
 interface ShareGiftLinkProps {
   giftId: string;
@@ -9,10 +10,7 @@ interface ShareGiftLinkProps {
   tone?: 'console' | 'paper';
 }
 
-export function giftPath(giftId: string) {
-  return `/gift/${encodeURIComponent(giftId)}`;
-}
-
+/** Sender-only: copies or shares the recipient's chromeless `/view` link. */
 export function ShareGiftLink({
   giftId,
   recipientName,
@@ -20,12 +18,12 @@ export function ShareGiftLink({
   tone = 'console',
 }: ShareGiftLinkProps) {
   const paper = tone === 'paper';
-  const [url, setUrl] = useState(giftPath(giftId));
+  const [url, setUrl] = useState(viewPath(giftId));
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
 
   useEffect(() => {
-    setUrl(`${window.location.origin}${giftPath(giftId)}`);
+    setUrl(`${window.location.origin}${viewPath(giftId)}`);
     setCanShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
   }, [giftId]);
 
@@ -103,6 +101,11 @@ export function ShareGiftLink({
           </button>
         )}
       </div>
+      {!compact && (
+        <p className={`text-[12px] leading-snug ${paper ? 'text-[#9a6b7b]' : 'text-white/45'}`}>
+          This link contains no XSOverse branding or buttons. Just your gift.
+        </p>
+      )}
     </div>
   );
 }

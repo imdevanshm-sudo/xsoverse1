@@ -8,6 +8,8 @@ import {
   isPreviewCheckoutAllowed,
 } from '@/lib/lemon';
 import { isGiftStyle, pickXsoPayload } from '@/lib/xsoPayload';
+import { managePath, viewPath } from '@/lib/giftLinks';
+import { manageKey } from '@/lib/manageKey';
 import type { XsoData } from '@/types/xso';
 
 export const runtime = 'nodejs';
@@ -51,8 +53,8 @@ export async function POST(request: Request) {
       return NextResponse.json({
         mode: 'preview',
         giftId: gift.id,
-        checkoutUrl: `${appUrl}/checkout/success?giftId=${encodeURIComponent(gift.id)}&preview=1`,
-        giftUrl: `${appUrl}/gift/${gift.id}`,
+        checkoutUrl: `${appUrl}${managePath(gift.id, manageKey(gift.id))}&preview=1`,
+        giftUrl: `${appUrl}${viewPath(gift.id)}`,
       });
     }
 

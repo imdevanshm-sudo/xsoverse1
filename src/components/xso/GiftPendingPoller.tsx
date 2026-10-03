@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 const MAX_ATTEMPTS = 20;
 const INTERVAL_MS = 1500;
 
+/** Recipient-side wait while the sender's payment settles: no branding, just a quiet line. */
 export function GiftPendingPoller({ giftId }: { giftId: string }) {
   const router = useRouter();
   const [exhausted, setExhausted] = useState(false);
@@ -28,11 +29,7 @@ export function GiftPendingPoller({ giftId }: { giftId: string }) {
           cache: 'no-store',
         });
         if (cancelled) return;
-        if (response.ok) {
-          router.refresh();
-          return;
-        }
-        if (response.status === 404) {
+        if (response.ok || response.status === 404) {
           router.refresh();
           return;
         }
@@ -56,24 +53,22 @@ export function GiftPendingPoller({ giftId }: { giftId: string }) {
   }, [giftId, router, run]);
 
   return (
-    <div className="mx-auto w-full max-w-sm px-4 py-16 text-center">
-      <p className="font-pixel text-[9px] uppercase tracking-[0.24em] text-phosphor/70">
-        Being sealed
-      </p>
-      <p className="mt-4 font-mono text-sm text-white/60">
-        {exhausted
-          ? 'Still sealing. This can take a minute.'
-          : 'Someone is wrapping this for you. It will open here on its own.'}
-      </p>
-      {exhausted && (
-        <button
-          type="button"
-          onClick={retry}
-          className="mt-6 min-h-11 touch-manipulation rounded-full bg-phosphor px-6 py-3 font-pixel text-[9px] uppercase tracking-[0.14em] text-[#0a120e]"
-        >
-          Check again
-        </button>
-      )}
+    <div className="grid min-app-h place-items-center px-8 text-center">
+      <div>
+        <p className="font-display text-[15px] font-light tracking-[0.06em] text-white/70">
+          {exhausted ? 'Still being wrapped.' : 'Someone is still wrapping this for you.'}
+        </p>
+        <p className="mt-3 text-[13px] text-white/40">It will open here on its own.</p>
+        {exhausted && (
+          <button
+            type="button"
+            onClick={retry}
+            className="immersive-cta mt-8 min-h-11 touch-manipulation rounded-full border border-white/25 px-6 font-mono text-[11px] uppercase tracking-[0.22em] text-white/85"
+          >
+            Check again
+          </button>
+        )}
+      </div>
     </div>
   );
 }

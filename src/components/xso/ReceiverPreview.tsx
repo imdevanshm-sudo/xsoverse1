@@ -10,7 +10,7 @@ import { GiftUnboxing } from '@/components/xso/GiftUnboxing';
 import type { GiftStyle } from '@/types/xso';
 
 /**
- * Headerless takeover that renders the draft through the same component as `/gift/[id]`,
+ * Headerless takeover that renders the draft through the same component as `/xso/[id]/view`,
  * trimmed by `pickXsoPayload` exactly as the server will store it.
  */
 export function ReceiverPreview({ style, onClose }: { style: GiftStyle; onClose: () => void }) {

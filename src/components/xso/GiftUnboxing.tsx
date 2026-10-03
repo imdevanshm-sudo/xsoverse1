@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { PhoneFrame } from '@/components/xso/PhoneFrame';
@@ -8,13 +8,13 @@ import { RewindStack } from '@/components/xso/preview/RewindStack';
 import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
 import { MovieBox } from '@/components/xso/preview/MovieBox';
 import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
-import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
 import { ImmersivePrompt } from '@/components/xso/ImmersivePrompt';
-import type { GiftStyle, XsoData } from '@/types/xso';
+import type { XsoData } from '@/types/xso';
 
 /**
- * The recipient's unboxing. Phones get a full-bleed stage sized to the dynamic viewport;
- * from `md` up it sits in a phone frame. `preview` renders the creator's draft without the share tools.
+ * The unboxing. For the recipient it is chromeless: a black full-viewport canvas holding only
+ * the wrap and then the format, with no branding, codes or utilities (the "no price tag" rule).
+ * `preview` is the sender's mock of exactly that, shown inside a phone frame.
  */
 export function GiftUnboxing({
   giftId,
@@ -35,104 +35,111 @@ export function GiftUnboxing({
     setIsUnwrapped(true);
   };
 
-  const stage = (
-    <div
-      className={`mx-auto my-auto flex w-full max-w-md flex-col justify-between gap-4 p-4 sm:p-6 md:max-w-sm md:py-8 ${
-        preview
-          ? 'flex-1 md:flex-none'
-          : 'min-h-[100dvh] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:min-h-0'
-      }`}
-    >
-      <p
-        className={`font-mono text-[9px] uppercase tracking-[0.24em] text-white/40 ${
-          preview ? 'min-h-8 content-center pr-32 text-left md:pr-0 md:text-center' : 'text-center'
-        }`}
-      >
-        {preview
-          ? 'Receiver preview · exactly what they’ll open'
-          : `XSO · One-of-one souvenir · ${shortCode(giftId)}`}
-      </p>
-      <PhoneFrame className="receiver-stage">
-        <AnimatePresence>
-          {isUnwrapped ? (
-            <motion.div
-              key="souvenir"
-              className="absolute inset-0"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {data.giftStyle === 'rewind' ? (
-                <div className="flex h-full justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
-                  <RewindStack data={data} size="fill" />
-                </div>
-              ) : data.giftStyle === 'scrapbook' ? (
-                <div className="flex h-full items-center justify-center overflow-hidden bg-[#180e15] px-2 pb-14 pt-3">
-                  <div className="flex h-full w-full touch-manipulation justify-center max-md:max-h-[65dvh]">
-                    <ScrapbookDesk data={data} size="fill" />
-                  </div>
-                </div>
-              ) : data.giftStyle === 'accordion' ? (
-                <div className="flex h-full justify-center overflow-hidden bg-[#180e15] px-4 pb-16 pt-6">
-                  <AccordionRibbon data={data} size="fill" />
-                </div>
-              ) : data.giftStyle === 'moviebox' ? (
-                <div className="h-full overflow-hidden bg-[#050203]">
-                  <MovieBox data={data} size="fill" />
-                </div>
-              ) : (
-                <div className="flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
-                  <div className="flex h-full w-full justify-center max-md:max-h-[65dvh]">
-                    <MemoryDeck data={data} size="fill" />
-                  </div>
-                </div>
-              )}
-              <motion.p
-                hidden={data.giftStyle === 'moviebox'}
-                className="pointer-events-none absolute bottom-4 left-4 z-30 rounded-full border border-white/10 bg-black/80 px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-white/60"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                Handcrafted for {data.customerName} · {shortCode(giftId)}
-              </motion.p>
-            </motion.div>
-          ) : (
-            <GiftWrap key="gift-wrap" data={data} giftId={giftId} note={note} onUnwrap={unwrap} />
-          )}
-        </AnimatePresence>
-      </PhoneFrame>
+  const content = (
+    <AnimatePresence>
+      {isUnwrapped ? (
+        <motion.div
+          key="souvenir"
+          className="absolute inset-0"
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <Souvenir data={data} />
+        </motion.div>
+      ) : (
+        <GiftWrap key="gift-wrap" data={data} note={note} onUnwrap={unwrap} />
+      )}
+    </AnimatePresence>
+  );
 
-      {preview ? (
+  if (preview) {
+    return (
+      <div className="mx-auto my-auto flex w-full max-w-md flex-1 flex-col justify-between gap-4 p-4 sm:p-6 md:max-w-sm md:flex-none md:py-8">
+        <p className="min-h-8 content-center pr-32 text-left font-mono text-[9px] uppercase tracking-[0.24em] text-white/40 md:pr-0 md:text-center">
+          Receiver preview · exactly what they&apos;ll open
+        </p>
+        <PhoneFrame className="receiver-stage">{content}</PhoneFrame>
         <p className="text-center text-[12px] leading-snug text-white/45">
           Their link opens straight into this, on any phone, no app needed.
         </p>
-      ) : (
-        <ShareGiftLink giftId={giftId} recipientName={data.customerName} compact />
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
 
-  return preview ? stage : <ImmersivePrompt id={giftId}>{stage}</ImmersivePrompt>;
+  return (
+    <ImmersivePrompt id={giftId}>
+      <RecipientCanvas>{content}</RecipientCanvas>
+    </ImmersivePrompt>
+  );
 }
 
-function GiftWrap({
-  data,
-  giftId,
-  note,
-  onUnwrap,
-}: {
-  data: XsoData;
-  giftId: string;
-  note: string;
-  onUnwrap: () => void;
-}) {
+/**
+ * Every pixel belongs to the gift. Phones are full-bleed; wider screens get a phone-width
+ * column on black so the formats keep the proportions they were composed for.
+ */
+function RecipientCanvas({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="fixed inset-0 bg-black md:py-6"
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
+      <div className="relative mx-auto h-full w-full max-w-[520px] overflow-hidden md:rounded-3xl">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Souvenir({ data }: { data: XsoData }) {
+  switch (data.giftStyle) {
+    case 'rewind':
+      return (
+        <div className="flex h-full justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
+          <RewindStack data={data} size="fill" />
+        </div>
+      );
+    case 'scrapbook':
+      return (
+        <div className="flex h-full items-center justify-center overflow-hidden bg-[#180e15] px-2 pb-14 pt-3">
+          <div className="flex h-full w-full touch-manipulation justify-center max-md:max-h-[65dvh]">
+            <ScrapbookDesk data={data} size="fill" />
+          </div>
+        </div>
+      );
+    case 'accordion':
+      return (
+        <div className="flex h-full justify-center overflow-hidden bg-[#180e15] px-4 pb-16 pt-6">
+          <AccordionRibbon data={data} size="fill" />
+        </div>
+      );
+    case 'moviebox':
+      return (
+        <div className="h-full overflow-hidden bg-[#050203]">
+          <MovieBox data={data} size="fill" />
+        </div>
+      );
+    default:
+      return (
+        <div className="flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 pb-16 pt-6">
+          <div className="flex h-full w-full justify-center max-md:max-h-[65dvh]">
+            <MemoryDeck data={data} size="fill" />
+          </div>
+        </div>
+      );
+  }
+}
+
+function GiftWrap({ data, note, onUnwrap }: { data: XsoData; note: string; onUnwrap: () => void }) {
   const matte = data.giftStyle === 'moviebox';
   const presentation = data.giftStyle === 'accordion' ? 'booklet' : data.giftStyle;
 
   return (
     <motion.section
-      className={`absolute inset-0 z-40 overflow-hidden rounded-3xl border ${
+      className={`absolute inset-0 z-40 overflow-hidden md:rounded-3xl md:border ${
         matte ? 'border-rose-200/10 bg-[#180b10]' : 'border-[#c8a97c]/35 bg-[#ad8153]'
       }`}
       style={{ perspective: 1100 }}
@@ -156,7 +163,7 @@ function GiftWrap({
       />
 
       {!matte && <CraftFibers />}
-      <StyleStamp style={data.giftStyle} date={data.timestamp.split(' ')[0]} />
+      <Postmark matte={matte} occasion={data.occasion} date={data.timestamp.split(' ')[0]} />
 
       <motion.div
         className={`absolute inset-y-0 left-1/2 w-7 -translate-x-1/2 ${
@@ -185,7 +192,7 @@ function GiftWrap({
         exit={{ y: 120, rotate: 9, opacity: 0, scale: 0.85 }}
         transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
       >
-        <GiftTag data={data} giftId={giftId} note={note} matte={matte} />
+        <GiftTag data={data} note={note} matte={matte} />
         <motion.button
           type="button"
           onClick={onUnwrap}
@@ -205,17 +212,7 @@ function GiftWrap({
   );
 }
 
-function GiftTag({
-  data,
-  giftId,
-  note,
-  matte,
-}: {
-  data: XsoData;
-  giftId: string;
-  note: string;
-  matte: boolean;
-}) {
+function GiftTag({ data, note, matte }: { data: XsoData; note: string; matte: boolean }) {
   return (
     <article
       className={`relative rotate-[-1.5deg] border p-5 shadow-[0_4px_8px_rgba(40,24,13,.2),0_20px_50px_rgba(40,24,13,.4)] ${
@@ -235,7 +232,7 @@ function GiftTag({
         aria-hidden
       />
       <p className="font-mono text-[8px] uppercase tracking-[0.23em] opacity-50">
-        Private delivery · {shortCode(giftId)}
+        Private delivery
       </p>
       <div className="mt-4 grid grid-cols-[52px_1fr] gap-y-2 font-receipt text-sm">
         <span className="font-bold uppercase opacity-55">To:</span>
@@ -256,16 +253,15 @@ function GiftTag({
   );
 }
 
-function StyleStamp({ style, date }: { style: GiftStyle; date: string }) {
-  const darkWrapper = style === 'moviebox';
-
+/** A hand-stamped postmark: the occasion and the day, nothing about the product. */
+function Postmark({ matte, occasion, date }: { matte: boolean; occasion: string; date: string }) {
   return (
     <div
       className={`pointer-events-none absolute left-7 top-7 rotate-[-7deg] rounded-md border-2 border-current px-3 py-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em] ${
-        darkWrapper ? 'text-rose-100/40' : 'text-[#4d3b2d]/45'
+        matte ? 'text-rose-100/40' : 'text-[#4d3b2d]/45'
       }`}
     >
-      {style} edition
+      {occasion}
       <span className="mt-1 block border-t border-current pt-1 text-center">{date}</span>
     </div>
   );
@@ -344,13 +340,6 @@ function hashString(value: string) {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
-}
-
-function shortCode(value: string) {
-  return (value || 'xso-gift')
-    .replace(/[^a-z0-9]/gi, '')
-    .slice(-8)
-    .toUpperCase();
 }
 
 function playPaperUnwrap() {

@@ -2,6 +2,8 @@ import { randomBytes } from 'crypto';
 import { pickXsoPayload } from '@/lib/xsoPayload';
 import { XSO_PRODUCT } from '@/lib/orders';
 import { markGiftPaid, saveGift, type StoredGift } from '@/lib/giftStore';
+import { managePath } from '@/lib/giftLinks';
+import { manageKey } from '@/lib/manageKey';
 import type { XsoData } from '@/types/xso';
 
 export interface LemonConfig {
@@ -78,7 +80,8 @@ export async function createLemonCheckout(options: {
     throw new Error('Lemon Squeezy is not configured');
   }
 
-  const redirectUrl = `${options.appUrl}/checkout/success?giftId=${encodeURIComponent(options.giftId)}`;
+  /** The buyer is the sender, so both the redirect and the emailed receipt open their dashboard. */
+  const redirectUrl = `${options.appUrl}${managePath(options.giftId, manageKey(options.giftId))}`;
 
   const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
     method: 'POST',
@@ -103,8 +106,8 @@ export async function createLemonCheckout(options: {
             name: `XSO Souvenir · ${options.giftStyle}`,
             description: `Custom XSO for ${options.customerName || 'someone special'}`,
             redirect_url: redirectUrl,
-            receipt_button_text: 'Open your XSO',
-            receipt_link_url: `${options.appUrl}/gift/${options.giftId}`,
+            receipt_button_text: 'Send their gift',
+            receipt_link_url: redirectUrl,
           },
           checkout_options: {
             embed: false,
