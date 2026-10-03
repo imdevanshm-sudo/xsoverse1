@@ -1,18 +1,25 @@
 const LABEL = 'PREVIEW MODE — NOT FOR SHARING';
 
 /**
- * Two staggered marks per 720x480 tile: enough that no clean screenshot of the gift exists, sparse
- * and light enough that the letter and receipt still read through it. White with a thin dark
- * outline so it shows on both the black canvas and pale paper.
+ * Sparse, staggered marks: enough that no clean screenshot of the gift exists, light enough that
+ * the letter and receipt still read through them. White with a thin dark outline so they show on
+ * both the black canvas and pale paper.
  */
 const mark = (x: number, y: number) =>
   `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" transform="rotate(-24 ${x} ${y})" ` +
   `font-family="ui-monospace, Menlo, monospace" font-size="14" font-weight="600" letter-spacing="3" ` +
   `fill="#fff" stroke="#000" stroke-width="0.5" paint-order="stroke">${LABEL}</text>`;
 
-const TILE = `url("data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="480">${mark(180, 120)}${mark(540, 360)}</svg>`,
-)}")`;
+const tile = (width: number, height: number, marks: string) =>
+  `url("data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${marks}</svg>`,
+  )}")`;
+
+/** About two marks on a phone screen, three or four on a laptop. */
+const PHONE = tile(420, 420, mark(210, 210));
+const DESKTOP = tile(1100, 720, mark(275, 180) + mark(825, 540));
+
+const LAYER = 'pointer-events-none fixed inset-0 z-[130] select-none opacity-[0.12]';
 
 /**
  * Sits over everything on the sender's previews, so a screenshot or screen recording can't pass
@@ -20,11 +27,15 @@ const TILE = `url("data:image/svg+xml,${encodeURIComponent(
  */
 export function PreviewWatermark() {
   return (
-    <div
-      aria-hidden
-      data-preview-watermark
-      className="pointer-events-none fixed inset-0 z-[130] select-none opacity-[0.13]"
-      style={{ backgroundImage: TILE, backgroundSize: '720px 480px' }}
-    />
+    <div aria-hidden data-preview-watermark>
+      <div
+        className={`${LAYER} md:hidden`}
+        style={{ backgroundImage: PHONE, backgroundSize: '420px 420px' }}
+      />
+      <div
+        className={`${LAYER} hidden md:block`}
+        style={{ backgroundImage: DESKTOP, backgroundSize: '1100px 720px' }}
+      />
+    </div>
   );
 }
