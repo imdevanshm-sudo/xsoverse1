@@ -13,6 +13,7 @@ import { useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { MovieLayers, XsoData } from '@/types/xso';
 import { useStage } from '@/components/xso/movie/useStage';
+import { OpeningSlate } from '@/components/xso/movie/OpeningSlate';
 import {
   AuditScene,
   LetterScene,
@@ -50,6 +51,12 @@ export const MovieFeature = memo(function MovieFeature({
   const reduce = Boolean(useReducedMotion());
   const [room, stage] = useStage<HTMLDivElement>();
   const [index, setIndex] = useState(0);
+  const [started, setStarted] = useState(false);
+  const startTimer = useRef<number | null>(null);
+  const play = useCallback(() => {
+    startTimer.current = window.setTimeout(() => setStarted(true), reduce ? 0 : 450);
+  }, [reduce]);
+  useEffect(() => () => window.clearTimeout(startTimer.current ?? undefined), []);
   const count = frames.length;
   const frame = frames[Math.min(index, count - 1)];
 
@@ -63,7 +70,9 @@ export const MovieFeature = memo(function MovieFeature({
   );
 
   useEffect(() => {
-    if (focusIndex !== undefined) goTo(focusIndex);
+    if (focusIndex === undefined) return;
+    setStarted(true);
+    goTo(focusIndex);
   }, [focusIndex, goTo]);
 
   const onKey = useCallback(
@@ -113,61 +122,67 @@ export const MovieFeature = memo(function MovieFeature({
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
         >
-          <article
-            aria-label={`Scene ${index + 1} of ${count}: ${frame.label}`}
-            className="absolute inset-0"
-          >
-            <SceneBody {...props} />
-          </article>
+          {!started ? (
+            <OpeningSlate data={data} stage={stage} reduce={reduce} onPlay={play} />
+          ) : (
+            <>
+              <article
+                aria-label={`Scene ${index + 1} of ${count}: ${frame.label}`}
+                className="absolute inset-0"
+              >
+                <SceneBody {...props} />
+              </article>
 
-          {frame.scene !== 3 && caption ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-20 z-10 px-6">
-              <Subtitle big={stage.big}>{caption}</Subtitle>
-            </div>
-          ) : null}
+              {frame.scene !== 3 && caption ? (
+                <div className="pointer-events-none absolute inset-x-0 bottom-20 z-10 px-6">
+                  <Subtitle big={stage.big}>{caption}</Subtitle>
+                </div>
+              ) : null}
 
-          <nav
-            aria-label="Scenes"
-            className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-center gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
-          >
-            <button
-              type="button"
-              onClick={() => goTo(index - 1)}
-              disabled={index === 0}
-              aria-label="Previous scene"
-              className="movie-control"
-            >
-              <ChevronLeft className="h-5 w-5" aria-hidden />
-            </button>
-            <ol className="flex items-center gap-1.5">
-              {frames.map((f, i) => (
-                <li key={f.id}>
-                  <button
-                    type="button"
-                    onClick={() => goTo(i)}
-                    aria-label={`Scene ${i + 1}: ${f.label}`}
-                    aria-current={i === index ? 'step' : undefined}
-                    className="grid h-8 w-6 place-items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
-                  >
-                    <span
-                      className={`block h-1 rounded-full transition-[width,background-color] duration-300 ${
-                        i === index ? 'w-5 bg-[#fdba74]' : 'w-2 bg-[#fffaf0]/35'
-                      }`}
-                    />
-                  </button>
-                </li>
-              ))}
-            </ol>
-            <button
-              type="button"
-              onClick={() => goTo(index + 1)}
-              disabled={index === count - 1}
-              aria-label="Next scene"
-              className="movie-control"
-            >
-              <ChevronRight className="h-5 w-5" aria-hidden />
-            </button>
-          </nav>
+              <nav
+                aria-label="Scenes"
+                className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-center gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
+              >
+                <button
+                  type="button"
+                  onClick={() => goTo(index - 1)}
+                  disabled={index === 0}
+                  aria-label="Previous scene"
+                  className="movie-control"
+                >
+                  <ChevronLeft className="h-5 w-5" aria-hidden />
+                </button>
+                <ol className="flex items-center gap-1.5">
+                  {frames.map((f, i) => (
+                    <li key={f.id}>
+                      <button
+                        type="button"
+                        onClick={() => goTo(i)}
+                        aria-label={`Scene ${i + 1}: ${f.label}`}
+                        aria-current={i === index ? 'step' : undefined}
+                        className="grid h-8 w-6 place-items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+                      >
+                        <span
+                          className={`block h-1 rounded-full transition-[width,background-color] duration-300 ${
+                            i === index ? 'w-5 bg-[#fdba74]' : 'w-2 bg-[#fffaf0]/35'
+                          }`}
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+                <button
+                  type="button"
+                  onClick={() => goTo(index + 1)}
+                  disabled={index === count - 1}
+                  aria-label="Next scene"
+                  className="movie-control"
+                >
+                  <ChevronRight className="h-5 w-5" aria-hidden />
+                </button>
+              </nav>
+            </>
+          )}
         </div>
       ) : null}
       <p className="sr-only" aria-live="polite">
