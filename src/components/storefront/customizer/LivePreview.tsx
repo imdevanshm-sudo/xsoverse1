@@ -320,9 +320,6 @@ export const DraftReceipt = memo(function DraftReceipt({
           </span>
         </p>
       </div>
-      <p className="mt-3 text-center text-[12.5px] leading-snug text-[#9a6a7e]">
-        Your memory writes the line items and the letter.
-      </p>
     </div>
   );
 });

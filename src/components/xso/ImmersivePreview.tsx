@@ -138,7 +138,7 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
         <div className="grid">
           <MatteCta
             onClick={create}
-            label="Create Your XSO"
+            label="Claim yours"
             price={CARTRIDGE_PRICE}
             loadingLabel="Opening…"
             ariaLabel={`Create your XSO, ${CARTRIDGE_PRICE}`}

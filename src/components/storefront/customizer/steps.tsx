@@ -55,9 +55,6 @@ export const FormatStep = memo(function FormatStep({
               <span className="mt-0.5 block font-serif text-[15px] font-semibold leading-snug text-[#fed7aa]">
                 {cart.tagline}
               </span>
-              <span className="mt-1 block text-[12.5px] leading-snug text-[#c99aae] line-clamp-3">
-                {cart.description}
-              </span>
             </span>
           </button>
         );
@@ -134,7 +131,7 @@ export const CardChecklist = memo(function CardChecklist({
           className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-white/15 px-3 text-[12.5px] font-semibold text-[#e0b4c6] transition-colors hover:border-white/30 disabled:opacity-40"
         >
           <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-          Reset to default cards
+          Reset
         </button>
       </div>
       <ul className="mt-2 grid gap-2">
@@ -179,11 +176,6 @@ export const CardChecklist = memo(function CardChecklist({
           );
         })}
       </ul>
-      <p className="mt-2.5 text-[12.5px] leading-snug text-[#9a6a7e]">
-        {style === 'scrapbook'
-          ? 'Keep at least one piece on the desk.'
-          : `Keep at least ${MIN_CARDS[style]} cards so there's something to play through.`}
-      </p>
     </div>
   );
 });

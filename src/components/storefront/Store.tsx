@@ -15,16 +15,16 @@ import type { GiftStyle } from '@/types/xso';
 interface BentoFormat {
   style: GiftStyle;
   name: string;
-  /** Three words, no more: the whole pitch for the format. */
+  /** A few words, no more: the whole pitch for the format. */
   blurb: string;
 }
 
 const BENTO: BentoFormat[] = [
-  { style: 'loop', name: 'The Loop', blurb: 'Keeps coming back' },
-  { style: 'rewind', name: 'The Rewind', blurb: 'For the nostalgia' },
-  { style: 'scrapbook', name: 'The Scrapbook', blurb: 'Proof it happened' },
-  { style: 'accordion', name: 'The Accordion', blurb: 'Nothing left unsaid' },
-  { style: 'moviebox', name: 'The Movie Box', blurb: 'Your story, screened' },
+  { style: 'loop', name: 'The Loop', blurb: 'Nostalgia on repeat.' },
+  { style: 'rewind', name: 'The Rewind', blurb: 'Play it back.' },
+  { style: 'scrapbook', name: 'The Scrapbook', blurb: 'We kept the receipts.' },
+  { style: 'accordion', name: 'The Accordion', blurb: 'Let it unfold.' },
+  { style: 'moviebox', name: 'The Movie Box', blurb: 'Frame by frame.' },
 ];
 
 /** Link-in-bio landing: one promise, one button, five formats. */
@@ -75,6 +75,13 @@ export function Store() {
         </header>
 
         <section className="mt-8 text-center sm:mt-12" aria-labelledby="hero-heading">
+          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#f87171]/30 bg-[#2a1216]/80 px-3 py-1 font-receipt text-[10px] font-bold uppercase tracking-[0.04em] text-[#fecaca] whitespace-nowrap min-[400px]:text-[10.5px] min-[400px]:tracking-[0.1em]">
+            <span aria-hidden className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ef4444] opacity-60 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#ef4444]" />
+            </span>
+            Daily Drop: Only 50 XSOs available today
+          </p>
           <h1
             id="hero-heading"
             className="text-balance font-serif text-[2.4rem] font-semibold leading-[1.02] tracking-[-0.02em] text-[#fdf2f8] sm:text-[3.25rem]"
@@ -82,7 +89,7 @@ export function Store() {
             Keepsakes for the words <em className="font-medium text-[#f9a8d4]">you never said.</em>
           </h1>
           <p className="mx-auto mt-4 max-w-sm text-pretty text-[16px] leading-snug text-[#e0b4c6]">
-            Design a digital keepsake in 60 seconds. They keep the link forever.
+            Build a digital artifact in 60 seconds. Send the link. Wait for the reaction.
           </p>
         </section>
 
@@ -92,11 +99,11 @@ export function Store() {
             onClick={createXso}
             className="matte-cta flex min-h-[4rem] w-full touch-manipulation items-center justify-center gap-2 rounded-full px-6 font-serif text-[20px] font-semibold shadow-[0_14px_40px_rgba(236,72,153,.35)] transition-transform active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
           >
-            ✨ Create Yours Now
+            Claim yours
           </button>
         </div>
         <p className="mt-2.5 text-center font-receipt text-[10.5px] uppercase tracking-[0.16em] text-[#9a6a7e]">
-          {CARTRIDGE_PRICE} · 5 quick steps · no app needed
+          {CARTRIDGE_PRICE} · 60 seconds · no app
         </p>
 
         <section className="mt-10" aria-labelledby="formats-heading">
@@ -104,7 +111,7 @@ export function Store() {
             id="formats-heading"
             className="mb-3 text-center font-receipt text-[11px] uppercase tracking-[0.22em] text-[#c99aae]"
           >
-            Or start with a format
+            Or pick your aesthetic
           </h2>
           <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0">
             {BENTO.map((format, i) => (
@@ -142,7 +149,7 @@ const BentoCard = memo(function BentoCard({
     <button
       type="button"
       onClick={() => onPick(format.style)}
-      aria-label={`${format.name}: ${format.blurb}. Create yours in this format`}
+      aria-label={`${format.name}: ${format.blurb} Start building`}
       style={
         {
           '--tint': cart.accentSoft,

@@ -24,7 +24,7 @@ import { packContent, useXsoStore, type PackContent } from '@/store/useXsoStore'
 import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { CARTRIDGE_PRICE } from '@/lib/cartridges';
-import { THEMES, getTheme, type ThemeId } from '@/lib/themes';
+import type { ThemeId } from '@/lib/themes';
 import type { FormatKey, FormatLayers } from '@/lib/formats';
 import { cardsPatch, normalizeCards, selectedCards, type CardId } from '@/lib/formatCards';
 import { compressPhotoForStyle } from '@/lib/media';
@@ -51,11 +51,11 @@ import {
 import { LOOP_CARDS, type LoopCard, type XsoData } from '@/types/xso';
 
 const STEPS = [
-  { title: 'Choose a format', next: 'Next: choose cards' },
-  { title: 'Pick the cards', next: 'Next: add the vibe' },
-  { title: 'Vibe & Memory Spark', next: '✨ Write my story' },
-  { title: 'Edit & refine details', next: 'Generate Final Preview' },
-  { title: 'Final preview', next: 'Proceed to Checkout' },
+  { title: 'Pick the aesthetic', next: 'Next: build the stack' },
+  { title: 'Build the stack', next: 'Next: set the tone' },
+  { title: 'Set the tone', next: '✨ Write it for me' },
+  { title: 'The fine print', next: 'Looks good' },
+  { title: 'Final check', next: 'Lock it in' },
 ] as const;
 const DETAILS = 3;
 const LAST = STEPS.length - 1;
@@ -398,7 +398,6 @@ export function XSOCustomizerModal() {
     }
   }, [busy, commit, order, style]);
 
-  const pack = getTheme(theme) ?? THEMES[0];
   const canNext = step === 0 || step === 1;
   const photoPicker = (
     <PhotoPicker
@@ -447,7 +446,7 @@ export function XSOCustomizerModal() {
           ) : null}
           <div className="min-w-0 flex-1">
             <p className="font-receipt text-[10px] uppercase tracking-[0.22em] text-[#fdba74]">
-              Create your XSO · Step {step + 1} of {STEPS.length}
+              Step {step + 1}/{STEPS.length}
             </p>
             <h2
               ref={titleRef}
@@ -528,7 +527,7 @@ export function XSOCustomizerModal() {
                   {vibe.relationship && vibe.tone ? (
                     <div className="border-t border-white/10 pt-5">
                       <h3 className="mb-3 font-serif text-[1.1rem] font-semibold leading-tight">
-                        ✨ Memory Spark
+                        ✨ The core memory
                       </h3>
                       <MemorySpark
                         relationship={vibe.relationship}
@@ -540,22 +539,13 @@ export function XSOCustomizerModal() {
                         onSubmit={() => vibeDone && !busy && writeStory()}
                       />
                     </div>
-                  ) : (
-                    <p className="text-[13px] leading-snug text-[#9a6a7e]">
-                      Pick who they are to you and a vibe, and we&apos;ll ask three questions to
-                      spark the story.
-                    </p>
-                  )}
+                  ) : null}
                 </div>
               ) : null}
 
               {step === DETAILS ? (
                 <div className="grid gap-5">
                   {crafted ? <CraftStatus source={crafted} name={name} /> : null}
-                  <p className="text-[13px] leading-snug text-[#c99aae]">
-                    Open any card to change its words. Photos are optional: without them we use the
-                    placeholders from {pack.title}.
-                  </p>
                   <CardDetailsEditor
                     key={style}
                     style={style}
@@ -571,17 +561,12 @@ export function XSOCustomizerModal() {
 
               {step === LAST ? (
                 <section>
-                  <p className={`mb-2 ${LABEL}`}>Quick adjustments</p>
+                  <p className={`mb-2 ${LABEL}`}>Not quite it?</p>
                   <AdjustBar busy={crafting} onAdjust={(a) => void generate(a)} />
-                  <p role="status" className="mt-2 text-[12px] leading-snug text-[#9a6a7e]">
-                    {adjusted ? (
-                      <span className="font-semibold text-[#f9a8d4]">
-                        {adjusted === 'sweeter' ? '🥹 Sweeter' : '😂 Funnier'} version applied to
-                        every card.{' '}
-                      </span>
-                    ) : null}
-                    Rewrites the story in a new direction. Your photos stay; to change single lines,
-                    go back a step.
+                  <p role="status" className="mt-2 text-[12px] font-semibold text-[#f9a8d4]">
+                    {adjusted
+                      ? `${adjusted === 'sweeter' ? '🥹 Sweeter' : '😂 Funnier'}. Done.`
+                      : null}
                   </p>
                 </section>
               ) : null}
@@ -626,15 +611,17 @@ export function XSOCustomizerModal() {
               onClick={checkout}
               loading={paying}
               disabled={crafting !== null}
-              label={STEPS[LAST].next}
-              price={CARTRIDGE_PRICE}
-              loadingLabel="Opening secure checkout…"
-              ariaLabel={`Proceed to checkout, ${CARTRIDGE_PRICE}`}
+              label={`${STEPS[LAST].next} (${CARTRIDGE_PRICE})`}
+              loadingLabel="Locking it in…"
+              ariaLabel={`Lock it in and pay ${CARTRIDGE_PRICE}`}
             />
           )}
-          <p className="mt-2.5 flex items-center justify-center gap-1.5 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6a7e]">
-            <Lock className="h-3 w-3" aria-hidden /> Secure checkout · delivered as a private link
-          </p>
+          {step === LAST ? (
+            <p className="mt-2.5 flex items-center justify-center gap-1.5 font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6a7e]">
+              <Lock className="h-3 w-3" aria-hidden /> Your private link drops instantly after
+              checkout.
+            </p>
+          ) : null}
         </footer>
       </motion.div>
     </div>

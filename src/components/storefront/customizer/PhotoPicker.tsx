@@ -110,12 +110,6 @@ export const PhotoPicker = memo(function PhotoPicker({
           );
         })}
       </div>
-      <p className="mt-2.5 flex items-start gap-1.5 text-[13px] leading-snug text-[#c99aae]">
-        <span aria-hidden className="text-[#fdba74]">
-          ✦
-        </span>
-        We automatically color-match your photos to your chosen XSO style.
-      </p>
       <input
         ref={inputRef}
         type="file"

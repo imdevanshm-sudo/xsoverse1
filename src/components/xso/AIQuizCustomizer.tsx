@@ -183,7 +183,7 @@ export function VibeFields({
             <input
               value={senderName ?? ''}
               onChange={(e) => onSenderName(e.target.value.slice(0, CRAFT_LIMITS.name))}
-              placeholder="Signs the letter"
+              placeholder="And who's it from?"
               autoComplete="given-name"
               enterKeyHint="next"
               className={t.input}
@@ -194,7 +194,7 @@ export function VibeFields({
         <NameInput t={t} name={name} onName={onName} />
       )}
       <fieldset>
-        <legend className={t.field}>You are their…</legend>
+        <legend className={t.field}>They&apos;re your…</legend>
         <div className="mt-2 flex flex-wrap gap-2">
           {RELATIONSHIPS.map((r) => (
             <button
@@ -210,7 +210,7 @@ export function VibeFields({
         </div>
       </fieldset>
       <fieldset>
-        <legend className={t.field}>Pick the vibe</legend>
+        <legend className={t.field}>The vibe</legend>
         <div className="mt-2 grid gap-2">
           {CRAFT_TONES.map((v) => (
             <button
@@ -274,10 +274,7 @@ export function MemorySpark({
   return (
     <div>
       <div className="flex items-center justify-between gap-2">
-        <p className={t.field}>
-          {prompts.source === 'ai' ? '✨ AI questions' : 'Questions'} for your{' '}
-          {relationship?.toLowerCase() ?? 'person'}
-        </p>
+        <p className={t.field}>Pick a prompt</p>
         <button
           type="button"
           onClick={() => void prompts.refresh()}
@@ -289,7 +286,7 @@ export function MemorySpark({
             className={`h-3.5 w-3.5 ${prompts.loading ? 'animate-spin' : ''}`}
             aria-hidden
           />
-          ✨ Refresh Questions
+          New ones
         </button>
       </div>
       <div
@@ -327,7 +324,7 @@ export function MemorySpark({
         </p>
       ) : null}
       <label className="mt-4 grid gap-1.5">
-        <span className={t.field}>Your answer</span>
+        <span className={t.field}>Spill it</span>
         <input
           ref={answerRef}
           value={answer}
@@ -336,7 +333,7 @@ export function MemorySpark({
             if (e.key === 'Enter' && answer.trim().length >= CRAFT_LIMITS.minMemory) onSubmit?.();
           }}
           aria-label={question ? `Your answer to: ${question}` : undefined}
-          placeholder="One line is enough: a name, a place, what they always say"
+          placeholder="Drop a core memory here..."
           autoComplete="off"
           enterKeyHint="next"
           className={t.input}
@@ -391,7 +388,7 @@ export function AdjustBar({
       </div>
       {busy && busy !== 'generate' ? (
         <p className={`mt-2 text-[12.5px] ${p.hint}`} role="status">
-          Re-writing every line…
+          Rewriting…
         </p>
       ) : null}
       {error ? (
@@ -656,8 +653,8 @@ export function CraftStatus({
     <p className={`rounded-2xl border px-3 py-2 text-[13px] leading-snug ${PILL[tone].status}`}>
       <Sparkles className="mr-1.5 inline h-3.5 w-3.5 align-[-2px]" aria-hidden />
       {source === 'ai'
-        ? `Crafted for ${name}. Tweak it below, or edit any line.`
-        : "Our AI writer is offline right now, so we've generated a placeholder story from your answers. Every line is editable below."}
+        ? `Written for ${name}. Tap any card to tweak.`
+        : 'AI is napping. Drafted from your answers. Tap any card to tweak.'}
     </p>
   );
 }
@@ -687,7 +684,7 @@ export function GenerateButton({
       {busy ? (
         <>
           <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-          Crafting your keepsake...
+          Cooking…
         </>
       ) : (
         label
@@ -711,7 +708,7 @@ function NameInput({
       <input
         value={name}
         onChange={(e) => onName(e.target.value.slice(0, CRAFT_LIMITS.name))}
-        placeholder="e.g. Alex"
+        placeholder="Who is this for?"
         autoComplete="off"
         enterKeyHint="next"
         data-step-focus

@@ -41,7 +41,7 @@ export const StickyCreateBar = memo(function StickyCreateBar() {
           className="matte-cta flex min-h-[48px] shrink-0 touch-manipulation items-center gap-2 rounded-full px-5 font-serif text-[16px] font-semibold"
         >
           <Sparkles className="h-4 w-4" aria-hidden />
-          Create Your XSO
+          Claim yours
         </button>
       </div>
     </div>
