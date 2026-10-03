@@ -1,6 +1,7 @@
 'use client';
 
-import { memo, type ReactNode } from 'react';
+import { memo, useEffect, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { AuditMetrics, MovieLayers, XsoData } from '@/types/xso';
 import { auditLabel } from '@/lib/formats';
 import { LazyMedia } from '@/components/xso/LazyMedia';
@@ -158,21 +159,67 @@ export function montagePhotos(data: XsoData, movie: MovieLayers): string[] {
   return [own, ...data.photos].filter((src): src is string => Boolean(src)).slice(0, 6);
 }
 
-export const PhotoScene = memo(function PhotoScene({ data, movie }: SceneProps) {
+const SLIDE_MS = 5000;
+/** Start and end framing for each slide, alternating so consecutive photos drift differently. */
+const DRIFT = [
+  { from: { scale: 1, x: '0%', y: '0%' }, to: { scale: 1.12, x: '-2%', y: '-2%' } },
+  { from: { scale: 1.12, x: '2%', y: '1%' }, to: { scale: 1, x: '0%', y: '0%' } },
+  { from: { scale: 1.04, x: '-2%', y: '2%' }, to: { scale: 1.14, x: '2%', y: '-1%' } },
+];
+
+/** The montage: the sender's photos as a slow Ken Burns slideshow with crossfades. */
+export const PhotoScene = memo(function PhotoScene({ data, movie, active, reduce }: SceneProps) {
   const photos = montagePhotos(data, movie);
+  const [slide, setSlide] = useState(0);
+  useEffect(() => {
+    if (!active || photos.length < 2) return;
+    const timer = window.setInterval(
+      () => setSlide((n) => (n + 1) % photos.length),
+      reduce ? SLIDE_MS * 1.5 : SLIDE_MS,
+    );
+    return () => window.clearInterval(timer);
+  }, [active, photos.length, reduce]);
+  const current = slide % photos.length;
+  const next = (current + 1) % photos.length;
+  const drift = DRIFT[current % DRIFT.length];
+
   return (
-    <div className="absolute inset-0 grid grid-cols-1 gap-1 bg-black">
-      {photos.map((src, i) => (
-        <div key={i} className="relative min-h-0 overflow-hidden">
-          <LazyMedia
-            src={src}
-            alt={`Memory ${i + 1}`}
-            fill
-            sizes="100vw"
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        </div>
-      ))}
+    <div className="absolute inset-0 overflow-hidden bg-black">
+      <AnimatePresence initial={false}>
+        <motion.div
+          key={current}
+          className="absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduce ? 0 : 1.2, ease: 'easeInOut' }}
+        >
+          <motion.div
+            className="absolute inset-0 will-change-transform"
+            initial={reduce ? false : drift.from}
+            animate={reduce ? undefined : drift.to}
+            transition={{ duration: (SLIDE_MS + 1200) / 1000, ease: 'linear' }}
+          >
+            <LazyMedia
+              src={photos[current]}
+              alt={`Memory ${current + 1} of ${photos.length}`}
+              fill
+              sizes="100vw"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+      {photos.length > 1 ? <link rel="preload" as="image" href={photos[next]} /> : null}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 via-black/35 to-transparent"
+      />
+      {photos.length > 1 ? (
+        <p className="absolute right-4 top-4 rounded-full bg-black/45 px-2.5 py-1 font-receipt text-[12px] tabular-nums tracking-[0.14em] text-[#fffaf0]/85">
+          {current + 1} / {photos.length}
+        </p>
+      ) : null}
     </div>
   );
 });
