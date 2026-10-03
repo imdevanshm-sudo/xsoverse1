@@ -259,7 +259,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     setTorn(true);
   };
 
-  const content = (item: DeskItemSpec) => {
+  const content = (item: DeskItemSpec): ReactNode => {
     switch (item.kind) {
       case 'receipt':
         return <MiniReceipt data={data} />;
@@ -322,6 +322,45 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   };
   const focusedItem = focus ? items.find((item) => item.id === focus.id) : undefined;
 
+  /** Per-piece props keep their identity across unrelated desk state, so memoised items skip renders. */
+  const places = useMemo(
+    () =>
+      Object.fromEntries(
+        items.map((item, order) => [
+          item.id,
+          tidied ? tidy[item.id] : { left: item.left, top: item.top, rotate: item.tilt, order },
+        ]),
+      ) as Record<string, Place>,
+    [items, tidied, tidy],
+  );
+  const contents = useMemo(
+    () => Object.fromEntries(items.map((item) => [item.id, content(item)])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, data, layers, flipped, peel, torn, reduce],
+  );
+
+  const latest = useRef({ items, pickUp, openFocus });
+  latest.current = { items, pickUp, openFocus };
+  const handlePickUp = useCallback((id: string) => {
+    const item = latest.current.items.find((it) => it.id === id);
+    if (item) latest.current.pickUp(item);
+  }, []);
+  const handleActivate = useCallback((id: string) => {
+    const { items: all, openFocus: open } = latest.current;
+    const order = all.findIndex((it) => it.id === id);
+    if (order < 0) return;
+    if (all[order].kind !== 'letter') return open(all[order], order);
+    playFoley('flip', 0.8);
+    setLetterOpen(true);
+  }, []);
+  const handleStickyHover = useCallback(
+    (on: boolean) => setPeel((p) => (p === 2 ? 2 : on ? 1 : 0)),
+    [],
+  );
+  const registerNode = useCallback((id: string, node: HTMLDivElement | null) => {
+    nodes.current[id] = node;
+  }, []);
+
   return (
     <section
       className={`relative flex w-full max-w-[420px] flex-col ${size === 'fill' ? 'h-full' : ''}`}
@@ -333,11 +372,11 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       >
         <CoffeeRing className="pointer-events-none absolute bottom-[6%] right-[4%] w-[30%] opacity-[0.16]" />
 
-        {items.map((item, order) => (
+        {items.map((item) => (
           <DeskItem
             key={item.id}
             spec={item}
-            place={placeOf(item, order)}
+            place={places[item.id]}
             tidied={tidied}
             resetKey={resetKey}
             z={stack.indexOf(item.id) + 1}
@@ -346,9 +385,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
             tactile={tactile}
             hidden={lifted === item.id}
             entering={!seen.current!.has(item.id)}
-            nodeRef={(node) => {
-              nodes.current[item.id] = node;
-            }}
+            onNode={registerNode}
             label={LABELS[item.kind](item)}
             hint={
               item.kind === 'letter'
@@ -359,19 +396,11 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
                   ? 'Tap to look closer'
                   : 'Drag me · click to look'
             }
-            onPickUp={() => pickUp(item)}
-            onHover={
-              item.kind === 'sticky'
-                ? (on) => setPeel((p) => (p === 2 ? 2 : on ? 1 : 0))
-                : undefined
-            }
-            onActivate={() => {
-              if (item.kind !== 'letter') return openFocus(item, order);
-              playFoley('flip', 0.8);
-              setLetterOpen(true);
-            }}
+            onPickUp={handlePickUp}
+            onHover={item.kind === 'sticky' ? handleStickyHover : undefined}
+            onActivate={handleActivate}
           >
-            {content(item)}
+            {contents[item.id]}
           </DeskItem>
         ))}
 
@@ -391,7 +420,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
               reduce={reduce}
               onClose={closeFocus}
             >
-              {content(focusedItem)}
+              {contents[focusedItem.id]}
             </FocusView>
           ) : null}
         </AnimatePresence>
@@ -460,7 +489,7 @@ const TAPE_LIGHT: Variants = {
   lift: { opacity: 0.85 },
 };
 
-function DeskItem({
+const DeskItem = memo(function DeskItem({
   spec,
   place,
   tidied,
@@ -473,7 +502,7 @@ function DeskItem({
   entering,
   label,
   hint,
-  nodeRef,
+  onNode,
   onPickUp,
   onActivate,
   onHover,
@@ -493,12 +522,14 @@ function DeskItem({
   entering: boolean;
   label: string;
   hint?: string;
-  nodeRef: (node: HTMLDivElement | null) => void;
-  onPickUp: () => void;
-  onActivate: () => void;
+  onNode: (id: string, node: HTMLDivElement | null) => void;
+  onPickUp: (id: string) => void;
+  onActivate: (id: string) => void;
   onHover?: (on: boolean) => void;
   children: ReactNode;
 }) {
+  const { id } = spec;
+  const nodeRef = useCallback((node: HTMLDivElement | null) => onNode(id, node), [onNode, id]);
   const dragControls = useDragControls();
   const pickUp = useTouchSpring(PICK_UP);
   const x = useMotionValue(0);
@@ -519,8 +550,8 @@ function DeskItem({
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
-    onPickUp();
-    onActivate();
+    onPickUp(id);
+    onActivate(id);
   };
 
   return (
@@ -536,6 +567,7 @@ function DeskItem({
         zIndex: z,
         opacity: hidden ? 0 : 1,
         pointerEvents: hidden ? 'none' : undefined,
+        willChange: 'transform, opacity',
       }}
       custom={{ ...place, reduce }}
       variants={HANDLED}
@@ -553,7 +585,7 @@ function DeskItem({
       dragTransition={{ power: 0.18, timeConstant: 200 }}
       onPointerDown={(event) => {
         if (!tactile || (event.target as Element).closest(INTERACTIVE)) return;
-        onPickUp();
+        onPickUp(id);
         playFoley('tap', 0.35);
         dragControls.start(event);
       }}
@@ -563,9 +595,9 @@ function DeskItem({
       }}
       onClick={(event) => {
         if ((event.target as Element).closest(INTERACTIVE)) return;
-        if (!tactile) onPickUp();
+        if (!tactile) onPickUp(id);
         else if (performance.now() - droppedAt.current < 220) return;
-        onActivate();
+        onActivate(id);
       }}
       onHoverStart={() => onHover?.(true)}
       onHoverEnd={() => onHover?.(false)}
@@ -583,7 +615,7 @@ function DeskItem({
       ) : null}
     </motion.div>
   );
-}
+});
 
 function Tape({ style, className = '' }: { style?: CSSProperties; className?: string }) {
   return (

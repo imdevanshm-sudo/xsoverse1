@@ -14,6 +14,7 @@ const BRUSH = 26;
 const REVEAL_RATIO = 0.48;
 const SAMPLE_INTERVAL_MS = 300;
 const SPARK_POOL = 6;
+const FOIL_FADE_MS = 500;
 const MAX_DPR = 1.5;
 
 type Point = { x: number; y: number };
@@ -96,6 +97,13 @@ export function ScratchReveal({
   const sparkCursor = useRef(0);
   const [progress, setProgress] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  /** Once the foil has faded, its canvas and sparks leave the DOM rather than sit at opacity 0. */
+  const [cleared, setCleared] = useState(false);
+  useEffect(() => {
+    if (!revealed) return;
+    const id = window.setTimeout(() => setCleared(true), FOIL_FADE_MS + 100);
+    return () => window.clearTimeout(id);
+  }, [revealed]);
 
   const paintFoil = useCallback(() => {
     const canvas = canvasRef.current;
@@ -131,8 +139,7 @@ export function ScratchReveal({
 
     const grit = Math.min(900, Math.floor((w * h) / 8));
     for (let i = 0; i < grit; i += 1) {
-      ctx.fillStyle =
-        i % 2 === 0 ? 'rgba(255,255,255,0.18)' : 'rgba(40,35,30,0.16)';
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.18)' : 'rgba(40,35,30,0.16)';
       ctx.fillRect(Math.random() * w, Math.random() * h, 1.2, 1.2);
     }
 
@@ -328,27 +335,26 @@ export function ScratchReveal({
           transform: `scale(${revealed ? 1 : 0.98 + progress * 0.02})`,
         }}
       >
-        {children ?? (
-          <p className="font-hand text-[17px] leading-snug text-[#2c241c]">
-            {reward}
-          </p>
-        )}
+        {children ?? <p className="font-hand text-[17px] leading-snug text-[#2c241c]">{reward}</p>}
       </div>
 
-      <canvas
-        ref={canvasRef}
-        className={`absolute inset-0 h-full w-full touch-none transition-opacity duration-500 ease-out ${
-          revealed ? 'pointer-events-none opacity-0' : 'cursor-crosshair'
-        }`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        aria-label="Scratch-off foil — drag to reveal the hidden note"
-        aria-hidden={revealed}
-      />
+      {cleared ? null : (
+        <canvas
+          ref={canvasRef}
+          className={`absolute inset-0 h-full w-full touch-none transition-opacity ease-out ${
+            revealed ? 'pointer-events-none opacity-0' : 'cursor-crosshair'
+          }`}
+          style={{ transitionDuration: `${FOIL_FADE_MS}ms` }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          aria-label="Scratch-off foil — drag to reveal the hidden note"
+          aria-hidden={revealed}
+        />
+      )}
 
-      {Array.from({ length: SPARK_POOL }, (_, i) => (
+      {(cleared ? [] : Array.from({ length: SPARK_POOL })).map((_, i) => (
         <span
           key={i}
           ref={(el) => {

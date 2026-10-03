@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   animate,
   motion,
@@ -379,6 +379,17 @@ function Ribbon({
   const pannedAt = useRef(0);
   const resnap = useRef(0);
 
+  const select = (index: number) => {
+    if (performance.now() - pannedAt.current < 250) return;
+    if (!opened) setOpen(true);
+    else if (index !== active) goTo(index);
+    else if (coarse) goTo(active === last ? 0 : active + 1);
+  };
+  const selectRef = useRef(select);
+  selectRef.current = select;
+  /** Stable identity, so the memoised panels skip re-rendering when `active` ticks over. */
+  const selectPanel = useCallback((index: number) => selectRef.current(index), []);
+
   return (
     <section
       className={`relative isolate flex w-full max-w-[400px] flex-col items-center ${size === 'fill' ? 'h-full' : ''}`}
@@ -472,10 +483,16 @@ function Ribbon({
                 y: sheetY,
                 scaleY: sheetScaleY,
                 transformOrigin: sheetOrigin,
+                willChange: 'transform',
               }}
             >
               <motion.div
-                style={{ transformStyle: 'preserve-3d', rotateX: bundleRotate, scale: bundleScale }}
+                style={{
+                  transformStyle: 'preserve-3d',
+                  rotateX: bundleRotate,
+                  scale: bundleScale,
+                  willChange: 'transform',
+                }}
               >
                 {artifacts.map((artifact, index) => (
                   <RibbonPanel
@@ -483,15 +500,9 @@ function Ribbon({
                     index={index}
                     fold={fold}
                     height={panelH}
-                    onSelect={() => {
-                      if (performance.now() - pannedAt.current < 250) return;
-                      if (!opened) setOpen(true);
-                      else if (index !== active) goTo(index);
-                      else if (coarse) goTo(active === last ? 0 : active + 1);
-                    }}
-                  >
-                    <PanelFace data={data} index={index} />
-                  </RibbonPanel>
+                    data={data}
+                    onSelect={selectPanel}
+                  />
                 ))}
               </motion.div>
             </motion.div>
@@ -565,18 +576,18 @@ function Aura({ open }: { open: MotionValue<number> }) {
   );
 }
 
-function RibbonPanel({
+const RibbonPanel = memo(function RibbonPanel({
   index,
   fold,
   height,
+  data,
   onSelect,
-  children,
 }: {
   index: number;
   fold: MotionValue<Fold>;
   height: number;
-  onSelect: () => void;
-  children: ReactNode;
+  data: XsoData;
+  onSelect: (index: number) => void;
 }) {
   const y = useTransform(fold, (f) => f.ys[index]);
   const z = useTransform(fold, (f) => f.zs[index]);
@@ -597,10 +608,19 @@ function RibbonPanel({
   return (
     <motion.div
       className="accordion-panel gpu-layer absolute inset-x-0 top-0"
-      style={{ height, y, z, rotateX, transformOrigin: '50% 0%' }}
-      onClick={onSelect}
+      style={{
+        height,
+        y,
+        z,
+        rotateX,
+        transformOrigin: '50% 0%',
+        willChange: 'transform, opacity',
+      }}
+      onClick={() => onSelect(index)}
     >
-      <div className="accordion-panel__face">{children}</div>
+      <div className="accordion-panel__face">
+        <PanelFace data={data} index={index} />
+      </div>
       <span aria-hidden className="accordion-panel__grain" />
       {index > 0 ? (
         <>
@@ -635,7 +655,7 @@ function RibbonPanel({
       />
     </motion.div>
   );
-}
+});
 
 /** Stitched ribbon handle: pull down to let the letter unfurl, push up to fold it away. */
 function PullTab({

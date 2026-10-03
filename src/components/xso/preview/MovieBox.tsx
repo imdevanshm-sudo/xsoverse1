@@ -441,6 +441,7 @@ function MovieReel({
   const [active, setActive] = useState(0);
   const [notes, setNotes] = useState<number | null>(null);
   const [moved, setMoved] = useState(false);
+  const movedRef = useRef(false);
   const activeRef = useRef(0);
   const count = artifacts.length;
 
@@ -456,7 +457,10 @@ function MovieReel({
 
   useMotionValueEvent(scrollY, 'change', (y) => {
     if (!height) return;
-    if (y > 4) setMoved(true);
+    if (y > 4 && !movedRef.current) {
+      movedRef.current = true;
+      setMoved(true);
+    }
     const next = clamp(Math.round(y / height), 0, count - 1);
     if (next === activeRef.current) return;
     fx.step(next > activeRef.current ? 1 : -1);
@@ -478,6 +482,14 @@ function MovieReel({
   useEffect(() => {
     if (focusIndex !== undefined) goTo(focusIndex);
   }, [focusIndex, goTo]);
+
+  const toggleNotes = useCallback(
+    (index: number) => {
+      setNotes((open) => (open === index ? null : index));
+      fx.note();
+    },
+    [fx],
+  );
 
   return (
     <section
@@ -502,16 +514,14 @@ function MovieReel({
               scrollY={scrollY}
               reduce={reduce}
               active={i === active}
+              near={Math.abs(i - active) <= 1}
               data={data}
               artifact={artifact}
               movie={movie}
               subtitle={story.subtitles[artifact.scene]}
               notes={story.notes[artifact.scene]}
               notesOpen={notes === i}
-              onNotes={() => {
-                setNotes((open) => (open === i ? null : i));
-                fx.note();
-              }}
+              onNotes={toggleNotes}
               hint={i === 0 && !moved && count > 1}
             />
           ))}
@@ -564,6 +574,7 @@ const ReelFrame = memo(function ReelFrame({
   scrollY,
   reduce,
   active,
+  near,
   data,
   artifact,
   movie,
@@ -578,13 +589,15 @@ const ReelFrame = memo(function ReelFrame({
   scrollY: MotionValue<number>;
   reduce: boolean;
   active: boolean;
+  /** Within one frame of the gate; anything further is an empty snap slot. */
+  near: boolean;
   data: XsoData;
   artifact: Frame;
   movie: MovieLayers;
   subtitle: string;
   notes: readonly [string, string];
   notesOpen: boolean;
-  onNotes: () => void;
+  onNotes: (index: number) => void;
   hint: boolean;
 }) {
   const h = height || 1;
@@ -599,13 +612,12 @@ const ReelFrame = memo(function ReelFrame({
       : shot?.image
         ? [shot.image]
         : data.photos.slice(0, 3).filter(Boolean);
-  const show = reduce
-    ? { opacity: 1 }
-    : { opacity: active ? 1 : 0, y: active ? 0 : 10, filter: active ? 'blur(0px)' : 'blur(3px)' };
+  const hidden = reduce ? { opacity: 0 } : { opacity: 0, y: 10, filter: 'blur(3px)' };
+  const shown = reduce ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' };
   const textIn = (delay: number) => ({
     duration: reduce ? 0 : 0.6,
     ease: CINEMA_EASE,
-    delay: active && !reduce ? delay : 0,
+    delay: reduce ? 0 : delay,
   });
 
   return (
@@ -616,110 +628,123 @@ const ReelFrame = memo(function ReelFrame({
     >
       <span aria-hidden className="film-frame-line top-0" />
       <span aria-hidden className="film-frame-line bottom-0" />
-      <motion.div
-        className="gpu-layer relative h-full w-full overflow-hidden rounded-[3px] bg-[#1b0e0b]"
-        style={{ scale, opacity: dim }}
-      >
-        {stills.length ? (
-          <div className="absolute inset-0 flex flex-col gap-1.5 bg-black">
-            {stills.map((src, i) => (
-              <div key={i} className="relative min-h-0 flex-1 overflow-hidden bg-[#2a1712]">
-                <LazyMedia
-                  src={src}
-                  alt={`Memory ${i + 1}`}
-                  fill
-                  sizes="(max-width: 480px) 90vw, 360px"
-                  className="film-photo absolute inset-0 h-full w-full object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="absolute inset-0 [&_.film-face]:flex [&_.film-face]:flex-col [&_.film-face]:justify-center [&_.film-face]:px-6 [&_.film-face]:pb-28 [&_.film-face]:pt-20 [&_.film-face__letter]:[-webkit-line-clamp:12]">
-            <FrameFace
-              data={data}
-              index={artifact.scene}
-              scene={shot}
-              stars={movie.stars}
-              titled={Boolean(data.moviebox)}
-              slate={false}
-            />
-          </div>
-        )}
-        <span aria-hidden className="film-vignette" style={{ animation: 'none' }} />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-[7] rounded-[3px] shadow-[inset_0_0_28px_rgba(0,0,0,0.85),inset_0_0_0_1px_rgba(253,186,116,0.1)]"
-        />
-
+      {!near ? null : (
         <motion.div
-          className="absolute inset-x-3 top-10 z-10 flex items-start justify-between gap-3"
-          initial={false}
-          animate={show}
-          transition={textIn(0.1)}
+          className="gpu-layer relative h-full w-full overflow-hidden rounded-[3px] bg-[#1b0e0b]"
+          style={{ scale, opacity: dim, willChange: 'transform, opacity' }}
         >
-          <p className="min-w-0 rounded-md bg-[#0d0608]/60 px-2 py-1 font-receipt text-[10px] uppercase leading-snug tracking-[0.3em] text-[#fdba74]">
-            Scene {String(artifact.scene + 1).padStart(2, '0')}
-            {data.moviebox && shot?.title ? (
-              <span className="block truncate tracking-[0.18em] text-[#fffaf0]/60">
-                {shot.title}
-              </span>
-            ) : null}
-          </p>
-          <button
-            type="button"
-            onClick={onNotes}
-            aria-expanded={notesOpen}
-            tabIndex={active ? 0 : -1}
-            className="shrink-0 rounded-full border border-[#fffaf0]/15 bg-[#0d0608]/60 px-2.5 py-1 font-receipt text-[9px] uppercase tracking-[0.2em] text-[#fffaf0]/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
-          >
-            {notesOpen ? 'Hide notes' : "Director's notes"}
-          </button>
-        </motion.div>
-
-        <AnimatePresence>
-          {notesOpen ? (
-            <motion.div
-              key="notes"
-              className="pointer-events-none absolute inset-0 z-10"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <DirectorNote className="left-3 top-24 -rotate-3" delay={0} reduce={reduce}>
-                {notes[0]}
-              </DirectorNote>
-              <DirectorNote
-                className="bottom-32 right-3 rotate-2 text-right"
-                delay={0.12}
-                reduce={reduce}
-              >
-                {notes[1]}
-              </DirectorNote>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
-        <motion.p
-          className="film-subtitle !bottom-14 !text-[15px] [text-shadow:0_1px_6px_rgba(0,0,0,0.95)]"
-          initial={false}
-          animate={show}
-          transition={textIn(0.3)}
-        >
-          {subtitle}
-        </motion.p>
-        {hint ? (
-          <motion.span
+          {stills.length ? (
+            <div className="absolute inset-0 flex flex-col gap-1.5 bg-black">
+              {stills.map((src, i) => (
+                <div key={i} className="relative min-h-0 flex-1 overflow-hidden bg-[#2a1712]">
+                  <LazyMedia
+                    src={src}
+                    alt={`Memory ${i + 1}`}
+                    fill
+                    sizes="(max-width: 480px) 90vw, 360px"
+                    className="film-photo absolute inset-0 h-full w-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="absolute inset-0 [&_.film-face]:flex [&_.film-face]:flex-col [&_.film-face]:justify-center [&_.film-face]:px-6 [&_.film-face]:pb-28 [&_.film-face]:pt-20 [&_.film-face__letter]:[-webkit-line-clamp:12]">
+              <FrameFace
+                data={data}
+                index={artifact.scene}
+                scene={shot}
+                stars={movie.stars}
+                titled={Boolean(data.moviebox)}
+                slate={false}
+              />
+            </div>
+          )}
+          <span aria-hidden className="film-vignette" style={{ animation: 'none' }} />
+          <span
             aria-hidden
-            className="absolute inset-x-0 bottom-8 z-10 text-center font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80"
-            animate={reduce ? undefined : { y: [0, -4, 0] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            ↑ swipe up
-          </motion.span>
-        ) : null}
-      </motion.div>
+            className="pointer-events-none absolute inset-0 z-[7] rounded-[3px] shadow-[inset_0_0_28px_rgba(0,0,0,0.85),inset_0_0_0_1px_rgba(253,186,116,0.1)]"
+          />
+
+          <AnimatePresence initial={false}>
+            {active ? (
+              <motion.div
+                key="slate"
+                className="absolute inset-x-3 top-10 z-10 flex items-start justify-between gap-3"
+                initial={hidden}
+                animate={shown}
+                exit={{ ...hidden, transition: textIn(0) }}
+                transition={textIn(0.1)}
+              >
+                <p className="min-w-0 rounded-md bg-[#0d0608]/60 px-2 py-1 font-receipt text-[10px] uppercase leading-snug tracking-[0.3em] text-[#fdba74]">
+                  Scene {String(artifact.scene + 1).padStart(2, '0')}
+                  {data.moviebox && shot?.title ? (
+                    <span className="block truncate tracking-[0.18em] text-[#fffaf0]/60">
+                      {shot.title}
+                    </span>
+                  ) : null}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onNotes(index)}
+                  aria-expanded={notesOpen}
+                  className="shrink-0 rounded-full border border-[#fffaf0]/15 bg-[#0d0608]/60 px-2.5 py-1 font-receipt text-[9px] uppercase tracking-[0.2em] text-[#fffaf0]/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+                >
+                  {notesOpen ? 'Hide notes' : "Director's notes"}
+                </button>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {notesOpen ? (
+              <motion.div
+                key="notes"
+                className="pointer-events-none absolute inset-0 z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <DirectorNote className="left-3 top-24 -rotate-3" delay={0} reduce={reduce}>
+                  {notes[0]}
+                </DirectorNote>
+                <DirectorNote
+                  className="bottom-32 right-3 rotate-2 text-right"
+                  delay={0.12}
+                  reduce={reduce}
+                >
+                  {notes[1]}
+                </DirectorNote>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          <AnimatePresence initial={false}>
+            {active ? (
+              <motion.p
+                key="subtitle"
+                className="film-subtitle !bottom-14 !text-[15px] [text-shadow:0_1px_6px_rgba(0,0,0,0.95)]"
+                initial={hidden}
+                animate={shown}
+                exit={{ ...hidden, transition: textIn(0) }}
+                transition={textIn(0.3)}
+              >
+                {subtitle}
+              </motion.p>
+            ) : null}
+          </AnimatePresence>
+          {hint ? (
+            <motion.span
+              aria-hidden
+              className="absolute inset-x-0 bottom-8 z-10 text-center font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80"
+              animate={reduce ? undefined : { y: [0, -4, 0] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              ↑ swipe up
+            </motion.span>
+          ) : null}
+        </motion.div>
+      )}
     </article>
   );
 });
@@ -829,7 +854,11 @@ const CrankWheel = memo(function CrankWheel({
       }}
       aria-label={tapOnly ? 'Wind the projector one frame' : 'Turn the projector crank'}
     >
-      <motion.span aria-hidden className="crank-wheel__disc gpu-layer" style={{ rotate: crank }}>
+      <motion.span
+        aria-hidden
+        className="crank-wheel__disc gpu-layer"
+        style={{ rotate: crank, willChange: 'transform' }}
+      >
         <span className="crank-wheel__spoke" />
         <span className="crank-wheel__spoke rotate-90" />
         <span className="crank-wheel__knob" />
@@ -883,7 +912,10 @@ const FilmStrip = memo(function FilmStrip({
       aria-hidden
     >
       <span className="celluloid__backlight" />
-      <motion.div className="celluloid__track gpu-layer" style={{ x, marginLeft: -CELL / 2 }}>
+      <motion.div
+        className="celluloid__track gpu-layer"
+        style={{ x, marginLeft: -CELL / 2, willChange: 'transform' }}
+      >
         {cells.map((index, i) => (
           <div key={i} className="celluloid__cell" style={{ width: CELL }}>
             <div className="celluloid__frame">
@@ -935,10 +967,11 @@ const FrameFace = memo(function FrameFace({
   );
   const still = shot?.image ? (
     <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <LazyMedia
         src={shot.image}
         alt=""
+        fill
+        sizes="(max-width: 480px) 90vw, 400px"
         className="film-photo absolute inset-0 h-full w-full object-cover"
       />
       <span

@@ -221,7 +221,11 @@ function Stack({
                 custom={direction}
                 variants={SHEET}
                 className={`gpu-layer absolute inset-x-1 bottom-7 top-14 ${isFront ? '' : 'pointer-events-none'}`}
-                style={{ zIndex: 10 - depth, transformOrigin: '50% 0%' }}
+                style={{
+                  zIndex: 10 - depth,
+                  transformOrigin: '50% 0%',
+                  willChange: 'transform, opacity',
+                }}
                 initial={{
                   y: BACK.y - 14,
                   scale: BACK.scale - 0.04,
@@ -425,7 +429,7 @@ const RewindCard = memo(function RewindCard({
     <motion.div
       ref={sheet}
       className="relative h-full w-full touch-pan-y"
-      style={{ x: dragX, rotate: dragRotate }}
+      style={{ x: dragX, rotate: dragRotate, willChange: 'transform' }}
       variants={LIFTABLE}
       initial="rest"
       animate="rest"

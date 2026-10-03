@@ -325,7 +325,7 @@ function DeckSlot({
   return (
     <motion.div
       className={`deck-slot absolute inset-x-0 bottom-7 top-0 ${depth === 0 ? '' : 'pointer-events-none'}`}
-      style={{ zIndex: 10 - depth, transformPerspective: 1100 }}
+      style={{ zIndex: 10 - depth, transformPerspective: 1100, willChange: 'transform, opacity' }}
       initial={{ ...REST[MOUNTED_DEPTH], opacity: 0 }}
       animate={fling ? { ...flingPose(fling), opacity: 1 } : { ...REST[settledDepth], opacity: 1 }}
       exit={{ ...REST[MOUNTED_DEPTH], opacity: 0, transition: TUCK }}
@@ -375,7 +375,7 @@ function DeckCard({
   return (
     <motion.div
       className="deck-drag relative h-full w-full touch-pan-y"
-      style={{ x: dragX, rotate: dragRotate, rotateY: dragYaw }}
+      style={{ x: dragX, rotate: dragRotate, rotateY: dragYaw, willChange: 'transform' }}
       drag={active && !reduce ? 'x' : false}
       dragDirectionLock
       dragControls={dragControls}

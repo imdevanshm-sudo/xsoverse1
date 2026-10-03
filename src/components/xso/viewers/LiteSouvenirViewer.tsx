@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  useMemo,
-  useState,
-  type CSSProperties,
-  type PointerEvent,
-  type ReactNode,
-} from 'react';
+import { useMemo, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
 import {
   motion,
   useMotionTemplate,
@@ -24,7 +18,11 @@ import {
   playMechanicalCue,
   rotateFrom,
 } from '@/components/xso/viewers/shared';
-import { AccordionPanel, MovieMemoryFrame, getScrapbookArtifacts } from '@/components/xso/viewers/StyleTemplates';
+import {
+  AccordionPanel,
+  MovieMemoryFrame,
+  getScrapbookArtifacts,
+} from '@/components/xso/viewers/StyleTemplates';
 
 /** Mobile-safe DOM engines — fill the phone frame without fixed 500/620px stages. */
 export function LiteSouvenirViewer({
@@ -119,7 +117,7 @@ function TiltCard({
   return (
     <motion.div
       className={className}
-      style={{ ...style, rotateX, rotateY, transformPerspective: 900 }}
+      style={{ ...style, rotateX, rotateY, transformPerspective: 900, willChange: 'transform' }}
       onPointerMove={(e) => {
         if (e.pointerType === 'mouse') lean(e);
       }}
@@ -162,9 +160,7 @@ function LiteStack({
     ),
   );
   const [discarded, setDiscarded] = useState(
-    mode === 'rewind'
-      ? Math.max(0, Math.min(artifacts.length - 1, initialSide))
-      : 0,
+    mode === 'rewind' ? Math.max(0, Math.min(artifacts.length - 1, initialSide)) : 0,
   );
 
   const ordered =
@@ -240,11 +236,7 @@ function LiteStack({
                         opacity: depth === 0 ? 1 : 0.9,
                       }
                 }
-                transition={
-                  isTossing
-                    ? { duration: 0.28, ease: [0.4, 0, 0.9, 0.6] }
-                    : SPRING
-                }
+                transition={isTossing ? { duration: 0.28, ease: [0.4, 0, 0.9, 0.6] } : SPRING}
                 onAnimationComplete={() => {
                   if (isTossing) {
                     setTossing(null);
@@ -295,9 +287,7 @@ function LiteAccordion({
   initialSide: number;
   onAdvance?: () => void;
 }) {
-  const [panel, setPanel] = useState(
-    Math.max(0, Math.min(3, Math.round(initialSide))),
-  );
+  const [panel, setPanel] = useState(Math.max(0, Math.min(3, Math.round(initialSide))));
 
   const step = (dir: 1 | -1) => {
     playMechanicalCue('click');
@@ -353,9 +343,7 @@ function LiteScrapbook({
   onAdvance?: () => void;
 }) {
   const artifacts = useMemo(() => getScrapbookArtifacts(data), [data]);
-  const [index, setIndex] = useState(
-    Math.max(0, Math.min(artifacts.length - 1, initialSide)),
-  );
+  const [index, setIndex] = useState(Math.max(0, Math.min(artifacts.length - 1, initialSide)));
   const current = artifacts[index];
 
   return (

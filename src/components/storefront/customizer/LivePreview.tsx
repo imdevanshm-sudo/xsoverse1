@@ -201,7 +201,6 @@ export const CardStack = memo(function CardStack({
                 aria-pressed={lifted}
                 aria-label={`${card.label}${lifted ? ', in front' : ''}`}
                 onClick={() => setPicked(lifted ? null : card.id)}
-                layout={!reduce}
                 initial={reduce ? { opacity: 0 } : { opacity: 0, x: 220, rotate: 18 }}
                 animate={
                   lifted
