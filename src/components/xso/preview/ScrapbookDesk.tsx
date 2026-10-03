@@ -45,7 +45,7 @@ const INTERACTIVE = 'button, a, input, audio, [data-no-drag]';
 
 const MEMORY_LABELS = ['Receipt', 'Audit', 'Photos', 'Letter'];
 
-type ItemKind = 'receipt' | 'polaroid' | 'sticky' | 'ticket' | 'letter' | 'voice';
+type ItemKind = 'receipt' | 'polaroid' | 'card' | 'sticky' | 'ticket' | 'letter' | 'voice';
 
 interface DeskItemSpec {
   id: string;
@@ -95,9 +95,18 @@ function buildItems(data: XsoData, layers: ScrapbookLayers, quiet: boolean): Des
   const items: DeskItemSpec[] = [];
   if (on.has('receipt')) items.push(at('receipt', 'receipt', 0));
   if (on.has('polaroids')) {
-    (photos.length || quiet ? photos : ['']).forEach((src, index) =>
-      items.push(at(`polaroid-${index}`, 'polaroid', 2, { photo: { src, index } })),
-    );
+    if (photos.length || !quiet) {
+      (photos.length ? photos : ['']).forEach((src, index) =>
+        items.push(at(`polaroid-${index}`, 'polaroid', 2, { photo: { src, index } })),
+      );
+    } else {
+      /** No uploads: two handwritten memory cards take the photos' place on the desk. */
+      [0, 1].forEach((index) =>
+        items.push(
+          at(`card-${index}`, 'card', 2, { photo: { src: '', index } }, `polaroid-${index}`),
+        ),
+      );
+    }
   }
   if (on.has('sticky')) items.push(at('sticky', 'sticky', 1));
   if (on.has('ticket')) items.push(at('ticket', 'ticket', 3));
@@ -271,8 +280,8 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       id: `${scope}${item.id}`,
       src,
       alt: `Memory ${index + 1}`,
-      caption: polaroidCaption(data, index),
-      back: polaroidBack(data, layers.polaroidCaption, index),
+      caption: polaroidCaption(data, layers.polaroidCaption, index),
+      back: polaroidBack(data, index),
       origin: {
         x: r.left + r.width / 2,
         y: r.top + r.height / 2,
@@ -295,7 +304,14 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       case 'receipt':
         return <MiniReceipt data={data} />;
       case 'polaroid':
-        return <Polaroid data={data} photo={item.photo!} />;
+        return (
+          <Polaroid
+            photo={item.photo!}
+            caption={polaroidCaption(data, layers.polaroidCaption, item.photo!.index)}
+          />
+        );
+      case 'card':
+        return <MemoryCard data={data} index={item.photo!.index} />;
       case 'sticky':
         return (
           <StickyNote
@@ -333,6 +349,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const LABELS: Record<ItemKind, (item: DeskItemSpec) => string> = {
     receipt: () => 'Receipt — look closer',
     polaroid: (item) => `Polaroid ${item.photo!.index + 1} — look closer`,
+    card: (item) => `Memory card ${item.photo!.index + 1} — look closer`,
     sticky: () => 'Sticky note — look closer',
     ticket: () => 'Ticket stub — look closer',
     voice: () => 'Voice note and song — look closer',
@@ -710,37 +727,55 @@ const GLOSS: Variants = {
 
 const BACK_NOTES = ['always remember this ♡', 'my favourite version of us', 'proof we were here'];
 
-/** Handwriting under the photo. */
-function polaroidCaption(data: XsoData, index: number) {
-  return index === 0
-    ? `${data.customerName} & ${data.billerName}`
-    : `'${data.timestamp.split(' ')[0].slice(-2)} ♡`;
+/** Handwriting under each print: the sender's own caption first, then names and the year. */
+function polaroidCaption(data: XsoData, caption: string, index: number) {
+  const lines = [
+    caption.trim(),
+    `${data.customerName} & ${data.billerName}`,
+    `'${data.timestamp.split(' ')[0].slice(-2)} ♡`,
+  ].filter(Boolean);
+  return lines[index % lines.length];
 }
 
 /** What's written on the back, shown when the print is flipped in the lightbox. */
-function polaroidBack(data: XsoData, caption: string, index: number): PolaroidBack {
+function polaroidBack(data: XsoData, index: number): PolaroidBack {
   const line = data.lineItems[index];
   const date = data.timestamp.split(' ')[0];
   return {
     meta: `Frame ${String(index + 1).padStart(2, '0')} · ${date}`,
-    text:
-      index === 0 && caption
-        ? caption
-        : line
-          ? `the ${line.description.toLowerCase()} era.`
-          : 'one I keep coming back to.',
+    text: line ? `the ${line.description.toLowerCase()} era.` : 'one I keep coming back to.',
     note: BACK_NOTES[index % BACK_NOTES.length],
     footer: data.occasion,
     signoff: `— ${data.billerName.charAt(0)}.`,
   };
 }
 
-const Polaroid = memo(function Polaroid({
-  data,
-  photo,
+/** A push pin through the top edge; amber or rose so neighbours don't match. */
+const Pin = memo(function Pin({
+  tone = 'rose',
+  left = '50%',
 }: {
-  data: XsoData;
+  tone?: 'rose' | 'amber';
+  left?: string;
+}) {
+  return <span aria-hidden className={`desk-pin desk-pin--${tone}`} style={{ left }} />;
+});
+
+/** Every print is held down by something: tape on the corner, a pin, or tape on the left. */
+function PolaroidFastener({ index }: { index: number }) {
+  if (index % 3 === 1) return <Pin left="50%" />;
+  if (index % 3 === 2) {
+    return <Tape style={{ left: '-9%', top: 8, transform: 'rotate(-36deg)', width: '40%' }} />;
+  }
+  return <Tape style={{ right: '-10%', top: 6, transform: 'rotate(38deg)', width: '42%' }} />;
+}
+
+const Polaroid = memo(function Polaroid({
+  photo,
+  caption,
+}: {
   photo: { src: string; index: number };
+  caption: string;
 }) {
   return (
     <div className="desk-paper desk-paper--polaroid relative p-[7%] pb-0 will-change-transform">
@@ -750,7 +785,7 @@ const Polaroid = memo(function Polaroid({
             src={photo.src}
             alt={`Memory ${photo.index + 1}`}
             fill
-            sizes="(max-width: 768px) 40vw, 170px"
+            sizes="(max-width: 768px) 45vw, 320px"
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
@@ -760,13 +795,40 @@ const Polaroid = memo(function Polaroid({
         )}
         <motion.span aria-hidden className="polaroid-gloss" variants={GLOSS} />
       </div>
-      <p className="truncate py-[9%] text-center font-hand text-[17px] leading-none text-[#3a2530]">
-        {polaroidCaption(data, photo.index)}
+      <p className="line-clamp-2 break-words px-[2%] py-[8%] text-center font-hand text-[18px] leading-[1.05] text-[#3a2530]">
+        {caption}
       </p>
-      {photo.index === 0 ? (
-        <Tape style={{ right: '-10%', top: 6, transform: 'rotate(38deg)', width: '42%' }} />
-      ) : null}
+      <PolaroidFastener index={photo.index} />
     </div>
+  );
+});
+
+const CARD_PAPERS = ['#f8d5e1', '#f6cd85'];
+
+/** Stands in for a polaroid when no photos were uploaded: a coloured card, written by hand. */
+const MemoryCard = memo(function MemoryCard({ data, index }: { data: XsoData; index: number }) {
+  const flag = data.greenFlags[0]?.toLowerCase();
+  const line = data.lineItems[0];
+  const text =
+    index === 0
+      ? (flag ?? 'the way you show up')
+      : line
+        ? `${line.qty} ${line.description.toLowerCase()}`
+        : 'every late night';
+  return (
+    <article
+      className="desk-paper relative flex aspect-[4/5] flex-col justify-between p-[9%]"
+      style={{ backgroundColor: CARD_PAPERS[index % CARD_PAPERS.length] }}
+    >
+      <p className="font-receipt text-[9px] uppercase tracking-[0.2em] text-[#8a6a52]">
+        Memory {String(index + 1).padStart(2, '0')}
+      </p>
+      <p className="font-hand text-[22px] leading-[1.05] text-[#3a2530]">{text}</p>
+      <p className="self-end font-hand text-[17px] leading-none text-[#b4234a]">
+        {index === 0 ? 'always ♡' : 'worth it ♡'}
+      </p>
+      <Pin tone={index % 2 ? 'amber' : 'rose'} />
+    </article>
   );
 });
 
@@ -821,7 +883,8 @@ const StickyNote = memo(function StickyNote({
           animate={{ opacity: PEEL_SHADOW[peel] }}
           transition={transition}
         />
-        <p className="font-receipt text-[8px] uppercase tracking-[0.2em] text-[#8a6a52]">
+        <Pin tone="amber" left="52%" />
+        <p className="font-receipt text-[9px] uppercase tracking-[0.2em] text-[#8a6a52]">
           Audit · {score}/5
         </p>
         <ul className="mt-1 space-y-0.5 font-hand text-[15px] leading-[1.05] text-[#3a2530]">
@@ -904,7 +967,8 @@ const VoiceSnippet = memo(function VoiceSnippet({ src, from }: { src: string; fr
 const SongCard = memo(function SongCard({ data, songUrl }: { data: XsoData; songUrl: string }) {
   return (
     <article className="desk-paper desk-paper--ticket relative px-3 py-2.5 text-[#2d1b22]">
-      <p className="font-receipt text-[8px] uppercase tracking-[0.2em] text-[#9a6a7e]">
+      <Pin left="88%" />
+      <p className="font-receipt text-[9px] uppercase tracking-[0.2em] text-[#9a6a7e]">
         Side A · {data.voiceNoteUrl ? 'press play' : 'our song'}
       </p>
       {data.voiceNoteUrl ? (
@@ -943,7 +1007,8 @@ const TicketStub = memo(function TicketStub({
   const where = [layers.ticketPlace, layers.ticketWhen].filter(Boolean).join(' · ');
   return (
     <article className="desk-paper desk-paper--ticket relative px-3 py-2.5 text-[#2d1b22]">
-      <div className="flex items-baseline justify-between gap-2 font-receipt text-[8px] uppercase tracking-[0.2em] text-[#9a6a7e]">
+      <Tape style={{ left: '-6%', top: '30%', transform: 'rotate(-80deg)', width: '22%' }} />
+      <div className="flex items-baseline justify-between gap-2 font-receipt text-[9px] uppercase tracking-[0.2em] text-[#9a6a7e]">
         <span>Admit two</span>
         <span>No. 0417</span>
       </div>

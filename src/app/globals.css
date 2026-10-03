@@ -2919,3 +2919,25 @@ html.is-landscape .xso-dock {
     font-size: 18px;
   }
 }
+
+/* A push pin through the top edge of a scrapbook piece. */
+.desk-pin {
+  position: absolute;
+  top: -6px;
+  z-index: 4;
+  width: 15px;
+  height: 15px;
+  translate: -50% 0;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow:
+    0 3px 4px rgba(0, 0, 0, 0.45),
+    3px 7px 7px -3px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.35);
+}
+.desk-pin--rose {
+  background: radial-gradient(circle at 35% 30%, #ff9fbd, #d6336c 45%, #7d1233 100%);
+}
+.desk-pin--amber {
+  background: radial-gradient(circle at 35% 30%, #ffe4ad, #dd9a33 45%, #7d520f 100%);
+}
