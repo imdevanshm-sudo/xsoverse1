@@ -10,7 +10,7 @@ import {
 import { isGiftStyle, pickXsoPayload } from '@/lib/xsoPayload';
 import { managePath, viewPath } from '@/lib/giftLinks';
 import { manageKey } from '@/lib/manageKey';
-import { selectedCards } from '@/lib/formatCards';
+import { FORMAT_CARDS, selectedCards } from '@/lib/formatCards';
 import { isAddOnId, isPriceArm, quote } from '@/lib/pricing';
 import type { XsoData } from '@/types/xso';
 
@@ -44,6 +44,7 @@ export async function POST(request: Request) {
       addOns?: unknown;
       arm?: unknown;
       deliverAt?: unknown;
+      overlay?: unknown;
     };
     if (!body?.data || typeof body.data !== 'object') {
       return NextResponse.json({ error: 'Missing souvenir data' }, { status: 400 });
@@ -64,9 +65,10 @@ export async function POST(request: Request) {
     const payload = pickXsoPayload(body.data);
     const gift = await createPendingGift(payload);
     const appUrl = getAppUrl(request.url);
+    const cards = selectedCards(gift.data, gift.data.giftStyle);
     const price = quote({
       style: gift.data.giftStyle,
-      cardCount: selectedCards(gift.data, gift.data.giftStyle).length,
+      cardCount: cards.length,
       addOns: Array.isArray(body.addOns) ? body.addOns.filter(isAddOnId) : [],
       arm: isPriceArm(body.arm) ? body.arm : null,
     });
@@ -87,17 +89,21 @@ export async function POST(request: Request) {
       });
     }
 
-    const { checkoutUrl } = await createLemonCheckout({
+    const { checkoutUrl, redirectUrl } = await createLemonCheckout({
       giftId: gift.id,
       giftStyle: gift.data.giftStyle,
       customerName: gift.data.customerName,
       billerName: gift.data.billerName,
       appUrl,
       quote: price,
+      cardNames: FORMAT_CARDS[gift.data.giftStyle]
+        .filter((c) => cards.includes(c.id))
+        .map((c) => c.label),
       deliverAt,
+      overlay: body.overlay === true,
     });
 
-    return NextResponse.json({ mode: 'lemon', checkoutUrl });
+    return NextResponse.json({ mode: 'lemon', checkoutUrl, redirectUrl });
   } catch (error) {
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });

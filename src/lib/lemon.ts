@@ -1,6 +1,8 @@
 import { randomBytes } from 'crypto';
 import { pickXsoPayload } from '@/lib/xsoPayload';
-import { TIERS, type Quote, type TierId } from '@/lib/pricing';
+import { ADD_ONS, formatPrice, TIERS, type Quote, type TierId } from '@/lib/pricing';
+import { displayTitle, getCartridge } from '@/lib/cartridges';
+import type { GiftStyle } from '@/types/xso';
 import { markGiftPaid, saveGift, type StoredGift } from '@/lib/giftStore';
 import { managePath } from '@/lib/giftLinks';
 import { manageKey } from '@/lib/manageKey';
@@ -75,20 +77,41 @@ interface LemonCheckoutResponse {
 
 export async function createLemonCheckout(options: {
   giftId: string;
-  giftStyle: string;
+  giftStyle: GiftStyle;
   customerName: string;
   billerName: string;
   appUrl: string;
   quote: Quote;
+  /** Labels of the cards in the stack, for the checkout summary. */
+  cardNames: string[];
   deliverAt?: string | null;
-}): Promise<{ checkoutUrl: string }> {
+  /** Lemon.js overlay instead of a full-page redirect. */
+  overlay?: boolean;
+}): Promise<{ checkoutUrl: string; redirectUrl: string }> {
   const config = getLemonConfig();
   if (!config) {
     throw new Error('Lemon Squeezy is not configured');
   }
 
   /** The buyer is the sender, so both the redirect and the emailed receipt open their dashboard. */
-  const redirectUrl = `${options.appUrl}${managePath(options.giftId, manageKey(options.giftId))}`;
+  const redirectUrl = `${options.appUrl}${managePath(options.giftId, manageKey(options.giftId))}&paid=1`;
+  const { quote } = options;
+  const aesthetic = displayTitle(getCartridge(options.giftStyle));
+  const recipient = options.customerName.trim() || 'someone special';
+  const extras = quote.addOns.map((a) => ADD_ONS[a.id].name);
+  const description = [
+    `${TIERS[quote.tier].name} · ${aesthetic}`,
+    options.cardNames.join(', '),
+    extras.length ? `Add-ons: ${extras.join(', ')}` : '',
+    quote.discount ? `Gift-back offer: −${formatPrice(quote.discount, quote.currency)}` : '',
+    'A private link, ready the moment you check out. No shipping, no waiting.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+  /** Lemon Squeezy fetches media itself, so only public https URLs are usable. */
+  const thumb = options.appUrl.startsWith('https://')
+    ? `${options.appUrl}/thumbs/${options.giftStyle}.webp`
+    : null;
 
   const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
     method: 'POST',
@@ -115,16 +138,24 @@ export async function createLemonCheckout(options: {
             name: options.billerName || undefined,
           },
           product_options: {
-            name: `XSO Souvenir · ${options.giftStyle}`,
-            description: `Custom XSO for ${options.customerName || 'someone special'}`,
+            name: `XSO Keepsake for ${recipient} · ${aesthetic}`,
+            description,
+            media: thumb ? [thumb] : undefined,
             redirect_url: redirectUrl,
             receipt_button_text: 'Send their gift',
             receipt_link_url: redirectUrl,
+            receipt_thank_you_note: `Your keepsake for ${recipient} is sealed. Open your dashboard to send the link.`,
           },
+          // Logo and store colors come from the store's Lemon Squeezy design settings; these
+          // per-checkout options match them to the dark XSO look.
           checkout_options: {
-            embed: false,
-            media: false,
+            embed: Boolean(options.overlay),
+            media: Boolean(thumb),
             logo: true,
+            desc: true,
+            discount: true,
+            dark: true,
+            button_color: '#EC4899',
           },
         },
         relationships: {
@@ -153,7 +184,7 @@ export async function createLemonCheckout(options: {
     throw new Error(detail);
   }
 
-  return { checkoutUrl };
+  return { checkoutUrl, redirectUrl };
 }
 
 export async function activateGiftPreview(giftId: string): Promise<StoredGift | null> {

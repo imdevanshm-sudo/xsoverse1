@@ -35,6 +35,7 @@ import type { FormatKey, FormatLayers } from '@/lib/formats';
 import { cardsPatch, normalizeCards, selectedCards, type CardId } from '@/lib/formatCards';
 import { compressPhotoForStyle } from '@/lib/media';
 import { startCheckout } from '@/lib/startCheckout';
+import { loadLemonJs } from '@/lib/lemonJs';
 import { pickXsoPayload } from '@/lib/xsoPayload';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { CardDetailsEditor, type FormatPatch } from '@/components/xso/FormatEditor';
@@ -431,15 +432,21 @@ export function XSOCustomizerModal() {
         cards: cards.length,
         add_ons: chosen.join(','),
       });
-      await startCheckout(style, order, {
+      const mode = await startCheckout(style, order, {
         addOns: chosen,
         deliverAt: scheduled ? new Date(deliverAt).toISOString() : undefined,
       });
+      if (mode === 'overlay') setPaying(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
       setPaying(false);
     }
   }, [busy, cards.length, commit, deliverAt, order, price, scheduled, style]);
+
+  /** Warm Lemon.js on the last step so the overlay opens without a wait. */
+  useEffect(() => {
+    if (step === LAST) void loadLemonJs();
+  }, [step]);
 
   const canNext = step === 0 || step === 1;
   const photoPicker = (

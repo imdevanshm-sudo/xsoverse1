@@ -47,7 +47,7 @@ export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
 
     setBusy(true);
     try {
-      await startCheckout(lockedStyle);
+      if ((await startCheckout(lockedStyle)) === 'overlay') setBusy(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Checkout failed');
       setBusy(false);
