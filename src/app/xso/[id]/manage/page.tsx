@@ -4,6 +4,7 @@ import { getGift } from '@/lib/giftStore';
 import { isManageKey } from '@/lib/manageKey';
 import { SenderDashboard } from '@/components/xso/sender/SenderDashboard';
 import { ManagePending } from '@/components/xso/sender/ManagePending';
+import { TrackCheckoutComplete } from '@/components/xso/sender/TrackCheckoutComplete';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,7 +28,10 @@ export default async function ManagePage({ params, searchParams }: ManagePagePro
   return (
     <main className="desk grid min-app-h place-items-center px-4 py-10">
       {gift.status === 'paid' ? (
-        <SenderDashboard gift={gift} manageKey={String(searchParams.key)} />
+        <>
+          <SenderDashboard gift={gift} manageKey={String(searchParams.key)} />
+          <TrackCheckoutComplete giftId={gift.id} />
+        </>
       ) : (
         <ManagePending giftId={gift.id} preview={searchParams.preview === '1'} />
       )}
