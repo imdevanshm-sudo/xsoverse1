@@ -95,7 +95,7 @@ export const MemoryDeck = memo(function MemoryDeck(props: DeckProps) {
   );
 });
 
-function Deck({
+const Deck = memo(function Deck({
   data,
   artifacts,
   onChange,
@@ -207,12 +207,14 @@ function Deck({
           const inAir = flying === index;
           /** While the top card is in the air, everything under it has already moved up one. */
           const shown = inAir ? 0 : flying !== null ? depth - 1 : depth;
+          /** Contents live only on the top card, the one under it and the one gliding in behind. */
+          const near = shown <= 1 || depth === count - 1;
           return (
             <DeckCard
               key={artifact.id}
               index={index}
               artifact={artifact}
-              face={faces[artifact.id]}
+              face={near ? faces[artifact.id] : null}
               depth={shown}
               zIndex={inAir ? count + 1 : count - depth}
               active={shown === 0 && flying === null}
@@ -259,7 +261,7 @@ function Deck({
       </p>
     </section>
   );
-}
+});
 
 const DeckCard = memo(function DeckCard({
   index,
@@ -369,7 +371,7 @@ const DeckCard = memo(function DeckCard({
     observer.observe(el);
     if (el.firstElementChild) observer.observe(el.firstElementChild);
     return () => observer.disconnect();
-  }, []);
+  }, [face]);
   const pending = useRef<{ x: number; y: number } | null>(null);
 
   const pose = restAt(Math.max(0, depth));
@@ -477,11 +479,11 @@ const DeckCard = memo(function DeckCard({
 });
 
 /** Faded print-head header, like the machine line on a real thermal slip. */
-function ReceiptTelemetry({ number }: { number: number }) {
+const ReceiptTelemetry = memo(function ReceiptTelemetry({ number }: { number: number }) {
   return (
     <div aria-hidden className="receipt-telemetry">
       <span>TERM 03 · TXN 0041{number}7</span>
       <span className="receipt-telemetry__bars">▮▮▯▮▯▮▮▯▮</span>
     </div>
   );
-}
+});

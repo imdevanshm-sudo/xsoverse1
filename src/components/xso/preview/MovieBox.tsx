@@ -125,7 +125,7 @@ export const MovieBox = memo(function MovieBox(props: ProjectorProps) {
   );
 });
 
-function Projector({
+const Projector = memo(function Projector({
   data,
   onChange,
   size = 'hero',
@@ -413,13 +413,13 @@ function Projector({
       </p>
     </section>
   );
-}
+});
 
 /**
  * The recipient's reel: one scene per screen, scrolled vertically through a strip of
  * celluloid. Snap stops on every frame, so a swipe pulls exactly one scene through.
  */
-function MovieReel({
+const MovieReel = memo(function MovieReel({
   data,
   onChange,
   focusIndex,
@@ -566,7 +566,7 @@ function MovieReel({
       </p>
     </section>
   );
-}
+});
 
 const ReelFrame = memo(function ReelFrame({
   index,
@@ -749,7 +749,7 @@ const ReelFrame = memo(function ReelFrame({
   );
 });
 
-function DirectorNote({
+const DirectorNote = memo(function DirectorNote({
   className,
   delay,
   reduce,
@@ -770,7 +770,7 @@ function DirectorNote({
       {children}
     </motion.p>
   );
-}
+});
 
 /** Hand crank: turn it like the real thing (any circular drag), or tap for one frame. */
 const CrankWheel = memo(function CrankWheel({
@@ -996,7 +996,7 @@ const FrameFace = memo(function FrameFace({
   return <FrameBody data={data} index={index} scene={scene} stars={stars} />;
 });
 
-function FrameBody({
+const FrameBody = memo(function FrameBody({
   data,
   index,
   scene,
@@ -1082,4 +1082,4 @@ function FrameBody({
       </p>
     </div>
   );
-}
+});

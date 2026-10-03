@@ -80,7 +80,13 @@ export const PhotoPicker = memo(function PhotoPicker({
                 className="relative aspect-square overflow-hidden rounded-xl bg-[#21131b]"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+                <img
+                  src={photo}
+                  alt={`Photo ${i + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
                 <button
                   type="button"
                   onClick={() => onRemove(i)}

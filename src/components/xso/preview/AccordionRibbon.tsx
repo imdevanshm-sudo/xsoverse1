@@ -171,7 +171,7 @@ export const AccordionRibbon = memo(function AccordionRibbon(props: RibbonProps)
   );
 });
 
-function Ribbon({
+const Ribbon = memo(function Ribbon({
   data,
   onChange,
   size = 'hero',
@@ -572,9 +572,9 @@ function Ribbon({
       </p>
     </section>
   );
-}
+});
 
-function Aura({ open }: { open: MotionValue<number> }) {
+const Aura = memo(function Aura({ open }: { open: MotionValue<number> }) {
   const opacity = useTransform(open, [0, 1], [0.45, 1]);
   const scale = useTransform(open, [0, 1], [0.82, 1]);
   return (
@@ -584,7 +584,7 @@ function Aura({ open }: { open: MotionValue<number> }) {
       style={{ opacity, scale }}
     />
   );
-}
+});
 
 const RibbonPanel = memo(function RibbonPanel({
   index,
@@ -668,7 +668,7 @@ const RibbonPanel = memo(function RibbonPanel({
 });
 
 /** Stitched ribbon handle: pull down to let the letter unfurl, push up to fold it away. */
-function PullTab({
+const PullTab = memo(function PullTab({
   opened,
   reduce,
   shut,
@@ -715,7 +715,7 @@ function PullTab({
       <span className="accordion-tab__label">{opened ? 'Fold away' : 'Pull open'}</span>
     </motion.button>
   );
-}
+});
 
 const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; index: number }) {
   const scope = useId();

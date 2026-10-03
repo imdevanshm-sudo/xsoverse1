@@ -317,7 +317,7 @@ export function AudioField({
     <div className="grid gap-2">
       {value ? (
         <div className="flex items-center gap-2">
-          <audio controls src={value} className="h-10 min-w-0 flex-1" />
+          <audio controls preload="none" src={value} className="h-10 min-w-0 flex-1" />
           <button
             type="button"
             onClick={() => onChange(undefined)}
@@ -408,7 +408,13 @@ export function ImageField({
       >
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={value} alt="" className="h-[4.5rem] w-24 shrink-0 rounded-lg object-cover" />
+          <img
+            src={value}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-[4.5rem] w-24 shrink-0 rounded-lg object-cover"
+          />
         ) : null}
         <button
           type="button"

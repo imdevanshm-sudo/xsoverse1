@@ -7,7 +7,7 @@ import { useXsoData } from '@/store/useXsoData';
 import { XsoEditor } from '@/components/xso/XsoEditor';
 import { Eye } from 'lucide-react';
 import { FormatEditorPanel } from '@/components/xso/FormatEditorPanel';
-import { ReceiverPreview } from '@/components/xso/ReceiverPreview';
+import { ReceiverPreview } from '@/components/xso/LazyReceiverPreview';
 import { AICraftPanel } from '@/components/xso/AICraftPanel';
 import { CraftBadge, type CraftPhase, type CraftSource } from '@/components/xso/AIQuizCustomizer';
 import { useXsoStore } from '@/store/useXsoStore';

@@ -10,7 +10,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { CINEMATIC, FORMAT_SWAP } from '@/lib/motion';
 import { FormatPreview } from '@/components/xso/preview/FormatPreview';
 import { SecretOffer } from '@/components/xso/preview/SecretOffer';
-import { ReceiverPreview } from '@/components/xso/ReceiverPreview';
+import { ReceiverPreview } from '@/components/xso/LazyReceiverPreview';
 import { Eye } from 'lucide-react';
 import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';

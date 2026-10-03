@@ -32,6 +32,8 @@ import { LazyMedia } from '@/components/xso/LazyMedia';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { seededOffset } from '@/components/xso/viewers/shared';
 import { usePolaroidStore, type PolaroidBack } from '@/store/usePolaroidStore';
+import { preloadLightbox } from '@/components/xso/PolaroidLightboxHost';
+import { usePauseOffscreen } from '@/hooks/usePauseOffscreen';
 
 const PICK_UP = { type: 'spring' as const, stiffness: 300, damping: 25 };
 /** Slow and a little floaty, like sliding paper across felt. */
@@ -351,7 +353,9 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   latest.current = { items, pickUp, openFocus, showPolaroid };
   const handlePickUp = useCallback((id: string) => {
     const item = latest.current.items.find((it) => it.id === id);
-    if (item) latest.current.pickUp(item);
+    if (!item) return;
+    if (item.kind === 'polaroid') preloadLightbox();
+    latest.current.pickUp(item);
   }, []);
   const handleActivate = useCallback((id: string) => {
     const { items: all, openFocus: open, showPolaroid: show } = latest.current;
@@ -441,21 +445,21 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
         </AnimatePresence>
       </div>
 
-      <div
-        className={`mt-3 flex items-center justify-between gap-3 px-1 ${chrome ? '' : 'hidden'}`}
-      >
-        <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
-          {tactile ? 'Drag anything · tap to look closer' : 'Tap anything to look closer'}
-        </p>
-        <button
-          type="button"
-          onClick={tidyUp}
-          className="paper-button shrink-0 touch-manipulation"
-          aria-label={tidied ? 'Scatter the desk again' : 'Tidy the desk into neat rows'}
-        >
-          {tidied ? 'Scatter' : 'Tidy up'}
-        </button>
-      </div>
+      {chrome ? (
+        <div className="mt-3 flex items-center justify-between gap-3 px-1">
+          <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
+            {tactile ? 'Drag anything · tap to look closer' : 'Tap anything to look closer'}
+          </p>
+          <button
+            type="button"
+            onClick={tidyUp}
+            className="paper-button shrink-0 touch-manipulation"
+            aria-label={tidied ? 'Scatter the desk again' : 'Tidy the desk into neat rows'}
+          >
+            {tidied ? 'Scatter' : 'Tidy up'}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 });
@@ -628,7 +632,13 @@ const DeskItem = memo(function DeskItem({
   );
 });
 
-function Tape({ style, className = '' }: { style?: CSSProperties; className?: string }) {
+const Tape = memo(function Tape({
+  style,
+  className = '',
+}: {
+  style?: CSSProperties;
+  className?: string;
+}) {
   return (
     <motion.span
       aria-hidden
@@ -637,7 +647,7 @@ function Tape({ style, className = '' }: { style?: CSSProperties; className?: st
       variants={TAPE_LIGHT}
     />
   );
-}
+});
 
 const RECEIPT_LINES = 4;
 
@@ -811,12 +821,16 @@ const StickyNote = memo(function StickyNote({
 
 const WAVE = [6, 11, 17, 9, 20, 13, 7, 16, 10, 18, 8, 14];
 
-function VoiceSnippet({ src, from }: { src: string; from: string }) {
+const VoiceSnippet = memo(function VoiceSnippet({ src, from }: { src: string; from: string }) {
   const audio = useRef<HTMLAudioElement | null>(null);
+  const root = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
+  usePauseOffscreen(root, audio, () => setPlaying(false));
 
   useEffect(() => {
-    const clip = new Audio(src);
+    const clip = new Audio();
+    clip.preload = 'none';
+    clip.src = src;
     audio.current = clip;
     const ended = () => setPlaying(false);
     clip.addEventListener('ended', ended);
@@ -836,7 +850,7 @@ function VoiceSnippet({ src, from }: { src: string; from: string }) {
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div ref={root} className="flex items-center gap-1.5">
       <div
         className={`vn-bars flex h-5 items-end gap-[2px] ${playing ? 'is-playing' : ''}`}
         aria-hidden
@@ -869,7 +883,7 @@ function VoiceSnippet({ src, from }: { src: string; from: string }) {
       </button>
     </div>
   );
-}
+});
 
 /** A cassette label: the voice note plays in place, a song opens in Spotify. */
 const SongCard = memo(function SongCard({ data, songUrl }: { data: XsoData; songUrl: string }) {
@@ -1171,7 +1185,7 @@ function OpenLetter({
   );
 }
 
-function CoffeeRing({ className }: { className: string }) {
+const CoffeeRing = memo(function CoffeeRing({ className }: { className: string }) {
   return (
     <svg viewBox="0 0 100 100" className={className} aria-hidden>
       <g fill="none" stroke="#7a4a2a">
@@ -1195,4 +1209,4 @@ function CoffeeRing({ className }: { className: string }) {
       </g>
     </svg>
   );
-}
+});

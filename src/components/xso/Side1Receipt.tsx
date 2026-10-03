@@ -120,15 +120,15 @@ export const Side1Receipt = memo(function Side1Receipt({ data, bare = false }: S
   );
 });
 
-function ReceiptMeta({ label, value }: { label: string; value: string }) {
+const ReceiptMeta = memo(function ReceiptMeta({ label, value }: { label: string; value: string }) {
   return (
     <p className="truncate" style={{ color: MUTED }}>
       {label}: {value}
     </p>
   );
-}
+});
 
-function DashedDivider() {
+const DashedDivider = memo(function DashedDivider() {
   return (
     <div
       className="my-2 h-0 border-t-[1.5px] border-dashed opacity-60"
@@ -136,9 +136,9 @@ function DashedDivider() {
       aria-hidden
     />
   );
-}
+});
 
-function TotalsRow({ label, value }: { label: string; value: string }) {
+const TotalsRow = memo(function TotalsRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline">
       <span className="shrink-0">{label}</span>
@@ -146,9 +146,9 @@ function TotalsRow({ label, value }: { label: string; value: string }) {
       <span className="max-w-[60%] truncate text-right">{value}</span>
     </div>
   );
-}
+});
 
-function BarcodeSvg({ id }: { id: string }) {
+const BarcodeSvg = memo(function BarcodeSvg({ id }: { id: string }) {
   const seed = id.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
   const bars = Array.from({ length: 48 }, (_, i) => {
     const n = (seed * (i + 3) * 7) % 11;
@@ -178,4 +178,4 @@ function BarcodeSvg({ id }: { id: string }) {
       <p className="text-center text-[10px] tracking-[0.12em] opacity-70">{id.toUpperCase()}</p>
     </div>
   );
-}
+});

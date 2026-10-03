@@ -1,10 +1,11 @@
 'use client';
 
+import { memo } from 'react';
+
 import type { CSSProperties, ReactNode } from 'react';
 
 /** One static grain tile (2 octaves) shared by every paper surface. */
-export const PAPER_GRAIN_URL =
-  "url('/textures/noise-warm.png')";
+export const PAPER_GRAIN_URL = "url('/textures/noise-warm.png')";
 
 export const PAPER_CREAM = '#fff7fb';
 
@@ -71,13 +72,12 @@ export function InkStamp({
   );
 }
 
-const DOG_EAR_CLIP =
-  'polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%)';
+const DOG_EAR_CLIP = 'polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%)';
 
 const TORN_CLIP =
   'polygon(0% 6px, 3% 0, 7% 5px, 12% 1px, 17% 6px, 22% 0, 28% 5px, 34% 1px, 40% 6px, 46% 0, 52% 5px, 58% 1px, 64% 6px, 70% 0, 76% 5px, 82% 1px, 88% 6px, 94% 0, 100% 4px, 100% calc(100% - 5px), 96% 100%, 90% calc(100% - 5px), 84% 100%, 78% calc(100% - 4px), 72% 100%, 66% calc(100% - 5px), 60% 100%, 54% calc(100% - 4px), 48% 100%, 42% calc(100% - 5px), 36% 100%, 30% calc(100% - 4px), 24% 100%, 18% calc(100% - 5px), 12% 100%, 6% calc(100% - 4px), 0 100%)';
 
-export function PaperGrain({ opacity = 0.28 }: { opacity?: number }) {
+export const PaperGrain = memo(function PaperGrain({ opacity = 0.28 }: { opacity?: number }) {
   return (
     <div
       className="pointer-events-none absolute inset-0"
@@ -89,9 +89,9 @@ export function PaperGrain({ opacity = 0.28 }: { opacity?: number }) {
       aria-hidden
     />
   );
-}
+});
 
-export function CoffeeStain({
+export const CoffeeStain = memo(function CoffeeStain({
   className = '',
   style,
 }: {
@@ -99,11 +99,7 @@ export function CoffeeStain({
   style?: CSSProperties;
 }) {
   return (
-    <div
-      className={`pointer-events-none absolute ${className}`}
-      style={style}
-      aria-hidden
-    >
+    <div className={`pointer-events-none absolute ${className}`} style={style} aria-hidden>
       <div
         className="h-16 w-16 rounded-full"
         style={{
@@ -116,9 +112,9 @@ export function CoffeeStain({
       />
     </div>
   );
-}
+});
 
-export function DateStamp({
+export const DateStamp = memo(function DateStamp({
   label,
   className = '',
 }: {
@@ -126,10 +122,7 @@ export function DateStamp({
   className?: string;
 }) {
   return (
-    <div
-      className={`pointer-events-none absolute select-none ${className}`}
-      aria-hidden
-    >
+    <div className={`pointer-events-none absolute select-none ${className}`} aria-hidden>
       <div
         className="ink-ring flex h-[4.5rem] w-[4.5rem] rotate-[-14deg] items-center justify-center rounded-full border-[2.5px] border-[#8b3a3a]/55 px-1 text-center font-mono text-[7px] font-bold uppercase leading-tight tracking-[0.12em] text-[#8b3a3a]/70"
         style={{
@@ -140,7 +133,7 @@ export function DateStamp({
       </div>
     </div>
   );
-}
+});
 
 export function HandNote({
   children,

@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  /** Lets a production build run beside `next dev` without sharing `.next`. */
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   async redirects() {
     return [{ source: '/studio', destination: '/customize', permanent: false }];
   },
@@ -20,10 +22,7 @@ const nextConfig = {
     ],
   },
   compiler: {
-    removeConsole:
-      process.env.NODE_ENV === 'production'
-        ? { exclude: ['error', 'warn'] }
-        : false,
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
 };
 

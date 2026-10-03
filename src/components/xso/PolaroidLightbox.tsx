@@ -47,12 +47,15 @@ function Lightbox({ data }: { data: PolaroidData }) {
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     closeButton.current?.focus({ preventScroll: true });
+    /** Captured first so an overlay underneath (e.g. the receiver preview) keeps its own Escape. */
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
+      if (event.key !== 'Escape') return;
+      event.stopImmediatePropagation();
+      close();
     };
-    window.addEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
     return () => {
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keydown', onKey, true);
       opener?.focus?.({ preventScroll: true });
     };
   }, [close]);

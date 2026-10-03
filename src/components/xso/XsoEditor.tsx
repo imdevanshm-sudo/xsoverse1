@@ -556,7 +556,13 @@ export function PhotoFrame({
       >
         {url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt={`Frame ${index + 1}`} className="h-full w-full object-cover" />
+          <img
+            src={url}
+            alt={`Frame ${index + 1}`}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
         ) : null}
         <button
           type="button"
@@ -649,7 +655,7 @@ function VoiceNoteField() {
     >
       {voiceNoteUrl ? (
         <div className="flex items-center gap-2 rounded-xl border border-dashed border-[#f0cfdc] bg-white/40 p-2.5">
-          <audio controls src={voiceNoteUrl} className="h-10 min-w-0 flex-1" />
+          <audio controls preload="none" src={voiceNoteUrl} className="h-10 min-w-0 flex-1" />
           <IconBtn label="Remove voice note" onClick={() => setField('voiceNoteUrl', undefined)}>
             <Trash2 className="h-3.5 w-3.5" />
           </IconBtn>

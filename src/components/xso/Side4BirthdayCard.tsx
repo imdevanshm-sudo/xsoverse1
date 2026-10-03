@@ -5,6 +5,7 @@ import { Pause, Play } from 'lucide-react';
 import type { XsoData } from '@/types/xso';
 import { CoffeeStain, DateStamp, HandNote, PaperGrain } from '@/components/xso/paper/PaperCraft';
 import { ScratchReveal } from '@/components/xso/paper/ScratchReveal';
+import { usePauseOffscreen } from '@/hooks/usePauseOffscreen';
 
 export interface Side4BirthdayCardProps {
   data: XsoData;
@@ -102,14 +103,25 @@ export const Side4BirthdayCard = memo(function Side4BirthdayCard({
   );
 });
 
-function VoiceNotePlayer({ label, src }: { label: string; src?: string }) {
+const VoiceNotePlayer = memo(function VoiceNotePlayer({
+  label,
+  src,
+}: {
+  label: string;
+  src?: string;
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const root = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
+  usePauseOffscreen(root, audioRef, () => setPlaying(false));
   const bars = [8, 14, 22, 16, 28, 12, 24, 18, 26, 10, 20, 15, 27, 11, 19];
 
   useEffect(() => {
     if (!src) return;
-    const audio = new Audio(src);
+    /** Nothing downloads or decodes until the first press of play. */
+    const audio = new Audio();
+    audio.preload = 'none';
+    audio.src = src;
     audioRef.current = audio;
     const onEnded = () => setPlaying(false);
     audio.addEventListener('ended', onEnded);
@@ -140,7 +152,10 @@ function VoiceNotePlayer({ label, src }: { label: string; src?: string }) {
   };
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-[#e0d8c8] bg-white/70 px-3 py-2.5 shadow-sm">
+    <div
+      ref={root}
+      className="flex items-center gap-3 rounded-2xl border border-[#e0d8c8] bg-white/70 px-3 py-2.5 shadow-sm"
+    >
       <button
         type="button"
         onClick={toggle}
@@ -183,4 +198,4 @@ function VoiceNotePlayer({ label, src }: { label: string; src?: string }) {
       </span>
     </div>
   );
-}
+});

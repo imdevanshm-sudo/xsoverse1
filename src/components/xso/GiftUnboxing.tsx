@@ -1,13 +1,16 @@
 'use client';
 
-import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { memo, useCallback, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { MemoryDeck } from '@/components/xso/preview/MemoryDeck';
 import { PhoneFrame } from '@/components/xso/PhoneFrame';
-import { RewindStack } from '@/components/xso/preview/RewindStack';
-import { AccordionRibbon } from '@/components/xso/preview/AccordionRibbon';
-import { MovieBox } from '@/components/xso/preview/MovieBox';
-import { ScrapbookDesk } from '@/components/xso/preview/ScrapbookDesk';
+import {
+  AccordionRibbon,
+  MemoryDeck,
+  MovieBox,
+  RewindStack,
+  ScrapbookDesk,
+  preloadFormat,
+} from '@/components/xso/preview/FormatPreview';
 import { ImmersivePrompt } from '@/components/xso/ImmersivePrompt';
 import { RecipientPreloader } from '@/components/xso/RecipientPreloader';
 import {
@@ -63,26 +66,34 @@ export function GiftUnboxing({
   const [failed, setFailed] = useState(false);
   const attempt = useRef(0);
   const ready = useAssetPreloader(TEXTURES, { enabled: !framed });
+  const opening = useRef(false);
+  const latest = useRef({ giftId, draft, style: wrapper.giftStyle });
+  latest.current = { giftId, draft, style: wrapper.giftStyle };
 
-  const unwrap = () => {
-    if (phase !== 'wrapped') return;
+  /** Contents, their photos and the format's code all load while the wrap tears away. */
+  const unwrap = useCallback(() => {
+    if (opening.current) return;
+    opening.current = true;
+    const { giftId: id, draft: local, style } = latest.current;
     playPaperUnwrap();
     setFailed(false);
     setPhase('opening');
     const run = ++attempt.current;
-    const load = draft ? Promise.resolve(draft) : fetchContents(giftId);
+    const code = preloadFormat(style);
+    const load = local ? Promise.resolve(local) : fetchContents(id);
     load
       .then(async (data) => {
-        await preloadImages(collectImageUrls(data));
+        await Promise.all([preloadImages(collectImageUrls(data)), code]);
         if (run === attempt.current) setContents(data);
       })
       .catch(() => {
         if (run !== attempt.current) return;
+        opening.current = false;
         setFailed(true);
         setWrapGone(false);
         setPhase('wrapped');
       });
-  };
+  }, []);
 
   const content = (
     <>
@@ -136,7 +147,7 @@ export function GiftUnboxing({
 }
 
 /** Held between the wrap clearing and the contents arriving, if the network is slower than the animation. */
-function OpeningDot() {
+const OpeningDot = memo(function OpeningDot() {
   return (
     <motion.div
       className="absolute inset-0 grid place-items-center bg-black"
@@ -154,13 +165,13 @@ function OpeningDot() {
       />
     </motion.div>
   );
-}
+});
 
 /**
  * Every pixel belongs to the gift. Phones are full-bleed; wider screens get a phone-width
  * column on black so the formats keep the proportions they were composed for.
  */
-function RecipientCanvas({ children }: { children: ReactNode }) {
+const RecipientCanvas = memo(function RecipientCanvas({ children }: { children: ReactNode }) {
   return (
     <div
       className="fixed inset-0 bg-black md:py-6"
@@ -174,12 +185,12 @@ function RecipientCanvas({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
-}
+});
 
 /** Card stacks stay vertically centred inside a phone-height band instead of running edge to edge. */
 const CARD_STAGE = 'flex h-full max-h-[600px] w-full items-center justify-center max-md:h-[80svh]';
 
-function Souvenir({ data }: { data: XsoData }) {
+const Souvenir = memo(function Souvenir({ data }: { data: XsoData }) {
   switch (data.giftStyle) {
     case 'rewind':
       return (
@@ -218,9 +229,9 @@ function Souvenir({ data }: { data: XsoData }) {
         </div>
       );
   }
-}
+});
 
-function GiftWrap({
+const GiftWrap = memo(function GiftWrap({
   wrapper,
   failed,
   onUnwrap,
@@ -313,9 +324,15 @@ function GiftWrap({
       </motion.div>
     </motion.section>
   );
-}
+});
 
-function GiftTag({ wrapper, matte }: { wrapper: GiftWrapper; matte: boolean }) {
+const GiftTag = memo(function GiftTag({
+  wrapper,
+  matte,
+}: {
+  wrapper: GiftWrapper;
+  matte: boolean;
+}) {
   return (
     <article
       className={`relative rotate-[-1.5deg] border p-5 shadow-[0_4px_8px_rgba(40,24,13,.2),0_20px_50px_rgba(40,24,13,.4)] ${
@@ -354,10 +371,18 @@ function GiftTag({ wrapper, matte }: { wrapper: GiftWrapper; matte: boolean }) {
       </p>
     </article>
   );
-}
+});
 
 /** A hand-stamped postmark: the occasion and the day, nothing about the product. */
-function Postmark({ matte, occasion, date }: { matte: boolean; occasion: string; date: string }) {
+const Postmark = memo(function Postmark({
+  matte,
+  occasion,
+  date,
+}: {
+  matte: boolean;
+  occasion: string;
+  date: string;
+}) {
   return (
     <div
       className={`pointer-events-none absolute left-7 top-7 rotate-[-7deg] rounded-md border-2 border-current px-3 py-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em] ${
@@ -368,9 +393,9 @@ function Postmark({ matte, occasion, date }: { matte: boolean; occasion: string;
       <span className="mt-1 block border-t border-current pt-1 text-center">{date}</span>
     </div>
   );
-}
+});
 
-function CraftFibers() {
+const CraftFibers = memo(function CraftFibers() {
   return (
     <div
       className="pointer-events-none absolute inset-0 opacity-60"
@@ -382,9 +407,9 @@ function CraftFibers() {
       aria-hidden
     />
   );
-}
+});
 
-function TwineBow({ matte }: { matte: boolean }) {
+const TwineBow = memo(function TwineBow({ matte }: { matte: boolean }) {
   return (
     <motion.div
       className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-16 w-24 -translate-x-1/2 -translate-y-1/2"
@@ -409,7 +434,7 @@ function TwineBow({ matte }: { matte: boolean }) {
       />
     </motion.div>
   );
-}
+});
 
 function wrapSurface(matte: boolean): CSSProperties {
   if (matte) {

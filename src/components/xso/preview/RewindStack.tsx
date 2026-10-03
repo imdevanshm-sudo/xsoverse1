@@ -125,7 +125,7 @@ export const RewindStack = memo(function RewindStack(props: StackProps) {
   );
 });
 
-function Stack({
+const Stack = memo(function Stack({
   data,
   artifacts,
   onChange,
@@ -286,10 +286,10 @@ function Stack({
       </p>
     </section>
   );
-}
+});
 
 /** The cassette's paper J-card label: both sides' titles and the date it was dubbed. */
-function TapeLabel({ tape }: { tape: RewindLayers }) {
+const TapeLabel = memo(function TapeLabel({ tape }: { tape: RewindLayers }) {
   return (
     <div className="relative z-10 mb-2 flex w-full items-stretch gap-2 rounded-md border border-[#fdba74]/25 bg-[#f6ead7] px-2.5 py-1.5 text-[#2d1b22] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.6)]">
       <span
@@ -311,9 +311,9 @@ function TapeLabel({ tape }: { tape: RewindLayers }) {
       ) : null}
     </div>
   );
-}
+});
 
-function LinerNotes({ data, review }: { data: XsoData; review: string }) {
+const LinerNotes = memo(function LinerNotes({ data, review }: { data: XsoData; review: string }) {
   return (
     <article className="flex h-full flex-col bg-[#fbf6ee] px-5 py-5 text-[#2d1b22]">
       <p className="font-receipt text-[9px] uppercase tracking-[0.24em] text-[#9a6a7e]">
@@ -330,13 +330,13 @@ function LinerNotes({ data, review }: { data: XsoData; review: string }) {
       </p>
     </article>
   );
-}
+});
 
 /**
  * Room light falling on the desk: a slow resting heartbeat in the CTA's
  * pinks and ambers, with a brief warm swell each time a memory changes hands.
  */
-function Backlight({ pulsing, turn }: { pulsing: boolean; turn: number }) {
+const Backlight = memo(function Backlight({ pulsing, turn }: { pulsing: boolean; turn: number }) {
   return (
     <div aria-hidden className="pointer-events-none absolute -inset-x-8 -top-4 bottom-6 -z-10">
       <div
@@ -386,7 +386,7 @@ function Backlight({ pulsing, turn }: { pulsing: boolean; turn: number }) {
       ) : null}
     </div>
   );
-}
+});
 
 /** Hover lift: a touch closer, with a softer, wider shadow pooling underneath. */
 const LIFTABLE: Variants = {

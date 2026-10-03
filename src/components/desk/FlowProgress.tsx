@@ -1,5 +1,7 @@
 'use client';
 
+import { memo } from 'react';
+
 import type { ReactNode } from 'react';
 import { Check } from 'lucide-react';
 
@@ -9,7 +11,7 @@ export const FLOW_STEPS = ['Preview', 'Studio'] as const;
  * "Step N of 2" meter for the sticky footer. The active segment fills with
  * `fill` (0–1); finished segments are solid, upcoming ones dashed.
  */
-export function FlowProgress({
+export const FlowProgress = memo(function FlowProgress({
   step,
   fill,
   meta,
@@ -39,9 +41,7 @@ export function FlowProgress({
             className="flex shrink-0 items-center gap-1 tabular-nums text-[#e0b4c6]"
             aria-live="polite"
           >
-            {done ? (
-              <Check className="h-3 w-3 text-[#fdba74]" strokeWidth={3} aria-hidden />
-            ) : null}
+            {done ? <Check className="h-3 w-3 text-[#fdba74]" strokeWidth={3} aria-hidden /> : null}
             {meta}
           </p>
         ) : null}
@@ -86,4 +86,4 @@ export function FlowProgress({
       ) : null}
     </div>
   );
-}
+});

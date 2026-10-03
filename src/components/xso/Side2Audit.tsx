@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import type { AuditMetrics, XsoData } from '@/types/xso';
 import { auditLabel, overallStars } from '@/lib/formats';
@@ -51,6 +51,7 @@ export const Side2Audit = memo(function Side2Audit({ data }: Side2AuditProps) {
   const fullStars = Math.floor(stars);
   const hasHalf = stars - fullStars >= 0.4;
   const stamp = data.certifiedStampText || 'CERTIFIED BESTIE';
+  const labels = useMemo(() => AXES.map(({ key, label }) => auditLabel(data, key, label)), [data]);
 
   return (
     <article
@@ -115,10 +116,7 @@ export const Side2Audit = memo(function Side2Audit({ data }: Side2AuditProps) {
       </header>
 
       <div className="relative z-10 mb-4 flex justify-center">
-        <RadarChart
-          metrics={data.auditMetrics}
-          labels={AXES.map(({ key, label }) => auditLabel(data, key, label))}
-        />
+        <RadarChart metrics={data.auditMetrics} labels={labels} />
       </div>
 
       <div className="relative z-10 grid gap-3 sm:grid-cols-2">
@@ -138,7 +136,15 @@ export const Side2Audit = memo(function Side2Audit({ data }: Side2AuditProps) {
   );
 });
 
-function StarIcon({ filled, half, gradId }: { filled: boolean; half: boolean; gradId: string }) {
+const StarIcon = memo(function StarIcon({
+  filled,
+  half,
+  gradId,
+}: {
+  filled: boolean;
+  half: boolean;
+  gradId: string;
+}) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
       {half ? (
@@ -158,9 +164,15 @@ function StarIcon({ filled, half, gradId }: { filled: boolean; half: boolean; gr
       />
     </svg>
   );
-}
+});
 
-function RadarChart({ metrics, labels }: { metrics: AuditMetrics; labels: string[] }) {
+const RadarChart = memo(function RadarChart({
+  metrics,
+  labels,
+}: {
+  metrics: AuditMetrics;
+  labels: string[];
+}) {
   const size = 220;
   const cx = size / 2;
   const cy = size / 2;
@@ -250,9 +262,9 @@ function RadarChart({ metrics, labels }: { metrics: AuditMetrics; labels: string
       })}
     </svg>
   );
-}
+});
 
-function FlagColumn({
+const FlagColumn = memo(function FlagColumn({
   title,
   emoji,
   items,
@@ -287,4 +299,4 @@ function FlagColumn({
       </ul>
     </section>
   );
-}
+});

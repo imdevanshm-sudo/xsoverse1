@@ -2,6 +2,7 @@
 
 import { memo, useRef, type CSSProperties, type ReactNode } from 'react';
 import { originOf, usePolaroidStore, type PolaroidBack } from '@/store/usePolaroidStore';
+import { preloadLightbox } from '@/components/xso/PolaroidLightboxHost';
 
 /**
  * A photo that opens in the global lightbox. Decks and desks treat `[data-polaroid]`
@@ -43,7 +44,9 @@ export const PolaroidThumb = memo(function PolaroidThumb({
       style={{ ...style, opacity: out ? 0 : 1 }}
       onPointerDown={(event) => {
         start.current = { x: event.clientX, y: event.clientY };
+        preloadLightbox();
       }}
+      onFocus={preloadLightbox}
       onClick={(event) => {
         event.stopPropagation();
         const from = start.current;

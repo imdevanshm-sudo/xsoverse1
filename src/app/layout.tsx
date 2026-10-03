@@ -8,7 +8,7 @@ import {
   Space_Mono,
 } from 'next/font/google';
 import { OrientationRoot } from '@/components/layout/OrientationRoot';
-import { PolaroidLightbox } from '@/components/xso/PolaroidLightbox';
+import { PolaroidLightboxHost } from '@/components/xso/PolaroidLightboxHost';
 import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({
@@ -103,7 +103,7 @@ export default function RootLayout({
       <body className="font-sans xso-safe-shell">
         <OrientationRoot />
         {children}
-        <PolaroidLightbox />
+        <PolaroidLightboxHost />
       </body>
     </html>
   );

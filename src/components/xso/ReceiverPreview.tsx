@@ -17,6 +17,7 @@ import type { GiftStyle } from '@/types/xso';
 export function ReceiverPreview({ style, onClose }: { style: GiftStyle; onClose: () => void }) {
   const draft = useXsoData();
   const data = useMemo(() => pickXsoPayload({ ...draft, giftStyle: style }), [draft, style]);
+  const wrapper = useMemo(() => wrapperOf('preview', data), [data]);
   const exitRef = useRef<HTMLButtonElement>(null);
 
   useBodyScrollLock();
@@ -50,13 +51,7 @@ export function ReceiverPreview({ style, onClose }: { style: GiftStyle; onClose:
         <X className="h-3.5 w-3.5" aria-hidden />
         Exit preview
       </button>
-      <GiftUnboxing
-        giftId="preview"
-        wrapper={wrapperOf('preview', data)}
-        draft={data}
-        framed
-        watermark
-      />
+      <GiftUnboxing giftId="preview" wrapper={wrapper} draft={data} framed watermark />
     </div>,
     document.body,
   );
