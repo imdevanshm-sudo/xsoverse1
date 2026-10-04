@@ -39,10 +39,9 @@ import type { GiftStyle, XsoData } from '@/types/xso';
 
 type Phase = 'wrapped' | 'opening';
 
-/** What to do first, per format; the Movie Box has its own Play button instead. */
+/** What to do first, per format; the Movie Box has its own Play button and the Loop its own swipe cue. */
 const HINTS: Partial<Record<GiftStyle, string>> = {
   scrapbook: 'Tap anything to open it',
-  loop: 'Tap or swipe the top card',
   rewind: 'Tap or swipe to rewind',
   accordion: 'Scroll to unfold it',
 };

@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  AnimatePresence,
   animate,
   motion,
   useDragControls,
@@ -21,6 +22,7 @@ import {
   type MotionValue,
   type PanInfo,
 } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Hand } from 'lucide-react';
 import { LOOP_CARDS, type XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
 import { resolveLoop } from '@/lib/formats';
@@ -41,6 +43,8 @@ const FLIGHT = 720;
 const INTERACTIVE = 'button:not([data-polaroid]), a, input, audio, canvas, [role="slider"]';
 
 const SPRING = { type: 'spring', stiffness: 300, damping: 20 } as const;
+/** Going back, the card comes in from the left: the reverse of a flick. */
+const ENTER_FROM = { x: -FLIGHT * 0.55, y: -40 };
 const FLY_OUT = { duration: 0.34, ease: [0.4, 0, 1, 1] } as const;
 
 /** Resting pose per depth: a hand-stacked pile, each sheet slightly off-square. */
@@ -127,6 +131,10 @@ const Deck = memo(function Deck({
   );
   /** Each card's own throw, so the Loop button flicks whichever card is on top. */
   const throws = useRef<Record<number, () => void>>({});
+  /** Each card's entrance from the left, for going back a card. */
+  const entrances = useRef<Record<number, () => void>>({});
+  /** The swipe hint stays until the first move through the deck. */
+  const [moved, setMoved] = useState(false);
   /** Receipt and letter render bare so the deck card itself is the paper. */
   const faces = useMemo<Record<SlotId, ReactNode>>(
     () => ({
@@ -192,6 +200,7 @@ const Deck = memo(function Deck({
     } = latest.current;
     if (inAir !== index) return;
     if (!still) playFoley('land', 0.7);
+    setMoved(true);
     /** The end card is offered once: flicked away, it leaves the pile and the loop carries on. */
     const rest = current.filter((i) => i !== index);
     const next = cards[index].id === 'end' ? rest : [...rest, index];
@@ -203,9 +212,40 @@ const Deck = memo(function Deck({
   const topIndex = order[0];
   const nextIndex = order[1] ?? order[0];
   const pile = order.length;
-  const register = useCallback((index: number, fly: () => void) => {
+  const register = useCallback((index: number, fly: () => void, enter: () => void) => {
     throws.current[index] = fly;
+    entrances.current[index] = enter;
   }, []);
+
+  const next = useCallback(() => throws.current[latest.current.order[0]]?.(), []);
+  /** The card at the back of the pile comes back on top, from the left. */
+  const back = useCallback(() => {
+    const { order: current, flying: inAir, slots: cards, onChange: notify } = latest.current;
+    if (inAir !== null || current.length < 2) return;
+    const last = current[current.length - 1];
+    const prev = [last, ...current.slice(0, -1)];
+    playMechanicalCue('click');
+    setMoved(true);
+    setOrder(prev);
+    entrances.current[last]?.();
+    if (cards[last].id !== 'end') notify?.(last, cards[last].label);
+  }, []);
+
+  useEffect(() => {
+    if (chrome) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      const { target } = event;
+      if (target instanceof Element && target.closest('input, textarea, select, [contenteditable]'))
+        return;
+      if (event.key === 'ArrowRight') next();
+      else if (event.key === 'ArrowLeft') back();
+      else return;
+      event.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [chrome, next, back]);
 
   const lean = (e: PointerEvent<HTMLDivElement>, strength: number) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -263,7 +303,21 @@ const Deck = memo(function Deck({
             />
           );
         })}
+        {chrome ? null : <SwipeHint shown={!moved} reduce={reduce} />}
       </motion.div>
+
+      {chrome ? null : (
+        <>
+          <SideZone side="left" onClick={back} />
+          <SideZone side="right" onClick={next} />
+          <DeckProgress
+            count={count}
+            top={topIndex === end ? null : topIndex}
+            onBack={back}
+            onNext={next}
+          />
+        </>
+      )}
 
       {chrome ? (
         <div className="mt-4 flex w-full items-center justify-between gap-4">
@@ -331,7 +385,7 @@ const DeckCard = memo(function DeckCard({
   tiltY: MotionValue<number>;
   onLaunch: (index: number) => boolean;
   onLand: (index: number) => void;
-  onRegister: (index: number, fly: () => void) => void;
+  onRegister: (index: number, fly: () => void, enter: () => void) => void;
 }) {
   const material = MATERIALS[id];
   const number = index + 1;
@@ -377,9 +431,17 @@ const DeckCard = memo(function DeckCard({
     [index, onLaunch, onLand, reduce, x, y],
   );
 
+  const enter = useCallback(() => {
+    if (reduce) return;
+    stopFlight();
+    x.set(ENTER_FROM.x);
+    y.set(ENTER_FROM.y);
+    flight.current = [animate(x, 0, SPRING), animate(y, 0, SPRING)];
+  }, [reduce, x, y]);
+
   useEffect(() => {
-    onRegister(index, () => fly(1, -0.3));
-  }, [onRegister, index, fly]);
+    onRegister(index, () => fly(1, -0.3), enter);
+  }, [onRegister, index, fly, enter]);
   useEffect(() => () => flight.current.forEach((a) => a.stop()), []);
 
   const onDragEnd = (_: unknown, info: PanInfo) => {
@@ -527,6 +589,113 @@ const ReceiptTelemetry = memo(function ReceiptTelemetry({ number }: { number: nu
     <div aria-hidden className="receipt-telemetry">
       <span>TERM 03 · TXN 0041{number}7</span>
       <span className="receipt-telemetry__bars">▮▮▯▮▯▮▮▯▮</span>
+    </div>
+  );
+});
+
+/** First-visit cue on the top card: a hand sweeping right, gone after the first move. */
+const SwipeHint = memo(function SwipeHint({ shown, reduce }: { shown: boolean; reduce: boolean }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setReady(true), 1100);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return (
+    <AnimatePresence>
+      {shown && ready ? (
+        <motion.div
+          key="swipe-hint"
+          role="status"
+          className="pointer-events-none absolute inset-x-0 bottom-[18%] z-50 flex justify-center"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, transition: { duration: 0.35 } }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        >
+          <span className="inline-flex items-center gap-2.5 rounded-full bg-[#1b0f15]/80 py-2 pl-3 pr-4 font-receipt text-[14px] uppercase tracking-[0.18em] text-[#fde7d4] shadow-[0_10px_30px_rgba(0,0,0,.45)] backdrop-blur-sm">
+            <motion.span
+              aria-hidden
+              className="inline-flex"
+              animate={reduce ? undefined : { x: [0, 14, 0], rotate: [0, 8, 0] }}
+              transition={{ duration: 1.6, ease: 'easeInOut', repeat: Infinity, repeatDelay: 0.4 }}
+            >
+              <Hand className="h-5 w-5" />
+            </motion.span>
+            Swipe <span aria-hidden>→</span>
+          </span>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+});
+
+/** Desktop click zones either side of the pile. */
+const SideZone = memo(function SideZone({
+  side,
+  onClick,
+}: {
+  side: 'left' | 'right';
+  onClick: () => void;
+}) {
+  const Icon = side === 'left' ? ChevronLeft : ChevronRight;
+  const label = side === 'left' ? 'Previous card' : 'Next card';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`absolute top-[8%] hidden h-[76%] w-16 place-items-center rounded-2xl text-[#fde7d4]/45 transition-colors hover:bg-white/[0.04] hover:text-[#fde7d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]/70 md:grid ${
+        side === 'left' ? '-left-[84px]' : '-right-[84px]'
+      }`}
+    >
+      <Icon className="h-9 w-9" aria-hidden />
+    </button>
+  );
+});
+
+/** Where the viewer is in the pile: dots and "1 / 3", with prev/next on phones. */
+const DeckProgress = memo(function DeckProgress({
+  count,
+  top,
+  onBack,
+  onNext,
+}: {
+  count: number;
+  /** The sender's card on top, or null on the closing card. */
+  top: number | null;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  const step =
+    'grid h-11 w-11 place-items-center rounded-full text-[#fde7d4]/70 transition-colors hover:text-[#fde7d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]/70 md:hidden';
+  return (
+    <div className="relative z-10 mt-1 flex h-11 shrink-0 items-center justify-center gap-3">
+      <button type="button" onClick={onBack} aria-label="Previous card" className={step}>
+        <ChevronLeft className="h-6 w-6" aria-hidden />
+      </button>
+      <div className="flex items-center gap-1.5" aria-hidden>
+        {Array.from({ length: count }, (_, i) => (
+          <span
+            key={i}
+            className={`h-1.5 w-1.5 rounded-full transition-[transform,background-color] duration-300 ease-out ${
+              i === top ? 'scale-[1.5] bg-[#fdba74]' : 'bg-[#fce7f3]/25'
+            }`}
+          />
+        ))}
+      </div>
+      <p className="min-w-[4.5rem] text-center font-receipt text-[15px] tabular-nums tracking-[0.14em] text-[#fde7d4]/85">
+        {top === null ? (
+          <span className="text-[#fdba74]">{YOUR_TURN}</span>
+        ) : (
+          <>
+            <span className="text-[#fdba74]">{top + 1}</span> / {count}
+          </>
+        )}
+      </p>
+      <button type="button" onClick={onNext} aria-label="Next card" className={step}>
+        <ChevronRight className="h-6 w-6" aria-hidden />
+      </button>
     </div>
   );
 });
