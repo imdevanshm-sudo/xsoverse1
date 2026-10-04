@@ -5,19 +5,35 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
 import { playFoley } from '@/lib/foley';
 
 const BRUSH = 26;
-const REVEAL_RATIO = 0.48;
+/** Share of the foil that has to come off before the rest falls away. */
+const REVEAL_RATIO = 0.6;
 const SAMPLE_INTERVAL_MS = 300;
 const SPARK_POOL = 6;
 const FOIL_FADE_MS = 500;
 const MAX_DPR = 1.5;
 
 type Point = { x: number; y: number };
+
+const CONFETTI_COLORS = ['#ec4899', '#fdba74', '#e8ff4a', '#7dd3fc', '#f9a8d4', '#fff7fb'];
+/** A small burst from the middle of the strip; fixed spread so it looks the same every time. */
+const CONFETTI = Array.from({ length: 18 }, (_, i) => {
+  const angle = (i / 18) * Math.PI * 2 + (i % 2 ? 0.2 : -0.1);
+  const reach = 46 + (i % 4) * 14;
+  return {
+    '--dx': `${Math.round(Math.cos(angle) * reach * 1.6)}px`,
+    '--dy': `${Math.round(Math.sin(angle) * reach)}px`,
+    '--spin': `${(i % 2 ? 1 : -1) * (180 + i * 25)}deg`,
+    background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    animationDelay: `${(i % 3) * 30}ms`,
+  } as CSSProperties;
+});
 
 /** Soft round brush, rendered once and stamped with drawImage. */
 function createBrush(dpr: number): HTMLCanvasElement {
@@ -143,14 +159,14 @@ export function ScratchReveal({
       ctx.fillRect(Math.random() * w, Math.random() * h, 1.2, 1.2);
     }
 
-    ctx.fillStyle = 'rgba(35,30,28,0.55)';
-    ctx.font = '700 11px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(35,30,28,0.72)';
+    ctx.font = '700 16px ui-monospace, Menlo, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label.toUpperCase(), w / 2, h / 2 - 8);
-    ctx.font = '600 9px ui-monospace, monospace';
-    ctx.fillStyle = 'rgba(35,30,28,0.4)';
-    ctx.fillText('DRAG · WIPE · REVEAL', w / 2, h / 2 + 10);
+    ctx.fillText(label.toUpperCase(), w / 2, h / 2 - 10);
+    ctx.font = '600 12px ui-monospace, Menlo, monospace';
+    ctx.fillStyle = 'rgba(35,30,28,0.5)';
+    ctx.fillText('DRAG · WIPE · REVEAL', w / 2, h / 2 + 12);
     ctx.globalCompositeOperation = 'destination-out';
   }, [label, variant]);
 
@@ -213,6 +229,7 @@ export function ScratchReveal({
       revealedRef.current = true;
       setRevealed(true);
       setProgress(1);
+      playFoley('chime', 0.8);
       onReveal?.();
       return;
     }
@@ -321,7 +338,7 @@ export function ScratchReveal({
     <div
       className={`relative overflow-hidden ${
         unstyled ? '' : 'rounded-xl border border-[#c9c0b0] bg-[#fff7fb]'
-      } ${className}`}
+      } ${revealed ? 'scratch--revealed' : ''} ${className}`}
       style={
         unstyled
           ? undefined
@@ -329,13 +346,19 @@ export function ScratchReveal({
       }
     >
       <div
-        className={`flex items-center justify-center px-4 text-center ${compact ? 'min-h-[80px] py-3' : 'min-h-[108px] py-5'} transition-[opacity,transform] duration-300 ease-out`}
+        className={`flex items-center justify-center px-4 text-center ${compact ? 'min-h-[112px] py-4' : 'min-h-[132px] py-5'} transition-[opacity,transform] duration-300 ease-out`}
         style={{
           opacity: revealed ? 1 : 0.35 + progress * 0.55,
           transform: `scale(${revealed ? 1 : 0.98 + progress * 0.02})`,
         }}
       >
-        {children ?? <p className="font-hand text-[17px] leading-snug text-[#2c241c]">{reward}</p>}
+        {children ?? (
+          <p
+            className={`font-hand leading-snug text-[#2c241c] ${compact ? 'text-[21px]' : 'text-[22px]'}`}
+          >
+            {reward}
+          </p>
+        )}
       </div>
 
       {cleared ? null : (
@@ -353,6 +376,14 @@ export function ScratchReveal({
           aria-hidden={revealed}
         />
       )}
+      {revealed || scratched.current ? null : <span aria-hidden className="scratch-shimmer" />}
+      {revealed ? (
+        <span aria-hidden className="scratch-burst">
+          {CONFETTI.map((style, i) => (
+            <i key={i} style={style} />
+          ))}
+        </span>
+      ) : null}
 
       {(cleared ? [] : Array.from({ length: SPARK_POOL })).map((_, i) => (
         <span

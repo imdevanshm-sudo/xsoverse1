@@ -18,7 +18,8 @@ export type FoleyCue =
   | 'reel' // one claw pull-down of the film gate
   | 'crack' // wax seal snapping
   | 'slide' // a print sliding out across the desk
-  | 'unwrap'; // twine slipping off, then kraft paper opening
+  | 'unwrap' // twine slipping off, then kraft paper opening
+  | 'chime'; // a soft three-note bell when a scratch-off comes clean
 
 let context: AudioContext | null = null;
 let noise: AudioBuffer | null = null;
@@ -89,6 +90,26 @@ function burst(ctx: AudioContext, out: AudioNode, b: Burst) {
 
   source.connect(filter).connect(amp).connect(out);
   source.start(start, Math.random() * Math.min(1.5, 1.9 - b.duration), b.duration + 0.05);
+}
+
+/** A sine with a quiet inharmonic overtone and a long decay, like a small bell. */
+function bell(ctx: AudioContext, out: AudioNode, freq: number, at: number) {
+  const start = ctx.currentTime + at;
+  [
+    [freq, 0.09],
+    [freq * 2.76, 0.02],
+  ].forEach(([f, gain]) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = f;
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0.0001, start);
+    amp.gain.exponentialRampToValueAtTime(gain, start + 0.008);
+    amp.gain.exponentialRampToValueAtTime(0.0001, start + 1.1);
+    osc.connect(amp).connect(out);
+    osc.start(start);
+    osc.stop(start + 1.15);
+  });
 }
 
 const jitter = (v: number, amount = 0.12) => v * (1 - amount + Math.random() * amount * 2);
@@ -280,6 +301,10 @@ export function playFoley(cue: FoleyCue, volume = 1) {
           freq: jitter(520),
           q: 1,
         });
+        break;
+      case 'chime':
+        // Rising major triad of bell partials; the only cue that isn't noise.
+        [1046.5, 1318.5, 1568].forEach((freq, i) => bell(ctx, out, freq, i * 0.09));
         break;
     }
   } catch {
