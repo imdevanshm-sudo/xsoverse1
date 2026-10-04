@@ -150,6 +150,8 @@ interface RibbonProps {
   onChange?: (index: number, label: string) => void;
   /** Fires once every card has been on top, so the viewer can offer what comes next. */
   onFinish?: () => void;
+  /** Keeps the letter folded in its bundle, e.g. while the parcel is still opening over it. */
+  held?: boolean;
 }
 
 export const AccordionRibbon = memo(function AccordionRibbon(props: RibbonProps) {
@@ -180,6 +182,7 @@ const Ribbon = memo(function Ribbon({
   onFinish,
   size = 'hero',
   focusIndex,
+  held = false,
   artifacts,
 }: RibbonProps & { artifacts: Artifact[] }) {
   const onChange = useProgress(artifacts.length, report, onFinish);
@@ -306,10 +309,10 @@ const Ribbon = memo(function Ribbon({
 
   /** Unfurls, top fold first, the first time it scrolls into view. */
   useEffect(() => {
-    if (!visible || reduce) return;
+    if (!visible || reduce || held) return;
     const id = window.setTimeout(() => setOpenRef.current(true), 260);
     return () => window.clearTimeout(id);
-  }, [visible, reduce]);
+  }, [visible, reduce, held]);
 
   useEffect(() => {
     if (focusIndex === undefined) return;

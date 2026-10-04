@@ -17,7 +17,8 @@ export type FoleyCue =
   | 'crank' // projector ratchet
   | 'reel' // one claw pull-down of the film gate
   | 'crack' // wax seal snapping
-  | 'slide'; // a print sliding out across the desk
+  | 'slide' // a print sliding out across the desk
+  | 'unwrap'; // twine slipping off, then kraft paper opening
 
 let context: AudioContext | null = null;
 let noise: AudioBuffer | null = null;
@@ -87,7 +88,7 @@ function burst(ctx: AudioContext, out: AudioNode, b: Burst) {
   amp.gain.exponentialRampToValueAtTime(0.0001, end);
 
   source.connect(filter).connect(amp).connect(out);
-  source.start(start, Math.random() * 1.5, b.duration + 0.05);
+  source.start(start, Math.random() * Math.min(1.5, 1.9 - b.duration), b.duration + 0.05);
 }
 
 const jitter = (v: number, amount = 0.12) => v * (1 - amount + Math.random() * amount * 2);
@@ -241,6 +242,26 @@ export function playFoley(cue: FoleyCue, volume = 1) {
           freq: jitter(900),
           freqEnd: 2600,
           q: 0.9,
+        });
+        break;
+      case 'unwrap':
+        burst(ctx, out, {
+          duration: 0.12,
+          gain: 0.08,
+          attack: 0.02,
+          filter: 'bandpass',
+          freq: jitter(2400),
+          q: 1.4,
+        });
+        burst(ctx, out, {
+          at: 0.18,
+          duration: 0.9,
+          gain: 0.1,
+          attack: 0.08,
+          filter: 'bandpass',
+          freq: 850,
+          freqEnd: 2600,
+          q: 0.65,
         });
         break;
       case 'reel':

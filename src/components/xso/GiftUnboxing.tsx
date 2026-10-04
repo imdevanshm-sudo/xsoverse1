@@ -31,7 +31,7 @@ import { PreviewWatermark } from '@/components/xso/PreviewWatermark';
 import { FitStage } from '@/components/xso/stage/FitStage';
 import { FirstVisitHint } from '@/components/xso/stage/FirstVisitHint';
 import { SoundToggle } from '@/components/xso/stage/SoundToggle';
-import { soundOn } from '@/lib/sound';
+import { playSfx, preloadSfx } from '@/lib/sfx';
 import type { GiftWrapper } from '@/lib/giftWrapper';
 import { RECIPIENT_OFFER, recipientOfferPrice } from '@/lib/pricing';
 import { track } from '@/lib/analytics';
@@ -99,7 +99,7 @@ export function GiftUnboxing({
     if (opening.current) return;
     opening.current = true;
     const { giftId: id, draft: local, style } = latest.current;
-    playPaperUnwrap();
+    playSfx('parcel-unwrap', 0.7);
     setFailed(false);
     setPhase('opening');
     const run = ++attempt.current;
@@ -119,27 +119,39 @@ export function GiftUnboxing({
       });
   }, []);
 
+  /**
+   * The Accordion's lit desk sits under the parcel from the start, and the folded letter mounts
+   * beneath the flaps as soon as it arrives, so opening never passes through black.
+   */
+  const lit = wrapper.giftStyle === 'accordion';
   const content = (
     <>
+      {lit ? <AccordionDesk /> : null}
       <AnimatePresence onExitComplete={() => setWrapGone(true)}>
         {phase === 'wrapped' ? (
-          <GiftWrap key="gift-wrap" wrapper={wrapper} failed={failed} onUnwrap={unwrap} />
+          <GiftWrap
+            key="gift-wrap"
+            wrapper={wrapper}
+            failed={failed}
+            reduce={reduce}
+            onUnwrap={unwrap}
+          />
         ) : null}
       </AnimatePresence>
       <AnimatePresence>
-        {wrapGone && contents ? (
+        {(wrapGone || lit) && contents ? (
           <motion.div
             key="souvenir"
             className="absolute inset-0"
-            initial={reduce ? false : { opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+            initial={reduce ? false : lit ? { opacity: 0, y: 48 } : { opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: lit ? 0.9 : 0.72, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Souvenir data={contents} cta={!framed} onFinish={finish} />
-            {framed || !HINTS[contents.giftStyle] ? null : (
+            <Souvenir data={contents} cta={!framed} held={!wrapGone} onFinish={finish} />
+            {!wrapGone || framed || !HINTS[contents.giftStyle] ? null : (
               <FirstVisitHint text={HINTS[contents.giftStyle]!} />
             )}
-            {framed || contents.giftStyle === 'moviebox' ? null : (
+            {!wrapGone || framed || contents.giftStyle === 'moviebox' ? null : (
               <>
                 <SoundToggle />
                 <MakeOneBack ended={finished} />
@@ -147,7 +159,7 @@ export function GiftUnboxing({
             )}
           </motion.div>
         ) : wrapGone ? (
-          <OpeningDot key="opening" />
+          <OpeningDot key="opening" lit={lit} />
         ) : null}
       </AnimatePresence>
     </>
@@ -265,11 +277,20 @@ const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
   );
 });
 
+/** The Accordion's desk: the same lamp-lit surface the ribbon unfolds on. */
+const AccordionDesk = memo(function AccordionDesk() {
+  return (
+    <div aria-hidden className="stage-surface absolute inset-0 overflow-hidden bg-[#180e15]">
+      <div className="accordion-aura pointer-events-none absolute inset-0" />
+    </div>
+  );
+});
+
 /** Held between the wrap clearing and the contents arriving, if the network is slower than the animation. */
-const OpeningDot = memo(function OpeningDot() {
+const OpeningDot = memo(function OpeningDot({ lit = false }: { lit?: boolean }) {
   return (
     <motion.div
-      className="absolute inset-0 grid place-items-center bg-black"
+      className={`absolute inset-0 grid place-items-center ${lit ? '' : 'bg-black'}`}
       role="status"
       aria-label="Opening"
       initial={{ opacity: 0 }}
@@ -323,10 +344,13 @@ const CARD_DESIGN = { width: 420, height: 600 };
 const Souvenir = memo(function Souvenir({
   data,
   cta,
+  held,
   onFinish,
 }: {
   data: XsoData;
   cta: boolean;
+  /** Still under the wrap: formats that animate in wait for it to clear. */
+  held: boolean;
   onFinish: () => void;
 }) {
   switch (data.giftStyle) {
@@ -351,7 +375,7 @@ const Souvenir = memo(function Souvenir({
         <div className="stage-surface flex h-full justify-center overflow-hidden bg-[#180e15] px-4 pb-16 pt-6">
           <FitStage width={420} height={680}>
             <div className="flex h-full w-full justify-center">
-              <AccordionRibbon data={data} size="fill" onFinish={onFinish} />
+              <AccordionRibbon data={data} size="fill" held={held} onFinish={onFinish} />
             </div>
           </FitStage>
         </div>
@@ -375,97 +399,127 @@ const Souvenir = memo(function Souvenir({
   }
 });
 
+/** Gravity: slow to start, quick to leave. */
+const FALL = [0.55, 0, 0.85, 0.35] as const;
+/** The flaps swing open on hinges at the outer edges, like a lid lifted off. */
+const HINGE = [0.65, 0, 0.3, 1] as const;
+/** The twine goes first; the paper only opens once it's free. */
+const FLAPS_AT = 0.32;
+
 const GiftWrap = memo(function GiftWrap({
   wrapper,
   failed,
+  reduce,
   onUnwrap,
 }: {
   wrapper: GiftWrapper;
   failed: boolean;
+  reduce: boolean;
   onUnwrap: () => void;
 }) {
   const matte = wrapper.giftStyle === 'moviebox';
   const presentation = wrapper.giftStyle === 'accordion' ? 'booklet' : wrapper.giftStyle;
+  const backing = matte ? '24, 11, 16' : '173, 129, 83';
+  const preload = () => preloadSfx('parcel-unwrap');
+  /** With reduced motion the parcel simply fades; nothing inside it moves. */
+  const move = <T,>(exit: T) => (reduce ? undefined : exit);
 
   return (
     <motion.section
       className={`absolute inset-0 z-40 overflow-hidden md:rounded-3xl md:border ${
-        matte ? 'border-rose-200/10 bg-[#180b10]' : 'border-[#c8a97c]/35 bg-[#ad8153]'
+        matte ? 'border-rose-200/10' : 'border-[#c8a97c]/35'
       }`}
-      style={{ perspective: 1100 }}
+      style={{ perspective: 1100, backgroundColor: `rgba(${backing}, 1)` }}
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 1.035 }}
+      exit={
+        reduce
+          ? { opacity: 0, transition: { duration: 0.35 } }
+          : {
+              backgroundColor: `rgba(${backing}, 0)`,
+              borderColor: 'rgba(0, 0, 0, 0)',
+              opacity: 0,
+              transition: {
+                backgroundColor: { delay: FLAPS_AT, duration: 0.35 },
+                borderColor: { delay: FLAPS_AT, duration: 0.35 },
+                opacity: { delay: FLAPS_AT + 0.7, duration: 0.3 },
+              },
+            }
+      }
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       aria-label={`Wrapped ${presentation} gift for ${wrapper.customerName}`}
     >
       <motion.div
         className="absolute inset-y-0 left-0 w-[51%] origin-left"
         style={wrapSurface(matte)}
-        exit={{ x: '-108%', rotateY: -18, rotateZ: -3 }}
-        transition={{ duration: 0.92, ease: [0.22, 1, 0.36, 1] }}
+        exit={move({ rotateY: -112, x: '-6%', filter: 'brightness(0.7)' })}
+        transition={{ delay: FLAPS_AT, duration: 0.95, ease: HINGE }}
       />
       <motion.div
         className="absolute inset-y-0 right-0 w-[51%] origin-right"
         style={wrapSurface(matte)}
-        exit={{ x: '108%', rotateY: 18, rotateZ: 3 }}
-        transition={{ duration: 0.92, ease: [0.22, 1, 0.36, 1] }}
+        exit={move({ rotateY: 112, x: '6%', filter: 'brightness(0.7)' })}
+        transition={{ delay: FLAPS_AT + 0.05, duration: 0.95, ease: HINGE }}
       />
 
       {!matte && <CraftFibers />}
       <Postmark matte={matte} occasion={wrapper.occasion} date={wrapper.date} />
 
       <motion.div
-        className={`absolute inset-y-0 left-1/2 w-7 -translate-x-1/2 ${
+        className={`absolute inset-y-0 left-[calc(50%-14px)] w-7 ${
           matte
             ? 'bg-gradient-to-r from-[#681329] via-[#c53a52] to-[#5b1023]'
             : 'bg-[repeating-linear-gradient(90deg,#765432_0_2px,#b58a58_2px_4px,#7b5937_4px_6px)]'
         } shadow-[0_0_16px_rgba(44,23,12,.35)]`}
-        exit={{ y: '-120%', rotate: 8 }}
-        transition={{ duration: 0.72, ease: [0.4, 0, 0.2, 1] }}
+        exit={move({ y: '115%', rotate: 4, opacity: 0.6 })}
+        transition={{ delay: 0.08, duration: 0.6, ease: FALL }}
         aria-hidden
       />
       <motion.div
-        className={`absolute inset-x-0 top-[17%] h-7 -translate-y-1/2 ${
+        className={`absolute inset-x-0 top-[calc(17%-14px)] h-7 ${
           matte
             ? 'bg-gradient-to-b from-[#681329] via-[#c53a52] to-[#5b1023]'
             : 'bg-[repeating-linear-gradient(0deg,#765432_0_2px,#b58a58_2px_4px,#7b5937_4px_6px)]'
         } shadow-[0_0_16px_rgba(44,23,12,.35)]`}
-        exit={{ x: '115%', rotate: -3 }}
-        transition={{ duration: 0.75, ease: [0.4, 0, 0.2, 1] }}
+        exit={move({ y: '2400%', rotate: -7, opacity: 0.6 })}
+        transition={{ delay: 0.12, duration: 0.7, ease: FALL }}
         aria-hidden
       />
-      <TwineBow matte={matte} />
+      <TwineBow matte={matte} reduce={reduce} />
 
-      <motion.div
-        className="absolute left-1/2 top-1/2 z-20 w-[min(84%,360px)] -translate-x-1/2 -translate-y-1/2"
-        exit={{ y: 120, rotate: 9, opacity: 0, scale: 0.85 }}
-        transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <GiftTag wrapper={wrapper} matte={matte} />
-        <motion.button
-          type="button"
-          onClick={onUnwrap}
-          whileHover={{ y: -2, scale: 1.02 }}
-          whileTap={{ y: 2, scale: 0.97 }}
-          className={`mx-auto mt-6 flex min-h-11 touch-manipulation items-center gap-2 rounded-full border px-6 py-3 font-display text-sm font-extrabold tracking-tight shadow-[0_12px_30px_rgba(0,0,0,.28)] ${
-            matte
-              ? 'border-rose-200/20 bg-[#b52340] text-white'
-              : 'border-[#3d352b]/20 bg-[#27312d] text-[#f5eddd]'
-          }`}
+      <div className="absolute left-1/2 top-1/2 z-20 w-[min(84%,360px)] -translate-x-1/2 -translate-y-1/2 md:w-[min(84%,420px)]">
+        <motion.div
+          exit={move({ y: 220, rotate: 11, opacity: 0 })}
+          transition={{ duration: 0.6, ease: FALL }}
         >
-          <span aria-hidden>✨</span>
-          {matte ? 'Break Seal' : 'Unwrap Gift'}
-        </motion.button>
-        {failed ? (
-          <p
-            role="alert"
-            className={`mt-3 text-center text-[13px] ${matte ? 'text-rose-100/70' : 'text-[#2e2c27]/75'}`}
+          <GiftTag wrapper={wrapper} matte={matte} />
+          <motion.button
+            type="button"
+            onPointerEnter={preload}
+            onPointerDown={preload}
+            onFocus={preload}
+            onClick={onUnwrap}
+            whileHover={{ y: -2, scale: 1.02 }}
+            whileTap={{ y: 2, scale: 0.97 }}
+            className={`mx-auto mt-6 flex min-h-11 touch-manipulation items-center gap-2 rounded-full border px-6 py-3 font-display text-sm font-extrabold tracking-tight shadow-[0_12px_30px_rgba(0,0,0,.28)] ${
+              matte
+                ? 'border-rose-200/20 bg-[#b52340] text-white'
+                : 'border-[#3d352b]/20 bg-[#27312d] text-[#f5eddd]'
+            }`}
           >
-            It didn&apos;t open. Check your connection and try again.
-          </p>
-        ) : null}
-      </motion.div>
+            <span aria-hidden>✨</span>
+            {matte ? 'Break Seal' : 'Unwrap Gift'}
+          </motion.button>
+          {failed ? (
+            <p
+              role="alert"
+              className={`mt-3 text-center text-[13px] ${matte ? 'text-rose-100/70' : 'text-[#2e2c27]/75'}`}
+            >
+              It didn&apos;t open. Check your connection and try again.
+            </p>
+          ) : null}
+        </motion.div>
+      </div>
     </motion.section>
   );
 });
@@ -550,23 +604,29 @@ const CraftFibers = memo(function CraftFibers() {
   );
 });
 
-const TwineBow = memo(function TwineBow({ matte }: { matte: boolean }) {
+/** On unwrap the loops slacken and spread apart, then the whole knot drops off the parcel. */
+const TwineBow = memo(function TwineBow({ matte, reduce }: { matte: boolean; reduce: boolean }) {
+  const loop = `absolute top-4 h-9 w-11 rounded-[50%] border-[5px] ${
+    matte ? 'border-[#a9243d]' : 'border-[#8c6842]'
+  }`;
   return (
     <motion.div
-      className="pointer-events-none absolute left-1/2 top-[17%] z-10 h-16 w-24 -translate-x-1/2 -translate-y-1/2"
-      exit={{ scale: 1.7, opacity: 0, rotate: 18 }}
-      transition={{ duration: 0.55 }}
+      className="pointer-events-none absolute left-[calc(50%-48px)] top-[calc(17%-32px)] z-10 h-16 w-24"
+      exit={reduce ? undefined : { y: 520, rotate: 32, opacity: 0.5 }}
+      transition={{ delay: 0.14, duration: 0.65, ease: FALL }}
       aria-hidden
     >
-      <span
-        className={`absolute left-1 top-4 h-9 w-11 -rotate-[25deg] rounded-[50%] border-[5px] ${
-          matte ? 'border-[#a9243d]' : 'border-[#8c6842]'
-        }`}
+      <motion.span
+        className={`${loop} left-1`}
+        style={{ rotate: -25 }}
+        exit={reduce ? undefined : { rotate: -70, x: -16, scaleY: 0.6 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
       />
-      <span
-        className={`absolute right-1 top-4 h-9 w-11 rotate-[25deg] rounded-[50%] border-[5px] ${
-          matte ? 'border-[#a9243d]' : 'border-[#8c6842]'
-        }`}
+      <motion.span
+        className={`${loop} right-1`}
+        style={{ rotate: 25 }}
+        exit={reduce ? undefined : { rotate: 70, x: 16, scaleY: 0.6 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
       />
       <span
         className={`absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full ${
@@ -590,52 +650,4 @@ function wrapSurface(matte: boolean): CSSProperties {
     background: 'linear-gradient(145deg, rgba(255,255,255,.1), transparent 32%), #ad8153',
     boxShadow: 'inset 0 0 42px rgba(66,39,18,.25)',
   };
-}
-
-function playPaperUnwrap() {
-  if (!soundOn()) return;
-  try {
-    const AudioContextCtor =
-      window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) return;
-
-    const context = new AudioContextCtor();
-    const duration = 0.9;
-    const buffer = context.createBuffer(
-      1,
-      Math.floor(context.sampleRate * duration),
-      context.sampleRate,
-    );
-    const channel = buffer.getChannelData(0);
-
-    for (let index = 0; index < channel.length; index += 1) {
-      const envelope = Math.sin((index / channel.length) * Math.PI);
-      channel[index] = (Math.random() * 2 - 1) * envelope;
-    }
-
-    const source = context.createBufferSource();
-    const filter = context.createBiquadFilter();
-    const gain = context.createGain();
-    const now = context.currentTime;
-
-    source.buffer = buffer;
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(850, now);
-    filter.frequency.exponentialRampToValueAtTime(2600, now + duration);
-    filter.Q.value = 0.65;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.1, now + 0.08);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(context.destination);
-    source.start(now);
-    source.stop(now + duration);
-    // Closing the context re-fires `ended`, which would close it twice.
-    source.addEventListener('ended', () => void context.close(), { once: true });
-  } catch {
-    // Sound is progressive enhancement.
-  }
 }
