@@ -23,7 +23,7 @@ import {
   type AnimationPlaybackControls,
   type MotionValue,
 } from 'framer-motion';
-import { LOOP_CARDS, type AuditMetrics, type XsoData } from '@/types/xso';
+import { LOOP_CARDS, isPlaceholderPhoto, type AuditMetrics, type XsoData } from '@/types/xso';
 import { auditLabel } from '@/lib/formats';
 import { stackCards } from '@/lib/formatCards';
 import { playFoley } from '@/lib/foley';
@@ -770,6 +770,46 @@ const TYPE = {
   },
 };
 
+const PRINT_TILT = [-3.5, 2, -1.5];
+const CARD_PAPERS = ['#f8d5e1', '#f6cd85', '#d9e7d0'];
+
+interface Print {
+  src?: string;
+  text?: string;
+  paper?: string;
+  caption: string;
+}
+
+/** Handwriting under each print: the two of them, then the receipt's lore, then the year. */
+function printCaption(data: XsoData, index: number) {
+  const lore = data.lineItems[index - 1]?.description.toLowerCase();
+  if (index === 0) return `${data.customerName} & ${data.billerName}`;
+  if (lore) return `the ${lore} era`;
+  return `'${data.timestamp.split(' ')[0].slice(-2)} ♡`;
+}
+
+/**
+ * The sender's own photos, up to three. The theme's stand-in cards only show when nothing was
+ * uploaded, and a gift with no photos at all gets plain paper cards written from the receipt.
+ */
+function printsOf(data: XsoData): Print[] {
+  const uploaded = data.photos.filter((src) => src && !isPlaceholderPhoto(src));
+  const photos = (uploaded.length ? uploaded : data.photos.filter(Boolean)).slice(0, 3);
+  if (photos.length) {
+    return photos.map((src, i) => ({ src, caption: printCaption(data, i) }));
+  }
+  const year = `'${data.timestamp.split(' ')[0].slice(-2)} ♡`;
+  const captions = [`${data.customerName} & ${data.billerName}`, data.occasion.toLowerCase(), year];
+  return [0, 1, 2].map((i) => {
+    const lore = data.lineItems[i]?.description.toLowerCase();
+    return {
+      text: lore ? `the ${lore} era` : 'one I keep coming back to',
+      paper: CARD_PAPERS[i],
+      caption: captions[i],
+    };
+  });
+}
+
 const FOLD_NAMES: Record<Artifact['id'], string> = {
   receipt: 'the receipt',
   audit: 'the audit',
@@ -864,38 +904,70 @@ const PanelFace = memo(function PanelFace({
     );
   }
   if (id === 'photos') {
-    const photos = data.photos.slice(0, 3);
+    const prints = printsOf(data);
+    const n = Math.max(1, prints.length);
+    /** Caption strip plus the print's border, so the photo never pushes past the fold. */
+    const chrome = wide ? 46 : 34;
+    /** On a phone three prints overlap like a fanned hand, so each stays big enough to see. */
+    const fan = !wide && n === 3;
+    const across = fan ? 34 : Math.floor(92 / n);
     return (
       <div className="flex h-full flex-col">
         {label}
-        <div className="mt-2 grid min-h-0 flex-1 grid-cols-3 items-center gap-2">
-          {[0, 1, 2].map((slot) => (
-            <div
-              key={slot}
-              className="bg-white p-1 pb-4 shadow-[0_2px_6px_rgba(45,27,34,0.18)]"
-              style={{ transform: `rotate(${[-4, 2, -1][slot]}deg)` }}
+        <div
+          className={`mt-2 flex min-h-0 flex-1 items-center justify-center ${fan ? '' : 'gap-[4%]'}`}
+          style={{ containerType: 'size' }}
+        >
+          {prints.map((print, i) => (
+            <figure
+              key={i}
+              className="flex shrink-0 flex-col bg-white p-[4%] pb-0 shadow-[0_2px_8px_rgba(45,27,34,0.2)]"
+              style={{
+                width: `min(${across}cqw, calc((100cqh - ${chrome}px) * 0.76))`,
+                rotate: `${PRINT_TILT[i % PRINT_TILT.length]}deg`,
+                marginInline: fan ? '-2cqw' : undefined,
+                translate: fan && i === 1 ? '0 -4%' : undefined,
+              }}
             >
-              <div className="relative aspect-[4/5] overflow-hidden bg-[#2d1b22]">
-                {photos[slot] ? (
+              <div
+                className="relative aspect-[4/5] w-full overflow-hidden"
+                style={{ background: print.src ? '#2d1b22' : print.paper }}
+              >
+                {print.src ? (
                   <PolaroidThumb
-                    id={`${scope}${slot}`}
-                    src={photos[slot]}
-                    alt={`Memory ${slot + 1}`}
-                    caption={slot === 0 ? `${data.customerName} & ${data.billerName}` : undefined}
-                    rotate={[-4, 2, -1][slot]}
+                    id={`${scope}${i}`}
+                    src={print.src}
+                    alt={`Memory ${i + 1}`}
+                    caption={print.caption}
+                    rotate={PRINT_TILT[i % PRINT_TILT.length]}
                     className="absolute inset-0 h-full w-full"
                   >
                     <LazyMedia
-                      src={photos[slot]}
-                      alt={`Memory ${slot + 1}`}
+                      src={print.src}
+                      alt={`Memory ${i + 1}`}
                       fill
-                      sizes="110px"
+                      sizes={wide ? '220px' : '(max-width: 768px) 30vw, 120px'}
                       className="absolute inset-0 h-full w-full object-cover"
                     />
                   </PolaroidThumb>
-                ) : null}
+                ) : (
+                  <p
+                    className={`absolute inset-0 grid place-items-center p-[10%] text-center font-hand leading-tight text-[#3a2530] ${
+                      wide ? 'text-[22px]' : 'text-[15px]'
+                    }`}
+                  >
+                    {print.text}
+                  </p>
+                )}
               </div>
-            </div>
+              <figcaption
+                className={`truncate text-center font-hand leading-none text-[#3a2530] ${
+                  wide ? 'py-2.5 text-[20px]' : 'py-1.5 text-[15px]'
+                }`}
+              >
+                {print.caption}
+              </figcaption>
+            </figure>
           ))}
         </div>
       </div>

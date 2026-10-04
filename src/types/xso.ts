@@ -133,6 +133,11 @@ export function svgPhoto(label: string, bg: string, fg: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+/** The theme's stand-in cards (from `svgPhoto`), as opposed to a photo the sender uploaded. */
+export function isPlaceholderPhoto(src: string): boolean {
+  return src.startsWith('data:image/svg');
+}
+
 export function getMockXsoData(): XsoData {
   return {
     id: 'xso-mock-001',
