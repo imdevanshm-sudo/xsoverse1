@@ -153,7 +153,7 @@ export function GiftUnboxing({
             )}
             {!wrapGone || framed || contents.giftStyle === 'moviebox' ? null : (
               <>
-                <SoundToggle />
+                <SoundToggle labeled={contents.giftStyle === 'accordion'} />
                 {/* The Accordion offers this as its own last fold, below the letter. */}
                 <MakeOneBack ended={finished && contents.giftStyle !== 'accordion'} />
               </>

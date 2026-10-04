@@ -73,8 +73,6 @@ const SCROLL_PER_FOLD = 0.9;
 const CASCADE = 1.4;
 const CASCADE_TIME = 1.3;
 
-const TAB_PULL = 140;
-
 function foldAt(distance: number) {
   const d = Math.abs(distance);
   for (let i = 1; i < FOLD_STOPS.length; i += 1) {
@@ -606,35 +604,30 @@ const Ribbon = memo(function Ribbon({
           {String(count).padStart(2, '0')}
           <span className="block truncate text-[#9a6a7e]">{activeLabel}</span>
         </p>
-        <PullTab
-          opened={opened}
-          reduce={reduce || coarse}
-          shut={shut}
-          onGrab={() => {
-            cascade.current?.stop();
-            closing.current = opened;
-          }}
-          onSet={setOpen}
-        />
-        <div className="flex w-24 justify-end gap-1.5">
-          <button
-            type="button"
-            className="accordion-step"
-            onClick={() => (opened ? goTo(active - 1) : setOpen(true))}
+        <div role="group" aria-label="Fold controls" className="flex items-center gap-1.5 sm:gap-2">
+          <FoldButton
+            label="Previous fold"
+            short="Prev"
+            icon="↑"
+            full={wide}
             disabled={opened && active === 0}
-            aria-label="Previous fold"
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            className="accordion-step"
-            onClick={() => (opened ? goTo(active + 1) : setOpen(true))}
+            onClick={() => (opened ? goTo(active - 1) : setOpen(true))}
+          />
+          <FoldButton
+            label={opened ? 'Close all folds' : 'Open the folds'}
+            short={opened ? 'Close all' : 'Open'}
+            full={wide}
+            onClick={() => setOpen(!opened)}
+          />
+          <FoldButton
+            label="Next fold"
+            short="Next"
+            icon="↓"
+            iconAfter
+            full={wide}
             disabled={opened && active === last}
-            aria-label="Next fold"
-          >
-            ↓
-          </button>
+            onClick={() => (opened ? goTo(active + 1) : setOpen(true))}
+          />
         </div>
       </div>
       {coarse && size !== 'fill' ? (
@@ -767,53 +760,38 @@ const RibbonPanel = memo(function RibbonPanel({
   );
 });
 
-/** Stitched ribbon handle: pull down to let the letter unfurl, push up to fold it away. */
-const PullTab = memo(function PullTab({
-  opened,
-  reduce,
-  shut,
-  onGrab,
-  onSet,
+/** A plain, labelled control under the ribbon; short words on phones, with the full name as a tooltip. */
+const FoldButton = memo(function FoldButton({
+  label,
+  short,
+  icon,
+  iconAfter = false,
+  full,
+  disabled,
+  onClick,
 }: {
-  opened: boolean;
-  reduce: boolean;
-  shut: MotionValue<number>;
-  onGrab: () => void;
-  onSet: (open: boolean) => void;
+  label: string;
+  short: string;
+  icon?: string;
+  iconAfter?: boolean;
+  full: boolean;
+  disabled?: boolean;
+  onClick: () => void;
 }) {
-  const start = useRef(0);
-  const draggedAt = useRef(0);
+  const glyph = icon ? <span aria-hidden>{icon}</span> : null;
   return (
-    <motion.button
+    <button
       type="button"
-      className={`accordion-tab gpu-layer ${reduce ? 'touch-manipulation' : 'touch-none'}`}
-      drag={reduce ? false : 'y'}
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={0.45}
-      dragSnapToOrigin
-      onDragStart={() => {
-        onGrab();
-        start.current = shut.get();
-      }}
-      onDrag={(_, info) => {
-        shut.set(clamp(start.current - info.offset.y / TAB_PULL, 0, 1));
-      }}
-      onDragEnd={(_, info) => {
-        draggedAt.current = performance.now();
-        const projected = shut.get() - (info.velocity.y / TAB_PULL) * 0.15;
-        onSet(projected < 0.5);
-      }}
-      onClick={() => {
-        if (performance.now() - draggedAt.current < 250) return;
-        onSet(!opened);
-      }}
-      whileTap={reduce ? undefined : { scale: 0.96 }}
-      aria-expanded={opened}
-      aria-label={opened ? 'Fold the letter away' : 'Pull the letter open'}
+      className={`accordion-control ${full ? 'accordion-control--full' : ''}`}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
     >
-      <span aria-hidden className="accordion-tab__ribbon" />
-      <span className="accordion-tab__label">{opened ? 'Fold away' : 'Pull open'}</span>
-    </motion.button>
+      {iconAfter ? null : glyph}
+      <span>{full ? label : short}</span>
+      {iconAfter ? glyph : null}
+    </button>
   );
 });
 
