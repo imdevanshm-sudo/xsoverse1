@@ -12,6 +12,7 @@ import {
   type Variants,
 } from 'framer-motion';
 import type { RewindLayers, XsoData } from '@/types/xso';
+import { TRACK_TITLES, TapePlayer } from '@/components/xso/rewind/TapePlayer';
 import { playFoley } from '@/lib/foley';
 import { CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { selectedCards, stackCards } from '@/lib/formatCards';
@@ -173,6 +174,10 @@ const Stack = memo(function Stack({
     });
   }, [focusIndex]);
 
+  const tracks = useMemo(
+    () => artifacts.map((a) => ({ id: a.id, title: TRACK_TITLES[a.id] ?? a.label })),
+    [artifacts],
+  );
   const { order, passes, turn, direction } = pile;
   const front = order[0];
   const next = order[1];
@@ -215,7 +220,7 @@ const Stack = memo(function Stack({
     >
       <Backlight pulsing={!reduce && visible} turn={reduce ? 0 : turn} />
 
-      {data.rewind ? <TapeLabel tape={data.rewind} /> : null}
+      <TapePlayer tape={tapeOf(data)} tracks={tracks} current={front} />
 
       <div className={`relative w-full ${DECK_HEIGHT[size]}`}>
         <AnimatePresence initial={false} custom={direction}>
@@ -298,30 +303,12 @@ const Stack = memo(function Stack({
   );
 });
 
-/** The cassette's paper J-card label: both sides' titles and the date it was dubbed. */
-const TapeLabel = memo(function TapeLabel({ tape }: { tape: RewindLayers }) {
+/** Gifts from before the tape label existed still get a J-card. */
+function tapeOf(data: XsoData): RewindLayers {
   return (
-    <div className="relative z-10 mb-2 flex w-full items-stretch gap-2 rounded-md border border-[#fdba74]/25 bg-[#f6ead7] px-2.5 py-1.5 text-[#2d1b22] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.6)]">
-      <span
-        aria-hidden
-        className="grid w-6 shrink-0 place-items-center rounded-sm bg-[#ec4899] font-receipt text-[10px] font-bold text-white"
-      >
-        A
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-hand text-[17px] leading-none">{tape.sideA || 'Side A'}</p>
-        <p className="mt-0.5 truncate font-receipt text-[8px] uppercase tracking-[0.18em] text-[#7a5563]">
-          B · {tape.sideB || 'Side B'}
-        </p>
-      </div>
-      {tape.tapeDate ? (
-        <span className="self-center font-receipt text-[9px] uppercase tracking-[0.14em] text-[#7a5563]">
-          {tape.tapeDate}
-        </span>
-      ) : null}
-    </div>
+    data.rewind ?? { sideA: data.occasion, sideB: 'The ones we replay', tapeDate: '', review: '' }
   );
-});
+}
 
 const LinerNotes = memo(function LinerNotes({ data, review }: { data: XsoData; review: string }) {
   return (
