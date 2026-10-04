@@ -188,6 +188,8 @@ const Deck = memo(function Deck({
     const { order: current, flying: inAir } = latest.current;
     if (inAir !== null || current[0] !== index) return false;
     playSfx('card-swipe', 0.7);
+    /** With reduced motion the card lands in the same tick, before React has re-rendered. */
+    latest.current.flying = index;
     setFlying(index);
     return true;
   }, []);
