@@ -492,7 +492,12 @@ const GiftWrap = memo(function GiftWrap({
           exit={move({ y: 220, rotate: 11, opacity: 0 })}
           transition={{ duration: 0.6, ease: FALL }}
         >
-          <GiftTag wrapper={wrapper} matte={matte} />
+          <GiftTag
+            wrapper={wrapper}
+            matte={matte}
+            handwritten={wrapper.giftStyle === 'accordion'}
+            reduce={reduce}
+          />
           <motion.button
             type="button"
             onPointerEnter={preload}
@@ -524,13 +529,63 @@ const GiftWrap = memo(function GiftWrap({
   );
 });
 
+/** Deckled top and bottom edges, as if torn from a sheet. */
+const TAG_EDGE =
+  'polygon(0 2%,6% 0,13% 2%,20% 0,28% 2%,36% 0,44% 2%,52% 0,60% 2%,68% 0,76% 2%,84% 0,92% 2%,100% 0,100% 98%,94% 100%,87% 98%,79% 100%,71% 98%,63% 100%,55% 98%,47% 100%,39% 98%,31% 100%,23% 98%,15% 100%,7% 98%,0 100%)';
+
+/** Hung from the twine at its top corner, the tag drifts a few degrees either way. */
+const SWAY = { rotate: [-2.4, 0.8, -2.4] };
+const SWAY_TIME = { duration: 5.5, ease: 'easeInOut', repeat: Infinity } as const;
+
 const GiftTag = memo(function GiftTag({
   wrapper,
   matte,
+  handwritten = false,
+  reduce = false,
 }: {
   wrapper: GiftWrapper;
   matte: boolean;
+  /** The Accordion's tag: written by hand at reading size, and swaying on its string. */
+  handwritten?: boolean;
+  reduce?: boolean;
 }) {
+  if (handwritten) {
+    return (
+      <motion.article
+        className="relative border border-[#80694c]/30 bg-[#f0e4ca] px-6 pb-5 pt-6 text-[#2e2c27] shadow-[0_4px_8px_rgba(40,24,13,.2),0_20px_50px_rgba(40,24,13,.4)] md:px-8 md:pb-6 md:pt-7"
+        style={{
+          rotate: -1.5,
+          transformOrigin: '92% 0%',
+          clipPath: TAG_EDGE,
+          backgroundImage: 'radial-gradient(rgba(77,57,37,.1) .6px, transparent .8px)',
+          backgroundSize: '5px 5px',
+        }}
+        animate={reduce ? undefined : SWAY}
+        transition={SWAY_TIME}
+      >
+        <span
+          aria-hidden
+          className="absolute right-5 top-3 h-3.5 w-3.5 rounded-full border-2 border-[#80694c]/50 bg-[#ad8153]/40 shadow-inner"
+        />
+        <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 font-hand">
+          <dt className="text-[17px] uppercase tracking-wide opacity-60 md:text-lg">To</dt>
+          <dd className="truncate text-[28px] font-bold leading-tight md:text-[34px]">
+            {wrapper.customerName}
+          </dd>
+          <dt className="text-[17px] uppercase tracking-wide opacity-60 md:text-lg">From</dt>
+          <dd className="truncate text-[28px] font-bold leading-tight md:text-[34px]">
+            {wrapper.billerName}
+          </dd>
+        </dl>
+        <p className="mt-4 border-t border-current/15 pt-3 font-hand text-[21px] leading-snug md:text-2xl">
+          “{wrapper.note}”
+        </p>
+        <p className="mt-3 text-right font-receipt text-[12px] uppercase tracking-wider opacity-55 md:text-[13px]">
+          {wrapper.occasion} · {wrapper.date}
+        </p>
+      </motion.article>
+    );
+  }
   return (
     <article
       className={`relative rotate-[-1.5deg] border p-5 shadow-[0_4px_8px_rgba(40,24,13,.2),0_20px_50px_rgba(40,24,13,.4)] ${
@@ -539,8 +594,7 @@ const GiftTag = memo(function GiftTag({
           : 'border-[#80694c]/30 bg-[#f0e4ca] text-[#2e2c27]'
       }`}
       style={{
-        clipPath:
-          'polygon(0 2%,6% 0,13% 2%,20% 0,28% 2%,36% 0,44% 2%,52% 0,60% 2%,68% 0,76% 2%,84% 0,92% 2%,100% 0,100% 98%,94% 100%,87% 98%,79% 100%,71% 98%,63% 100%,55% 98%,47% 100%,39% 98%,31% 100%,23% 98%,15% 100%,7% 98%,0 100%)',
+        clipPath: TAG_EDGE,
         backgroundImage: 'radial-gradient(rgba(77,57,37,.1) .6px, transparent .8px)',
         backgroundSize: '5px 5px',
       }}
