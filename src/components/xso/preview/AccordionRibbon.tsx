@@ -5,10 +5,11 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
+  type CSSProperties,
 } from 'react';
 import {
   animate,
@@ -528,6 +529,7 @@ const Ribbon = memo(function Ribbon({
                     height={panelH}
                     wide={wide}
                     data={data}
+                    reading={artifact.id === 'letter' && opened && !held && active === index}
                     onSelect={selectPanel}
                   />
                 ))}
@@ -610,6 +612,8 @@ const RibbonPanel = memo(function RibbonPanel({
   height,
   wide,
   data,
+  reading,
+  onRead,
   onSelect,
 }: {
   id: Artifact['id'];
@@ -618,6 +622,8 @@ const RibbonPanel = memo(function RibbonPanel({
   height: number;
   wide: boolean;
   data: XsoData;
+  reading?: boolean;
+  onRead?: () => void;
   onSelect: (index: number) => void;
 }) {
   const y = useTransform(fold, (f) => f.ys[index]);
@@ -650,7 +656,14 @@ const RibbonPanel = memo(function RibbonPanel({
       onClick={() => onSelect(index)}
     >
       <div className={`accordion-panel__face ${wide ? 'accordion-panel__face--wide' : ''}`}>
-        <PanelFace data={data} id={id} index={index} wide={wide} />
+        <PanelFace
+          data={data}
+          id={id}
+          index={index}
+          wide={wide}
+          reading={reading}
+          onRead={onRead}
+        />
       </div>
       <span aria-hidden className="accordion-panel__grain" />
       {index > 0 ? (
@@ -822,11 +835,16 @@ const PanelFace = memo(function PanelFace({
   id,
   index,
   wide,
+  reading = false,
+  onRead,
 }: {
   data: XsoData;
   id: Artifact['id'];
   index: number;
   wide: boolean;
+  /** The letter is the fold in focus, so it starts writing itself. */
+  reading?: boolean;
+  onRead?: () => void;
 }) {
   const scope = useId();
   const t = wide ? TYPE.wide : TYPE.narrow;
@@ -979,13 +997,180 @@ const PanelFace = memo(function PanelFace({
       <p className={`mt-1.5 font-hand leading-none text-[#3a2530] ${t.dear}`}>
         Dear {data.customerName},
       </p>
-      <p
-        className={`accordion-letter mt-2 min-h-0 flex-1 overflow-hidden font-hand leading-[1.15] text-[#3a2530] ${t.letter}`}
-      >
-        {data.birthdayMessage}
-      </p>
-      <p className={`mt-1 self-end font-hand leading-none text-[#b4234a] ${t.signoff}`}>
-        — {data.billerName}
+      <LetterBody
+        text={data.birthdayMessage}
+        signoff={`— ${data.billerName}`}
+        signoffClass={t.signoff}
+        wide={wide}
+        reading={reading}
+        onRead={onRead}
+      />
+    </div>
+  );
+});
+
+/** Seconds to write one line, and the breath taken before the sign-off. */
+const LINE_TIME = 0.62;
+const LAST_PAUSE = 0.9;
+
+/**
+ * The letter writes itself in line by line as it comes into focus: each word is inked left to
+ * right, and the sign-off follows a short pause. It's sized to fit the fold (never below 20px
+ * on desktop or 16px on phones) and scrolls inside the fold if it still doesn't. Tapping it
+ * mid-way finishes it; with reduced motion it's simply there.
+ */
+const LetterBody = memo(function LetterBody({
+  text,
+  signoff,
+  signoffClass,
+  wide,
+  reading,
+  onRead,
+}: {
+  text: string;
+  signoff: string;
+  signoffClass: string;
+  wide: boolean;
+  reading: boolean;
+  onRead?: () => void;
+}) {
+  const reduce = Boolean(useReducedMotion());
+  const box = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState(wide ? 22 : 19);
+  const [lines, setLines] = useState<number[] | null>(null);
+  const [overflows, setOverflows] = useState(false);
+  const [state, setState] = useState<'idle' | 'play' | 'done'>('idle');
+  const paragraphs = useMemo(
+    () =>
+      text
+        .split(/\n+/)
+        .map((p) => p.split(/\s+/).filter(Boolean))
+        .filter((p) => p.length),
+    [text],
+  );
+
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const max = wide ? 22 : 19;
+    const min = wide ? 20 : 16;
+    const measure = () => {
+      let next = max;
+      el.style.fontSize = `${next}px`;
+      while (next > min && el.scrollHeight > el.clientHeight + 1) {
+        next -= 1;
+        el.style.fontSize = `${next}px`;
+      }
+      setSize(next);
+      setOverflows(el.scrollHeight > el.clientHeight + 1);
+      let line = -1;
+      let top = -Infinity;
+      const out: number[] = [];
+      el.querySelectorAll<HTMLElement>('[data-word]').forEach((word) => {
+        if (word.offsetTop > top + 2) {
+          line += 1;
+          top = word.offsetTop;
+        }
+        out.push(line);
+      });
+      setLines(out);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [wide, paragraphs]);
+
+  const timing = useMemo(() => {
+    if (!lines) return null;
+    const total = lines.length ? lines[lines.length - 1] + 1 : 0;
+    const counts = new Array<number>(total).fill(0);
+    lines.forEach((l) => (counts[l] += 1));
+    const seen = new Array<number>(total).fill(0);
+    const delays = lines.map((l) => {
+      const k = seen[l]++;
+      return l * LINE_TIME + (k / counts[l]) * LINE_TIME * 0.8;
+    });
+    return { delays, total, signoffAt: total * LINE_TIME + LAST_PAUSE };
+  }, [lines]);
+
+  const onReadRef = useRef(onRead);
+  onReadRef.current = onRead;
+  const finish = useCallback(() => {
+    setState('done');
+    onReadRef.current?.();
+  }, []);
+
+  useEffect(() => {
+    if (!reading || state !== 'idle' || !timing) return;
+    if (reduce) return finish();
+    setState('play');
+  }, [reading, state, timing, reduce, finish]);
+
+  /** While writing, keep the newest line in view when the letter is taller than its fold. */
+  useEffect(() => {
+    if (state !== 'play' || !timing) return;
+    const el = box.current;
+    const started = performance.now();
+    const done = window.setTimeout(finish, (timing.signoffAt + 0.7) * 1000);
+    const follow = window.setInterval(() => {
+      if (!el || el.scrollHeight <= el.clientHeight + 1) return;
+      const elapsed = (performance.now() - started) / 1000;
+      const line = Math.min(timing.total, Math.floor(elapsed / LINE_TIME));
+      const words = el.querySelectorAll<HTMLElement>('[data-word]');
+      const index = lines?.findIndex((l) => l === line) ?? -1;
+      const target = index >= 0 ? words[index] : el.lastElementChild;
+      if (!(target instanceof HTMLElement)) return;
+      const bottom = target.offsetTop + target.offsetHeight + 8;
+      if (bottom > el.scrollTop + el.clientHeight) {
+        el.scrollTo({ top: bottom - el.clientHeight, behavior: 'smooth' });
+      }
+    }, 250);
+    return () => {
+      window.clearTimeout(done);
+      window.clearInterval(follow);
+    };
+  }, [state, timing, lines, finish]);
+
+  let w = 0;
+  return (
+    <div
+      ref={box}
+      className={`accordion-letter letter--${state} mt-2 min-h-0 flex-1 overflow-y-auto font-hand leading-[1.22] text-[#3a2530] outline-none focus-visible:ring-2 focus-visible:ring-[#b4234a]/40`}
+      style={{ fontSize: size }}
+      tabIndex={overflows ? 0 : undefined}
+      aria-label={overflows ? 'Letter (scrolls)' : undefined}
+      onClick={(event) => {
+        if (state !== 'play') return;
+        event.stopPropagation();
+        finish();
+      }}
+    >
+      {paragraphs.map((words, p) => (
+        <p key={p} className="mb-[0.45em]">
+          {words.map((word) => {
+            const i = w++;
+            return (
+              <span key={i}>
+                <span
+                  data-word
+                  className="accordion-letter__word"
+                  style={{ '--d': `${timing?.delays[i] ?? 0}s` } as CSSProperties}
+                >
+                  {word}
+                </span>{' '}
+              </span>
+            );
+          })}
+        </p>
+      ))}
+      <p className={`mt-1 text-right leading-none text-[#b4234a] ${signoffClass}`}>
+        <span
+          className="accordion-letter__word"
+          style={{ '--d': `${timing?.signoffAt ?? 0}s` } as CSSProperties}
+        >
+          {signoff}
+        </span>
       </p>
     </div>
   );

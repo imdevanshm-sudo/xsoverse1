@@ -1728,10 +1728,37 @@ html.is-landscape .xso-dock {
   background-color: rgba(253, 186, 116, 0.5);
 }
 
+/* The letter inks itself in, word by word, each on its own delay (`--d`). */
 .accordion-letter {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 6;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 35, 74, 0.25) transparent;
+}
+
+.accordion-letter__word {
+  display: inline-block;
+  opacity: 0;
+  clip-path: inset(-30% 100% -30% -4%);
+}
+
+.letter--play .accordion-letter__word {
+  opacity: 1;
+  clip-path: inset(-30% -6% -30% -4%);
+  transition:
+    opacity 0.25s ease var(--d, 0s),
+    clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1) var(--d, 0s);
+}
+
+.letter--done .accordion-letter__word {
+  opacity: 1;
+  clip-path: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion-letter__word {
+    opacity: 1;
+    clip-path: none;
+    transition: none !important;
+  }
 }
 
 .accordion-step {
