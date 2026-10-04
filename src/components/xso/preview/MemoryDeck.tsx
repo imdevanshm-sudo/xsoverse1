@@ -25,11 +25,12 @@ import {
 import { ChevronLeft, ChevronRight, Hand } from 'lucide-react';
 import { LOOP_CARDS, type XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
+import { playSfx, preloadSfx } from '@/lib/sfx';
 import { resolveLoop } from '@/lib/formats';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
-import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
+import { getArtifacts, type Artifact } from '@/components/xso/viewers/shared';
 import { useProgress } from '@/components/xso/stage/useProgress';
 import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
 
@@ -184,7 +185,7 @@ const Deck = memo(function Deck({
   const launch = useCallback((index: number) => {
     const { order: current, flying: inAir } = latest.current;
     if (inAir !== null || current[0] !== index) return false;
-    playMechanicalCue('click');
+    playSfx('card-swipe', 0.7);
     setFlying(index);
     return true;
   }, []);
@@ -224,11 +225,23 @@ const Deck = memo(function Deck({
     if (inAir !== null || current.length < 2) return;
     const last = current[current.length - 1];
     const prev = [last, ...current.slice(0, -1)];
-    playMechanicalCue('click');
+    playSfx('card-swipe', 0.7);
     setMoved(true);
     setOrder(prev);
     entrances.current[last]?.();
     if (cards[last].id !== 'end') notify?.(last, cards[last].label);
+  }, []);
+
+  /** The deck's sounds download on the first touch or key press, never on page load. */
+  useEffect(() => {
+    const warm = () => {
+      void preloadSfx('card-swipe');
+      void preloadSfx('card-scratch');
+    };
+    const events = ['pointerdown', 'keydown'] as const;
+    events.forEach((name) => window.addEventListener(name, warm, { once: true, capture: true }));
+    return () =>
+      events.forEach((name) => window.removeEventListener(name, warm, { capture: true }));
   }, []);
 
   useEffect(() => {

@@ -48,6 +48,8 @@ const HINTS: Partial<Record<GiftStyle, string>> = {
 
 /** Formats that end on their own "Your turn" page rather than the slide-up sheet. */
 const OWN_ENDING: GiftStyle[] = ['accordion', 'loop'];
+/** Formats whose sound toggle spells out "Sound on" / "Sound off" in a larger pill. */
+const LABELED_SOUND: GiftStyle[] = ['accordion', 'loop'];
 
 async function fetchContents(giftId: string): Promise<XsoData> {
   const response = await fetch(`/api/gifts/${encodeURIComponent(giftId)}/open`, {
@@ -155,7 +157,7 @@ export function GiftUnboxing({
             )}
             {!wrapGone || framed || contents.giftStyle === 'moviebox' ? null : (
               <>
-                <SoundToggle labeled={contents.giftStyle === 'accordion'} />
+                <SoundToggle labeled={LABELED_SOUND.includes(contents.giftStyle)} />
                 {/* The Accordion and the Loop offer this as their own last page, after the letter. */}
                 <MakeOneBack ended={finished && !OWN_ENDING.includes(contents.giftStyle)} />
               </>

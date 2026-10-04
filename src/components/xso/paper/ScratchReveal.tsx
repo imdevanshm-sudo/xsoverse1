@@ -9,7 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { playFoley } from '@/lib/foley';
+import { playSfx, preloadSfx } from '@/lib/sfx';
 
 const BRUSH = 26;
 /** Share of the foil that has to come off before the rest falls away. */
@@ -229,7 +229,7 @@ export function ScratchReveal({
       revealedRef.current = true;
       setRevealed(true);
       setProgress(1);
-      playFoley('chime', 0.8);
+      playSfx('reveal-chime', 0.8);
       onReveal?.();
       return;
     }
@@ -284,7 +284,7 @@ export function ScratchReveal({
     const now = performance.now();
     if (now - lastGrain.current > 70) {
       lastGrain.current = now;
-      playFoley('scratch', 0.9);
+      playSfx('card-scratch', 0.9);
     }
 
     if (performance.now() - lastSample.current >= SAMPLE_INTERVAL_MS) {
@@ -308,6 +308,7 @@ export function ScratchReveal({
   const onPointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     e.stopPropagation();
     e.preventDefault();
+    void preloadSfx('reveal-chime');
     if (!paintedSize.current) paintFoil();
     rectRef.current = e.currentTarget.getBoundingClientRect();
     scratched.current = true;
