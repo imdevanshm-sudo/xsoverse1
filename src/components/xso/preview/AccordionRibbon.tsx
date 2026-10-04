@@ -26,6 +26,7 @@ import {
 } from 'framer-motion';
 import { LOOP_CARDS, isPlaceholderPhoto, type AuditMetrics, type XsoData } from '@/types/xso';
 import { auditLabel } from '@/lib/formats';
+import { photoCaption } from '@/lib/photoStrips';
 import { stackCards } from '@/lib/formatCards';
 import { playFoley } from '@/lib/foley';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
@@ -865,14 +866,6 @@ interface Print {
   caption: string;
 }
 
-/** Handwriting under each print: the two of them, then the receipt's lore, then the year. */
-function printCaption(data: XsoData, index: number) {
-  const lore = data.lineItems[index - 1]?.description.toLowerCase();
-  if (index === 0) return `${data.customerName} & ${data.billerName}`;
-  if (lore) return `the ${lore} era`;
-  return `'${data.timestamp.split(' ')[0].slice(-2)} ♡`;
-}
-
 /**
  * The sender's own photos, up to three. The theme's stand-in cards only show when nothing was
  * uploaded, and a gift with no photos at all gets plain paper cards written from the receipt.
@@ -881,7 +874,7 @@ function printsOf(data: XsoData): Print[] {
   const uploaded = data.photos.filter((src) => src && !isPlaceholderPhoto(src));
   const photos = (uploaded.length ? uploaded : data.photos.filter(Boolean)).slice(0, 3);
   if (photos.length) {
-    return photos.map((src, i) => ({ src, caption: printCaption(data, i) }));
+    return photos.map((src, i) => ({ src, caption: photoCaption(data, i) }));
   }
   const year = `'${data.timestamp.split(' ')[0].slice(-2)} ♡`;
   const captions = [`${data.customerName} & ${data.billerName}`, data.occasion.toLowerCase(), year];

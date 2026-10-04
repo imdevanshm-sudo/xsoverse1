@@ -3,7 +3,7 @@
 import { memo, useId } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { XsoData } from '@/types/xso';
-import { FRAMES_PER_STRIP, toStrips } from '@/lib/photoStrips';
+import { FRAMES_PER_STRIP, photoCaption, stripPhotos, toStrips } from '@/lib/photoStrips';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { PolaroidThumb } from '@/components/xso/PolaroidThumb';
 import { LIGHT_TWEEN } from '@/components/xso/viewers/shared';
@@ -36,7 +36,7 @@ const STRIP_TILT = [-2, 1.6, -1.2];
 
 export const Side3PhotoStrip = memo(function Side3PhotoStrip({ data }: Side3PhotoStripProps) {
   const scope = useId();
-  const strips = toStrips(data.photos);
+  const strips = toStrips(stripPhotos(data));
   const multi = strips.length > 1;
 
   return (
@@ -126,7 +126,7 @@ const Strip = memo(function Strip({
                 id={`${scope}${offset + i}`}
                 src={src}
                 alt={`Photo ${offset + i + 1}`}
-                caption={`frame ${String(offset + i + 1).padStart(2, '0')} ♡`}
+                caption={photoCaption(data, offset + i)}
                 className="w-full"
               >
                 <LazyMedia
