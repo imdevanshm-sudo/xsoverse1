@@ -15,11 +15,11 @@ const tile = (width: number, height: number, marks: string) =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${marks}</svg>`,
   )}")`;
 
-/** About two marks on a phone screen, three or four on a laptop. */
-const PHONE = tile(420, 420, mark(210, 210));
-const DESKTOP = tile(1100, 720, mark(275, 180) + mark(825, 540));
+/** About one mark per phone screen and two on a laptop: always in frame, never in the way. */
+const PHONE = tile(520, 640, mark(250, 330));
+const DESKTOP = tile(1400, 900, mark(360, 240) + mark(1050, 680));
 
-const LAYER = 'pointer-events-none fixed inset-0 z-[130] select-none opacity-[0.12]';
+const LAYER = 'pointer-events-none fixed inset-0 z-[130] select-none opacity-[0.09]';
 
 /**
  * Sits over everything on the sender's previews, so a screenshot or screen recording can't pass
@@ -30,11 +30,11 @@ export function PreviewWatermark() {
     <div aria-hidden data-preview-watermark>
       <div
         className={`${LAYER} md:hidden`}
-        style={{ backgroundImage: PHONE, backgroundSize: '420px 420px' }}
+        style={{ backgroundImage: PHONE, backgroundSize: '520px 640px' }}
       />
       <div
         className={`${LAYER} hidden md:block`}
-        style={{ backgroundImage: DESKTOP, backgroundSize: '1100px 720px' }}
+        style={{ backgroundImage: DESKTOP, backgroundSize: '1400px 900px' }}
       />
     </div>
   );
