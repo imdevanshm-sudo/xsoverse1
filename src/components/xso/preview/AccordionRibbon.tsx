@@ -598,12 +598,47 @@ const Ribbon = memo(function Ribbon({
         </div>
       </motion.div>
 
-      <div className="relative z-10 -mt-3 flex w-full items-center justify-between gap-3">
-        <p className="w-24 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#e0b4c6]">
-          {String(Math.min(active, count - 1) + 1).padStart(2, '0')} /{' '}
-          {String(count).padStart(2, '0')}
-          <span className="block truncate text-[#9a6a7e]">{activeLabel}</span>
-        </p>
+      <div className="relative z-10 -mt-3 flex w-full flex-col items-center gap-2">
+        <div
+          className={`flex w-full items-center gap-4 ${wide ? 'justify-between' : 'justify-center'}`}
+        >
+          <p className="whitespace-nowrap font-receipt uppercase text-[#fde7d4]" aria-hidden>
+            <span
+              className={`tracking-[0.1em] ${wide ? 'text-[24px]' : 'text-[19px]'} text-[#fdba74]`}
+            >
+              {String(Math.min(active, count - 1) + 1).padStart(2, '0')}
+            </span>
+            <span className={`tracking-[0.1em] ${wide ? 'text-[24px]' : 'text-[19px]'}`}>
+              {' '}
+              / {String(count).padStart(2, '0')}
+            </span>
+            {wide && active < count ? null : (
+              <span className="ml-3 text-[13px] tracking-[0.18em] text-[#e0b4c6]">
+                {activeLabel}
+              </span>
+            )}
+          </p>
+          {wide ? (
+            <ol aria-label="Folds" className="flex items-center gap-1">
+              {artifacts.map((artifact, index) => (
+                <li key={artifact.id}>
+                  <button
+                    type="button"
+                    className="accordion-crumb"
+                    aria-current={opened && index === active ? 'step' : undefined}
+                    title={`Go to the ${artifact.label.toLowerCase()} fold`}
+                    onClick={() => {
+                      if (!opened) setOpen(true);
+                      goTo(index);
+                    }}
+                  >
+                    {artifact.label}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : null}
+        </div>
         <div role="group" aria-label="Fold controls" className="flex items-center gap-1.5 sm:gap-2">
           <FoldButton
             label="Previous fold"

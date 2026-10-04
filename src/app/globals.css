@@ -1803,6 +1803,35 @@ html.is-landscape .xso-dock {
   opacity: 0.35;
 }
 
+/* Fold names beside the counter; the one in focus is lit and underlined. */
+.accordion-crumb {
+  min-height: 36px;
+  border-radius: 999px;
+  padding: 0 12px;
+  color: rgba(224, 180, 198, 0.7);
+  font-family: var(--font-courier-prime), monospace;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-underline-offset: 6px;
+  transition: color 0.2s ease;
+}
+
+.accordion-crumb:hover {
+  color: #fde7d4;
+}
+
+.accordion-crumb[aria-current] {
+  color: #fdba74;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+.accordion-crumb:focus-visible {
+  outline: 2px solid rgba(253, 186, 116, 0.8);
+  outline-offset: 1px;
+}
+
 /* Movie Box: a warm 8mm home-movie projector in a dark plum room. */
 .moviebox {
   padding: 18px 14px 14px;
