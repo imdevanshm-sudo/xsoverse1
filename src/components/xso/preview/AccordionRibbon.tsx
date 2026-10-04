@@ -34,6 +34,14 @@ import { PolaroidThumb } from '@/components/xso/PolaroidThumb';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
 import { useProgress } from '@/components/xso/stage/useProgress';
+import { track } from '@/lib/analytics';
+import {
+  DEFAULT_CURRENCY,
+  RECIPIENT_OFFER,
+  TIERS,
+  formatPrice,
+  recipientOfferPrice,
+} from '@/lib/pricing';
 
 const RIBBON_HEIGHT = {
   hero: 'memory-deck',
@@ -153,7 +161,15 @@ interface RibbonProps {
   onFinish?: () => void;
   /** Keeps the letter folded in its bundle, e.g. while the parcel is still opening over it. */
   held?: boolean;
+  /** A received gift: once the letter has been read, a last fold offers to make one back. */
+  cta?: boolean;
 }
+
+/** How long the finished letter is left alone before the last fold appears beneath it. */
+const END_DELAY = 1800;
+const END_LABEL = 'Your turn';
+
+type FoldId = Artifact['id'] | 'end';
 
 export const AccordionRibbon = memo(function AccordionRibbon(props: RibbonProps) {
   const { data, focusIndex } = props;
@@ -184,11 +200,26 @@ const Ribbon = memo(function Ribbon({
   size = 'hero',
   focusIndex,
   held = false,
+  cta = false,
   artifacts,
 }: RibbonProps & { artifacts: Artifact[] }) {
   const onChange = useProgress(artifacts.length, report, onFinish);
+  /** The sender's folds; the "your turn" fold, once it's added, sits after them. */
   const count = artifacts.length;
-  const last = count - 1;
+  const [read, setRead] = useState(false);
+  const [ending, setEnding] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const panels = count + (ending ? 1 : 0);
+  const last = panels - 1;
+  /** Motion transforms subscribe once, so they read the current length from here. */
+  const geometry = useRef({ panels, last });
+  geometry.current = { panels, last };
+  const markRead = useCallback(() => setRead(true), []);
+  useEffect(() => {
+    if (!cta || !read || dismissed) return;
+    const id = window.setTimeout(() => setEnding(true), END_DELAY);
+    return () => window.clearTimeout(id);
+  }, [cta, read, dismissed]);
   const reduce = Boolean(useReducedMotion());
   const coarse = useCoarsePointer();
   /** On storefront phones the page owns vertical swipes; everywhere else the ribbon scrolls itself. */
@@ -228,7 +259,9 @@ const Ribbon = memo(function Ribbon({
     halfStage.set(box.h / 2);
     height.set(panelH);
   }, [stepValue, halfStage, height, step, box.h, panelH]);
-  const target = useTransform([scrollY, stepValue], ([y, s]: number[]) => clamp(y / s, 0, last));
+  const target = useTransform([scrollY, stepValue], ([y, s]: number[]) =>
+    clamp(y / s, 0, geometry.current.last),
+  );
   const travel = useSpring(target, reduce ? SNAPPY : TRAVEL);
   const crease = useSpring(target, reduce ? SNAPPY : CREASE);
 
@@ -240,15 +273,19 @@ const Ribbon = memo(function Ribbon({
   const stretchTarget = useMotionValue(0);
   const stretch = useSpring(stretchTarget, reduce ? SNAPPY : TENSION);
 
-  const fold = useTransform([travel, crease, shut, height, stretch], ([t, c, s, h, st]: number[]) =>
-    foldRibbon(
-      t,
-      c,
-      artifacts.map((_, i) => panelShut(s, i, last, closing.current)),
-      Math.abs(st),
-      count,
-      h,
-    ),
+  const fold = useTransform(
+    [travel, crease, shut, height, stretch],
+    ([t, c, s, h, st]: number[]) => {
+      const { panels: n, last: end } = geometry.current;
+      return foldRibbon(
+        t,
+        c,
+        Array.from({ length: n }, (_, i) => panelShut(s, i, end, closing.current)),
+        Math.abs(st),
+        n,
+        h,
+      );
+    },
   );
 
   /** Pulled past either end, the sheet stretches from the edge being held. */
@@ -271,13 +308,14 @@ const Ribbon = memo(function Ribbon({
     setActive(next);
     playMechanicalCue('click');
     if (!reduce) playFoley('flip', 0.35);
-    onChange?.(next, artifacts[next].label);
+    if (next < count) onChange?.(next, artifacts[next].label);
   });
 
   const folded = useRef(reduce ? 0 : count);
   useMotionValueEvent(shut, 'change', (value) => {
     let n = 0;
-    for (let i = 0; i < count; i += 1) if (panelShut(value, i, last, closing.current) > 0.5) n += 1;
+    for (let i = 0; i < panels; i += 1)
+      if (panelShut(value, i, last, closing.current) > 0.5) n += 1;
     if (n === folded.current) return;
     folded.current = n;
     if (!reduce) playFoley('tap', 0.22);
@@ -409,6 +447,15 @@ const Ribbon = memo(function Ribbon({
     else if (index !== active) goTo(index);
     else if (coarse) goTo(active === last ? 0 : active + 1);
   };
+  const keepLooking = useCallback(() => {
+    setDismissed(true);
+    setEnding(false);
+    goToRef.current(count - 1);
+  }, [count]);
+  const activeLabel = active < count ? artifacts[active].label : END_LABEL;
+  const label =
+    active < count ? `panel ${active + 1} of ${count}: ${activeLabel}` : `last fold: ${END_LABEL}`;
+
   const selectRef = useRef(select);
   selectRef.current = select;
   /** Stable identity, so the memoised panels skip re-rendering when `active` ticks over. */
@@ -486,14 +533,14 @@ const Ribbon = memo(function Ribbon({
           if (!opened) setOpen(true);
           goTo(keys[event.key]);
         }}
-        aria-label={`Accordion letter, panel ${active + 1} of ${count}. ${
+        aria-label={`Accordion letter, ${label}. ${
           coarse ? 'Swipe or tap a fold to unfold it.' : 'Scroll, drag or use arrow keys to unfold.'
         }`}
       >
         <div className="relative" style={{ height: box.h + last * step }}>
-          {artifacts.map((artifact, index) => (
+          {Array.from({ length: panels }, (_, index) => (
             <span
-              key={artifact.id}
+              key={index}
               aria-hidden
               className="accordion-snap"
               style={{ top: index * step, height: box.h }}
@@ -530,9 +577,23 @@ const Ribbon = memo(function Ribbon({
                     wide={wide}
                     data={data}
                     reading={artifact.id === 'letter' && opened && !held && active === index}
+                    onRead={artifact.id === 'letter' ? markRead : undefined}
                     onSelect={selectPanel}
                   />
                 ))}
+                {ending ? (
+                  <RibbonPanel
+                    key="end"
+                    id="end"
+                    index={count}
+                    fold={fold}
+                    height={panelH}
+                    wide={wide}
+                    data={data}
+                    onDismiss={keepLooking}
+                    onSelect={selectPanel}
+                  />
+                ) : null}
               </motion.div>
             </motion.div>
           </div>
@@ -541,8 +602,9 @@ const Ribbon = memo(function Ribbon({
 
       <div className="relative z-10 -mt-3 flex w-full items-center justify-between gap-3">
         <p className="w-24 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#e0b4c6]">
-          {String(active + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
-          <span className="block truncate text-[#9a6a7e]">{artifacts[active].label}</span>
+          {String(Math.min(active, count - 1) + 1).padStart(2, '0')} /{' '}
+          {String(count).padStart(2, '0')}
+          <span className="block truncate text-[#9a6a7e]">{activeLabel}</span>
         </p>
         <PullTab
           opened={opened}
@@ -585,9 +647,7 @@ const Ribbon = memo(function Ribbon({
         </p>
       ) : null}
       <p className="sr-only" aria-live="polite">
-        {opened
-          ? `Panel ${active + 1} of ${count}: ${artifacts[active].label}`
-          : 'Ribbon folded shut'}
+        {opened ? label : 'Ribbon folded shut'}
       </p>
     </section>
   );
@@ -614,9 +674,10 @@ const RibbonPanel = memo(function RibbonPanel({
   data,
   reading,
   onRead,
+  onDismiss,
   onSelect,
 }: {
-  id: Artifact['id'];
+  id: FoldId;
   index: number;
   fold: MotionValue<Fold>;
   height: number;
@@ -624,6 +685,7 @@ const RibbonPanel = memo(function RibbonPanel({
   data: XsoData;
   reading?: boolean;
   onRead?: () => void;
+  onDismiss?: () => void;
   onSelect: (index: number) => void;
 }) {
   const y = useTransform(fold, (f) => f.ys[index]);
@@ -656,14 +718,18 @@ const RibbonPanel = memo(function RibbonPanel({
       onClick={() => onSelect(index)}
     >
       <div className={`accordion-panel__face ${wide ? 'accordion-panel__face--wide' : ''}`}>
-        <PanelFace
-          data={data}
-          id={id}
-          index={index}
-          wide={wide}
-          reading={reading}
-          onRead={onRead}
-        />
+        {id === 'end' ? (
+          <EndFace wide={wide} onDismiss={onDismiss} />
+        ) : (
+          <PanelFace
+            data={data}
+            id={id}
+            index={index}
+            wide={wide}
+            reading={reading}
+            onRead={onRead}
+          />
+        )}
       </div>
       <span aria-hidden className="accordion-panel__grain" />
       {index > 0 ? (
@@ -1172,6 +1238,64 @@ const LetterBody = memo(function LetterBody({
           {signoff}
         </span>
       </p>
+    </div>
+  );
+});
+
+/**
+ * The last fold of a received gift, added under the letter once it has been read: never over it.
+ * It carries the gift-back price while that offer is live, and "Keep looking" folds it away.
+ */
+const EndFace = memo(function EndFace({
+  wide,
+  onDismiss,
+}: {
+  wide: boolean;
+  onDismiss?: () => void;
+}) {
+  const t = wide ? TYPE.wide : TYPE.narrow;
+  const offer = recipientOfferPrice();
+  const full = formatPrice(TIERS.full.prices[DEFAULT_CURRENCY]);
+  return (
+    <div className="flex h-full flex-col items-center justify-center text-center">
+      <p className={`font-receipt uppercase opacity-60 ${t.label}`}>The end · {END_LABEL}</p>
+      <p
+        className={`mt-3 max-w-[16ch] font-serif font-semibold leading-tight ${
+          wide ? 'text-[34px]' : 'text-[24px]'
+        }`}
+      >
+        Someone you love deserves one too.
+      </p>
+      <p className={`mt-2 font-hand leading-tight text-[#b4234a] ${t.hand}`}>
+        Make them a keepsake of their own.
+      </p>
+      <a
+        href={`/?ref=${RECIPIENT_OFFER.ref}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          track('make_one_back', { source: 'accordion_end' });
+        }}
+        className={`matte-cta mt-5 flex w-full max-w-[340px] flex-col items-center justify-center rounded-full px-6 font-serif font-semibold leading-tight shadow-[0_14px_40px_rgba(236,72,153,.3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b4234a] ${
+          wide ? 'min-h-[4rem] text-[22px]' : 'min-h-[3.5rem] text-[19px]'
+        }`}
+      >
+        Make one back
+        {offer ? (
+          <span className="mt-0.5 font-receipt text-[12px] font-normal uppercase tracking-[0.16em] opacity-90">
+            Yours for {offer} <s className="opacity-70">{full}</s>
+          </span>
+        ) : null}
+      </a>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDismiss?.();
+        }}
+        className="mt-2 min-h-11 px-4 font-receipt text-[13px] uppercase tracking-[0.18em] text-[#3a2530]/70 transition-colors hover:text-[#3a2530] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4234a]/60"
+      >
+        Keep looking
+      </button>
     </div>
   );
 });
