@@ -1609,6 +1609,14 @@ html.is-landscape .xso-dock {
   padding: 18px 18px 14px;
 }
 
+.accordion-panel__face--wide {
+  padding: 26px 34px 22px;
+}
+
+.recipient-stage .accordion-panel__face--wide .xso-receipt {
+  font-size: 16px;
+}
+
 .accordion-panel__grain,
 .accordion-panel__light,
 .accordion-panel__crease,

@@ -372,12 +372,8 @@ const Souvenir = memo(function Souvenir({
       );
     case 'accordion':
       return (
-        <div className="stage-surface flex h-full justify-center overflow-hidden bg-[#180e15] px-4 pb-16 pt-6">
-          <FitStage width={420} height={680}>
-            <div className="flex h-full w-full justify-center">
-              <AccordionRibbon data={data} size="fill" held={held} onFinish={onFinish} />
-            </div>
-          </FitStage>
+        <div className="stage-surface flex h-full justify-center overflow-hidden bg-[#180e15] px-2 pb-3 pt-14 md:px-6 md:pb-5 md:pt-16">
+          <AccordionRibbon data={data} size="fill" held={held} onFinish={onFinish} />
         </div>
       );
     case 'moviebox':

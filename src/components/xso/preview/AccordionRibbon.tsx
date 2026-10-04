@@ -205,8 +205,13 @@ const Ribbon = memo(function Ribbon({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  const panelW = Math.min(box.w - 24, 360);
-  const panelH = clamp(Math.round(box.h * 0.56), 190, 320);
+  /** Recipients get a reading column: full-bleed on phones, up to 680px wide on desktop. */
+  const fill = size === 'fill';
+  const panelW = fill ? Math.min(box.w - 16, 680) : Math.min(box.w - 24, 360);
+  const wide = panelW >= 520;
+  const panelH = fill
+    ? clamp(Math.round(Math.min(box.h * 0.62, panelW * (wide ? 0.8 : 1.15))), 240, 520)
+    : clamp(Math.round(box.h * 0.56), 190, 320);
   const step = Math.round(panelH * SCROLL_PER_FOLD);
 
   const [active, setActive] = useState(0);
@@ -410,7 +415,9 @@ const Ribbon = memo(function Ribbon({
 
   return (
     <section
-      className={`relative isolate flex w-full max-w-[400px] flex-col items-center ${size === 'fill' ? 'h-full' : ''}`}
+      className={`relative isolate flex w-full flex-col items-center ${
+        fill ? 'h-full max-w-[720px]' : 'max-w-[400px]'
+      }`}
       aria-label="Accordion letter"
       aria-roledescription="folding ribbon"
     >
@@ -515,9 +522,11 @@ const Ribbon = memo(function Ribbon({
                 {artifacts.map((artifact, index) => (
                   <RibbonPanel
                     key={artifact.id}
+                    id={artifact.id}
                     index={index}
                     fold={fold}
                     height={panelH}
+                    wide={wide}
                     data={data}
                     onSelect={selectPanel}
                   />
@@ -595,15 +604,19 @@ const Aura = memo(function Aura({ open }: { open: MotionValue<number> }) {
 });
 
 const RibbonPanel = memo(function RibbonPanel({
+  id,
   index,
   fold,
   height,
+  wide,
   data,
   onSelect,
 }: {
+  id: Artifact['id'];
   index: number;
   fold: MotionValue<Fold>;
   height: number;
+  wide: boolean;
   data: XsoData;
   onSelect: (index: number) => void;
 }) {
@@ -636,8 +649,8 @@ const RibbonPanel = memo(function RibbonPanel({
       }}
       onClick={() => onSelect(index)}
     >
-      <div className="accordion-panel__face">
-        <PanelFace data={data} index={index} />
+      <div className={`accordion-panel__face ${wide ? 'accordion-panel__face--wide' : ''}`}>
+        <PanelFace data={data} id={id} index={index} wide={wide} />
       </div>
       <span aria-hidden className="accordion-panel__grain" />
       {index > 0 ? (
@@ -725,17 +738,74 @@ const PullTab = memo(function PullTab({
   );
 });
 
-const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; index: number }) {
+/** Two type scales: the phone-sized ribbon, and the desktop reading column. */
+const TYPE = {
+  narrow: {
+    label: 'text-[10px] tracking-[0.22em]',
+    title: 'text-lg',
+    body: 'text-[12px]',
+    total: 'text-sm',
+    hand: 'text-[18px]',
+    audit: 'text-[11px]',
+    bar: 'h-1.5',
+    stamp: 'text-[10px] px-2 py-0.5',
+    dear: 'text-2xl',
+    letter: 'text-[19px]',
+    signoff: 'text-xl',
+    rows: 5,
+  },
+  wide: {
+    label: 'text-[13px] tracking-[0.24em]',
+    title: 'text-[30px]',
+    body: 'text-[16px]',
+    total: 'text-lg',
+    hand: 'text-[24px]',
+    audit: 'text-[14px]',
+    bar: 'h-2.5',
+    stamp: 'text-[15px] px-3 py-1',
+    dear: 'text-[34px]',
+    letter: 'text-[22px]',
+    signoff: 'text-[28px]',
+    rows: 8,
+  },
+};
+
+const FOLD_NAMES: Record<Artifact['id'], string> = {
+  receipt: 'the receipt',
+  audit: 'the audit',
+  photos: 'the faces',
+  letter: 'the note',
+};
+
+const PanelFace = memo(function PanelFace({
+  data,
+  id,
+  index,
+  wide,
+}: {
+  data: XsoData;
+  id: Artifact['id'];
+  index: number;
+  wide: boolean;
+}) {
   const scope = useId();
-  if (index === 0) {
+  const t = wide ? TYPE.wide : TYPE.narrow;
+  const label = (
+    <p className={`font-receipt uppercase opacity-60 ${t.label}`}>
+      Fold {String(index + 1).padStart(2, '0')} · {FOLD_NAMES[id]}
+    </p>
+  );
+  if (id === 'receipt') {
     return (
-      <div className="xso-receipt flex h-full flex-col font-receipt text-[11px] leading-snug">
-        <p className="text-[9px] uppercase tracking-[0.24em] opacity-60">Fold 01 · the receipt</p>
-        <p className="mt-1.5 font-serif text-lg font-semibold leading-tight">{data.merchantName}</p>
-        <p className="text-[9px] uppercase tracking-[0.16em] opacity-60">{data.timestamp}</p>
+      <div className={`xso-receipt flex h-full flex-col font-receipt leading-snug ${t.body}`}>
+        {label}
+        <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
+          {data.merchantName}
+        </p>
+        <p className={`uppercase opacity-60 ${t.label}`}>{data.timestamp}</p>
         <div className="my-2 border-t border-dashed border-current/40" />
-        <div className="min-h-0 flex-1 space-y-0.5 overflow-hidden">
-          {data.lineItems.slice(0, 5).map((item) => (
+        <div className={`min-h-0 flex-1 overflow-hidden ${wide ? 'space-y-1' : 'space-y-0.5'}`}>
+          {data.lineItems.slice(0, t.rows).map((item) => (
             <p key={item.id} className="flex justify-between gap-3">
               <span className="truncate">
                 {item.qty} {item.description}
@@ -744,35 +814,39 @@ const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; inde
             </p>
           ))}
         </div>
-        <p className="mt-2 flex justify-between border-t border-dashed border-current/40 pt-1.5 text-sm font-bold">
+        <p
+          className={`mt-2 flex justify-between border-t border-dashed border-current/40 pt-1.5 font-bold ${t.total}`}
+        >
           <span>Total</span>
           <span>{data.total}</span>
         </p>
         {data.accordion?.sentiment ? (
-          <p className="mt-1 truncate text-right font-hand text-[17px] leading-none text-[#b4234a]">
+          <p className={`mt-1 truncate text-right font-hand leading-none text-[#b4234a] ${t.hand}`}>
             {data.accordion.sentiment}
           </p>
         ) : null}
       </div>
     );
   }
-  if (index === 1) {
+  if (id === 'audit') {
     return (
       <div className="flex h-full flex-col">
-        <p className="font-receipt text-[9px] uppercase tracking-[0.24em] opacity-60">
-          Fold 02 · the audit
-        </p>
-        <p className="mt-1.5 font-serif text-lg font-semibold leading-tight">
+        {label}
+        <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
           {overallStars(data.auditMetrics).toFixed(1)} / 5 stars
         </p>
-        <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-hidden">
+        <div
+          className={`mt-2 min-h-0 flex-1 overflow-hidden ${wide ? 'space-y-2.5' : 'space-y-1.5'}`}
+        >
           {Object.entries(data.auditMetrics).map(([key, score]) => (
             <div key={key}>
-              <p className="flex justify-between gap-2 font-receipt text-[9px] uppercase tracking-[0.14em]">
+              <p
+                className={`flex justify-between gap-2 font-receipt uppercase tracking-[0.14em] ${t.audit}`}
+              >
                 <span className="truncate">{auditLabel(data, key as keyof AuditMetrics)}</span>
                 <strong>{score}</strong>
               </p>
-              <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-[#2d1b22]/10">
+              <div className={`mt-0.5 overflow-hidden rounded-full bg-[#2d1b22]/10 ${t.bar}`}>
                 <div
                   className="h-full origin-left rounded-full bg-gradient-to-r from-[#ec4899] to-[#fb923c]"
                   style={{ transform: `scaleX(${score / 100})` }}
@@ -781,19 +855,19 @@ const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; inde
             </div>
           ))}
         </div>
-        <p className="mt-2 self-end -rotate-6 rounded border-2 border-[#b4234a]/70 px-2 py-0.5 font-receipt text-[9px] font-bold uppercase tracking-[0.18em] text-[#b4234a]/80">
+        <p
+          className={`mt-2 self-end -rotate-6 rounded border-2 border-[#b4234a]/70 font-receipt font-bold uppercase tracking-[0.18em] text-[#b4234a]/80 ${t.stamp}`}
+        >
           {data.certifiedStampText}
         </p>
       </div>
     );
   }
-  if (index === 2) {
+  if (id === 'photos') {
     const photos = data.photos.slice(0, 3);
     return (
       <div className="flex h-full flex-col">
-        <p className="font-receipt text-[9px] uppercase tracking-[0.24em] opacity-60">
-          Fold 03 · the faces
-        </p>
+        {label}
         <div className="mt-2 grid min-h-0 flex-1 grid-cols-3 items-center gap-2">
           {[0, 1, 2].map((slot) => (
             <div
@@ -829,16 +903,16 @@ const PanelFace = memo(function PanelFace({ data, index }: { data: XsoData; inde
   }
   return (
     <div className="flex h-full flex-col">
-      <p className="font-receipt text-[9px] uppercase tracking-[0.24em] opacity-60">
-        Fold 04 · the note
-      </p>
-      <p className="mt-1.5 font-hand text-2xl leading-none text-[#3a2530]">
+      {label}
+      <p className={`mt-1.5 font-hand leading-none text-[#3a2530] ${t.dear}`}>
         Dear {data.customerName},
       </p>
-      <p className="accordion-letter mt-2 min-h-0 flex-1 overflow-hidden font-hand text-[19px] leading-[1.15] text-[#3a2530]">
+      <p
+        className={`accordion-letter mt-2 min-h-0 flex-1 overflow-hidden font-hand leading-[1.15] text-[#3a2530] ${t.letter}`}
+      >
         {data.birthdayMessage}
       </p>
-      <p className="mt-1 self-end font-hand text-xl leading-none text-[#b4234a]">
+      <p className={`mt-1 self-end font-hand leading-none text-[#b4234a] ${t.signoff}`}>
         — {data.billerName}
       </p>
     </div>
