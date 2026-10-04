@@ -22,7 +22,7 @@ import {
   type MotionValue,
   type PanInfo,
 } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Hand } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Hand, RotateCw } from 'lucide-react';
 import { LOOP_CARDS, type XsoData } from '@/types/xso';
 import { playFoley } from '@/lib/foley';
 import { playSfx, preloadSfx } from '@/lib/sfx';
@@ -136,6 +136,8 @@ const Deck = memo(function Deck({
   const entrances = useRef<Record<number, () => void>>({});
   /** The swipe hint stays until the first move through the deck. */
   const [moved, setMoved] = useState(false);
+  /** Goes up each time the pile comes back round to the first card. */
+  const [round, setRound] = useState(1);
   /** Receipt and letter render bare so the deck card itself is the paper. */
   const faces = useMemo<Record<SlotId, ReactNode>>(
     () => ({
@@ -179,8 +181,8 @@ const Deck = memo(function Deck({
     setOrder((current) => [current[0], end, ...current.slice(1)]);
   }, [cta, offered, flying, order, count, end]);
 
-  const latest = useRef({ order, flying, slots, onChange, reduce });
-  latest.current = { order, flying, slots, onChange, reduce };
+  const latest = useRef({ order, flying, slots, onChange, reduce, count });
+  latest.current = { order, flying, slots, onChange, reduce, count };
 
   const launch = useCallback((index: number) => {
     const { order: current, flying: inAir } = latest.current;
@@ -198,13 +200,18 @@ const Deck = memo(function Deck({
       slots: cards,
       onChange: notify,
       reduce: still,
+      count: total,
     } = latest.current;
     if (inAir !== index) return;
-    if (!still) playFoley('land', 0.7);
     setMoved(true);
     /** The end card is offered once: flicked away, it leaves the pile and the loop carries on. */
     const rest = current.filter((i) => i !== index);
     const next = cards[index].id === 'end' ? rest : [...rest, index];
+    const wrapped = next[0] === 0 && (index === total - 1 || cards[index].id === 'end');
+    if (wrapped) {
+      playFoley('shuffle', 0.6);
+      setRound((r) => r + 1);
+    } else if (!still) playFoley('land', 0.7);
     setOrder(next);
     setFlying(null);
     if (cards[next[0]].id !== 'end') notify?.(next[0], cards[next[0]].label);
@@ -219,6 +226,18 @@ const Deck = memo(function Deck({
   }, []);
 
   const next = useCallback(() => throws.current[latest.current.order[0]]?.(), []);
+  /** Back to the first card: a waiting end card steps aside and the top card is flicked away. */
+  const restart = useCallback(() => {
+    const { order: current, flying: inAir } = latest.current;
+    if (inAir !== null) return;
+    const top = current[0];
+    if (top !== end && current.includes(end)) {
+      const trimmed = current.filter((i) => i !== end);
+      latest.current.order = trimmed;
+      setOrder(trimmed);
+    }
+    throws.current[top]?.();
+  }, [end]);
   /** The card at the back of the pile comes back on top, from the left. */
   const back = useCallback(() => {
     const { order: current, flying: inAir, slots: cards, onChange: notify } = latest.current;
@@ -316,7 +335,12 @@ const Deck = memo(function Deck({
             />
           );
         })}
-        {chrome ? null : <SwipeHint shown={!moved} reduce={reduce} />}
+        {chrome ? null : (
+          <>
+            <SwipeHint shown={!moved} reduce={reduce} />
+            <LoopCue round={round} reduce={reduce} />
+          </>
+        )}
       </motion.div>
 
       {chrome ? null : (
@@ -328,6 +352,11 @@ const Deck = memo(function Deck({
             top={topIndex === end ? null : topIndex}
             onBack={back}
             onNext={next}
+            onRestart={
+              topIndex === end || (topIndex === count - 1 && !order.includes(end))
+                ? restart
+                : undefined
+            }
           />
         </>
       )}
@@ -673,12 +702,15 @@ const DeckProgress = memo(function DeckProgress({
   top,
   onBack,
   onNext,
+  onRestart,
 }: {
   count: number;
   /** The sender's card on top, or null on the closing card. */
   top: number | null;
   onBack: () => void;
   onNext: () => void;
+  /** Set on the last page: the forward control becomes "Start over". */
+  onRestart?: () => void;
 }) {
   const step =
     'grid h-11 w-11 place-items-center rounded-full text-[#fde7d4]/70 transition-colors hover:text-[#fde7d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]/70 md:hidden';
@@ -706,9 +738,57 @@ const DeckProgress = memo(function DeckProgress({
           </>
         )}
       </p>
-      <button type="button" onClick={onNext} aria-label="Next card" className={step}>
-        <ChevronRight className="h-6 w-6" aria-hidden />
-      </button>
+      {onRestart ? (
+        <button
+          type="button"
+          onClick={onRestart}
+          className="inline-flex h-11 items-center gap-2 rounded-full border border-[#fdba74]/40 px-4 font-receipt text-[13px] uppercase tracking-[0.16em] text-[#ffe7cf] transition-colors hover:border-[#fdba74]/70 hover:bg-[#fdba74]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]/70"
+        >
+          <RotateCw className="h-4 w-4" aria-hidden />
+          Start over
+        </button>
+      ) : (
+        <button type="button" onClick={onNext} aria-label="Next card" className={step}>
+          <ChevronRight className="h-6 w-6" aria-hidden />
+        </button>
+      )}
     </div>
+  );
+});
+
+/** Shown each time the pile comes back round: the loop, made visible. */
+const LoopCue = memo(function LoopCue({ round, reduce }: { round: number; reduce: boolean }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (round < 2) return;
+    setShown(true);
+    const timer = window.setTimeout(() => setShown(false), 2400);
+    return () => window.clearTimeout(timer);
+  }, [round]);
+  return (
+    <AnimatePresence>
+      {shown ? (
+        <motion.p
+          key={round}
+          role="status"
+          className="pointer-events-none absolute inset-x-0 -top-1 z-50 mx-auto flex w-max items-center gap-2 rounded-full bg-[#1b0f15]/85 px-4 py-2 font-receipt text-[13px] uppercase tracking-[0.18em] text-[#fde7d4] shadow-[0_10px_30px_rgba(0,0,0,.45)] backdrop-blur-sm"
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.5 } }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+        >
+          <motion.span
+            aria-hidden
+            className="inline-flex text-[#fdba74]"
+            initial={{ rotate: 0 }}
+            animate={reduce ? undefined : { rotate: 360 }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <RotateCw className="h-4 w-4" />
+          </motion.span>
+          Round {round} · on repeat
+        </motion.p>
+      ) : null}
+    </AnimatePresence>
   );
 });
