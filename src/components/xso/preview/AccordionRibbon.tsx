@@ -34,14 +34,7 @@ import { PolaroidThumb } from '@/components/xso/PolaroidThumb';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
 import { useProgress } from '@/components/xso/stage/useProgress';
-import { track } from '@/lib/analytics';
-import {
-  DEFAULT_CURRENCY,
-  RECIPIENT_OFFER,
-  TIERS,
-  formatPrice,
-  recipientOfferPrice,
-} from '@/lib/pricing';
+import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
 
 const RIBBON_HEIGHT = {
   hero: 'memory-deck',
@@ -165,7 +158,7 @@ interface RibbonProps {
 
 /** How long the finished letter is left alone before the last fold appears beneath it. */
 const END_DELAY = 1800;
-const END_LABEL = 'Your turn';
+const END_LABEL = YOUR_TURN;
 
 type FoldId = Artifact['id'] | 'end';
 
@@ -747,7 +740,7 @@ const RibbonPanel = memo(function RibbonPanel({
     >
       <div className={`accordion-panel__face ${wide ? 'accordion-panel__face--wide' : ''}`}>
         {id === 'end' ? (
-          <EndFace wide={wide} onDismiss={onDismiss} />
+          <YourTurn source="accordion_end" large={wide} onDismiss={onDismiss} />
         ) : (
           <PanelFace
             data={data}
@@ -1251,64 +1244,6 @@ const LetterBody = memo(function LetterBody({
           {signoff}
         </span>
       </p>
-    </div>
-  );
-});
-
-/**
- * The last fold of a received gift, added under the letter once it has been read: never over it.
- * It carries the gift-back price while that offer is live, and "Keep looking" folds it away.
- */
-const EndFace = memo(function EndFace({
-  wide,
-  onDismiss,
-}: {
-  wide: boolean;
-  onDismiss?: () => void;
-}) {
-  const t = wide ? TYPE.wide : TYPE.narrow;
-  const offer = recipientOfferPrice();
-  const full = formatPrice(TIERS.full.prices[DEFAULT_CURRENCY]);
-  return (
-    <div className="flex h-full flex-col items-center justify-center text-center">
-      <p className={`font-receipt uppercase opacity-60 ${t.label}`}>The end · {END_LABEL}</p>
-      <p
-        className={`mt-3 max-w-[16ch] font-serif font-semibold leading-tight ${
-          wide ? 'text-[34px]' : 'text-[24px]'
-        }`}
-      >
-        Someone you love deserves one too.
-      </p>
-      <p className={`mt-2 font-hand leading-tight text-[#b4234a] ${t.hand}`}>
-        Make them a keepsake of their own.
-      </p>
-      <a
-        href={`/?ref=${RECIPIENT_OFFER.ref}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          track('make_one_back', { source: 'accordion_end' });
-        }}
-        className={`matte-cta mt-5 flex w-full max-w-[340px] flex-col items-center justify-center rounded-full px-6 font-serif font-semibold leading-tight shadow-[0_14px_40px_rgba(236,72,153,.3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b4234a] ${
-          wide ? 'min-h-[4rem] text-[22px]' : 'min-h-[3.5rem] text-[19px]'
-        }`}
-      >
-        Make one back
-        {offer ? (
-          <span className="mt-0.5 font-receipt text-[12px] font-normal uppercase tracking-[0.16em] opacity-90">
-            Yours for {offer} <s className="opacity-70">{full}</s>
-          </span>
-        ) : null}
-      </a>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onDismiss?.();
-        }}
-        className="mt-2 min-h-11 px-4 font-receipt text-[13px] uppercase tracking-[0.18em] text-[#3a2530]/70 transition-colors hover:text-[#3a2530] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4234a]/60"
-      >
-        Keep looking
-      </button>
     </div>
   );
 });

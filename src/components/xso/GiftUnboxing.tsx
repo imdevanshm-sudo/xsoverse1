@@ -47,6 +47,9 @@ const HINTS: Partial<Record<GiftStyle, string>> = {
   accordion: 'Scroll to unfold it',
 };
 
+/** Formats that end on their own "Your turn" page rather than the slide-up sheet. */
+const OWN_ENDING: GiftStyle[] = ['accordion', 'loop'];
+
 async function fetchContents(giftId: string): Promise<XsoData> {
   const response = await fetch(`/api/gifts/${encodeURIComponent(giftId)}/open`, {
     method: 'POST',
@@ -154,8 +157,8 @@ export function GiftUnboxing({
             {!wrapGone || framed || contents.giftStyle === 'moviebox' ? null : (
               <>
                 <SoundToggle labeled={contents.giftStyle === 'accordion'} />
-                {/* The Accordion offers this as its own last fold, below the letter. */}
-                <MakeOneBack ended={finished && contents.giftStyle !== 'accordion'} />
+                {/* The Accordion and the Loop offer this as their own last page, after the letter. */}
+                <MakeOneBack ended={finished && !OWN_ENDING.includes(contents.giftStyle)} />
               </>
             )}
           </motion.div>
@@ -388,7 +391,7 @@ const Souvenir = memo(function Souvenir({
         <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
           <FitStage {...CARD_DESIGN}>
             <div className={CARD_STAGE}>
-              <MemoryDeck data={data} size="fill" onFinish={onFinish} />
+              <MemoryDeck data={data} size="fill" cta={cta} onFinish={onFinish} />
             </div>
           </FitStage>
         </div>

@@ -29,6 +29,7 @@ import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
 import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
 import { useProgress } from '@/components/xso/stage/useProgress';
+import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
 
 const TILT_MAX = 6;
 /** Release past this distance, or this fast, and the card is flicked off the pile. */
@@ -54,12 +55,16 @@ const restAt = (depth: number) => REST[Math.min(depth, REST.length - 1)];
 const DIM = [0, 0.12, 0.22, 0.3];
 const SHADOW = [1, 0.8, 0.65, 0.5];
 
+/** The sender's cards, plus the recipient's closing "Your turn" card. */
+type SlotId = Artifact['id'] | 'end';
+
 type Material = { surface: string; sheen: number };
-const MATERIALS: Record<Artifact['id'], Material> = {
+const MATERIALS: Record<SlotId, Material> = {
   receipt: { surface: 'mat-receipt', sheen: 0.3 },
   audit: { surface: 'mat-cardstock', sheen: 0.35 },
   photos: { surface: 'mat-photo', sheen: 0.9 },
   letter: { surface: 'mat-letter', sheen: 0.14 },
+  end: { surface: 'mat-letter', sheen: 0.14 },
 };
 
 interface DeckProps {
@@ -72,6 +77,11 @@ interface DeckProps {
   onChange?: (index: number, label: string) => void;
   /** Fires once every card has been on top, so the viewer can offer what comes next. */
   onFinish?: () => void;
+  /**
+   * A received gift: once the last card reaches the top, a "Your turn" card slips in beneath it,
+   * so Make one back comes next instead of covering anything.
+   */
+  cta?: boolean;
 }
 
 export const MemoryDeck = memo(function MemoryDeck(props: DeckProps) {
@@ -105,21 +115,32 @@ const Deck = memo(function Deck({
   onFinish,
   size = 'hero',
   focusIndex,
+  cta = false,
 }: DeckProps & { artifacts: Artifact[] }) {
   const onChange = useProgress(artifacts.length, report, onFinish);
+  const count = artifacts.length;
+  /** The end card's slot; it only joins the pile once, after the last card. */
+  const end = count;
+  const slots = useMemo<{ id: SlotId; label: string }[]>(
+    () => [...artifacts, ...(cta ? [{ id: 'end' as const, label: YOUR_TURN }] : [])],
+    [artifacts, cta],
+  );
+  /** Each card's own throw, so the Loop button flicks whichever card is on top. */
+  const throws = useRef<Record<number, () => void>>({});
   /** Receipt and letter render bare so the deck card itself is the paper. */
-  const faces = useMemo<Record<Artifact['id'], ReactNode>>(
+  const faces = useMemo<Record<SlotId, ReactNode>>(
     () => ({
       receipt: <Side1Receipt data={data} bare />,
       audit: artifacts.find((a) => a.id === 'audit')?.content,
       photos: artifacts.find((a) => a.id === 'photos')?.content,
       letter: <Side4BirthdayCard data={data} bare />,
+      end: <YourTurn source="loop_end" onDismiss={() => throws.current[end]?.()} />,
     }),
-    [artifacts, data],
+    [artifacts, data, end],
   );
-  const count = artifacts.length;
-  /** Every card stays mounted for the life of the deck; only its depth in the pile changes. */
+  /** Every card stays mounted while it's in the pile; only its depth changes. */
   const [order, setOrder] = useState(() => artifacts.map((_, i) => i));
+  const [offered, setOffered] = useState(false);
   /** The card currently in the air; the rest have already stepped up beneath it. */
   const [flying, setFlying] = useState<number | null>(null);
   const reduce = Boolean(useReducedMotion());
@@ -143,8 +164,14 @@ const Deck = memo(function Deck({
     });
   }, [focusIndex]);
 
-  const latest = useRef({ order, flying, artifacts, onChange, reduce });
-  latest.current = { order, flying, artifacts, onChange, reduce };
+  useEffect(() => {
+    if (!cta || offered || flying !== null || order[0] !== count - 1) return;
+    setOffered(true);
+    setOrder((current) => [current[0], end, ...current.slice(1)]);
+  }, [cta, offered, flying, order, count, end]);
+
+  const latest = useRef({ order, flying, slots, onChange, reduce });
+  latest.current = { order, flying, slots, onChange, reduce };
 
   const launch = useCallback((index: number) => {
     const { order: current, flying: inAir } = latest.current;
@@ -159,22 +186,23 @@ const Deck = memo(function Deck({
     const {
       order: current,
       flying: inAir,
-      artifacts: cards,
+      slots: cards,
       onChange: notify,
       reduce: still,
     } = latest.current;
     if (inAir !== index) return;
     if (!still) playFoley('land', 0.7);
-    const next = [...current.filter((i) => i !== index), index];
+    /** The end card is offered once: flicked away, it leaves the pile and the loop carries on. */
+    const rest = current.filter((i) => i !== index);
+    const next = cards[index].id === 'end' ? rest : [...rest, index];
     setOrder(next);
     setFlying(null);
-    notify?.(next[0], cards[next[0]].label);
+    if (cards[next[0]].id !== 'end') notify?.(next[0], cards[next[0]].label);
   }, []);
 
   const topIndex = order[0];
   const nextIndex = order[1] ?? order[0];
-  /** Each card's own throw, so the Loop button flicks whichever card is on top. */
-  const throws = useRef<Record<number, () => void>>({});
+  const pile = order.length;
   const register = useCallback((index: number, fly: () => void) => {
     throws.current[index] = fly;
   }, []);
@@ -207,21 +235,23 @@ const Deck = memo(function Deck({
         }}
         onPointerLeave={settle}
       >
-        {artifacts.map((artifact, index) => {
+        {slots.map((slot, index) => {
           const depth = order.indexOf(index);
           const inAir = flying === index;
+          if (depth < 0 && !inAir) return null;
           /** While the top card is in the air, everything under it has already moved up one. */
           const shown = inAir ? 0 : flying !== null ? depth - 1 : depth;
           /** Contents live only on the top card, the one under it and the one gliding in behind. */
-          const near = shown <= 1 || depth === count - 1;
+          const near = shown <= 1 || depth === pile - 1;
           return (
             <DeckCard
-              key={artifact.id}
+              key={slot.id}
               index={index}
-              artifact={artifact}
-              face={near ? faces[artifact.id] : null}
+              id={slot.id}
+              label={slot.label}
+              face={near ? faces[slot.id] : null}
               depth={shown}
-              zIndex={inAir ? count + 1 : count - depth}
+              zIndex={inAir ? pile + 1 : pile - depth}
               active={shown === 0 && flying === null}
               inAir={inAir}
               reduce={reduce}
@@ -253,7 +283,7 @@ const Deck = memo(function Deck({
             whileTap={reduce ? undefined : { scale: 0.97, y: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
             className="paper-button inline-flex touch-manipulation items-center gap-2"
-            aria-label={`Loop memory — next up: ${artifacts[nextIndex].label}`}
+            aria-label={`Loop memory — next up: ${slots[nextIndex].label}`}
           >
             <span aria-hidden className="text-sm leading-none">
               ↻
@@ -263,7 +293,9 @@ const Deck = memo(function Deck({
         </div>
       ) : null}
       <p className="sr-only" aria-live="polite">
-        Memory {topIndex + 1} of {count}: {artifacts[topIndex].label}
+        {topIndex === end
+          ? YOUR_TURN
+          : `Memory ${topIndex + 1} of ${count}: ${slots[topIndex].label}`}
       </p>
     </section>
   );
@@ -271,7 +303,8 @@ const Deck = memo(function Deck({
 
 const DeckCard = memo(function DeckCard({
   index,
-  artifact,
+  id,
+  label,
   face,
   depth,
   zIndex,
@@ -285,7 +318,8 @@ const DeckCard = memo(function DeckCard({
   onRegister,
 }: {
   index: number;
-  artifact: Artifact;
+  id: SlotId;
+  label: string;
   face: ReactNode;
   depth: number;
   zIndex: number;
@@ -299,7 +333,7 @@ const DeckCard = memo(function DeckCard({
   onLand: (index: number) => void;
   onRegister: (index: number, fly: () => void) => void;
 }) {
-  const material = MATERIALS[artifact.id];
+  const material = MATERIALS[id];
   const number = index + 1;
   /** Hand offset: follows the finger while held, carries the flight, springs home under the pile. */
   const x = useMotionValue(0);
@@ -438,7 +472,7 @@ const DeckCard = memo(function DeckCard({
       >
         <motion.div
           aria-hidden
-          className={`deck-shadow ${artifact.id === 'receipt' ? 'deck-shadow--receipt' : ''}`}
+          className={`deck-shadow ${id === 'receipt' ? 'deck-shadow--receipt' : ''}`}
           initial={false}
           animate={
             inAir
@@ -449,7 +483,7 @@ const DeckCard = memo(function DeckCard({
         />
 
         <div className={`deck-card ${material.surface} ${active ? 'cursor-grab' : ''}`}>
-          {chrome && artifact.id === 'receipt' ? <ReceiptTelemetry number={number} /> : null}
+          {chrome && id === 'receipt' ? <ReceiptTelemetry number={number} /> : null}
 
           <div ref={body} className="deck-card__body">
             {face}
@@ -458,16 +492,14 @@ const DeckCard = memo(function DeckCard({
           {chrome ? (
             <div className="deck-card__footer">
               <span className="truncate">
-                No. {String(number).padStart(2, '0')} · {artifact.label}
+                No. {String(number).padStart(2, '0')} · {label}
               </span>
               {active ? <span className="shrink-0 text-[#ec4899]">Flick · tap</span> : null}
             </div>
           ) : null}
 
-          {artifact.id === 'letter' ? <span aria-hidden className="deck-card__creases" /> : null}
-          {artifact.id === 'receipt' ? (
-            <span aria-hidden className="deck-card__thermal-fade" />
-          ) : null}
+          {id === 'letter' ? <span aria-hidden className="deck-card__creases" /> : null}
+          {id === 'receipt' ? <span aria-hidden className="deck-card__thermal-fade" /> : null}
           <span aria-hidden className="deck-card__light" />
           {reduce ? null : (
             <motion.span
