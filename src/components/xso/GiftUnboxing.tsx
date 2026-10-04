@@ -426,7 +426,7 @@ const GiftWrap = memo(function GiftWrap({
         aria-hidden
       />
       <motion.div
-        className={`absolute inset-x-0 top-1/2 h-7 -translate-y-1/2 ${
+        className={`absolute inset-x-0 top-[17%] h-7 -translate-y-1/2 ${
           matte
             ? 'bg-gradient-to-b from-[#681329] via-[#c53a52] to-[#5b1023]'
             : 'bg-[repeating-linear-gradient(0deg,#765432_0_2px,#b58a58_2px_4px,#7b5937_4px_6px)]'
@@ -438,7 +438,7 @@ const GiftWrap = memo(function GiftWrap({
       <TwineBow matte={matte} />
 
       <motion.div
-        className="absolute left-1/2 top-1/2 w-[min(84%,360px)] -translate-x-1/2 -translate-y-1/2"
+        className="absolute left-1/2 top-1/2 z-20 w-[min(84%,360px)] -translate-x-1/2 -translate-y-1/2"
         exit={{ y: 120, rotate: 9, opacity: 0, scale: 0.85 }}
         transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
       >
@@ -553,7 +553,7 @@ const CraftFibers = memo(function CraftFibers() {
 const TwineBow = memo(function TwineBow({ matte }: { matte: boolean }) {
   return (
     <motion.div
-      className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-16 w-24 -translate-x-1/2 -translate-y-1/2"
+      className="pointer-events-none absolute left-1/2 top-[17%] z-10 h-16 w-24 -translate-x-1/2 -translate-y-1/2"
       exit={{ scale: 1.7, opacity: 0, rotate: 18 }}
       transition={{ duration: 0.55 }}
       aria-hidden
@@ -633,7 +633,8 @@ function playPaperUnwrap() {
     gain.connect(context.destination);
     source.start(now);
     source.stop(now + duration);
-    source.addEventListener('ended', () => void context.close());
+    // Closing the context re-fires `ended`, which would close it twice.
+    source.addEventListener('ended', () => void context.close(), { once: true });
   } catch {
     // Sound is progressive enhancement.
   }

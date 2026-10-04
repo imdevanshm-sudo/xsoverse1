@@ -16,11 +16,13 @@ import { DeskDock } from '@/components/desk/DeskDock';
 import { FlowProgress } from '@/components/desk/FlowProgress';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { getCartridge } from '@/lib/cartridges';
+import { selectedCards } from '@/lib/formatCards';
 import { formatPrice } from '@/lib/pricing';
 import { useDraftQuote } from '@/lib/pricingClient';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
-const MEMORY_COUNT = 4;
+/** The scrapbook reports its four memory groups; every stack reports each card it deals. */
+const SCRAPBOOK_MEMORIES = 4;
 
 const STAGE_HINT: Record<GiftStyle, string> = {
   loop: 'Tap the stack · let it come back around',
@@ -72,6 +74,10 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
     setMemory((m) => ({ current: index, seen: m.seen | (1 << index), label }));
   }, []);
   const explored = countBits(memory.seen);
+  const memoryCount =
+    lockedStyle === 'scrapbook'
+      ? SCRAPBOOK_MEMORIES
+      : selectedCards(previewData, lockedStyle).length;
   const [receiver, setReceiver] = useState(false);
   const closeReceiver = useCallback(() => setReceiver(false), []);
   const openCustomizer = useCustomizerModal((s) => s.open);
@@ -126,12 +132,12 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
       <DeskDock>
         <FlowProgress
           step={1}
-          fill={explored / MEMORY_COUNT}
-          done={explored >= MEMORY_COUNT}
+          fill={explored / memoryCount}
+          done={explored >= memoryCount}
           meta={
             <>
               <span className="font-bold text-[#fdf2f8]">
-                {memory.current + 1}/{MEMORY_COUNT}
+                {memory.current + 1}/{memoryCount}
               </span>
               memories
             </>
