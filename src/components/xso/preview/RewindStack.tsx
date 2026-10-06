@@ -28,6 +28,7 @@ import {
 } from '@/components/xso/viewers/shared';
 import { useProgress } from '@/components/xso/stage/useProgress';
 import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
+import { DeckProgress, SideZone, SwipeHint } from '@/components/xso/stage/DeckControls';
 
 /** Pointer travel needed to let go of a memory; the card itself only gives ~⅓ of that. */
 const PULL_DISTANCE = 90;
@@ -58,18 +59,34 @@ const SETTLE = { ...SOFT_SPRING, opacity: CINEMATIC };
 
 type Direction = 1 | -1;
 
+interface Move {
+  direction: Direction;
+  /** Going back a card: it returns from the left, where it left, and the back one fades out. */
+  back: boolean;
+  tilt?: number;
+}
+
+const OUT_OF_SIGHT = { y: BACK.y - 14, scale: BACK.scale - 0.04, opacity: 0 };
+
 /** The memory in focus drifts up and off to one side as it lets go. */
 const SHEET: Variants = {
-  exit: (direction: Direction) => ({
-    x: direction * 170,
-    y: -80,
-    rotate: direction * 11,
-    scale: 0.97,
-    opacity: 0,
-    zIndex: 30,
-    pointerEvents: 'none',
-    transition: CINEMATIC,
-  }),
+  enter: ({ back, tilt = 0 }: Move) =>
+    back
+      ? { x: -170, y: -80, rotate: -11, scale: 0.97, opacity: 0 }
+      : { ...OUT_OF_SIGHT, rotate: tilt },
+  exit: ({ direction, back }: Move) =>
+    back
+      ? { ...OUT_OF_SIGHT, transition: CINEMATIC }
+      : {
+          x: direction * 170,
+          y: -80,
+          rotate: direction * 11,
+          scale: 0.97,
+          opacity: 0,
+          zIndex: 30,
+          pointerEvents: 'none',
+          transition: CINEMATIC,
+        },
 };
 
 interface Pile {
@@ -78,6 +95,7 @@ interface Pile {
   passes: number[];
   turn: number;
   direction: Direction;
+  back: boolean;
 }
 
 type Sheet = Omit<Artifact, 'id'> & { id: Artifact['id'] | 'liner' | 'end' };
@@ -183,7 +201,10 @@ const Stack = memo(function Stack({
     passes: sheets.map(() => 0),
     turn: 0,
     direction: -1,
+    back: false,
   }));
+  /** The swipe hint stays until the first move through the pile. */
+  const [moved, setMoved] = useState(false);
   const reduce = Boolean(useReducedMotion());
   /** The recipient sees only the tape and the pile: no buttons, counters, tags or hints. */
   const chrome = size !== 'fill';
@@ -192,6 +213,7 @@ const Stack = memo(function Stack({
   const music = useMixtape(data.rewind);
   /** Recipients choose sound or silence before the first card; nothing plays until they tap. */
   const [opened, setOpened] = useState(chrome);
+  const waiting = music.available && !opened;
 
   useEffect(() => {
     if (focusIndex === undefined) return;
@@ -209,7 +231,8 @@ const Stack = memo(function Stack({
     () => sheets.map((a) => ({ id: a.id, title: TRACK_TITLES[a.id] ?? a.label })),
     [sheets],
   );
-  const { order, passes, turn, direction } = pile;
+  const { order, passes, turn, direction, back: wentBack } = pile;
+  const move: Move = { direction, back: wentBack };
   const front = order[0];
   const next = order[1] ?? front;
 
@@ -245,14 +268,56 @@ const Stack = memo(function Stack({
           passes: bumped,
           turn: current.turn + 1,
           direction: towards,
+          back: false,
         };
       });
+      setMoved(true);
       const shown = orderRef.current[0];
       if (shown !== end) onChange?.(shown, sheets[shown].label);
     },
     [sheets, end, reduce, onChange],
   );
   dismiss.current = rewind;
+
+  /** The memory at the back of the pile comes back on top. */
+  const back = useCallback(() => {
+    const current = orderRef.current;
+    if (current.length < 2) return;
+    const last = current[current.length - 1];
+    orderRef.current = [last, ...current.slice(0, -1)];
+    playMechanicalCue('click');
+    if (!reduce) playFoley('land', 0.55);
+    setPile((pile) => {
+      const returning = pile.order[pile.order.length - 1];
+      const bumped = [...pile.passes];
+      bumped[returning] += 1;
+      return {
+        order: [returning, ...pile.order.slice(0, -1)],
+        passes: bumped,
+        turn: pile.turn + 1,
+        direction: -1,
+        back: true,
+      };
+    });
+    setMoved(true);
+    if (last !== end) onChange?.(last, sheets[last].label);
+  }, [sheets, end, reduce, onChange]);
+
+  useEffect(() => {
+    if (chrome || waiting) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      const { target } = event;
+      if (target instanceof Element && target.closest('input, textarea, select, [contenteditable]'))
+        return;
+      if (event.key === 'ArrowRight') rewind();
+      else if (event.key === 'ArrowLeft') back();
+      else return;
+      event.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [chrome, waiting, rewind, back]);
 
   return (
     <section
@@ -282,7 +347,7 @@ const Stack = memo(function Stack({
       />
 
       <div className={`relative w-full ${DECK_HEIGHT[size]}`}>
-        {music.available && !opened ? (
+        {waiting ? (
           <TapeOpener
             voice={music.voice}
             from={data.billerName}
@@ -293,7 +358,7 @@ const Stack = memo(function Stack({
             onSkip={() => setOpened(true)}
           />
         ) : null}
-        <AnimatePresence initial={false} custom={direction}>
+        <AnimatePresence initial={false} custom={move}>
           {order.slice(0, DEPTH.length).map((index, depth) => {
             const artifact = sheets[index];
             const pose = DEPTH[depth];
@@ -301,7 +366,7 @@ const Stack = memo(function Stack({
             return (
               <motion.div
                 key={`${artifact.id}:${passes[index]}`}
-                custom={direction}
+                custom={{ ...move, tilt: tilts[index] }}
                 variants={SHEET}
                 className={`gpu-layer absolute inset-x-1 bottom-7 top-14 max-md:[@media(max-height:700px)]:top-11 ${isFront ? '' : 'pointer-events-none'}`}
                 style={{
@@ -309,12 +374,7 @@ const Stack = memo(function Stack({
                   transformOrigin: '50% 0%',
                   willChange: 'transform, opacity',
                 }}
-                initial={{
-                  y: BACK.y - 14,
-                  scale: BACK.scale - 0.04,
-                  opacity: 0,
-                  rotate: tilts[index],
-                }}
+                initial={reduce ? { ...OUT_OF_SIGHT, rotate: tilts[index] } : 'enter'}
                 animate={{
                   y: pose.y,
                   scale: pose.scale,
@@ -337,7 +397,26 @@ const Stack = memo(function Stack({
             );
           })}
         </AnimatePresence>
+        {chrome || waiting ? null : <SwipeHint shown={!moved} reduce={reduce} />}
       </div>
+
+      {chrome ? null : (
+        <>
+          <SideZone side="left" onClick={back} />
+          <SideZone side="right" onClick={() => rewind()} />
+          <DeckProgress
+            count={count}
+            top={front === end ? null : front}
+            onBack={back}
+            onNext={() => rewind()}
+            onRestart={
+              front === end || (front === count - 1 && offered && !order.includes(end))
+                ? () => rewind()
+                : undefined
+            }
+          />
+        </>
+      )}
 
       {chrome ? (
         <div className="mt-4 flex w-full items-center justify-between gap-4">
