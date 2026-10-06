@@ -1502,7 +1502,7 @@ html.is-landscape .xso-dock {
   color: #9a6b7b;
 }
 
-/* Rewind: warm cream sheets with fine paper tooth, lit from a sunset behind. */
+/* Rewind: warm cream sheets with fine paper tooth, taped up in a cassette-amber glow. */
 .rewind-card {
   position: relative;
   display: flex;
@@ -1511,13 +1511,13 @@ html.is-landscape .xso-dock {
   flex-direction: column;
   overflow: hidden;
   border-radius: 14px;
-  background: #fffaf8;
+  background: #fdf6ec;
   color: var(--paper-ink);
-  border: 1px solid rgba(236, 72, 153, 0.12);
+  border: 1px solid rgba(180, 83, 9, 0.16);
   box-shadow:
-    0 1px 2px rgba(45, 15, 28, 0.25),
-    0 18px 36px -14px rgba(45, 10, 30, 0.6),
-    0 0 44px -16px rgba(251, 146, 60, 0.4);
+    0 1px 2px rgba(40, 20, 8, 0.28),
+    0 18px 36px -14px rgba(30, 14, 6, 0.65),
+    0 0 44px -16px rgba(245, 158, 11, 0.42);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
@@ -2496,9 +2496,9 @@ html.is-landscape .xso-dock {
   pointer-events: none;
   will-change: opacity;
   box-shadow:
-    0 30px 60px -18px rgba(45, 10, 30, 0.6),
-    0 14px 50px -12px rgba(236, 72, 153, 0.28),
-    0 0 70px -16px rgba(251, 146, 60, 0.3);
+    0 30px 60px -18px rgba(30, 14, 6, 0.6),
+    0 14px 50px -12px rgba(234, 88, 12, 0.26),
+    0 0 70px -16px rgba(245, 158, 11, 0.32);
 }
 
 .rewind-card__body {
@@ -2514,7 +2514,43 @@ html.is-landscape .xso-dock {
 
 .rewind-card .deck-card__footer {
   z-index: 1;
-  background: rgba(253, 240, 232, 0.9);
+  background: rgba(252, 238, 220, 0.9);
+}
+
+/* A strip of amber masking tape holding each sheet, torn at both ends. */
+.rewind-card__tape {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  z-index: 3;
+  width: 76px;
+  height: 20px;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0 2px, transparent 2px 5px),
+    linear-gradient(180deg, rgba(253, 211, 140, 0.82), rgba(234, 170, 80, 0.78));
+  box-shadow: 0 1px 2px rgba(40, 20, 8, 0.25);
+  clip-path: polygon(
+    0 12%, 4% 0, 8% 10%, 12% 0, 100% 0, 96% 14%, 100% 30%, 96% 48%, 100% 66%, 96% 84%, 100% 100%,
+    10% 100%, 6% 88%, 2% 100%, 0 82%, 4% 64%, 0 46%, 4% 28%
+  );
+}
+
+/* The Rewind's room: a warm dark deck with the faint scan lines of magnetic tape. */
+.rewind-stage {
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 214, 170, 0.025) 0 1px, transparent 1px 4px),
+    radial-gradient(ellipse 70% 55% at 50% 40%, rgba(120, 53, 15, 0.28), transparent 72%),
+    linear-gradient(180deg, #1d120d 0%, #160d0a 60%, #110907 100%);
+}
+
+/* A loose loop of tape ribbon spilling out behind the pile. */
+.rewind-ribbon {
+  position: absolute;
+  inset: 8% -18% 4%;
+  z-index: -5;
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 .rewind-card__glow,
@@ -2528,8 +2564,8 @@ html.is-landscape .xso-dock {
 
 .rewind-card__glow {
   background:
-    radial-gradient(ellipse 90% 55% at 50% -8%, rgba(251, 207, 232, 0.35), transparent 62%),
-    linear-gradient(0deg, rgba(253, 186, 116, 0.1), transparent 38%);
+    radial-gradient(ellipse 90% 55% at 50% -8%, rgba(254, 215, 170, 0.32), transparent 62%),
+    linear-gradient(0deg, rgba(253, 186, 116, 0.12), transparent 38%);
 }
 
 .rewind-card__grain {

@@ -327,6 +327,7 @@ const Stack = memo(function Stack({
       aria-roledescription="card stack"
     >
       <Backlight pulsing={!reduce && visible} turn={reduce ? 0 : turn} />
+      <TapeRibbon />
 
       <TapePlayer
         tape={tapeOf(data)}
@@ -557,8 +558,8 @@ const LinerNotes = memo(function LinerNotes({
 });
 
 /**
- * Room light falling on the desk: a slow resting heartbeat in the CTA's
- * pinks and ambers, with a brief warm swell each time a memory changes hands.
+ * Room light falling on the desk: a slow resting heartbeat in cassette ambers
+ * and oranges, with a brief warm swell each time a memory changes hands.
  */
 const Backlight = memo(function Backlight({ pulsing, turn }: { pulsing: boolean; turn: number }) {
   return (
@@ -567,14 +568,14 @@ const Backlight = memo(function Backlight({ pulsing, turn }: { pulsing: boolean;
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 55% 50% at 50% 42%, rgba(251,207,232,0.18), transparent 70%)',
+            'radial-gradient(ellipse 55% 50% at 50% 42%, rgba(254,215,170,0.16), transparent 70%)',
         }}
       />
       <motion.div
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 48% 42% at 50% 38%, rgba(236,72,153,0.30), transparent 68%), radial-gradient(ellipse 40% 34% at 34% 64%, rgba(251,146,60,0.26), transparent 70%), radial-gradient(ellipse 36% 30% at 68% 60%, rgba(244,63,94,0.18), transparent 70%)',
+            'radial-gradient(ellipse 48% 42% at 50% 38%, rgba(234,88,12,0.26), transparent 68%), radial-gradient(ellipse 40% 34% at 34% 64%, rgba(245,158,11,0.24), transparent 70%), radial-gradient(ellipse 36% 30% at 68% 60%, rgba(225,29,72,0.14), transparent 70%)',
           willChange: 'transform, opacity',
         }}
         initial={false}
@@ -600,7 +601,7 @@ const Backlight = memo(function Backlight({ pulsing, turn }: { pulsing: boolean;
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 44% 38% at 50% 40%, rgba(251,146,60,0.30), rgba(236,72,153,0.16) 45%, transparent 72%)',
+              'radial-gradient(ellipse 44% 38% at 50% 40%, rgba(251,146,60,0.32), rgba(234,88,12,0.14) 45%, transparent 72%)',
             willChange: 'transform, opacity',
           }}
           initial={{ opacity: 0, scale: 0.92 }}
@@ -611,6 +612,24 @@ const Backlight = memo(function Backlight({ pulsing, turn }: { pulsing: boolean;
     </div>
   );
 });
+
+/** Brown magnetic tape unspooled behind the pile, with a thin highlight along its gloss. */
+function TapeRibbon() {
+  const path = 'M -10 330 C 60 250, 30 120, 140 110 S 300 190, 330 80 S 420 20, 440 60';
+  return (
+    <svg aria-hidden viewBox="0 0 430 420" preserveAspectRatio="none" className="rewind-ribbon">
+      <path d={path} fill="none" stroke="#3a2214" strokeWidth="16" strokeLinecap="round" />
+      <path d={path} fill="none" stroke="#5b3720" strokeWidth="10" strokeLinecap="round" />
+      <path
+        d={path}
+        fill="none"
+        stroke="rgba(255,214,170,0.22)"
+        strokeWidth="1.5"
+        transform="translate(0 -3)"
+      />
+    </svg>
+  );
+}
 
 /** Hover lift: a touch closer, with a softer, wider shadow pooling underneath. */
 const LIFTABLE: Variants = {
@@ -646,6 +665,8 @@ const RewindCard = memo(function RewindCard({
   const dragRotate = useTransform(dragX, [-60, 0, 60], [-4, 0, 4]);
   const sheet = useRef<HTMLDivElement>(null);
   const tactile = active && !reduce;
+  /** Each strip of tape lands a little crooked, the same way every time. */
+  const tape = seededOffset(String(artifact.id), number, 4);
 
   /** Memories further back stay out of reach for taps, tabbing and screen readers. */
   useEffect(() => {
@@ -706,6 +727,13 @@ const RewindCard = memo(function RewindCard({
         <span aria-hidden className="rewind-card__glow" />
         <span aria-hidden className="rewind-card__grain" />
       </div>
+      {active ? (
+        <span
+          aria-hidden
+          className="rewind-card__tape"
+          style={{ transform: `translateX(-50%) rotate(${tape}deg)` }}
+        />
+      ) : null}
     </motion.div>
   );
 });

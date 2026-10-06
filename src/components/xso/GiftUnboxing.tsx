@@ -364,7 +364,7 @@ const Souvenir = memo(function Souvenir({
   switch (data.giftStyle) {
     case 'rewind':
       return (
-        <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
+        <div className="stage-surface rewind-stage flex h-full items-center justify-center overflow-hidden px-4 py-6">
           <FitStage {...CARD_DESIGN}>
             <div className={CARD_STAGE}>
               <RewindStack data={data} size="fill" cta={cta} onFinish={onFinish} />
