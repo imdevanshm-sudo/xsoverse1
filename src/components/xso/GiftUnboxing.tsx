@@ -47,7 +47,9 @@ const HINTS: Partial<Record<GiftStyle, string>> = {
 };
 
 /** Formats that end on their own "Your turn" page rather than the slide-up sheet. */
-const OWN_ENDING: GiftStyle[] = ['accordion', 'loop'];
+const OWN_ENDING: GiftStyle[] = ['accordion', 'loop', 'rewind'];
+/** Formats with no pinned "Make one back" pill either: the offer waits for the end card. */
+const END_ONLY: GiftStyle[] = ['rewind'];
 /** Formats whose sound toggle spells out "Sound on" / "Sound off" in a larger pill. */
 const LABELED_SOUND: GiftStyle[] = ['accordion', 'loop'];
 
@@ -158,8 +160,10 @@ export function GiftUnboxing({
             {!wrapGone || framed || contents.giftStyle === 'moviebox' ? null : (
               <>
                 <SoundToggle labeled={LABELED_SOUND.includes(contents.giftStyle)} />
-                {/* The Accordion and the Loop offer this as their own last page, after the letter. */}
-                <MakeOneBack ended={finished && !OWN_ENDING.includes(contents.giftStyle)} />
+                {/* These formats offer it as their own last page, after the final card. */}
+                {END_ONLY.includes(contents.giftStyle) ? null : (
+                  <MakeOneBack ended={finished && !OWN_ENDING.includes(contents.giftStyle)} />
+                )}
               </>
             )}
           </motion.div>
@@ -364,7 +368,7 @@ const Souvenir = memo(function Souvenir({
         <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
           <FitStage {...CARD_DESIGN}>
             <div className={CARD_STAGE}>
-              <RewindStack data={data} size="fill" onFinish={onFinish} />
+              <RewindStack data={data} size="fill" cta={cta} onFinish={onFinish} />
             </div>
           </FitStage>
         </div>

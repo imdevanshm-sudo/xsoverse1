@@ -27,6 +27,7 @@ import {
   type Artifact,
 } from '@/components/xso/viewers/shared';
 import { useProgress } from '@/components/xso/stage/useProgress';
+import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
 
 /** Pointer travel needed to let go of a memory; the card itself only gives ~⅓ of that. */
 const PULL_DISTANCE = 90;
@@ -79,7 +80,7 @@ interface Pile {
   direction: Direction;
 }
 
-type Sheet = Omit<Artifact, 'id'> & { id: Artifact['id'] | 'liner' };
+type Sheet = Omit<Artifact, 'id'> & { id: Artifact['id'] | 'liner' | 'end' };
 
 interface StackProps {
   data: XsoData;
@@ -90,6 +91,8 @@ interface StackProps {
   onChange?: (index: number, label: string) => void;
   /** Fires once every card has been on top, so the viewer can offer what comes next. */
   onFinish?: () => void;
+  /** Recipients get a "Your turn" card once, right after the last memory. */
+  cta?: boolean;
 }
 
 const SHEET_ORDER: Sheet['id'][] = ['receipt', 'audit', 'photos', 'letter', 'liner'];
@@ -144,23 +147,40 @@ const Stack = memo(function Stack({
   onFinish,
   size = 'hero',
   focusIndex,
+  cta = false,
 }: StackProps & { artifacts: Sheet[] }) {
   const onChange = useProgress(artifacts.length, report, onFinish);
+  const count = artifacts.length;
+  /** The end card's slot; it only joins the pile once, after the last memory. */
+  const end = count;
+  const sheets = useMemo<Sheet[]>(
+    () =>
+      cta
+        ? [
+            ...artifacts,
+            { id: 'end', label: YOUR_TURN, rotation: 0, contentScale: 1, content: null },
+          ]
+        : artifacts,
+    [artifacts, cta],
+  );
+  const dismiss = useRef<() => void>(() => {});
   const faces = useMemo(() => {
     const out: Partial<Record<Sheet['id'], ReactNode>> = {};
     for (const a of artifacts) out[a.id] = a.content;
     out.receipt = <Side1Receipt data={data} bare />;
     out.letter = <Side4BirthdayCard data={data} bare />;
+    out.end = <YourTurn source="rewind_end" onDismiss={() => dismiss.current()} />;
     return out;
   }, [artifacts, data]);
   /** A slightly messy pile: stable, human-placed tilt per sheet (−3° … 3°). */
   const tilts = useMemo(
-    () => artifacts.map((_, i) => seededOffset(data.id || 'xso', i, 3)),
-    [artifacts, data.id],
+    () => sheets.map((_, i) => seededOffset(data.id || 'xso', i, 3)),
+    [sheets, data.id],
   );
+  const [offered, setOffered] = useState(false);
   const [pile, setPile] = useState<Pile>(() => ({
     order: artifacts.map((_, i) => i),
-    passes: artifacts.map(() => 0),
+    passes: sheets.map(() => 0),
     turn: 0,
     direction: -1,
   }));
@@ -186,12 +206,21 @@ const Stack = memo(function Stack({
   }, [focusIndex]);
 
   const tracks = useMemo(
-    () => artifacts.map((a) => ({ id: a.id, title: TRACK_TITLES[a.id] ?? a.label })),
-    [artifacts],
+    () => sheets.map((a) => ({ id: a.id, title: TRACK_TITLES[a.id] ?? a.label })),
+    [sheets],
   );
   const { order, passes, turn, direction } = pile;
   const front = order[0];
-  const next = order[1];
+  const next = order[1] ?? front;
+
+  useEffect(() => {
+    if (!cta || offered || order[0] !== count - 1) return;
+    setOffered(true);
+    setPile((current) => ({
+      ...current,
+      order: [current.order[0], end, ...current.order.slice(1)],
+    }));
+  }, [cta, offered, order, count, end]);
 
   /** Mirrors the pile synchronously so back-to-back pulls report the sheet that's really on top. */
   const orderRef = useRef(order);
@@ -203,24 +232,27 @@ const Stack = memo(function Stack({
     (towards: Direction = -1) => {
       playMechanicalCue('click');
       if (!reduce) playFoley('land', 0.55);
+      /** The end card is offered once: put away, it leaves the pile and the tape plays on. */
+      const keep = (top: number, rest: number[]) => (top === end ? rest : [...rest, top]);
       const [first, ...others] = orderRef.current;
-      orderRef.current = [...others, first];
+      orderRef.current = keep(first, others);
       setPile((current) => {
         const [top, ...rest] = current.order;
         const bumped = [...current.passes];
         bumped[top] += 1;
         return {
-          order: [...rest, top],
+          order: keep(top, rest),
           passes: bumped,
           turn: current.turn + 1,
           direction: towards,
         };
       });
       const shown = orderRef.current[0];
-      onChange?.(shown, artifacts[shown].label);
+      if (shown !== end) onChange?.(shown, sheets[shown].label);
     },
-    [artifacts, reduce, onChange],
+    [sheets, end, reduce, onChange],
   );
+  dismiss.current = rewind;
 
   return (
     <section
@@ -263,7 +295,7 @@ const Stack = memo(function Stack({
         ) : null}
         <AnimatePresence initial={false} custom={direction}>
           {order.slice(0, DEPTH.length).map((index, depth) => {
-            const artifact = artifacts[index];
+            const artifact = sheets[index];
             const pose = DEPTH[depth];
             const isFront = depth === 0;
             return (
@@ -325,7 +357,7 @@ const Stack = memo(function Stack({
             whileTap={reduce ? undefined : { scale: 0.97, y: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
             className="paper-button inline-flex touch-manipulation items-center gap-2"
-            aria-label={`Rewind — bring back: ${artifacts[next].label}`}
+            aria-label={`Rewind — bring back: ${sheets[next].label}`}
           >
             <span aria-hidden className="text-sm leading-none">
               ↺
@@ -335,7 +367,7 @@ const Stack = memo(function Stack({
         </div>
       ) : null}
       <p className="sr-only" aria-live="polite">
-        Memory {front + 1} of {artifacts.length}: {artifacts[front].label}
+        {front === end ? YOUR_TURN : `Memory ${front + 1} of ${count}: ${sheets[front].label}`}
       </p>
     </section>
   );
