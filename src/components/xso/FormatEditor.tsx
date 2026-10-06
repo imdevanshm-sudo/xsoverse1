@@ -35,7 +35,7 @@ import {
   type ToneName,
 } from '@/components/xso/editors/kit';
 import { FORMAT_CARDS, type CardId } from '@/lib/formatCards';
-import { SOUNDTRACKS } from '@/lib/soundtracks';
+import { MIXTAPE_TRACKS, SOUNDTRACKS } from '@/lib/soundtracks';
 import { SoundtrackField } from '@/components/xso/editors/SoundtrackField';
 
 export type FormatFields = Omit<XsoData, 'id' | 'giftStyle' | FormatKey> & FormatLayers;
@@ -343,13 +343,19 @@ function LoopCardFields({
   }
 }
 
-type RewindSection = 'tape' | 'audit' | 'faces' | 'review';
-const REWIND_FOCUS: Record<RewindSection, number> = { tape: 0, audit: 1, faces: 2, review: 4 };
+type RewindSection = 'tape' | 'audit' | 'faces' | 'review' | 'music';
+const REWIND_FOCUS: Partial<Record<RewindSection, number>> = {
+  tape: 0,
+  audit: 1,
+  faces: 2,
+  review: 4,
+};
 
 function RewindEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard }: EditorProps) {
   const [open, setOpen] = useOpenSet<RewindSection>(['faces']);
   const expand = (id: RewindSection) => {
-    if (!open.has(id)) onFocusCard?.(REWIND_FOCUS[id]);
+    const card = REWIND_FOCUS[id];
+    if (!open.has(id) && card !== undefined) onFocusCard?.(card);
     setOpen(id);
   };
   return (
@@ -401,6 +407,30 @@ function RewindEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard }: 
         onExpand={() => expand('review')}
       >
         <ReviewField t={t} fields={fields} onFormat={onFormat} />
+      </EditorRow>
+      <EditorRow
+        t={t}
+        label="Soundtrack"
+        detail={soundtrackLabel(fields.rewind.soundtrack, MIXTAPE_TRACKS, fields.rewind.voice)}
+        open={open.has('music')}
+        onExpand={() => setOpen('music')}
+      >
+        <SoundtrackField
+          t={t}
+          value={fields.rewind.soundtrack ?? ''}
+          tracks={MIXTAPE_TRACKS}
+          stored
+          voice={fields.rewind.voice}
+          transcript={fields.rewind.transcript}
+          onChange={(soundtrack, voice) =>
+            onFormat('rewind', {
+              soundtrack,
+              voice: Boolean(voice),
+              ...(voice ? {} : { transcript: '' }),
+            })
+          }
+          onTranscript={(transcript) => onFormat('rewind', { transcript })}
+        />
       </EditorRow>
     </ul>
   );
@@ -542,10 +572,10 @@ function MovieEditor({ t, fields, onFormat, photoSlot, onFocusCard }: EditorProp
   );
 }
 
-function soundtrackLabel(value: string | undefined) {
+function soundtrackLabel(value: string | undefined, tracks = SOUNDTRACKS, voice = false) {
   if (!value) return 'No music';
-  if (value.startsWith('data:')) return 'Your track';
-  return SOUNDTRACKS.find((track) => `track:${track.id}` === value)?.name ?? 'No music';
+  if (!value.startsWith('track:')) return voice ? 'Your voice note' : 'Your track';
+  return tracks.find((track) => `track:${track.id}` === value)?.name ?? 'No music';
 }
 
 type FieldProps = Pick<EditorProps, 't' | 'fields' | 'onFormat'>;

@@ -69,7 +69,12 @@ export const TIERS: Record<TierId, TierSpec> = {
 
 export const TIER_ORDER: TierId[] = ['single', 'full', 'moviebox'];
 
-/** Aesthetics with their own tier (and price) once they hold more than one card. */
+/**
+ * Aesthetics with their own tier (and price) once they hold more than one card.
+ * TODO(pricing): the Rewind's mixtape (soundtrack, uploads, voice notes) is priced like any other
+ * stack for now. Once its licensed tracks ship, give it a Premium tier here (with its own
+ * `TIERS` entry and Lemon Squeezy variant) instead of Full Stack.
+ */
 export const FEATURE_STYLES: readonly GiftStyle[] = ['moviebox'];
 
 /** The tier an order lands in: one card is Single, more is Full, or the aesthetic's own tier. */

@@ -12,7 +12,9 @@ import {
   type Variants,
 } from 'framer-motion';
 import type { RewindLayers, XsoData } from '@/types/xso';
+import { Play } from 'lucide-react';
 import { TRACK_TITLES, TapePlayer } from '@/components/xso/rewind/TapePlayer';
+import { useMixtape } from '@/components/xso/rewind/useMixtape';
 import { playFoley } from '@/lib/foley';
 import { CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { selectedCards, stackCards } from '@/lib/formatCards';
@@ -161,6 +163,9 @@ const Stack = memo(function Stack({
   const chrome = size !== 'fill';
   const stage = useRef<HTMLElement>(null);
   const visible = useInView(stage, { margin: '120px' });
+  const music = useMixtape(data.rewind);
+  /** Recipients choose sound or silence before the first card; nothing plays until they tap. */
+  const [opened, setOpened] = useState(chrome);
 
   useEffect(() => {
     if (focusIndex === undefined) return;
@@ -220,9 +225,36 @@ const Stack = memo(function Stack({
     >
       <Backlight pulsing={!reduce && visible} turn={reduce ? 0 : turn} />
 
-      <TapePlayer tape={tapeOf(data)} tracks={tracks} current={front} />
+      <TapePlayer
+        tape={tapeOf(data)}
+        tracks={tracks}
+        current={front}
+        playing={music.playing}
+        progress={music.progress}
+        available={music.available}
+        muted={music.muted}
+        voice={music.voice}
+        transcript={music.transcript}
+        failed={music.failed}
+        onToggle={() => {
+          setOpened(true);
+          music.toggle();
+        }}
+        onMute={music.toggleMute}
+      />
 
       <div className={`relative w-full ${DECK_HEIGHT[size]}`}>
+        {music.available && !opened ? (
+          <TapeOpener
+            voice={music.voice}
+            from={data.billerName}
+            onPlay={() => {
+              setOpened(true);
+              music.toggle();
+            }}
+            onSkip={() => setOpened(true)}
+          />
+        ) : null}
         <AnimatePresence initial={false} custom={direction}>
           {order.slice(0, DEPTH.length).map((index, depth) => {
             const artifact = artifacts[index];
@@ -302,6 +334,51 @@ const Stack = memo(function Stack({
     </section>
   );
 });
+
+function TapeOpener({
+  voice,
+  from,
+  onPlay,
+  onSkip,
+}: {
+  voice: boolean;
+  from: string;
+  onPlay: () => void;
+  onSkip: () => void;
+}) {
+  return (
+    <div
+      className="tape-opener"
+      role="dialog"
+      aria-label="Soundtrack"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onSkip();
+      }}
+    >
+      <p className="font-receipt text-[11px] uppercase tracking-[0.24em] text-[#fdba74]">
+        {voice ? 'Side A · a voice note' : 'Side A · with a soundtrack'}
+      </p>
+      <p className="max-w-[16rem] font-serif text-[24px] font-semibold leading-tight text-[#fdf2f8]">
+        {voice ? `${from || 'Someone'} recorded something for you` : 'This tape comes with music'}
+      </p>
+      <button type="button" autoFocus onClick={onPlay} className="tape-opener__button">
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-[#2a1408] text-[#fbbf24]">
+          <Play className="h-4 w-4 translate-x-[1px] fill-current" aria-hidden />
+        </span>
+        <span className="font-receipt text-[13px] font-bold uppercase tracking-[0.18em]">
+          Press play
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onSkip}
+        className="min-h-11 px-3 text-[15px] text-[#e9c9b4] underline decoration-[#e9c9b4]/40 underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+      >
+        Read in silence
+      </button>
+    </div>
+  );
+}
 
 /** Gifts from before the tape label existed still get a J-card. */
 function tapeOf(data: XsoData): RewindLayers {

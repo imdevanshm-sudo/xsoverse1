@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withPlayableAudio } from '@/lib/audioStorage';
 import { getGift } from '@/lib/giftStore';
 
 export const runtime = 'nodejs';
@@ -18,5 +19,6 @@ export async function POST(_request: Request, { params }: { params: { id: string
   if (gift.status !== 'paid') {
     return NextResponse.json({ error: 'Gift is not ready yet' }, { status: 402, headers: PRIVATE });
   }
-  return NextResponse.json({ data: gift.data }, { headers: PRIVATE });
+  const data = await withPlayableAudio(gift.data);
+  return NextResponse.json({ data }, { headers: PRIVATE });
 }

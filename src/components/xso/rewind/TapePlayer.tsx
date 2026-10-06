@@ -1,7 +1,7 @@
 'use client';
 
-import { memo } from 'react';
-import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { memo, useId, useState } from 'react';
+import { Captions, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import type { RewindLayers } from '@/types/xso';
 
 export interface TapeTrack {
@@ -36,6 +36,9 @@ export const TapePlayer = memo(function TapePlayer({
   progress = 0,
   available = false,
   muted = false,
+  voice = false,
+  transcript = '',
+  failed = false,
   onToggle,
   onMute,
 }: {
@@ -49,6 +52,11 @@ export const TapePlayer = memo(function TapePlayer({
   /** Whether this tape has a soundtrack at all. */
   available?: boolean;
   muted?: boolean;
+  /** The soundtrack is the sender's voice note. */
+  voice?: boolean;
+  transcript?: string;
+  /** The audio couldn't be loaded or played. */
+  failed?: boolean;
   onToggle?: () => void;
   onMute?: () => void;
 }) {
@@ -59,15 +67,18 @@ export const TapePlayer = memo(function TapePlayer({
   const track = tracks[current];
   const number = bonus ? 'Bonus' : `${String(current + 1).padStart(2, '0')}`;
   const Icon = playing ? Pause : Play;
+  const what = voice ? 'voice note' : 'tape';
+  const [reading, setReading] = useState(false);
+  const transcriptId = useId();
 
   return (
-    <div className="tape-player relative z-10 mb-2 w-full" role="group" aria-label="Mixtape">
+    <div className="tape-player relative z-20 mb-2 w-full" role="group" aria-label="Mixtape">
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onToggle}
           disabled={!available}
-          aria-label={available ? (playing ? 'Pause the tape' : 'Play the tape') : 'No soundtrack'}
+          aria-label={available ? `${playing ? 'Pause' : 'Play'} the ${what}` : 'No soundtrack'}
           title={available ? undefined : 'This tape has no soundtrack'}
           className="tape-player__play grid h-12 w-12 shrink-0 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fdba74] disabled:opacity-40"
         >
@@ -92,17 +103,33 @@ export const TapePlayer = memo(function TapePlayer({
           </p>
         </div>
 
-        <span aria-hidden className={`tape-player__reels ${playing ? 'is-playing' : ''}`}>
+        <span
+          aria-hidden
+          className={`tape-player__reels ${playing ? 'is-playing' : ''} ${transcript ? 'max-[399px]:hidden' : ''}`}
+        >
           <i />
           <i />
         </span>
+
+        {transcript ? (
+          <button
+            type="button"
+            onClick={() => setReading((r) => !r)}
+            aria-expanded={reading}
+            aria-controls={transcriptId}
+            aria-label="Read along"
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b45309] ${reading ? 'bg-[#7a4a2c] text-[#fbf1dc]' : 'text-[#7a4a2c] hover:bg-black/5'}`}
+          >
+            <Captions className="h-5 w-5" aria-hidden />
+          </button>
+        ) : null}
 
         {available ? (
           <button
             type="button"
             onClick={onMute}
             aria-pressed={muted}
-            aria-label={muted ? 'Unmute the tape' : 'Mute the tape'}
+            aria-label={`${muted ? 'Unmute' : 'Mute'} the ${what}`}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#7a4a2c] transition-colors hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b45309]"
           >
             {muted ? (
@@ -137,6 +164,29 @@ export const TapePlayer = memo(function TapePlayer({
       {available ? (
         <div aria-hidden className="tape-player__time">
           <i style={{ transform: `scaleX(${progress})` }} />
+        </div>
+      ) : null}
+      {failed ? (
+        <p
+          role="status"
+          className="mt-1.5 font-receipt text-[11px] tracking-[0.06em] text-[#9a3412]"
+        >
+          The {what} won&apos;t play right now. The cards still work without it.
+        </p>
+      ) : null}
+      {transcript && reading ? (
+        <div
+          id={transcriptId}
+          className="tape-player__transcript"
+          role="region"
+          aria-label="Transcript"
+        >
+          <p className="font-receipt text-[10px] uppercase tracking-[0.2em] text-[#9a6a4c]">
+            Read along
+          </p>
+          <p className="mt-1 whitespace-pre-line font-hand text-[22px] leading-[1.15] text-[#2d1b22]">
+            {transcript}
+          </p>
         </div>
       ) : null}
     </div>

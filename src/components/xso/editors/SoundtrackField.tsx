@@ -1,28 +1,53 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, Pause, Play, Upload } from 'lucide-react';
+import { Check, Loader2, Pause, Play, Upload } from 'lucide-react';
 import type { Tone } from '@/components/xso/editors/kit';
+import { VoiceRecorder } from '@/components/xso/editors/VoiceRecorder';
+import { playableAudio, uploadAudio } from '@/lib/audioUpload';
 import { readAudio } from '@/lib/media';
-import { SOUNDTRACKS, SOUNDTRACK_UPLOAD_MAX_BYTES, soundtrackSrc } from '@/lib/soundtracks';
+import { FORMAT_LIMITS } from '@/lib/formats';
+import {
+  SOUNDTRACKS,
+  SOUNDTRACK_UPLOAD_MAX_BYTES,
+  STORED_AUDIO_MAX_BYTES,
+  soundtrackSrc,
+  type Soundtrack,
+} from '@/lib/soundtracks';
 
-const MB = (SOUNDTRACK_UPLOAD_MAX_BYTES / 1_000_000).toFixed(0);
+const STORED_ACCEPT = 'audio/mpeg,audio/mp4,audio/x-m4a,audio/aac,audio/wav,audio/webm,audio/ogg';
 
-/** Pick the Movie Box score: a bundled track, the sender's own upload, or silence. */
+/**
+ * Pick a score: a bundled track, the sender's own upload, or silence. With `stored`, uploads go to
+ * private audio storage (up to 10 MB) and the sender can record a voice note with a transcript.
+ */
 export function SoundtrackField({
   t,
   value,
   onChange,
+  tracks = SOUNDTRACKS,
+  stored = false,
+  voice = false,
+  transcript = '',
+  onTranscript,
 }: {
   t: Tone;
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, voice?: boolean) => void;
+  tracks?: Soundtrack[];
+  stored?: boolean;
+  voice?: boolean;
+  transcript?: string;
+  onTranscript?: (transcript: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const preview = useRef<HTMLAudioElement | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const uploaded = value.startsWith('data:audio/');
+  const [busy, setBusy] = useState(false);
+  const own = value.startsWith('data:audio/') || value.startsWith('storage:');
+  const maxBytes = stored ? STORED_AUDIO_MAX_BYTES : SOUNDTRACK_UPLOAD_MAX_BYTES;
+  const MB = (maxBytes / 1_000_000).toFixed(0);
 
   const stopPreview = () => {
     preview.current?.pause();
@@ -31,9 +56,14 @@ export function SoundtrackField({
   };
   useEffect(() => stopPreview, []);
 
-  const togglePreview = (id: string, src: string) => {
+  const togglePreview = async (id: string, option: string, direct: string | null) => {
     if (previewing === id) return stopPreview();
     stopPreview();
+    const src = await playableAudio(option, direct);
+    if (!src) {
+      setError('That track isn’t available yet.');
+      return;
+    }
     const node = new Audio(src);
     node.volume = 0.6;
     preview.current = node;
@@ -47,31 +77,47 @@ export function SoundtrackField({
       });
   };
 
+  const save = async (clip: Blob, isVoice: boolean) => {
+    setError(null);
+    if (clip.size > maxBytes) {
+      throw new Error(`Audio must be under ${MB} MB. Try a shorter clip or a lower bitrate.`);
+    }
+    setBusy(true);
+    try {
+      stopPreview();
+      onChange(stored ? await uploadAudio(clip) : await readAudio(clip as File), isVoice);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const upload = async (file: File | undefined) => {
     if (!file) return;
-    setError(null);
-    if (file.size > SOUNDTRACK_UPLOAD_MAX_BYTES) {
-      setError(`Your track must be under ${MB} MB. Try a shorter clip or a lower bitrate.`);
-      return;
-    }
     try {
-      onChange(await readAudio(file));
+      await save(file, false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     }
   };
 
   const options = [
-    ...SOUNDTRACKS.map((track) => ({
+    ...tracks.map((track) => ({
       value: `track:${track.id}`,
       label: track.name,
       detail: track.mood,
-      src: track.src,
+      src: track.src as string | null,
     })),
-    ...(uploaded
-      ? [{ value, label: 'Your track', detail: 'Uploaded', src: soundtrackSrc(value) ?? '' }]
+    ...(own
+      ? [
+          {
+            value,
+            label: voice ? 'Your voice note' : 'Your track',
+            detail: voice ? 'Recorded' : 'Uploaded',
+            src: soundtrackSrc(value, tracks),
+          },
+        ]
       : []),
-    { value: '', label: 'No music', detail: 'Let the scenes speak', src: '' },
+    { value: '', label: 'No music', detail: 'Let the cards speak', src: null },
   ];
 
   return (
@@ -79,6 +125,7 @@ export function SoundtrackField({
       <div role="radiogroup" aria-label="Soundtrack" className="grid gap-2">
         {options.map((option) => {
           const on = option.value === value;
+          const playable = option.src || option.value.startsWith('storage:');
           return (
             <div
               key={option.label}
@@ -88,7 +135,7 @@ export function SoundtrackField({
                 type="button"
                 role="radio"
                 aria-checked={on}
-                onClick={() => onChange(option.value)}
+                onClick={() => onChange(option.value, on && voice)}
                 className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]"
               >
                 <span
@@ -106,10 +153,10 @@ export function SoundtrackField({
                   </span>
                 </span>
               </button>
-              {option.src ? (
+              {playable ? (
                 <button
                   type="button"
-                  onClick={() => togglePreview(option.label, option.src)}
+                  onClick={() => void togglePreview(option.label, option.value, option.src)}
                   aria-label={`${previewing === option.label ? 'Stop' : 'Preview'} ${option.label}`}
                   className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border focus-visible:outline focus-visible:outline-2 ${t.button}`}
                 >
@@ -127,15 +174,20 @@ export function SoundtrackField({
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-3 font-receipt text-[11px] font-bold uppercase tracking-[0.12em] focus-visible:outline focus-visible:outline-2 ${t.button}`}
+        disabled={busy}
+        className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-3 font-receipt text-[11px] font-bold uppercase tracking-[0.12em] focus-visible:outline focus-visible:outline-2 disabled:opacity-60 ${t.button}`}
       >
-        <Upload className="h-4 w-4" aria-hidden />
-        Upload your own · MP3 or M4A, up to {MB} MB
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        ) : (
+          <Upload className="h-4 w-4" aria-hidden />
+        )}
+        {busy ? 'Uploading…' : `Upload your own · MP3 or M4A, up to ${MB} MB`}
       </button>
       <input
         ref={inputRef}
         type="file"
-        accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/aac"
+        accept={stored ? STORED_ACCEPT : 'audio/mpeg,audio/mp4,audio/x-m4a,audio/aac'}
         className="sr-only"
         tabIndex={-1}
         onChange={(e) => {
@@ -143,10 +195,24 @@ export function SoundtrackField({
           e.target.value = '';
         }}
       />
+      {stored ? <VoiceRecorder t={t} onRecorded={(clip) => save(clip, true)} /> : null}
       {error ? (
         <p role="alert" className={`text-[12.5px] ${t.error}`}>
           {error}
         </p>
+      ) : null}
+      {voice && own && onTranscript ? (
+        <label className="grid gap-1.5">
+          <span className={t.field}>What you said (optional, shown as a transcript)</span>
+          <textarea
+            value={transcript}
+            maxLength={FORMAT_LIMITS.transcript}
+            rows={3}
+            onChange={(e) => onTranscript(e.target.value)}
+            placeholder="Happy birthday, you menace…"
+            className={`${t.input} resize-none`}
+          />
+        </label>
       ) : null}
     </div>
   );

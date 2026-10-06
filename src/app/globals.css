@@ -3240,6 +3240,59 @@ html.is-landscape .xso-dock {
   transition: transform 250ms linear;
 }
 
+/* Drops over the pile from under the deck, so reading along never shifts the cards. */
+.tape-player__transcript {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  max-height: min(45vh, 320px);
+  overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(180, 83, 9, 0.3);
+  background: #fbf3e4;
+  padding: 12px 14px;
+  box-shadow: 0 18px 36px -14px rgba(0, 0, 0, 0.75);
+}
+
+/* "Press play": the tape waits in the deck until the recipient asks for sound. */
+.tape-opener {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border-radius: 14px;
+  background: radial-gradient(ellipse 80% 60% at 50% 45%, rgba(42, 20, 8, 0.72), rgba(14, 7, 10, 0.9));
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  padding: 24px;
+  text-align: center;
+}
+
+.tape-opener__button {
+  display: inline-flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  padding: 0 26px 0 14px;
+  color: #2a1408;
+  box-shadow:
+    0 4px 0 #92400e,
+    0 12px 28px -8px rgba(245, 158, 11, 0.55);
+  transition: transform 120ms ease-out;
+}
+
+.tape-opener__button:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #92400e;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tape-player__reels.is-playing i {
     animation: none;

@@ -11,7 +11,7 @@ import {
   type XsoData,
 } from '@/types/xso';
 import { scrapbookDefaults } from '@/lib/scrapbook';
-import { DEFAULT_SOUNDTRACK, sanitizeSoundtrack } from '@/lib/soundtracks';
+import { DEFAULT_SOUNDTRACK, MIXTAPE_TRACKS, sanitizeSoundtrack } from '@/lib/soundtracks';
 
 export const AUDIT_KEYS = ['chaos', 'loyalty', 'snacking', 'advice', 'support'] as const;
 export const AUDIT_LABEL_MAX = 20;
@@ -52,6 +52,7 @@ export const FORMAT_LIMITS = {
   sideB: 30,
   tapeDate: 20,
   review: 400,
+  transcript: 600,
   sentiment: 80,
   sceneTitle: 40,
   sceneCaption: 140,
@@ -150,6 +151,7 @@ export function sanitizeFormat(style: GiftStyle, data: XsoData): Partial<XsoData
         tapeDate: clip(r.tapeDate, FORMAT_LIMITS.tapeDate),
         review: clip(r.review, FORMAT_LIMITS.review),
         ...stackCardsField(r.cards, REWIND_CARDS),
+        ...rewindAudio(r),
       },
     };
   }
@@ -188,6 +190,15 @@ export function sanitizeFormat(style: GiftStyle, data: XsoData): Partial<XsoData
 }
 
 const REWIND_CARDS = [...LOOP_CARDS, 'liner'] as const;
+
+/** The mixtape's sound: a bundled track or a file from our audio storage, never a raw URL. */
+function rewindAudio(r: Record<string, unknown>): Partial<RewindLayers> {
+  const soundtrack = sanitizeSoundtrack(r.soundtrack, { tracks: MIXTAPE_TRACKS, stored: true });
+  if (!soundtrack) return {};
+  const voice = r.voice === true && !soundtrack.startsWith('track:');
+  const transcript = voice ? clip(r.transcript, FORMAT_LIMITS.transcript).trim() : '';
+  return { soundtrack, ...(voice ? { voice } : {}), ...(transcript ? { transcript } : {}) };
+}
 /** Minimum cards for any stack format; mirrors `MIN_CARDS` in formatCards. */
 const MIN_STACK_CARDS = 2;
 

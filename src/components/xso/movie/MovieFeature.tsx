@@ -12,7 +12,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { soundtrackSrc } from '@/lib/soundtracks';
-import { useSoundtrack } from '@/components/xso/movie/useSoundtrack';
+import { useSoundtrack } from '@/components/xso/stage/useSoundtrack';
 import type { MovieLayers, XsoData } from '@/types/xso';
 import { useStage } from '@/components/xso/movie/useStage';
 import { OpeningSlate } from '@/components/xso/movie/OpeningSlate';

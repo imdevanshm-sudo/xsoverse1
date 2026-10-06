@@ -59,6 +59,14 @@ export interface RewindLayers {
   review: string;
   /** Absent on older gifts, which show every card. */
   cards?: RewindCard[];
+  /** `track:<id>`, a stored upload or voice note (`storage:…`), an inline clip, or '' for silence. */
+  soundtrack?: string;
+  /** The soundtrack is the sender's own voice note rather than music. */
+  voice?: boolean;
+  /** What the voice note says, for anyone who can't or would rather not listen. */
+  transcript?: string;
+  /** Signed, expiring URL for a stored soundtrack: added when the gift is opened, never saved. */
+  soundtrackUrl?: string;
 }
 
 /** Accordion: the handwritten line under the bill's total. */
