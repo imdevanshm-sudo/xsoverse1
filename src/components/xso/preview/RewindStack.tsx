@@ -13,7 +13,7 @@ import {
 } from 'framer-motion';
 import type { RewindLayers, XsoData } from '@/types/xso';
 import { Play } from 'lucide-react';
-import { TRACK_TITLES, TapePlayer } from '@/components/xso/rewind/TapePlayer';
+import { TRACK_TITLES, TapePlayer, sideOf } from '@/components/xso/rewind/TapePlayer';
 import { useMixtape } from '@/components/xso/rewind/useMixtape';
 import { playFoley } from '@/lib/foley';
 import { CINEMATIC, SOFT_SPRING } from '@/lib/motion';
@@ -110,7 +110,13 @@ export const RewindStack = memo(function RewindStack(props: StackProps) {
               label: 'Liner notes',
               rotation: 0,
               contentScale: 1,
-              content: <LinerNotes data={data} review={review} />,
+              content: (
+                <LinerNotes
+                  data={data}
+                  review={review}
+                  tracks={[...base.map((a) => TRACK_TITLES[a.id] ?? a.label), TRACK_TITLES.liner]}
+                />
+              ),
             },
           ]
         : base,
@@ -387,19 +393,52 @@ function tapeOf(data: XsoData): RewindLayers {
   );
 }
 
-const LinerNotes = memo(function LinerNotes({ data, review }: { data: XsoData; review: string }) {
+/** The J-card insert: the track list by side, then the sender's review in their own hand. */
+const LinerNotes = memo(function LinerNotes({
+  data,
+  review,
+  tracks,
+}: {
+  data: XsoData;
+  review: string;
+  tracks: string[];
+}) {
+  const tape = tapeOf(data);
+  const numbered = tracks.map((title, i) => {
+    const side = sideOf(i, tracks.length);
+    const first = tracks.findIndex((_, n) => sideOf(n, tracks.length) === side);
+    return { title, side, label: `${side}${i - first + 1}` };
+  });
   return (
-    <article className="flex h-full flex-col bg-[#fbf6ee] px-5 py-5 text-[#2d1b22]">
-      <p className="font-receipt text-[9px] uppercase tracking-[0.24em] text-[#9a6a7e]">
-        Liner notes · director&apos;s cut
-      </p>
-      <p className="mt-1 font-serif text-[20px] font-semibold leading-tight">
-        {data.rewind?.sideA || 'The review'}
-      </p>
-      <p className="mt-3 min-h-0 flex-1 overflow-hidden whitespace-pre-line font-hand text-[21px] leading-[1.15] text-[#3a2530]">
+    <article className="liner-notes">
+      <header className="border-b-2 border-[#2d1b22] pb-3">
+        <p className="liner-notes__kicker font-receipt uppercase tracking-[0.24em] text-[#9a4a2a]">
+          Liner notes{tape.tapeDate ? ` · ${tape.tapeDate}` : ''}
+        </p>
+        <h3 className="liner-notes__title mt-1 font-serif font-semibold leading-tight">
+          {tape.sideA || 'The review'}
+        </h3>
+        {tape.sideB ? (
+          <p className="liner-notes__text mt-0.5 font-serif italic leading-snug text-[#6b4a3a]">
+            b/w {tape.sideB}
+          </p>
+        ) : null}
+      </header>
+      <ol className="liner-notes__tracks" aria-label="Track list">
+        {numbered.map(({ title, side, label }, i) => (
+          <li
+            key={label}
+            className={i > 0 && side !== numbered[i - 1].side ? 'liner-notes__side-b' : ''}
+          >
+            <span className="font-receipt text-[#b45309]">{label}</span>
+            <span>{title}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="liner-notes__hand mt-4 whitespace-pre-line font-hand leading-[1.25] text-[#3a2530]">
         {review}
       </p>
-      <p className="self-end font-hand text-[20px] leading-none text-[#b4234a]">
+      <p className="liner-notes__hand mt-3 self-end font-hand leading-none text-[#b4234a]">
         — {data.billerName}
       </p>
     </article>

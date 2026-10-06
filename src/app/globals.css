@@ -3298,3 +3298,56 @@ html.is-landscape .xso-dock {
     animation: none;
   }
 }
+
+/*
+ * The cassette's fold-out insert: ruled cream card stock with a typed track list. Sizes undo
+ * the short-phone card zoom so the notes never read smaller than 18px.
+ */
+.liner-notes {
+  --liner-px: calc(1px / var(--card-zoom, 1));
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 31px, rgba(180, 83, 9, 0.08) 31px 32px),
+    #fbf3e4;
+  padding: 20px;
+  color: #2d1b22;
+}
+
+.liner-notes__tracks {
+  margin-top: 12px;
+  display: grid;
+  gap: 4px;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: calc(18 * var(--liner-px));
+  line-height: 1.3;
+}
+
+.liner-notes__kicker {
+  font-size: calc(12 * var(--liner-px));
+}
+
+.liner-notes__title {
+  font-size: calc(26 * var(--liner-px));
+}
+
+.liner-notes__text {
+  font-size: calc(18 * var(--liner-px));
+}
+
+.liner-notes__hand {
+  font-size: calc(22 * var(--liner-px));
+}
+
+.liner-notes__tracks li {
+  display: grid;
+  grid-template-columns: 2.4em 1fr;
+  align-items: baseline;
+}
+
+.liner-notes__side-b {
+  margin-top: 8px;
+  border-top: 1px dashed rgba(45, 27, 34, 0.35);
+  padding-top: 8px;
+}
