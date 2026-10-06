@@ -117,11 +117,9 @@ export const Side2Audit = memo(function Side2Audit({ data }: Side2AuditProps) {
         <FlagColumn title="Red Flags" emoji="🔴" items={data.redFlags} accent="#c11a1a" />
       </div>
 
-      <div
-        className="pointer-events-none absolute left-1/2 top-[44%] z-20 -translate-x-1/2 -translate-y-1/2"
-        aria-hidden
-      >
-        <InkStamp rotate={-11} thunk delayMs={450}>
+      {/* Signed off at the foot of the report, clear of the chart and the flags. */}
+      <div className="pointer-events-none relative z-20 mt-4 flex justify-center" aria-hidden>
+        <InkStamp rotate={-8} thunk delayMs={450}>
           {stamp}
         </InkStamp>
       </div>
@@ -159,6 +157,23 @@ const StarIcon = memo(function StarIcon({
   );
 });
 
+/** Wide enough that labels sit beside the chart's points instead of running off the card. */
+const RADAR = { width: 300, height: 236, cx: 150, cy: 120, r: 70, gap: 13 };
+const LABEL_SIZE = 10;
+/** Characters of a label line at full size; longer words shrink to fit. */
+const LABEL_FIT = 11;
+
+/** One line, or two split at the space nearest the middle. */
+function labelLines(label: string): string[] {
+  const text = label.toUpperCase().trim();
+  if (text.length <= LABEL_FIT || !text.includes(' ')) return [text];
+  const spaces = text.split('').flatMap((char, at) => (char === ' ' ? [at] : []));
+  const split = spaces.reduce((best, at) =>
+    Math.abs(at - text.length / 2) < Math.abs(best - text.length / 2) ? at : best,
+  );
+  return [text.slice(0, split), text.slice(split + 1)];
+}
+
 const RadarChart = memo(function RadarChart({
   metrics,
   labels,
@@ -166,18 +181,15 @@ const RadarChart = memo(function RadarChart({
   metrics: AuditMetrics;
   labels: string[];
 }) {
-  const size = 220;
-  const cx = size / 2;
-  const cy = size / 2;
-  const maxR = 72;
+  const { width, height, cx, cy, r: maxR, gap } = RADAR;
   const rings = [0.25, 0.5, 0.75, 1];
 
   return (
     <svg
-      viewBox={`0 0 ${size} ${size}`}
-      className="h-[210px] w-full max-w-[240px]"
+      viewBox={`0 0 ${width} ${height}`}
+      className="h-auto w-full max-w-[300px]"
       role="img"
-      aria-label="Audit metrics radar chart"
+      aria-label={`Audit radar: ${AXES.map(({ key }, i) => `${labels[i]} ${clampScore(metrics[key])}`).join(', ')}`}
     >
       {rings.map((t) => {
         const pts = AXES.map((_, i) => polarPoint(cx, cy, maxR * t, i, AXES.length))
@@ -221,36 +233,46 @@ const RadarChart = memo(function RadarChart({
       />
 
       {AXES.map(({ key }, i) => {
-        const label = labels[i];
-        const tip = polarPoint(cx, cy, maxR + 22, i, AXES.length);
+        const lines = labelLines(labels[i]);
+        const longest = Math.max(...lines.map((line) => line.length));
+        const size = longest > LABEL_FIT ? (LABEL_SIZE * LABEL_FIT) / longest : LABEL_SIZE;
+        const lineHeight = size * 1.15;
+        const tip = polarPoint(cx, cy, maxR + gap, i, AXES.length);
+        const dx = tip.x - cx;
+        const dy = tip.y - cy;
+        /** Labels grow away from the chart: up above it, down below it, outwards at the sides. */
+        const anchor = Math.abs(dx) < 8 ? 'middle' : dx > 0 ? 'start' : 'end';
+        const block = lines.length * lineHeight + 10;
+        const top =
+          dy < -20
+            ? tip.y - block + lineHeight * 0.8
+            : dy > 20
+              ? tip.y + lineHeight * 0.6
+              : tip.y - block / 2 + lineHeight * 0.8;
         return (
-          <g key={key}>
-            <text
-              x={tip.x}
-              y={tip.y}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill={INK}
-              style={{
-                fontSize: 9,
-                fontFamily: 'ui-monospace, monospace',
-                fontWeight: 700,
-              }}
-            >
-              {label.toUpperCase()}
-            </text>
-            <text
-              x={tip.x}
-              y={tip.y + 11}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill={INK}
-              opacity={0.7}
-              style={{ fontSize: 8, fontFamily: 'ui-monospace, monospace' }}
-            >
+          <text
+            key={key}
+            x={tip.x}
+            y={top}
+            textAnchor={anchor}
+            fill={INK}
+            style={{ fontFamily: 'ui-monospace, monospace' }}
+            aria-hidden
+          >
+            {lines.map((line, n) => (
+              <tspan
+                key={n}
+                x={tip.x}
+                dy={n === 0 ? 0 : lineHeight}
+                style={{ fontSize: size, fontWeight: 700 }}
+              >
+                {line}
+              </tspan>
+            ))}
+            <tspan x={tip.x} dy={lineHeight} opacity={0.7} style={{ fontSize: 9 }}>
               {clampScore(metrics[key])}
-            </text>
-          </g>
+            </tspan>
+          </text>
         );
       })}
     </svg>
