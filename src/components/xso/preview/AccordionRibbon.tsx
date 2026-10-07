@@ -28,12 +28,13 @@ import { LOOP_CARDS, isPlaceholderPhoto, type AuditMetrics, type XsoData } from 
 import { auditLabel } from '@/lib/formats';
 import { photoCaption } from '@/lib/photoStrips';
 import { stackCards } from '@/lib/formatCards';
-import { playFoley } from '@/lib/foley';
+import { playSound, useTexture } from '@/lib/sound';
+import { ActiveScope } from '@/components/xso/stage/ActiveScope';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { PolaroidThumb } from '@/components/xso/PolaroidThumb';
 import { overallStars } from '@/components/xso/Side2Audit';
-import { getArtifacts, playMechanicalCue, type Artifact } from '@/components/xso/viewers/shared';
+import { getArtifacts, type Artifact } from '@/components/xso/viewers/shared';
 import { useProgress } from '@/components/xso/stage/useProgress';
 import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
 
@@ -206,7 +207,13 @@ const Ribbon = memo(function Ribbon({
   /** Motion transforms subscribe once, so they read the current length from here. */
   const geometry = useRef({ panels, last });
   geometry.current = { panels, last };
-  const markRead = useCallback(() => setRead(true), []);
+  /** The last fold has played out: a closing chime, before "Make one back" follows. */
+  const chimed = useRef(false);
+  const markRead = useCallback(() => {
+    if (!chimed.current) playSound('accordion.end');
+    chimed.current = true;
+    setRead(true);
+  }, []);
   useEffect(() => {
     if (!cta || !read || dismissed) return;
     const id = window.setTimeout(() => setEnding(true), END_DELAY);
@@ -296,21 +303,10 @@ const Ribbon = memo(function Ribbon({
   useMotionValueEvent(target, 'change', (value) => {
     const next = clamp(Math.round(value), 0, last);
     if (next === activeRef.current) return;
+    playSound(next > activeRef.current ? 'fold.open' : 'fold.close');
     activeRef.current = next;
     setActive(next);
-    playMechanicalCue('click');
-    if (!reduce) playFoley('flip', 0.35);
     if (next < count) onChange?.(next, artifacts[next].label);
-  });
-
-  const folded = useRef(reduce ? 0 : count);
-  useMotionValueEvent(shut, 'change', (value) => {
-    let n = 0;
-    for (let i = 0; i < panels; i += 1)
-      if (panelShut(value, i, last, closing.current) > 0.5) n += 1;
-    if (n === folded.current) return;
-    folded.current = n;
-    if (!reduce) playFoley('tap', 0.22);
   });
 
   const goTo = (index: number, instant = false) => {
@@ -329,12 +325,12 @@ const Ribbon = memo(function Ribbon({
       shut.set(to);
       return;
     }
-    playFoley(value ? 'shuffle' : 'flip', 0.4);
+    playSound(value ? 'fold.open' : 'fold.close');
     cascade.current = animate(shut, to, {
       duration: 0.15 + CASCADE_TIME * Math.abs(shut.get() - to),
       ease: [0.45, 0, 0.25, 1],
       onComplete: () => {
-        if (!value) playFoley('thunk', 0.5);
+        if (!value) playSound('fold.shut');
       },
     });
   };
@@ -569,6 +565,7 @@ const Ribbon = memo(function Ribbon({
                     wide={wide}
                     data={data}
                     reading={artifact.id === 'letter' && opened && !held && active === index}
+                    current={opened && !held && active === index}
                     onRead={artifact.id === 'letter' ? markRead : undefined}
                     onSelect={selectPanel}
                   />
@@ -695,6 +692,7 @@ const RibbonPanel = memo(function RibbonPanel({
   wide,
   data,
   reading,
+  current = false,
   onRead,
   onDismiss,
   onSelect,
@@ -706,6 +704,8 @@ const RibbonPanel = memo(function RibbonPanel({
   wide: boolean;
   data: XsoData;
   reading?: boolean;
+  /** The fold facing the reader, so its own animations and sounds wait for it. */
+  current?: boolean;
   onRead?: () => void;
   onDismiss?: () => void;
   onSelect: (index: number) => void;
@@ -743,14 +743,16 @@ const RibbonPanel = memo(function RibbonPanel({
         {id === 'end' ? (
           <YourTurn source="accordion_end" large={wide} onDismiss={onDismiss} />
         ) : (
-          <PanelFace
-            data={data}
-            id={id}
-            index={index}
-            wide={wide}
-            reading={reading}
-            onRead={onRead}
-          />
+          <ActiveScope active={current}>
+            <PanelFace
+              data={data}
+              id={id}
+              index={index}
+              wide={wide}
+              reading={reading}
+              onRead={onRead}
+            />
+          </ActiveScope>
         )}
       </div>
       <span aria-hidden className="accordion-panel__grain" />
@@ -1077,6 +1079,9 @@ const PanelFace = memo(function PanelFace({
 /** Seconds to write one line, and the breath taken before the sign-off. */
 const LINE_TIME = 0.62;
 const LAST_PAUSE = 0.9;
+/** The pen is heard over the first lines only, then fades out under the rest. */
+const PEN_LINES = 3;
+const PEN_FADE_MS = 900;
 
 /**
  * The letter writes itself in line by line as it comes into focus: each word is inked left to
@@ -1161,10 +1166,19 @@ const LetterBody = memo(function LetterBody({
 
   const onReadRef = useRef(onRead);
   onReadRef.current = onRead;
+  /** A pen across the first few lines, fading out; reduced motion skips straight to the end. */
+  const pen = useTexture('letter.pen');
   const finish = useCallback(() => {
+    pen.stop(300);
     setState('done');
     onReadRef.current?.();
-  }, []);
+  }, [pen]);
+  useEffect(() => {
+    if (state !== 'play') return;
+    pen.touch();
+    const id = window.setTimeout(() => pen.stop(PEN_FADE_MS), PEN_LINES * LINE_TIME * 1000);
+    return () => window.clearTimeout(id);
+  }, [state, pen]);
 
   useEffect(() => {
     if (!reading || state !== 'idle' || !timing) return;
