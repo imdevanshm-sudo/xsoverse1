@@ -62,6 +62,42 @@ body {
   touch-action: manipulation;
 }
 
+/*
+ * Camera-ready chrome: no tap flashes, selection highlights or long-press callouts, and no
+ * native scrollbars (scrolling by touch, wheel and keys still works). Fields stay selectable.
+ * Focus rings only drop for pointer clicks; keyboard focus (:focus-visible) still shows them.
+ */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+select,
+[contenteditable]:not([contenteditable='false']) {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
 .xso-safe-shell {
   padding-top: env(safe-area-inset-top, 0px);
   padding-right: env(safe-area-inset-right, 0px);
@@ -1730,8 +1766,7 @@ html.is-landscape .xso-dock {
 
 /* The letter inks itself in, word by word, each on its own delay (`--d`). */
 .accordion-letter {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(180, 35, 74, 0.25) transparent;
+  scrollbar-width: none;
 }
 
 .accordion-letter__word {
