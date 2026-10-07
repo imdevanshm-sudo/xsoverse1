@@ -26,8 +26,7 @@ import {
 } from 'framer-motion';
 import { Pause, Play } from 'lucide-react';
 import type { ScrapbookLayers, XsoData } from '@/types/xso';
-import { playFoley } from '@/lib/foley';
-import { playSfx } from '@/lib/sfx';
+import { ROOM_TONE, playSound, useSoundOn, useTexture, type SoundEvent } from '@/lib/sound';
 import { STICKY_COLORS, resolveScrapbook } from '@/lib/scrapbook';
 import { useCoarsePointer, useTouchSpring } from '@/hooks/useTouchSpring';
 import { SOFT_SPRING } from '@/lib/motion';
@@ -37,6 +36,7 @@ import { seededOffset } from '@/components/xso/viewers/shared';
 import { usePolaroidStore, type PolaroidBack } from '@/store/usePolaroidStore';
 import { preloadLightbox } from '@/components/xso/PolaroidLightboxHost';
 import { usePauseOffscreen } from '@/hooks/usePauseOffscreen';
+import { useVoiceClip } from '@/components/xso/stage/useVoiceClip';
 
 const PICK_UP = { type: 'spring' as const, stiffness: 300, damping: 25 };
 /** Slow and a little floaty, like sliding paper across felt. */
@@ -411,6 +411,15 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const [letterOpen, setLetterOpen] = useState(false);
   const [seal, setSeal] = useState<SealState>('whole');
   const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
+  /** Pieces that have been opened before: only the first opening gets the soft tick. */
+  const firstOpen = useRef(new Set<string>());
+  const soundOn = useSoundOn();
+  const room = useTexture('scrap.room');
+  useEffect(() => {
+    if (!ROOM_TONE || !soundOn || !fill) return;
+    room.touch();
+    return () => room.stop(800);
+  }, [soundOn, fill, room]);
   const [focus, setFocus] = useState<Focus | null>(null);
   /** The desk copy stays hidden until the focused copy has landed back on it. */
   const [lifted, setLifted] = useState<string | null>(null);
@@ -454,7 +463,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   };
 
   const tidyUp = () => {
-    playFoley('shuffle', 0.6);
+    playSound(tidied ? 'scrap.scatter' : 'scrap.tidy');
     setTidied((on) => !on);
     setResetKey((n) => n + 1);
     setStack(items.map((item) => item.id));
@@ -474,7 +483,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     const k = d.width / box.offsetWidth || 1;
     const width = node.offsetWidth;
     const height = node.offsetHeight;
-    playSfx('paper-rustle', 0.6);
+    playSound(LIFT[item.kind]);
     setLifted(item.id);
     setFocus({
       id: item.id,
@@ -495,14 +504,14 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   };
 
   const closeFocus = useCallback(() => {
-    playFoley('land', 0.4);
+    playSound('scrap.settle');
     setFocus(null);
   }, []);
 
   const finish = useRef(onFinish);
   finish.current = onFinish;
   const closeLetter = useCallback(() => {
-    playSfx('paper-rustle', 0.4);
+    playSound('scrap.settle');
     setLetterOpen(false);
     nodes.current.letter?.focus({ preventScroll: true });
     finish.current?.();
@@ -519,7 +528,6 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     const r = node.getBoundingClientRect();
     const k = box.getBoundingClientRect().width / box.offsetWidth || 1;
     const { index, src } = item.photo;
-    playSfx('polaroid-slide', 0.7);
     openPolaroid({
       id: `${scope}${item.id}`,
       src,
@@ -535,11 +543,11 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     });
   };
   const togglePeel = () => {
-    playFoley('tap', 0.7);
+    playSound('scrap.peel');
     setPeel((p) => (p === 2 ? 0 : 2));
   };
   const tear = () => {
-    playFoley('scratch', 0.8);
+    playSound('scrap.tear');
     setTorn(true);
   };
 
@@ -634,11 +642,15 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     const { items: all, openFocus: open, showPolaroid: show } = latest.current;
     const order = all.findIndex((it) => it.id === id);
     if (order < 0) return;
+    if (!firstOpen.current.has(id)) {
+      firstOpen.current.add(id);
+      playSound('scrap.first', { delayMs: 140 });
+    }
     setOpened((current) => (current.has(id) ? current : new Set(current).add(id)));
     if (all[order].kind === 'polaroid') return show(all[order], order);
     if (all[order].kind !== 'letter') return open(all[order], order);
     const unfold = () => {
-      playSfx('paper-rustle', 0.8);
+      playSound('scrap.unfold');
       setLetterOpen(true);
     };
     if (latest.current.seal === 'cracking') return;
@@ -646,7 +658,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       setSeal('broken');
       return unfold();
     }
-    playSfx('seal-crack', 0.9);
+    playSound('scrap.seal');
     setSeal('cracking');
     crack.current = window.setTimeout(() => {
       setSeal('broken');
@@ -959,12 +971,12 @@ const DeskItem = memo(function DeskItem({
         onPointerDown={(event) => {
           if (!tactile || (event.target as Element).closest(INTERACTIVE)) return;
           onPickUp(id);
-          playFoley('tap', 0.35);
           dragControls.start(event);
         }}
+        onDragStart={() => playSound('scrap.pick')}
         onDragEnd={() => {
           droppedAt.current = performance.now();
-          playFoley('land', 0.45);
+          playSound('scrap.settle');
         }}
         onClick={(event) => {
           if ((event.target as Element).closest(INTERACTIVE)) return;
@@ -1225,35 +1237,23 @@ const StickyNote = memo(function StickyNote({
   );
 });
 
+/** Each kind of piece sounds like what it's made of as it's lifted to look closer. */
+const LIFT: Record<ItemKind, SoundEvent> = {
+  receipt: 'scrap.lift.receipt',
+  polaroid: 'scrap.lift.photo',
+  card: 'scrap.lift.photo',
+  sticky: 'scrap.lift.note',
+  ticket: 'scrap.lift.note',
+  voice: 'scrap.lift.note',
+  letter: 'scrap.lift.note',
+};
+
 const WAVE = [6, 11, 17, 9, 20, 13, 7, 16, 10, 18, 8, 14];
 
 const VoiceSnippet = memo(function VoiceSnippet({ src, from }: { src: string; from: string }) {
-  const audio = useRef<HTMLAudioElement | null>(null);
   const root = useRef<HTMLDivElement>(null);
-  const [playing, setPlaying] = useState(false);
-  usePauseOffscreen(root, audio, () => setPlaying(false));
-
-  useEffect(() => {
-    const clip = new Audio();
-    clip.preload = 'none';
-    clip.src = src;
-    audio.current = clip;
-    const ended = () => setPlaying(false);
-    clip.addEventListener('ended', ended);
-    return () => {
-      clip.pause();
-      clip.removeEventListener('ended', ended);
-      audio.current = null;
-      setPlaying(false);
-    };
-  }, [src]);
-
-  const toggle = async () => {
-    const clip = audio.current;
-    if (clip && !playing) await clip.play().catch(() => undefined);
-    if (clip && playing) clip.pause();
-    setPlaying((on) => !on);
-  };
+  const { audio, playing, toggle } = useVoiceClip(src);
+  usePauseOffscreen(root, audio, () => undefined);
 
   return (
     <div ref={root} className="flex items-center gap-1.5">
