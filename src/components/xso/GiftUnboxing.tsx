@@ -28,6 +28,7 @@ import {
   useAssetPreloader,
 } from '@/hooks/useAssetPreloader';
 import { PreviewWatermark } from '@/components/xso/PreviewWatermark';
+import { EagerMedia } from '@/components/xso/EagerMedia';
 import { FitStage } from '@/components/xso/stage/FitStage';
 import { FirstVisitHint } from '@/components/xso/stage/FirstVisitHint';
 import { SoundToggle } from '@/components/xso/stage/SoundToggle';
@@ -125,10 +126,22 @@ export function GiftUnboxing({
   }, []);
 
   /**
-   * The Accordion's lit desk sits under the parcel from the start, and the folded letter mounts
-   * beneath the flaps as soon as it arrives, so opening never passes through black.
+   * The Accordion's lit desk sits under the parcel from the start. Every format but the Movie Box
+   * (which runs its own opening) mounts beneath the flaps as soon as it arrives, so its heavy
+   * first render happens under the wrap and opening never passes through black or stutters.
    */
   const lit = wrapper.giftStyle === 'accordion';
+  const underWrap = wrapper.giftStyle !== 'moviebox';
+  const souvenir = useRef<HTMLDivElement>(null);
+  /** Nothing under the parcel can be reached until it's gone; then the opener takes focus. */
+  useEffect(() => {
+    const el = souvenir.current;
+    if (!el) return;
+    el.toggleAttribute('inert', !wrapGone);
+    if (wrapGone && document.activeElement === document.body) {
+      el.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+    }
+  }, [wrapGone, contents]);
   const content = (
     <>
       {lit ? <AccordionDesk /> : null}
@@ -144,15 +157,18 @@ export function GiftUnboxing({
         ) : null}
       </AnimatePresence>
       <AnimatePresence>
-        {(wrapGone || lit) && contents ? (
+        {(wrapGone || underWrap) && contents ? (
           <motion.div
             key="souvenir"
+            ref={souvenir}
             className="absolute inset-0"
             initial={reduce ? false : lit ? { opacity: 0, y: 48 } : { opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: lit ? 0.9 : 0.72, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Souvenir data={contents} cta={!framed} held={!wrapGone} onFinish={finish} />
+            <EagerMedia>
+              <Souvenir data={contents} cta={!framed} held={!wrapGone} onFinish={finish} />
+            </EagerMedia>
             {!wrapGone || framed || !HINTS[contents.giftStyle] ? null : (
               <FirstVisitHint text={HINTS[contents.giftStyle]!} />
             )}

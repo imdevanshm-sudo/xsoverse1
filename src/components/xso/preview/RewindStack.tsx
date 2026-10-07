@@ -479,7 +479,13 @@ function TapeOpener({
       <p className="max-w-[16rem] font-serif text-[24px] font-semibold leading-tight text-[#fdf2f8]">
         {voice ? `${from || 'Someone'} recorded something for you` : 'This tape comes with music'}
       </p>
-      <button type="button" autoFocus onClick={onPlay} className="tape-opener__button">
+      <button
+        type="button"
+        autoFocus
+        data-autofocus
+        onClick={onPlay}
+        className="tape-opener__button"
+      >
         <span className="grid h-9 w-9 place-items-center rounded-full bg-[#2a1408] text-[#fbbf24]">
           <Play className="h-4 w-4 translate-x-[1px] fill-current" aria-hidden />
         </span>

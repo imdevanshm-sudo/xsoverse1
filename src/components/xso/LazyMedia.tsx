@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
+import { useEagerMedia } from '@/components/xso/EagerMedia';
 
 interface LazyMediaProps {
   src: string;
@@ -43,6 +44,7 @@ export function LazyMedia({
   fill = false,
   priority = false,
 }: LazyMediaProps) {
+  const preloaded = useEagerMedia();
   if (!src) {
     return <div className={className} style={style} aria-hidden />;
   }
@@ -55,8 +57,8 @@ export function LazyMedia({
         alt={alt}
         className={className}
         style={style}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
+        loading={priority || preloaded ? 'eager' : 'lazy'}
+        decoding={preloaded ? 'sync' : 'async'}
         fetchPriority={priority ? 'high' : 'auto'}
       />
     );
@@ -72,7 +74,8 @@ export function LazyMedia({
         style={style}
         sizes={sizes}
         priority={priority}
-        loading={priority ? undefined : 'lazy'}
+        unoptimized={preloaded}
+        loading={priority ? undefined : preloaded ? 'eager' : 'lazy'}
       />
     );
   }
@@ -87,7 +90,8 @@ export function LazyMedia({
       style={style}
       sizes={sizes}
       priority={priority}
-      loading={priority ? undefined : 'lazy'}
+      unoptimized={preloaded}
+      loading={priority ? undefined : preloaded ? 'eager' : 'lazy'}
     />
   );
 }
