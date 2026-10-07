@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Check, Lock, Sparkles } from 'lucide-react';
 import { useXsoStore } from '@/store/useXsoStore';
 import { startCheckout } from '@/lib/startCheckout';
+import { useSoundSurface } from '@/lib/sound';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
 import { getTheme, THEMES } from '@/lib/themes';
 import { XSO_PRODUCT } from '@/lib/orders';
@@ -22,6 +23,7 @@ function invoiceNo(id: string) {
 }
 
 export function CheckoutEnvelope({ lockedStyle }: { lockedStyle: GiftStyle }) {
+  useSoundSurface();
   const reduce = useReducedMotion();
   const cart = getCartridge(lockedStyle);
   const theme = getTheme(useXsoStore((s) => s.themeId)) ?? THEMES[0];

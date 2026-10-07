@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { playSound, useSoundSurface } from '@/lib/sound';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, Lock, X } from 'lucide-react';
 import {
@@ -109,6 +110,7 @@ function focusSlot(id: CardId | undefined): number | undefined {
 
 /** One flow for every order: format, cards, vibe, photos, then preview and pay. */
 export function XSOCustomizerModal() {
+  useSoundSurface();
   const reduce = useReducedMotion();
   const close = useCustomizerModal((s) => s.close);
   const [theme] = useState<ThemeId>(
@@ -653,7 +655,11 @@ export function XSOCustomizerModal() {
           {step < 2 ? (
             <button
               type="button"
-              onClick={() => canNext && setStep((s) => s + 1)}
+              onClick={() => {
+                if (!canNext) return;
+                playSound('wizard.step');
+                setStep((s) => s + 1);
+              }}
               disabled={!canNext}
               className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-[#fdf2f8] font-serif text-[17px] font-semibold text-[#2d1b22] transition-transform active:scale-[0.98] disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
             >

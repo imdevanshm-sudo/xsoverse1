@@ -6,6 +6,8 @@ import type { Tone } from '@/components/xso/editors/kit';
 import { VoiceRecorder } from '@/components/xso/editors/VoiceRecorder';
 import { playableAudio, uploadAudio } from '@/lib/audioUpload';
 import { readAudio } from '@/lib/media';
+import { attachMedia, mediaElement, optIn, type MediaHandle } from '@/lib/sound';
+import { trackLoudness } from '@/lib/soundtracks';
 import { FORMAT_LIMITS } from '@/lib/formats';
 import {
   SOUNDTRACKS,
@@ -41,7 +43,7 @@ export function SoundtrackField({
   onTranscript?: (transcript: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const preview = useRef<HTMLAudioElement | null>(null);
+  const preview = useRef<{ node: HTMLAudioElement; mix: MediaHandle } | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -50,7 +52,7 @@ export function SoundtrackField({
   const MB = (maxBytes / 1_000_000).toFixed(0);
 
   const stopPreview = () => {
-    preview.current?.pause();
+    preview.current?.mix.release();
     preview.current = null;
     setPreviewing(null);
   };
@@ -64,9 +66,9 @@ export function SoundtrackField({
       setError('That track isn’t available yet.');
       return;
     }
-    const node = new Audio(src);
-    node.volume = 0.6;
-    preview.current = node;
+    optIn();
+    const node = mediaElement(src);
+    preview.current = { node, mix: attachMedia(node, 'music', trackLoudness(src)) };
     node.onended = stopPreview;
     node
       .play()

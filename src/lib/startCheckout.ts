@@ -2,8 +2,12 @@ import { useXsoStore } from '@/store/useXsoStore';
 import { pickXsoPayload } from '@/lib/xsoPayload';
 import { isRecipientVisitor, priceArm } from '@/lib/pricingClient';
 import { loadLemonJs, openLemonOverlay } from '@/lib/lemonJs';
+import { playSound, soundOn } from '@/lib/sound';
 import type { AddOnId } from '@/lib/pricing';
 import type { GiftStyle, XsoData } from '@/types/xso';
+
+/** Long enough for the success chord to ring before the page moves on (which stops all sound). */
+const SUCCESS_HOLD_MS = 900;
 
 export interface CheckoutExtras {
   addOns?: AddOnId[];
@@ -48,7 +52,10 @@ export async function startCheckout(
     overlay &&
     json.mode === 'lemon' &&
     done &&
-    openLemonOverlay(json.checkoutUrl, () => window.location.assign(done))
+    openLemonOverlay(json.checkoutUrl, () => {
+      playSound('wizard.success');
+      window.setTimeout(() => window.location.assign(done), soundOn() ? SUCCESS_HOLD_MS : 0);
+    })
   ) {
     return 'overlay';
   }

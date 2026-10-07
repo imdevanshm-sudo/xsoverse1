@@ -21,6 +21,7 @@ import { formatPrice } from '@/lib/pricing';
 import { useDraftQuote } from '@/lib/pricingClient';
 import { STUDIO_STEPS, type StudioStepId } from '@/lib/studioSteps';
 import { styleQuery } from '@/lib/styleLock';
+import { playSound, useSoundSurface } from '@/lib/sound';
 import type { GiftStyle } from '@/types/xso';
 
 /** Owns the store subscription so typing only re-renders this subtree. */
@@ -66,6 +67,7 @@ const SeeReceiverButton = memo(function SeeReceiverButton({
 
 /** Step 2: live deck beside a paper worksheet; phones open the full receiver preview instead. */
 export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
+  useSoundSurface();
   const cart = getCartridge(lockedStyle);
   const draftQuote = useDraftQuote(lockedStyle);
   const [tab, setTab] = useState<StudioStepId>('receipt');
@@ -93,9 +95,13 @@ export function CustomizeStudio({ lockedStyle }: { lockedStyle: GiftStyle }) {
   /** Set by the format editor when a section opens; a worksheet tab change takes over again. */
   const [panelFocus, setPanelFocus] = useState<number | null>(null);
 
+  const visitedRef = useRef(visited);
+  visitedRef.current = visited;
   const changeTab = useCallback((next: StudioStepId) => {
     setTab(next);
     setPanelFocus(null);
+    /** Moving on to a step for the first time quietly confirms the last one. */
+    if (!visitedRef.current.has(next)) playSound('wizard.step');
     setVisited((prev) => (prev.has(next) ? prev : new Set(prev).add(next)));
     const editor = editorRef.current;
     if (editor && editor.getBoundingClientRect().top < 0) {
