@@ -16,7 +16,10 @@ export function useMixtape(rewind: RewindLayers | undefined) {
   const direct = rewind?.soundtrackUrl ?? soundtrackSrc(ref, MIXTAPE_TRACKS);
   const stored = !direct && ref.startsWith('storage:');
   const [signed, setSigned] = useState<string | null>(null);
-  const music = useSoundtrack(direct ?? signed, { loop: false });
+  const music = useSoundtrack(direct ?? signed, {
+    loop: false,
+    kind: rewind?.voice ? 'voice' : 'music',
+  });
   const waiting = useRef(false);
   const { start, toggle: toggleMusic } = music;
 

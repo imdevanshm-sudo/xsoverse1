@@ -15,17 +15,13 @@ import type { RewindLayers, XsoData } from '@/types/xso';
 import { Play } from 'lucide-react';
 import { TRACK_TITLES, TapePlayer, sideOf } from '@/components/xso/rewind/TapePlayer';
 import { useMixtape } from '@/components/xso/rewind/useMixtape';
-import { playFoley } from '@/lib/foley';
+import { optIn, playSound, toggleSound, useSoundOn, useTexture } from '@/lib/sound';
+import { ActiveScope } from '@/components/xso/stage/ActiveScope';
 import { CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { selectedCards, stackCards } from '@/lib/formatCards';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
-import {
-  getArtifacts,
-  playMechanicalCue,
-  seededOffset,
-  type Artifact,
-} from '@/components/xso/viewers/shared';
+import { getArtifacts, seededOffset, type Artifact } from '@/components/xso/viewers/shared';
 import { useProgress } from '@/components/xso/stage/useProgress';
 import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
 import { DeckProgress, SideZone, SwipeHint } from '@/components/xso/stage/DeckControls';
@@ -214,6 +210,27 @@ const Stack = memo(function Stack({
   /** Recipients choose sound or silence before the first card; nothing plays until they tap. */
   const [opened, setOpened] = useState(chrome);
   const waiting = music.available && !opened;
+  const soundOn = useSoundOn();
+  /** Tape hiss sits under the track only while it's actually playing. */
+  const hiss = useTexture('rewind.hiss');
+  useEffect(() => {
+    if (music.playing) hiss.touch();
+    else hiss.stop(400);
+  }, [music.playing, hiss]);
+  /** Press play: the deck's thunk, then the tape. */
+  const pressPlay = () => {
+    setOpened(true);
+    if (!music.playing) {
+      optIn();
+      playSound('rewind.play');
+    }
+    music.toggle();
+  };
+  /** A tape stop-start between cards; the liner notes turn like a page instead. */
+  const cue = useCallback(
+    (shown: number) => playSound(sheets[shown]?.id === 'liner' ? 'rewind.liner' : 'rewind.track'),
+    [sheets],
+  );
 
   useEffect(() => {
     if (focusIndex === undefined) return;
@@ -253,8 +270,6 @@ const Stack = memo(function Stack({
 
   const rewind = useCallback(
     (towards: Direction = -1) => {
-      playMechanicalCue('click');
-      if (!reduce) playFoley('land', 0.55);
       /** The end card is offered once: put away, it leaves the pile and the tape plays on. */
       const keep = (top: number, rest: number[]) => (top === end ? rest : [...rest, top]);
       const [first, ...others] = orderRef.current;
@@ -273,9 +288,10 @@ const Stack = memo(function Stack({
       });
       setMoved(true);
       const shown = orderRef.current[0];
+      cue(shown);
       if (shown !== end) onChange?.(shown, sheets[shown].label);
     },
-    [sheets, end, reduce, onChange],
+    [sheets, end, onChange, cue],
   );
   dismiss.current = rewind;
 
@@ -285,8 +301,7 @@ const Stack = memo(function Stack({
     if (current.length < 2) return;
     const last = current[current.length - 1];
     orderRef.current = [last, ...current.slice(0, -1)];
-    playMechanicalCue('click');
-    if (!reduce) playFoley('land', 0.55);
+    cue(last);
     setPile((pile) => {
       const returning = pile.order[pile.order.length - 1];
       const bumped = [...pile.passes];
@@ -301,7 +316,7 @@ const Stack = memo(function Stack({
     });
     setMoved(true);
     if (last !== end) onChange?.(last, sheets[last].label);
-  }, [sheets, end, reduce, onChange]);
+  }, [sheets, end, onChange, cue]);
 
   useEffect(() => {
     if (chrome || waiting) return;
@@ -336,15 +351,12 @@ const Stack = memo(function Stack({
         playing={music.playing}
         progress={music.progress}
         available={music.available}
-        muted={music.muted}
+        muted={!soundOn}
         voice={music.voice}
         transcript={music.transcript}
         failed={music.failed}
-        onToggle={() => {
-          setOpened(true);
-          music.toggle();
-        }}
-        onMute={music.toggleMute}
+        onToggle={pressPlay}
+        onMute={toggleSound}
       />
 
       <div className={`relative w-full ${DECK_HEIGHT[size]}`}>
@@ -352,10 +364,7 @@ const Stack = memo(function Stack({
           <TapeOpener
             voice={music.voice}
             from={data.billerName}
-            onPlay={() => {
-              setOpened(true);
-              music.toggle();
-            }}
+            onPlay={pressPlay}
             onSkip={() => setOpened(true)}
           />
         ) : null}
@@ -721,7 +730,9 @@ const RewindCard = memo(function RewindCard({
         transition={{ duration: 0.35, ease: 'easeOut' }}
       />
       <div className={`rewind-card ${active ? 'cursor-pointer' : ''}`}>
-        <div className="rewind-card__body">{face}</div>
+        <div className="rewind-card__body">
+          <ActiveScope active={active}>{face}</ActiveScope>
+        </div>
         {chrome ? (
           <div className="deck-card__footer">
             <span className="truncate">
