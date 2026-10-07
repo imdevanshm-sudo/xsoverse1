@@ -24,8 +24,8 @@ import {
 } from 'framer-motion';
 import { RotateCw } from 'lucide-react';
 import { LOOP_CARDS, type XsoData } from '@/types/xso';
-import { playFoley } from '@/lib/foley';
-import { playSfx, preloadSfx } from '@/lib/sfx';
+import { playSound } from '@/lib/sound';
+import { ActiveScope } from '@/components/xso/stage/ActiveScope';
 import { resolveLoop } from '@/lib/formats';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
@@ -45,6 +45,8 @@ const FLIGHT = 720;
 const INTERACTIVE = 'button:not([data-polaroid]), a, input, audio, canvas, [role="slider"]';
 
 const SPRING = { type: 'spring', stiffness: 220, damping: 26 } as const;
+/** Going back plays the same paper slide, a little lower. */
+const REVERSE_PITCH = 0.88;
 /** Going back, the card comes in from the left: the reverse of a flick. */
 const ENTER_FROM = { x: -FLIGHT * 0.55, y: -40 };
 const FLY_OUT = { duration: 0.34, ease: [0.4, 0, 1, 1] } as const;
@@ -182,13 +184,14 @@ const Deck = memo(function Deck({
     setOrder((current) => [current[0], end, ...current.slice(1)]);
   }, [cta, offered, flying, order, count, end]);
 
+  const restarting = useRef(false);
   const latest = useRef({ order, flying, slots, onChange, reduce, count });
   latest.current = { order, flying, slots, onChange, reduce, count };
 
   const launch = useCallback((index: number) => {
     const { order: current, flying: inAir } = latest.current;
     if (inAir !== null || current[0] !== index) return false;
-    playSfx('card-swipe', 0.7);
+    playSound(restarting.current ? 'loop.restart' : 'loop.slide');
     /** With reduced motion the card lands in the same tick, before React has re-rendered. */
     latest.current.flying = index;
     setFlying(index);
@@ -202,7 +205,6 @@ const Deck = memo(function Deck({
       flying: inAir,
       slots: cards,
       onChange: notify,
-      reduce: still,
       count: total,
     } = latest.current;
     if (inAir !== index) return;
@@ -211,10 +213,12 @@ const Deck = memo(function Deck({
     const rest = current.filter((i) => i !== index);
     const next = cards[index].id === 'end' ? rest : [...rest, index];
     const wrapped = next[0] === 0 && (index === total - 1 || cards[index].id === 'end');
+    /** Coming round on its own gets the tape blip; Start over already played its rewind. */
     if (wrapped) {
-      playFoley('shuffle', 0.6);
+      if (!restarting.current) playSound('loop.round');
       setRound((r) => r + 1);
-    } else if (!still) playFoley('land', 0.7);
+    }
+    restarting.current = false;
     setOrder(next);
     setFlying(null);
     if (cards[next[0]].id !== 'end') notify?.(next[0], cards[next[0]].label);
@@ -239,6 +243,7 @@ const Deck = memo(function Deck({
       latest.current.order = trimmed;
       setOrder(trimmed);
     }
+    restarting.current = true;
     throws.current[top]?.();
   }, [end]);
   /** The card at the back of the pile comes back on top, from the left. */
@@ -247,23 +252,11 @@ const Deck = memo(function Deck({
     if (inAir !== null || current.length < 2) return;
     const last = current[current.length - 1];
     const prev = [last, ...current.slice(0, -1)];
-    playSfx('card-swipe', 0.7);
+    playSound('loop.slide', { rate: REVERSE_PITCH });
     setMoved(true);
     setOrder(prev);
     entrances.current[last]?.();
     if (cards[last].id !== 'end') notify?.(last, cards[last].label);
-  }, []);
-
-  /** The deck's sounds download on the first touch or key press, never on page load. */
-  useEffect(() => {
-    const warm = () => {
-      void preloadSfx('card-swipe');
-      void preloadSfx('card-scratch');
-    };
-    const events = ['pointerdown', 'keydown'] as const;
-    events.forEach((name) => window.addEventListener(name, warm, { once: true, capture: true }));
-    return () =>
-      events.forEach((name) => window.removeEventListener(name, warm, { capture: true }));
   }, []);
 
   useEffect(() => {
@@ -593,7 +586,7 @@ const DeckCard = memo(function DeckCard({
           {chrome && id === 'receipt' ? <ReceiptTelemetry number={number} /> : null}
 
           <div ref={body} className="deck-card__body">
-            {face}
+            <ActiveScope active={active}>{face}</ActiveScope>
           </div>
 
           {chrome ? (
