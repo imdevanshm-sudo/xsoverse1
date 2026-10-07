@@ -14,7 +14,6 @@ import { Side2Audit } from '@/components/xso/Side2Audit';
 import { Side3PhotoStrip } from '@/components/xso/Side3PhotoStrip';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
 import type { XsoData } from '@/types/xso';
-import { playFoley, type FoleyCue } from '@/lib/foley';
 
 export const SPRING = {
   type: 'spring' as const,
@@ -93,16 +92,6 @@ export function seededOffset(seed: string, index: number, amount: number): numbe
     hash = Math.imul(hash, 16777619);
   }
   return ((((hash >>> 0) % 1000) / 999) * 2 - 1) * amount;
-}
-
-const CUE_TO_FOLEY: Record<'click' | 'clack' | 'tack', FoleyCue> = {
-  click: 'flip',
-  clack: 'thunk',
-  tack: 'tap',
-};
-
-export function playMechanicalCue(kind: 'click' | 'clack' | 'tack') {
-  playFoley(CUE_TO_FOLEY[kind]);
 }
 
 export function ArtifactSurface({

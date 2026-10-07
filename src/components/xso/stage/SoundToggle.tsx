@@ -4,8 +4,9 @@ import { Volume2, VolumeX } from 'lucide-react';
 import { toggleSound, useSoundOn } from '@/lib/sound';
 
 /**
- * Top-left of the recipient stage, opposite Make one back. `labeled` spells out the state next to
- * the icon in a larger pill, lit when sound is on.
+ * Top-left of the recipient stage from the first screen (over the wrap too), opposite Make one
+ * back. Off until the viewer turns it on or presses Play / Unwrap / Open. `labeled` spells out the
+ * state next to the icon in a larger pill, lit when sound is on.
  */
 export function SoundToggle({ labeled = false }: { labeled?: boolean }) {
   const on = useSoundOn();
@@ -17,7 +18,7 @@ export function SoundToggle({ labeled = false }: { labeled?: boolean }) {
       aria-pressed={on}
       aria-label="Sound"
       title={on ? 'Sound on: tap to mute' : 'Sound off: tap to turn on'}
-      className={`absolute left-3 top-[calc(0.75rem+env(safe-area-inset-top,0px))] z-40 rounded-full border backdrop-blur-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70 ${
+      className={`absolute left-3 top-[calc(0.75rem+env(safe-area-inset-top,0px))] z-50 rounded-full border backdrop-blur-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70 ${
         labeled
           ? `inline-flex h-12 items-center gap-2 pl-3.5 pr-4 font-receipt text-[13px] uppercase tracking-[0.14em] ${
               on

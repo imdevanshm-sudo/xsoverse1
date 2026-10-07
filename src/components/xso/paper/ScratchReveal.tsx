@@ -9,7 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { playSfx, preloadSfx } from '@/lib/sfx';
+import { playSound, useTexture } from '@/lib/sound';
 
 const BRUSH = 26;
 /** Share of the foil that has to come off before the rest falls away. */
@@ -108,7 +108,8 @@ export function ScratchReveal({
   const revealedRef = useRef(false);
   const paintedSize = useRef('');
   const scratched = useRef(false);
-  const lastGrain = useRef(0);
+  /** The foil's grain sound runs only while the coin is moving. */
+  const scratching = useTexture('scratch.texture');
   const sparkEls = useRef<(HTMLSpanElement | null)[]>([]);
   const sparkCursor = useRef(0);
   const [progress, setProgress] = useState(0);
@@ -229,12 +230,13 @@ export function ScratchReveal({
       revealedRef.current = true;
       setRevealed(true);
       setProgress(1);
-      playSfx('reveal-chime', 0.8);
+      scratching.stop(60);
+      playSound('scratch.reveal');
       onReveal?.();
       return;
     }
     setProgress(Math.min(1, ratio / REVEAL_RATIO));
-  }, [measureCleared, onReveal]);
+  }, [measureCleared, onReveal, scratching]);
 
   const emitSpark = useCallback((point: Point) => {
     const el = sparkEls.current[sparkCursor.current];
@@ -281,16 +283,12 @@ export function ScratchReveal({
 
     const tail = points[points.length - 1];
     if (tail && Math.random() > 0.6) emitSpark(tail);
-    const now = performance.now();
-    if (now - lastGrain.current > 70) {
-      lastGrain.current = now;
-      playSfx('card-scratch', 0.9);
-    }
+    scratching.touch();
 
     if (performance.now() - lastSample.current >= SAMPLE_INTERVAL_MS) {
       checkProgress();
     }
-  }, [checkProgress, emitSpark]);
+  }, [checkProgress, emitSpark, scratching]);
 
   const queue = (clientX: number, clientY: number) => {
     const rect = rectRef.current;
@@ -308,7 +306,6 @@ export function ScratchReveal({
   const onPointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     e.stopPropagation();
     e.preventDefault();
-    void preloadSfx('reveal-chime');
     if (!paintedSize.current) paintFoil();
     rectRef.current = e.currentTarget.getBoundingClientRect();
     scratched.current = true;

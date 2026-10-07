@@ -1,10 +1,13 @@
 'use client';
 
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import type { CSSProperties } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import type { AuditMetrics, XsoData } from '@/types/xso';
 import { auditLabel, overallStars } from '@/lib/formats';
 import { InkStamp, PaperGrain } from '@/components/xso/paper/PaperCraft';
+import { useFirstActive } from '@/components/xso/stage/ActiveScope';
+import { playSound } from '@/lib/sound';
 
 export interface Side2AuditProps {
   data: XsoData;
@@ -17,6 +20,11 @@ const AXES: { key: keyof AuditMetrics; label: string }[] = [
   { key: 'advice', label: 'Bad Advice' },
   { key: 'support', label: 'Emotional Support' },
 ];
+
+/** Radar grows 200–680 ms in; the stamp starts at 450 ms and hits 60% into its 420 ms keyframes. */
+const RADAR_TICKS_AT = 220;
+const RADAR_TICK_GAP = 100;
+const STAMP_LANDS_AT = 700;
 
 const YELLOW = '#facc15';
 const YELLOW_DEEP = '#eab308';
@@ -52,10 +60,27 @@ export const Side2Audit = memo(function Side2Audit({ data }: Side2AuditProps) {
   const hasHalf = stars - fullStars >= 0.4;
   const stamp = data.certifiedStampText || 'CERTIFIED BESTIE';
   const labels = useMemo(() => AXES.map(({ key, label }) => auditLabel(data, key, label)), [data]);
+  const live = useFirstActive();
+  const reduce = Boolean(useReducedMotion());
+
+  /** On the beats of the CSS: one tick per radar axis as it grows, the stamp as it lands. */
+  useEffect(() => {
+    if (!live) return;
+    const at = (ms: number, run: () => void) => window.setTimeout(run, ms);
+    const timers = reduce
+      ? [at(0, () => playSound('audit.stamp'))]
+      : [
+          ...AXES.map((_, i) =>
+            at(RADAR_TICKS_AT + i * RADAR_TICK_GAP, () => playSound('audit.tick')),
+          ),
+          at(STAMP_LANDS_AT, () => playSound('audit.stamp')),
+        ];
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, [live, reduce]);
 
   return (
     <article
-      className="relative mx-auto w-full max-w-[340px] overflow-hidden border-2 border-black p-4 shadow-2xl"
+      className={`relative mx-auto w-full max-w-[340px] overflow-hidden border-2 border-black p-4 shadow-2xl ${live ? '' : 'anim-hold'}`}
       style={{
         background: `linear-gradient(160deg, ${YELLOW} 0%, ${YELLOW_DEEP} 100%)`,
         transform: 'rotate(3deg)',

@@ -32,7 +32,8 @@ import { EagerMedia } from '@/components/xso/EagerMedia';
 import { FitStage } from '@/components/xso/stage/FitStage';
 import { FirstVisitHint } from '@/components/xso/stage/FirstVisitHint';
 import { SoundToggle } from '@/components/xso/stage/SoundToggle';
-import { playSfx, preloadSfx } from '@/lib/sfx';
+import { ActiveScope } from '@/components/xso/stage/ActiveScope';
+import { optIn, playSound, useSoundSurface } from '@/lib/sound';
 import type { GiftWrapper } from '@/lib/giftWrapper';
 import { RECIPIENT_OFFER, recipientOfferPrice } from '@/lib/pricing';
 import { track } from '@/lib/analytics';
@@ -50,6 +51,9 @@ const HINTS: Partial<Record<GiftStyle, string>> = {
 const OWN_ENDING: GiftStyle[] = ['accordion', 'loop', 'rewind'];
 /** Formats with no pinned "Make one back" pill either: the offer waits for the end card. */
 const END_ONLY: GiftStyle[] = ['rewind'];
+/** The twine slips first; the paper tears as the flaps start to swing (FLAPS_AT). */
+const RIP_AT_MS = 320;
+
 /** Formats whose sound toggle spells out "Sound on" / "Sound off" in a larger pill. */
 const LABELED_SOUND: GiftStyle[] = ['accordion', 'loop'];
 
@@ -87,6 +91,7 @@ export function GiftUnboxing({
   framed?: boolean;
   watermark?: boolean;
 }) {
+  useSoundSurface();
   const reduce = Boolean(useReducedMotion());
   const [phase, setPhase] = useState<Phase>('wrapped');
   const [wrapGone, setWrapGone] = useState(false);
@@ -105,7 +110,9 @@ export function GiftUnboxing({
     if (opening.current) return;
     opening.current = true;
     const { giftId: id, draft: local, style } = latest.current;
-    playSfx('parcel-unwrap', 0.7);
+    optIn();
+    playSound('unwrap.twine');
+    playSound('unwrap.rip', { delayMs: RIP_AT_MS });
     setFailed(false);
     setPhase('opening');
     const run = ++attempt.current;
@@ -142,9 +149,18 @@ export function GiftUnboxing({
       el.querySelector<HTMLElement>('[data-autofocus]')?.focus();
     }
   }, [wrapGone, contents]);
+  /** A soft thud as the gift settles into view, once. */
+  const landed = useRef(false);
+  useEffect(() => {
+    if (!wrapGone || !contents || landed.current) return;
+    landed.current = true;
+    playSound('unwrap.thud');
+  }, [wrapGone, contents]);
+  const toggle = <SoundToggle labeled={LABELED_SOUND.includes(wrapper.giftStyle)} />;
   const content = (
     <>
       {lit ? <AccordionDesk /> : null}
+      {toggle}
       <AnimatePresence onExitComplete={() => setWrapGone(true)}>
         {phase === 'wrapped' ? (
           <GiftWrap
@@ -167,19 +183,19 @@ export function GiftUnboxing({
             transition={{ duration: lit ? 0.9 : 0.72, ease: [0.22, 1, 0.36, 1] }}
           >
             <EagerMedia>
-              <Souvenir data={contents} cta={!framed} held={!wrapGone} onFinish={finish} />
+              <ActiveScope active={wrapGone}>
+                <Souvenir data={contents} cta={!framed} held={!wrapGone} onFinish={finish} />
+              </ActiveScope>
             </EagerMedia>
             {!wrapGone || framed || !HINTS[contents.giftStyle] ? null : (
               <FirstVisitHint text={HINTS[contents.giftStyle]!} />
             )}
-            {!wrapGone || framed || contents.giftStyle === 'moviebox' ? null : (
-              <>
-                <SoundToggle labeled={LABELED_SOUND.includes(contents.giftStyle)} />
-                {/* These formats offer it as their own last page, after the final card. */}
-                {END_ONLY.includes(contents.giftStyle) ? null : (
-                  <MakeOneBack ended={finished && !OWN_ENDING.includes(contents.giftStyle)} />
-                )}
-              </>
+            {/* These formats offer it as their own last page, after the final card. */}
+            {!wrapGone ||
+            framed ||
+            contents.giftStyle === 'moviebox' ||
+            END_ONLY.includes(contents.giftStyle) ? null : (
+              <MakeOneBack ended={finished && !OWN_ENDING.includes(contents.giftStyle)} />
             )}
           </motion.div>
         ) : wrapGone ? (
@@ -200,7 +216,7 @@ export function GiftUnboxing({
 
   return (
     <>
-      <ImmersivePrompt id={giftId} hold={!ready}>
+      <ImmersivePrompt id={giftId} hold={!ready} corner={toggle}>
         <RecipientCanvas wide={wrapper.giftStyle === 'moviebox'}>{content}</RecipientCanvas>
       </ImmersivePrompt>
       <AnimatePresence>{ready ? null : <RecipientPreloader key="preloader" />}</AnimatePresence>
@@ -440,7 +456,6 @@ const GiftWrap = memo(function GiftWrap({
   const matte = wrapper.giftStyle === 'moviebox';
   const presentation = wrapper.giftStyle === 'accordion' ? 'booklet' : wrapper.giftStyle;
   const backing = matte ? '24, 11, 16' : '173, 129, 83';
-  const preload = () => preloadSfx('parcel-unwrap');
   /** With reduced motion the parcel simply fades; nothing inside it moves. */
   const move = <T,>(exit: T) => (reduce ? undefined : exit);
 
@@ -520,9 +535,6 @@ const GiftWrap = memo(function GiftWrap({
           />
           <motion.button
             type="button"
-            onPointerEnter={preload}
-            onPointerDown={preload}
-            onFocus={preload}
             onClick={onUnwrap}
             whileHover={{ y: -2, scale: 1.02 }}
             whileTap={{ y: 2, scale: 0.97 }}
@@ -654,7 +666,7 @@ const Postmark = memo(function Postmark({
 }) {
   return (
     <div
-      className={`pointer-events-none absolute left-7 top-7 rotate-[-7deg] rounded-md border-2 border-current px-3 py-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em] ${
+      className={`pointer-events-none absolute right-7 top-7 rotate-[7deg] rounded-md border-2 border-current px-3 py-2 font-mono text-[8px] font-bold uppercase tracking-[0.18em] ${
         matte ? 'text-rose-100/40' : 'text-[#4d3b2d]/45'
       }`}
     >

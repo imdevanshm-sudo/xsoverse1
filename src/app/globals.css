@@ -947,6 +947,13 @@ html.is-landscape .xso-dock {
   animation-delay: var(--stamp-delay, 0ms);
 }
 
+/* Held on its first frame until the card is in front, so it lands (and sounds) when seen. */
+.anim-hold .star-pop,
+.anim-hold .radar-in,
+.anim-hold .ink-stamp--thunk {
+  animation-play-state: paused;
+}
+
 @keyframes stamp-thunk {
   0% {
     opacity: 0;

@@ -2,8 +2,8 @@
  * Movie Box soundtracks. Files live in `public/audio/soundtracks/` and are only fetched after the
  * recipient taps Play.
  *
- * TODO(assets): add licensed, royalty-free MP3s at these paths (≈1–2 MB each, 128 kbps, 60–120 s,
- * ideally loopable) and record each track's licence here before launch:
+ * TODO(assets): replace the generated placeholder loops at these paths with licensed, royalty-free
+ * MP3s (≈1–2 MB each, 128 kbps, 60–120 s, ideally loopable) and record each track's licence here:
  *   - golden-hour.mp3      warm solo piano
  *   - slow-dance.mp3       soft strings
  *   - late-night-drive.mp3 mellow lo-fi
@@ -14,6 +14,8 @@ export interface Soundtrack {
   name: string;
   mood: string;
   src: string;
+  /** Integrated loudness of the file (LUFS), so the mixer can level it; re-measure on replacing it. */
+  lufs: number;
   /** Licence or source, for the record. TODO(assets): fill in for each track. */
   licence: string;
 }
@@ -24,6 +26,7 @@ export const SOUNDTRACKS: Soundtrack[] = [
     name: 'Golden Hour',
     mood: 'Warm piano',
     src: '/audio/soundtracks/golden-hour.mp3',
+    lufs: -20.4,
     licence: 'TODO',
   },
   {
@@ -31,6 +34,7 @@ export const SOUNDTRACKS: Soundtrack[] = [
     name: 'Slow Dance',
     mood: 'Soft strings',
     src: '/audio/soundtracks/slow-dance.mp3',
+    lufs: -20.4,
     licence: 'TODO',
   },
   {
@@ -38,6 +42,7 @@ export const SOUNDTRACKS: Soundtrack[] = [
     name: 'Late Night Drive',
     mood: 'Mellow lo-fi',
     src: '/audio/soundtracks/late-night-drive.mp3',
+    lufs: -20.4,
     licence: 'TODO',
   },
   {
@@ -45,6 +50,7 @@ export const SOUNDTRACKS: Soundtrack[] = [
     name: 'Home Movies',
     mood: 'Acoustic guitar',
     src: '/audio/soundtracks/home-movies.mp3',
+    lufs: -20.4,
     licence: 'TODO',
   },
 ];
@@ -65,6 +71,7 @@ export const MIXTAPE_TRACKS: Soundtrack[] = [
     name: 'Cassette Summer',
     mood: 'Sunny synth-pop',
     src: '/audio/soundtracks/cassette-summer.mp3',
+    lufs: -22.9,
     licence: 'TODO',
   },
   {
@@ -72,6 +79,7 @@ export const MIXTAPE_TRACKS: Soundtrack[] = [
     name: 'Bedroom Tapes',
     mood: 'Lo-fi hip hop',
     src: '/audio/soundtracks/bedroom-tapes.mp3',
+    lufs: -23.4,
     licence: 'TODO',
   },
   {
@@ -79,6 +87,7 @@ export const MIXTAPE_TRACKS: Soundtrack[] = [
     name: 'Arcade Crush',
     mood: 'Chiptune',
     src: '/audio/soundtracks/arcade-crush.mp3',
+    lufs: -25.2,
     licence: 'TODO',
   },
   {
@@ -86,6 +95,7 @@ export const MIXTAPE_TRACKS: Soundtrack[] = [
     name: 'Slow Jam',
     mood: 'Late-night R&B keys',
     src: '/audio/soundtracks/slow-jam.mp3',
+    lufs: -22.7,
     licence: 'TODO',
   },
 ];
@@ -143,4 +153,9 @@ export function soundtrackSrc(
     return tracks.find((t) => `track:${t.id}` === value)?.src ?? null;
   }
   return value.startsWith('data:audio/') ? value : null;
+}
+
+/** Measured loudness of a bundled track, for the mixer; uploads are measured when they play. */
+export function trackLoudness(src: string): number | undefined {
+  return [...SOUNDTRACKS, ...MIXTAPE_TRACKS].find((track) => track.src === src)?.lufs;
 }

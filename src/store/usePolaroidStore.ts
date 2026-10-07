@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { playSound } from '@/lib/sound';
 
 /** Written on the back of a print; the lightbox offers a flip when present. */
 export interface PolaroidBack {
@@ -39,8 +40,15 @@ interface PolaroidState {
 export const usePolaroidStore = create<PolaroidState>((set) => ({
   isOpen: false,
   activePolaroidData: null,
-  open: (data) => set({ isOpen: true, activePolaroidData: data }),
-  close: () => set({ isOpen: false }),
+  open: (data) => {
+    playSound('photo.pop');
+    set({ isOpen: true, activePolaroidData: data });
+  },
+  close: () =>
+    set((state) => {
+      if (state.isOpen) playSound('photo.close');
+      return { isOpen: false };
+    }),
   settle: () => set((state) => (state.isOpen ? state : { activePolaroidData: null })),
 }));
 

@@ -20,6 +20,7 @@ import { selectedCards } from '@/lib/formatCards';
 import { formatPrice } from '@/lib/pricing';
 import { useDraftQuote } from '@/lib/pricingClient';
 import type { GiftStyle, XsoData } from '@/types/xso';
+import { useSoundSurface } from '@/lib/sound';
 
 /** The scrapbook reports its four memory groups; every stack reports each card it deals. */
 const SCRAPBOOK_MEMORIES = 4;
@@ -64,6 +65,7 @@ const PreviewStage = memo(function PreviewStage({
 
 /** Step 1 — paper keepsake deck, secret offer ticket and sticky CTA. */
 export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
+  useSoundSurface();
   const cart = getCartridge(lockedStyle);
   const draftQuote = useDraftQuote(lockedStyle);
   const data = useXsoData();

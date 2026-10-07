@@ -1,11 +1,12 @@
 'use client';
 
-import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { memo, useRef, type CSSProperties } from 'react';
 import { Pause, Play } from 'lucide-react';
 import type { XsoData } from '@/types/xso';
 import { CoffeeStain, DateStamp, PaperGrain } from '@/components/xso/paper/PaperCraft';
 import { ScratchReveal } from '@/components/xso/paper/ScratchReveal';
 import { usePauseOffscreen } from '@/hooks/usePauseOffscreen';
+import { useVoiceClip } from '@/components/xso/stage/useVoiceClip';
 
 export interface Side4BirthdayCardProps {
   data: XsoData;
@@ -104,46 +105,10 @@ const VoiceNotePlayer = memo(function VoiceNotePlayer({
   label: string;
   src?: string;
 }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const root = useRef<HTMLDivElement>(null);
-  const [playing, setPlaying] = useState(false);
-  usePauseOffscreen(root, audioRef, () => setPlaying(false));
+  const { audio, playing, toggle } = useVoiceClip(src);
+  usePauseOffscreen(root, audio, () => undefined);
   const bars = [8, 14, 22, 16, 28, 12, 24, 18, 26, 10, 20, 15, 27, 11, 19];
-
-  useEffect(() => {
-    if (!src) return;
-    /** Nothing downloads or decodes until the first press of play. */
-    const audio = new Audio();
-    audio.preload = 'none';
-    audio.src = src;
-    audioRef.current = audio;
-    const onEnded = () => setPlaying(false);
-    audio.addEventListener('ended', onEnded);
-    return () => {
-      audio.pause();
-      audio.removeEventListener('ended', onEnded);
-      audioRef.current = null;
-    };
-  }, [src]);
-
-  const toggle = async () => {
-    const audio = audioRef.current;
-    if (audio) {
-      if (playing) {
-        audio.pause();
-        setPlaying(false);
-      } else {
-        try {
-          await audio.play();
-          setPlaying(true);
-        } catch {
-          setPlaying(true);
-        }
-      }
-      return;
-    }
-    setPlaying((prev) => !prev);
-  };
 
   return (
     <div

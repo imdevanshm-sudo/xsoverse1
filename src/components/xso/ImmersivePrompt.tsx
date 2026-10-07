@@ -73,11 +73,14 @@ const COPY: Variants = {
 export function ImmersivePrompt({
   id,
   hold = false,
+  corner,
   children,
 }: {
   id: string;
   /** Stay plain black (e.g. under the preloader) and only begin the prompt once released. */
   hold?: boolean;
+  /** Stays usable over the prompt (the Sound toggle), since the gift underneath is inert. */
+  corner?: ReactNode;
   children: ReactNode;
 }) {
   const reduce = useReducedMotion();
@@ -154,6 +157,7 @@ export function ImmersivePrompt({
             aria-modal="true"
             aria-label={fullscreen ? 'Enter full screen' : 'Continue'}
           >
+            {mode === 'checking' ? null : corner}
             {mode === 'checking' ? null : (
               <motion.div
                 className="flex flex-col items-center text-center"
