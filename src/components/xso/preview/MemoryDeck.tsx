@@ -44,7 +44,7 @@ const FLIGHT = 720;
 /** Presses on these stay with the card content; photo thumbnails still drag the card. */
 const INTERACTIVE = 'button:not([data-polaroid]), a, input, audio, canvas, [role="slider"]';
 
-const SPRING = { type: 'spring', stiffness: 300, damping: 20 } as const;
+const SPRING = { type: 'spring', stiffness: 220, damping: 26 } as const;
 /** Going back, the card comes in from the left: the reverse of a flick. */
 const ENTER_FROM = { x: -FLIGHT * 0.55, y: -40 };
 const FLY_OUT = { duration: 0.34, ease: [0.4, 0, 1, 1] } as const;

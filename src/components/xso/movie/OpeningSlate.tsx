@@ -41,7 +41,7 @@ export const OpeningSlate = memo(function OpeningSlate({
           style={{ background: STRIPES }}
           initial={false}
           animate={{ rotate: clapped || reduce ? 0 : -14 }}
-          transition={{ type: 'spring', stiffness: 700, damping: 18 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
         />
         <div className="rounded-b-md border-2 border-t-0 border-[#fffaf0]/85 bg-[#140a0c] px-5 py-5 font-receipt uppercase text-[#fffaf0]">
           <div aria-hidden className="h-3 w-full" style={{ background: STRIPES, opacity: 0.85 }} />

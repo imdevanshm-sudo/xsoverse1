@@ -59,8 +59,8 @@ const TRAVEL = { stiffness: 320, damping: 36 };
 /** Folds lag the travel a touch and overshoot slightly, like paper settling. */
 const CREASE = { stiffness: 70, damping: 15, mass: 1.2 };
 const SNAPPY = { stiffness: 1000, damping: 100 };
-/** Paper let go of after a pull: springs past its rest once, then settles. */
-const TENSION = { stiffness: 380, damping: 14, mass: 0.8 };
+/** Paper let go of after a pull: eases home with barely any overshoot, so it never wobbles. */
+const TENSION = { stiffness: 300, damping: 24, mass: 0.8 };
 /** Scroll distance per fold, as a share of a panel's height. */
 const SCROLL_PER_FOLD = 0.9;
 /** How many panels are mid-fold at once while the sheet cascades shut or open. */

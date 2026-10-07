@@ -1411,7 +1411,7 @@ function WaxSeal({
     animate: { x: 4 * side, y: side === 1 ? 2 : 1, rotate: side === 1 ? 13 : -16 },
     transition: reduce
       ? INSTANT
-      : { type: 'spring' as const, stiffness: 420, damping: 16, delay: 0.08 },
+      : { type: 'spring' as const, stiffness: 260, damping: 22, delay: 0.08 },
   });
   return (
     <span aria-hidden className={`${place} h-[30px] w-[30px]`}>
