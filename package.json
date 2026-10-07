@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
-    "capture": "node scripts/capture-media.mjs"
+    "capture": "node scripts/capture-media.mjs",
+    "sound:check": "node scripts/sound-checklist.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
