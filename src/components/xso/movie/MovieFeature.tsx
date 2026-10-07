@@ -10,8 +10,9 @@ import {
   type PointerEvent,
 } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { soundtrackSrc } from '@/lib/soundtracks';
+import { optIn, playSound } from '@/lib/sound';
 import { useSoundtrack } from '@/components/xso/stage/useSoundtrack';
 import type { MovieLayers, XsoData } from '@/types/xso';
 import { useStage } from '@/components/xso/movie/useStage';
@@ -36,6 +37,10 @@ export interface MovieFrame {
 }
 
 const SWIPE_PX = 40;
+/** The projector's flutter plays out before the score fades in under it. */
+const MUSIC_AFTER_MS = 600;
+/** The score fades out over this long once "Fin" comes up. */
+const MUSIC_OUT_MS = 2000;
 
 /** How long each scene holds before the film moves on; the letter ends itself. */
 function sceneMs(scene: number, photos: number): number | null {
@@ -71,7 +76,9 @@ export const MovieFeature = memo(function MovieFeature({
   const music = useSoundtrack(soundtrackSrc(movie.soundtrack));
   const startMusic = music.start;
   const play = useCallback(() => {
-    startMusic();
+    optIn();
+    playSound('movie.start');
+    startMusic(MUSIC_AFTER_MS);
     startTimer.current = window.setTimeout(() => setStarted(true), reduce ? 0 : 450);
   }, [reduce, startMusic]);
   useEffect(() => () => window.clearTimeout(startTimer.current ?? undefined), []);
@@ -94,11 +101,21 @@ export const MovieFeature = memo(function MovieFeature({
 
   const finishMusic = music.finish;
   useEffect(() => {
-    if (finished) finishMusic();
+    if (!finished) return;
+    playSound('movie.fin');
+    finishMusic(MUSIC_OUT_MS);
   }, [finished, finishMusic]);
+  /** A splice tick each time the reel cuts to another scene. */
+  const cut = useRef(index);
+  useEffect(() => {
+    if (cut.current === index) return;
+    cut.current = index;
+    if (started) playSound('movie.splice');
+  }, [index, started]);
   const replayMusic = music.replay;
   const replay = useCallback(() => {
-    replayMusic();
+    playSound('movie.start');
+    replayMusic(MUSIC_AFTER_MS);
     goTo(0);
   }, [goTo, replayMusic]);
   const finish = useCallback(() => setFinished(true), []);
@@ -269,21 +286,6 @@ export const MovieFeature = memo(function MovieFeature({
                 >
                   <ChevronRight className="h-5 w-5" aria-hidden />
                 </button>
-                {music.available ? (
-                  <button
-                    type="button"
-                    onClick={music.toggleMute}
-                    aria-pressed={music.muted}
-                    aria-label={music.muted ? 'Unmute soundtrack' : 'Mute soundtrack'}
-                    className="movie-control absolute right-4"
-                  >
-                    {music.muted ? (
-                      <VolumeX className="h-5 w-5" aria-hidden />
-                    ) : (
-                      <Volume2 className="h-5 w-5" aria-hidden />
-                    )}
-                  </button>
-                ) : null}
               </nav>
             </>
           )}

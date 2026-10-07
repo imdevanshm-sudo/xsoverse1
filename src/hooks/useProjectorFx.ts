@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { playFoley, startHum } from '@/lib/foley';
+import { playSound, useTexture } from '@/lib/sound';
 
 export interface ProjectorFx {
   /** One frame pulled through the gate (claw click + a light haptic tick). */
@@ -16,6 +16,9 @@ export interface ProjectorFx {
   note: () => void;
 }
 
+/** Ratchet teeth closer together than this blur into one. */
+const RATCHET_GAP_MS = 70;
+
 function buzz(pattern: number | number[]) {
   if (typeof navigator === 'undefined' || !('vibrate' in navigator)) return;
   try {
@@ -26,46 +29,31 @@ function buzz(pattern: number | number[]) {
 }
 
 /**
- * Sound + haptic hooks for the 8mm projector. Every cue is optional polish:
- * audio needs a prior user gesture and `navigator.vibrate` is Android-only.
+ * Sound + haptic cues for the 8mm projector, through the sound manager. `navigator.vibrate` is
+ * Android-only.
  */
-export function useProjectorFx({ muted = false }: { muted?: boolean } = {}): ProjectorFx {
+export function useProjectorFx(): ProjectorFx {
   const reduce = Boolean(useReducedMotion());
-  const stopHum = useRef<(() => void) | null>(null);
+  const hum = useTexture('projector.hum');
   const lastRatchet = useRef(0);
-
-  const humStop = useCallback(() => {
-    stopHum.current?.();
-    stopHum.current = null;
-  }, []);
-
-  useEffect(() => humStop, [humStop]);
 
   return useMemo<ProjectorFx>(
     () => ({
-      step: () => {
-        if (muted) return;
-        playFoley('reel', 0.6);
+      step: (direction) => {
+        playSound('projector.step', { rate: direction < 0 ? 0.92 : 1 });
         if (!reduce) buzz(8);
       },
       ratchet: () => {
-        if (muted) return;
         const now = performance.now();
-        if (now - lastRatchet.current < 70) return;
+        if (now - lastRatchet.current < RATCHET_GAP_MS) return;
         lastRatchet.current = now;
-        playFoley('tap', 0.18);
+        playSound('projector.ratchet');
         if (!reduce) buzz(3);
       },
-      humStart: () => {
-        if (muted || stopHum.current) return;
-        stopHum.current = startHum(0.045);
-      },
-      humStop,
-      note: () => {
-        if (muted) return;
-        playFoley('flip', 0.3);
-      },
+      humStart: () => hum.touch(),
+      humStop: () => hum.stop(350),
+      note: () => playSound('projector.note'),
     }),
-    [muted, reduce, humStop],
+    [reduce, hum],
   );
 }

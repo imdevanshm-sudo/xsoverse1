@@ -1,10 +1,11 @@
 'use client';
 
-import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, animate, motion } from 'framer-motion';
 import type { AuditMetrics, MovieLayers, XsoData } from '@/types/xso';
 import { auditLabel } from '@/lib/formats';
 import { LazyMedia } from '@/components/xso/LazyMedia';
+import { playSound, useTexture } from '@/lib/sound';
 import type { StageSize } from '@/components/xso/movie/useStage';
 
 export interface SceneProps {
@@ -133,12 +134,23 @@ export const AuditScene = memo(function AuditScene({
       setRating(movie.stars);
       return;
     }
+    const total = BAR_START + BAR_STAGGER * metrics.length + 0.6;
     const controls = animate(0, movie.stars, {
-      duration: BAR_START + BAR_STAGGER * metrics.length + 0.6,
+      duration: total,
       ease: 'easeOut',
       onUpdate: setRating,
     });
-    return () => controls.stop();
+    /** A tick as each bar starts to fill, then one chime when the count lands. */
+    const timers = [
+      ...metrics.map((_, i) =>
+        window.setTimeout(() => playSound('movie.bar'), (BAR_START + i * BAR_STAGGER) * 1000),
+      ),
+      window.setTimeout(() => playSound('movie.star'), total * 1000),
+    ];
+    return () => {
+      controls.stop();
+      timers.forEach((id) => window.clearTimeout(id));
+    };
   }, [active, metrics.length, movie.stars, reduce]);
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-6">
@@ -213,6 +225,13 @@ export const PhotoScene = memo(function PhotoScene({ data, movie, active, reduce
   }, [active, photos.length, reduce]);
   const current = slide % photos.length;
   const next = (current + 1) % photos.length;
+  /** One soft shutter per new slide. */
+  const shown = useRef(current);
+  useEffect(() => {
+    if (shown.current === current) return;
+    shown.current = current;
+    playSound('movie.shutter');
+  }, [current]);
   const drift = DRIFT[current % DRIFT.length];
 
   return (
@@ -297,6 +316,8 @@ const LINE_PAUSE = 450;
 /** A breath before the last line lands. */
 const FINAL_PAUSE = 1400;
 const AFTER_LETTER = 2600;
+/** Lines that are heard being typed before the keys fade out. */
+const TYPED_LINES = 2;
 
 /**
  * The letter types itself out line by line, holds before the final line, then signs off. A tap
@@ -315,6 +336,13 @@ export const LetterScene = memo(function LetterScene({
   const [line, setLine] = useState(reduce ? total : 0);
   const [chars, setChars] = useState(0);
   const done = line >= total;
+  /** Typewriter keys over the first lines only; reduced motion shows the letter whole, silently. */
+  const keys = useTexture('letter.type');
+  const typing = active && !reduce && !done && line < TYPED_LINES;
+  useEffect(() => {
+    if (typing) keys.touch();
+    else keys.stop(line >= TYPED_LINES ? 700 : 120);
+  }, [typing, keys, line]);
 
   useEffect(() => {
     if (!active || done) return;
