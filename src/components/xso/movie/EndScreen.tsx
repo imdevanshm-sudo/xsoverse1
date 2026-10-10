@@ -4,13 +4,12 @@ import { memo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCcw, Share2 } from 'lucide-react';
 import type { StageSize } from '@/components/xso/movie/useStage';
-import { RECIPIENT_OFFER, recipientOfferPrice } from '@/lib/pricing';
 import { viewPath } from '@/lib/giftLinks';
 import { track } from '@/lib/analytics';
 
 /**
- * The closing card: "Fin.", then the way back to the store with the gift-back price, sharing and
- * a replay. Drafts in the studio (`cta` off) only get the replay.
+ * The closing card: "Fin.", then the way back to the store, sharing and a replay. Drafts in the
+ * studio (`cta` off) only get the replay.
  */
 export const EndScreen = memo(function EndScreen({
   stage,
@@ -29,7 +28,6 @@ export const EndScreen = memo(function EndScreen({
 }) {
   const { big } = stage;
   const [copied, setCopied] = useState(false);
-  const offer = recipientOfferPrice();
 
   /** Always the recipient's link, never the page URL (the sender's preview carries a key). */
   const share = async () => {
@@ -73,16 +71,11 @@ export const EndScreen = memo(function EndScreen({
           transition={{ duration: 0.8, delay: reduce ? 0 : 1.6, ease: 'easeOut' }}
         >
           <a
-            href={`/?ref=${RECIPIENT_OFFER.ref}`}
+            href="/"
             onClick={() => track('make_one_back', { source: 'movie_end' })}
             className="matte-cta flex min-h-[4rem] w-full flex-col items-center justify-center rounded-full px-6 font-serif text-[20px] font-semibold leading-tight shadow-[0_14px_40px_rgba(236,72,153,.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fdba74]"
           >
             Make one back
-            {offer ? (
-              <span className="mt-0.5 font-receipt text-[11px] font-normal uppercase tracking-[0.16em] opacity-90">
-                Yours for {offer}
-              </span>
-            ) : null}
           </a>
           <button
             type="button"

@@ -12,7 +12,6 @@ import {
   type Relationship,
 } from '@/lib/aiCraft';
 import {
-  AdjustBar,
   CraftStatus,
   GenerateButton,
   MemorySpark,
@@ -24,12 +23,7 @@ import {
 import { packContent, useXsoStore, type PackContent } from '@/store/useXsoStore';
 import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
-import { formatPrice, TIERS, type AddOnId } from '@/lib/pricing';
-import {
-  AddOnPicker,
-  OrderReceipt,
-  validDeliverAt,
-} from '@/components/storefront/customizer/OrderSummary';
+import { formatPrice, TIERS } from '@/lib/pricing';
 import { useQuote } from '@/lib/pricingClient';
 import type { ThemeId } from '@/lib/themes';
 import type { FormatKey, FormatLayers } from '@/lib/formats';
@@ -63,17 +57,13 @@ const STEPS = [
   { title: 'Pick the aesthetic', next: 'Next: build the stack' },
   { title: 'Build the stack', next: 'Next: set the tone' },
   { title: 'Set the tone', next: '✨ Write it for me' },
-  { title: 'The fine print', next: 'Looks good' },
-  { title: 'Final check', next: 'Lock it in' },
+  { title: 'The fine print', next: 'Lock it in' },
 ] as const;
-const DETAILS = 3;
-const LAST = STEPS.length - 1;
+const DETAILS = STEPS.length - 1;
 /** Signs the letter when the sender leaves their name blank. */
 const ANONYMOUS_SENDER = 'Me';
 const FOCUSABLE =
   'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-const LABEL = 'font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]';
-
 type Draft = PackContent;
 
 /** Keeps edits already made in the studio when the pack is unchanged; otherwise the pack's starter copy. */
@@ -130,24 +120,13 @@ export function XSOCustomizerModal() {
   const style = toGiftStyle(config.format);
   const { vibe, selectedCards: cards } = config;
   const photos = config.media.photos;
-  const [addOns, setAddOns] = useState<AddOnId[]>([]);
-  const [deliverAt, setDeliverAt] = useState('');
-  const price = useQuote(style, cards.length, addOns);
-  const scheduled = price.addOns.some((a) => a.id === 'schedule');
-  const toggleAddOn = useCallback((id: AddOnId) => {
-    setAddOns((current) => {
-      const on = !current.includes(id);
-      track('addon_toggled', { addon: id, on });
-      return on ? [...current, id] : current.filter((a) => a !== id);
-    });
-  }, []);
+  const price = useQuote(style, cards.length);
 
   const [step, setStep] = useState(0);
   const [crafted, setCrafted] = useState<CraftSource | null>(null);
   const [crafting, setCrafting] = useState<'generate' | Adjustment | null>(null);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [adjusted, setAdjusted] = useState<Adjustment | null>(null);
   const [focusCard, setFocusCard] = useState<number | undefined>(undefined);
   const busy = paying || crafting !== null;
 
@@ -340,7 +319,6 @@ export function XSOCustomizerModal() {
         );
         setDraft((d) => personalize({ ...d, ...storyToPatch(result.story, d) }, names));
         setCrafted(result.source);
-        setAdjusted(adjust ?? null);
         craftedFrom.current = craftKey;
         if (!adjust) setStep(DETAILS);
       } catch (err) {
@@ -424,29 +402,24 @@ export function XSOCustomizerModal() {
     setError(null);
     try {
       commit();
-      const chosen = price.addOns.map((a) => a.id);
       track('checkout_started', {
         tier: price.tier,
         total: price.total,
         currency: price.currency,
         aesthetic: style,
         cards: cards.length,
-        add_ons: chosen.join(','),
       });
-      const mode = await startCheckout(style, order, {
-        addOns: chosen,
-        deliverAt: scheduled ? new Date(deliverAt).toISOString() : undefined,
-      });
+      const mode = await startCheckout(style, order);
       if (mode === 'overlay') setPaying(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
       setPaying(false);
     }
-  }, [busy, cards.length, commit, deliverAt, order, price, scheduled, style]);
+  }, [busy, cards.length, commit, order, price, style]);
 
-  /** Warm Lemon.js on the last step so the overlay opens without a wait. */
+  /** Warm Lemon.js while the sender is finishing their customizations. */
   useEffect(() => {
-    if (step === LAST) void loadLemonJs();
+    if (step === DETAILS) void loadLemonJs();
   }, [step]);
 
   const canNext = step === 0 || step === 1;
@@ -530,7 +503,7 @@ export function XSOCustomizerModal() {
 
         <div
           ref={bodyRef}
-          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-4 ${step === LAST ? 'pb-8' : 'pb-6'}`}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-4"
         >
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,380px)] md:items-start md:gap-8">
             <aside
@@ -564,7 +537,6 @@ export function XSOCustomizerModal() {
                   <CardChecklist format={config.format} cards={cards} onCards={setCards} />
                   <TierMeter
                     format={config.format}
-                    cards={cards}
                     price={price}
                     onMovieBox={tryMovieBox}
                   />
@@ -618,27 +590,6 @@ export function XSOCustomizerModal() {
                 </div>
               ) : null}
 
-              {step === LAST ? (
-                <section className="grid gap-6">
-                  <OrderReceipt style={style} cards={cards} price={price} />
-                  <AddOnPicker
-                    price={price}
-                    selected={addOns}
-                    onToggle={toggleAddOn}
-                    deliverAt={deliverAt}
-                    onDeliverAt={setDeliverAt}
-                  />
-                  <div>
-                    <p className={`mb-2 ${LABEL}`}>Not quite it?</p>
-                    <AdjustBar busy={crafting} onAdjust={(a) => void generate(a)} />
-                    <p role="status" className="mt-2 text-[12px] font-semibold text-[#f9a8d4]">
-                      {adjusted
-                        ? `${adjusted === 'sweeter' ? '🥹 Sweeter' : '😂 Funnier'}. Done.`
-                        : null}
-                    </p>
-                  </div>
-                </section>
-              ) : null}
             </div>
           </div>
         </div>
@@ -673,21 +624,11 @@ export function XSOCustomizerModal() {
               label={STEPS[2].next}
             />
           ) : step === DETAILS ? (
-            <GenerateButton
-              busy={false}
-              disabled={busy || processing > 0}
-              onClick={() => setStep(LAST)}
-              label={STEPS[DETAILS].next}
-            />
-          ) : (
             <>
               <p className="mb-2.5 flex items-baseline justify-between gap-3 text-[13px] text-[#e0b4c6]">
                 <span className="min-w-0 truncate">
                   <span className="font-semibold text-[#fdf2f8]">{TIERS[price.tier].name}</span> ·{' '}
                   {cards.length} {cards.length === 1 ? 'card' : 'cards'}
-                  {price.addOns.length
-                    ? ` · ${price.addOns.length} add-on${price.addOns.length === 1 ? '' : 's'}`
-                    : ''}
                 </span>
                 <span className="shrink-0 font-receipt text-[15px] font-bold tabular-nums text-[#fdf2f8]">
                   {formatPrice(price.total, price.currency)}
@@ -696,20 +637,18 @@ export function XSOCustomizerModal() {
               <MatteCta
                 onClick={checkout}
                 loading={paying}
-                disabled={crafting !== null || (scheduled && !validDeliverAt(deliverAt))}
-                label={`${STEPS[LAST].next} (${formatPrice(price.total)})`}
+                disabled={busy || processing > 0}
+                label={`${STEPS[DETAILS].next} (${formatPrice(price.total)})`}
                 loadingLabel="Locking it in…"
                 ariaLabel={`Lock it in and pay ${formatPrice(price.total)}`}
               />
             </>
-          )}
-          {step === LAST ? (
+          ) : null}
+          {step === DETAILS ? (
             <div className="mt-3 text-center text-[13.5px] leading-snug text-[#e0b4c6]">
               <p className="flex items-center justify-center gap-1.5">
                 <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {scheduled
-                  ? 'Your private link is ready instantly and opens for them on your date.'
-                  : 'Your private link is ready the moment you check out.'}
+                Your private link is ready the moment you check out.
               </p>
               <p className="mt-1 font-semibold text-[#fdf2f8]">
                 Not happy? We&apos;ll redo it or refund you.

@@ -35,7 +35,6 @@ import { SoundToggle } from '@/components/xso/stage/SoundToggle';
 import { ActiveScope } from '@/components/xso/stage/ActiveScope';
 import { optIn, playSound, useSoundSurface } from '@/lib/sound';
 import type { GiftWrapper } from '@/lib/giftWrapper';
-import { RECIPIENT_OFFER, recipientOfferPrice } from '@/lib/pricing';
 import { track } from '@/lib/analytics';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
@@ -228,15 +227,14 @@ export function GiftUnboxing({
 /**
  * The way back to the store from a received gift, in two sizes: a quiet pill that stays in the
  * corner once the gift has been open a while, and a clear call to action when the viewer reaches
- * the end of it. Both carry the gift-back price while that offer is live.
+ * the end of it.
  */
 const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
   const reduce = Boolean(useReducedMotion());
   const [pill, setPill] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const offer = recipientOfferPrice();
-  const href = `/?ref=${RECIPIENT_OFFER.ref}`;
+  const href = '/';
 
   useEffect(() => {
     const timer = window.setTimeout(() => setPill(true), 6000);
@@ -268,7 +266,6 @@ const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
             className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top,0px))] z-40 inline-flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-black/45 px-4 font-receipt text-[12px] uppercase tracking-[0.14em] text-white/85 backdrop-blur-sm transition-colors hover:border-[#fdba74]/50 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70"
           >
             Make one back
-            {offer ? <span className="text-[#fdba74]">{offer}</span> : null}
           </motion.a>
         ) : null}
       </AnimatePresence>
@@ -297,11 +294,6 @@ const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
               className="matte-cta mt-4 flex min-h-[3.75rem] w-full flex-col items-center justify-center rounded-full px-6 font-serif text-[20px] font-semibold leading-tight shadow-[0_14px_40px_rgba(236,72,153,.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fdba74]"
             >
               Make one back
-              {offer ? (
-                <span className="mt-0.5 font-receipt text-[12px] font-normal uppercase tracking-[0.16em] opacity-90">
-                  Yours for {offer}
-                </span>
-              ) : null}
             </a>
             <button
               type="button"

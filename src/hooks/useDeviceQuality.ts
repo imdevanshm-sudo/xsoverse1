@@ -31,13 +31,23 @@ export function useDeviceQuality({
     const coarse = window.matchMedia('(pointer: coarse)');
     const narrow = window.matchMedia('(max-width: 768px)');
 
-    motion.addEventListener('change', apply);
-    coarse.addEventListener('change', apply);
-    narrow.addEventListener('change', apply);
+    // Safari before 14 and older Android WebViews only implement addListener.
+    // Keep the quality downgrade path working there instead of throwing on mount.
+    const watch = (query: MediaQueryList) => {
+      const legacy = query as MediaQueryList & {
+        addListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+        removeListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+      };
+      if (typeof query.addEventListener === 'function') {
+        query.addEventListener('change', apply);
+        return () => query.removeEventListener('change', apply);
+      }
+      legacy.addListener?.(apply);
+      return () => legacy.removeListener?.(apply);
+    };
+    const unwatch = [watch(motion), watch(coarse), watch(narrow)];
     return () => {
-      motion.removeEventListener('change', apply);
-      coarse.removeEventListener('change', apply);
-      narrow.removeEventListener('change', apply);
+      unwatch.forEach((stop) => stop());
     };
   }, []);
 

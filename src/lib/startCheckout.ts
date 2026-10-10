@@ -1,19 +1,11 @@
 import { useXsoStore } from '@/store/useXsoStore';
 import { pickXsoPayload } from '@/lib/xsoPayload';
-import { isRecipientVisitor, priceArm } from '@/lib/pricingClient';
 import { loadLemonJs, openLemonOverlay } from '@/lib/lemonJs';
 import { playSound, soundOn } from '@/lib/sound';
-import type { AddOnId } from '@/lib/pricing';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
 /** Long enough for the success chord to ring before the page moves on (which stops all sound). */
 const SUCCESS_HOLD_MS = 900;
-
-export interface CheckoutExtras {
-  addOns?: AddOnId[];
-  /** ISO time for scheduled delivery. */
-  deliverAt?: string;
-}
 
 /**
  * Saves the current draft as a pending gift and opens payment: the Lemon.js overlay when it
@@ -23,7 +15,6 @@ export interface CheckoutExtras {
 export async function startCheckout(
   style: GiftStyle,
   order?: XsoData,
-  extras: CheckoutExtras = {},
 ): Promise<'overlay' | 'redirect'> {
   const data = pickXsoPayload({ ...(order ?? useXsoStore.getState()), giftStyle: style });
   const overlay = await loadLemonJs();
@@ -32,9 +23,6 @@ export async function startCheckout(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       data,
-      ...extras,
-      arm: priceArm(),
-      recipient: isRecipientVisitor(),
       overlay,
     }),
   });

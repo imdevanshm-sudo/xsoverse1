@@ -11,23 +11,13 @@ import { isGiftStyle, pickXsoPayload } from '@/lib/xsoPayload';
 import { managePath, viewPath } from '@/lib/giftLinks';
 import { manageKey } from '@/lib/manageKey';
 import { FORMAT_CARDS, selectedCards } from '@/lib/formatCards';
-import { isAddOnId, isPriceArm, quote } from '@/lib/pricing';
+import { quote } from '@/lib/pricing';
 import type { XsoData } from '@/types/xso';
 
 export const runtime = 'nodejs';
 
 /** Photos and voice notes are inline data URIs; stay under the 4.5 MB platform cap. */
 const MAX_BODY_BYTES = 4_000_000;
-
-/** Scheduled delivery must be in the future and within a year. */
-function scheduledTime(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const time = new Date(value).getTime();
-  if (!Number.isFinite(time) || time <= Date.now() || time > Date.now() + 366 * 86_400_000) {
-    return null;
-  }
-  return new Date(time).toISOString();
-}
 
 export async function POST(request: Request) {
   try {
@@ -41,11 +31,7 @@ export async function POST(request: Request) {
 
     const body = JSON.parse(raw) as {
       data?: XsoData;
-      addOns?: unknown;
-      arm?: unknown;
-      deliverAt?: unknown;
       overlay?: unknown;
-      recipient?: unknown;
     };
     if (!body?.data || typeof body.data !== 'object') {
       return NextResponse.json({ error: 'Missing souvenir data' }, { status: 400 });
@@ -70,16 +56,7 @@ export async function POST(request: Request) {
     const price = quote({
       style: gift.data.giftStyle,
       cardCount: cards.length,
-      addOns: Array.isArray(body.addOns) ? body.addOns.filter(isAddOnId) : [],
-      arm: isPriceArm(body.arm) ? body.arm : null,
-      recipient: body.recipient === true,
     });
-    const deliverAt = price.addOns.some((a) => a.id === 'schedule')
-      ? scheduledTime(body.deliverAt)
-      : null;
-    if (price.addOns.some((a) => a.id === 'schedule') && !deliverAt) {
-      return NextResponse.json({ error: 'Pick a delivery time in the future.' }, { status: 400 });
-    }
 
     if (!lemon) {
       await activateGiftPreview(gift.id);
@@ -101,7 +78,6 @@ export async function POST(request: Request) {
       cardNames: FORMAT_CARDS[gift.data.giftStyle]
         .filter((c) => cards.includes(c.id))
         .map((c) => c.label),
-      deliverAt,
       overlay: body.overlay === true,
     });
 

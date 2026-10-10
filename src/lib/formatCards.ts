@@ -73,7 +73,7 @@ export const DEFAULT_CARDS: Record<GiftStyle, CardId[]> = {
   moviebox: [...LOOP_CARDS],
 };
 
-/** Every format can be bought as a Single Card. */
+/** Fewest cards a format will still play with. Price is by format, not by count. */
 export const MIN_CARDS: Record<GiftStyle, number> = {
   loop: 1,
   rewind: 1,

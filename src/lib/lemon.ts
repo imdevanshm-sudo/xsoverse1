@@ -1,13 +1,6 @@
 import { randomBytes } from 'crypto';
 import { pickXsoPayload } from '@/lib/xsoPayload';
-import {
-  ADD_ONS,
-  formatPrice,
-  RECIPIENT_OFFER,
-  TIERS,
-  type Quote,
-  type TierId,
-} from '@/lib/pricing';
+import { TIERS, type Quote } from '@/lib/pricing';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
 import type { GiftStyle } from '@/types/xso';
 import { markGiftPaid, saveGift, type StoredGift } from '@/lib/giftStore';
@@ -18,25 +11,28 @@ import type { XsoData } from '@/types/xso';
 export interface LemonConfig {
   apiKey: string;
   storeId: string;
-  /** Per-tier variants, each falling back to LEMONSQUEEZY_VARIANT_ID. */
-  variants: Record<TierId, string>;
+  /** The one Lemon Squeezy product used for every $14.99 keepsake. */
+  variantId: string;
   webhookSecret?: string;
 }
 
 export function getLemonConfig(): LemonConfig | null {
   const apiKey = process.env.LEMONSQUEEZY_API_KEY;
   const storeId = process.env.LEMONSQUEEZY_STORE_ID;
-  const fallback = process.env.LEMONSQUEEZY_VARIANT_ID;
-  const variant = (tier: TierId) => process.env[TIERS[tier].variantEnv] || fallback;
-  const single = variant('single');
-  const full = variant('full');
-  const moviebox = variant('moviebox');
-  if (!apiKey || !storeId || !single || !full || !moviebox) return null;
+  const variantId =
+    process.env.LEMONSQUEEZY_VARIANT_ID ||
+    process.env.LEMONSQUEEZY_VARIANT_CLASSIC ||
+    process.env.LEMONSQUEEZY_VARIANT_PREMIUM ||
+    process.env.LEMONSQUEEZY_VARIANT_FULL ||
+    process.env.LEMONSQUEEZY_VARIANT_MOVIEBOX ||
+    process.env.LEMONSQUEEZY_VARIANT_SINGLE;
+  if (!apiKey || !storeId) return null;
+  if (!variantId) return null;
 
   return {
     apiKey,
     storeId,
-    variants: { single, full, moviebox },
+    variantId,
     webhookSecret: process.env.LEMONSQUEEZY_WEBHOOK_SECRET,
   };
 }
@@ -79,7 +75,18 @@ interface LemonCheckoutResponse {
       url?: string;
     };
   };
-  errors?: Array<{ detail?: string }>;
+  errors?: Array<{ detail?: string; title?: string; status?: string }>;
+}
+
+function checkoutError(response: Response, json: LemonCheckoutResponse): Error {
+  const first = json.errors?.[0];
+  const msg = first?.detail || first?.title || '';
+  if (msg.toLowerCase().includes('related resource does not exist')) {
+    return new Error(
+      'Checkout is temporarily unavailable: Store or Variant resource not found. Please verify Lemon Squeezy Store ID and Variant ID.',
+    );
+  }
+  return new Error(msg || `Lemon Squeezy error (${response.status})`);
 }
 
 export async function createLemonCheckout(options: {
@@ -91,7 +98,6 @@ export async function createLemonCheckout(options: {
   quote: Quote;
   /** Labels of the cards in the stack, for the checkout summary. */
   cardNames: string[];
-  deliverAt?: string | null;
   /** Lemon.js overlay instead of a full-page redirect. */
   overlay?: boolean;
 }): Promise<{ checkoutUrl: string; redirectUrl: string }> {
@@ -105,12 +111,10 @@ export async function createLemonCheckout(options: {
   const { quote } = options;
   const aesthetic = displayTitle(getCartridge(options.giftStyle));
   const recipient = options.customerName.trim() || 'someone special';
-  const extras = quote.addOns.map((a) => ADD_ONS[a.id].name);
+  const tierName = TIERS[quote.tier]?.name || 'Keepsake';
   const description = [
-    `${TIERS[quote.tier].name} · ${aesthetic}`,
+    `${tierName} · ${aesthetic}`,
     options.cardNames.join(', '),
-    extras.length ? `Add-ons: ${extras.join(', ')}` : '',
-    quote.discount ? `Gift-back offer: −${formatPrice(quote.discount, quote.currency)}` : '',
     'A private link, ready the moment you check out. No shipping, no waiting.',
   ]
     .filter(Boolean)
@@ -131,21 +135,14 @@ export async function createLemonCheckout(options: {
       data: {
         type: 'checkouts',
         attributes: {
-          // The recipient offer is taken off by its Lemon Squeezy discount code, not the price.
-          custom_price: options.quote.total + options.quote.discount,
+          custom_price: options.quote.total,
           checkout_data: {
             custom: {
               gift_id: options.giftId,
               gift_style: options.giftStyle,
               tier: options.quote.tier,
-              // TODO(fulfillment): add-ons are recorded on the order but not fulfilled yet:
-              // scheduled unlock (deliver_at), extra rewrites, Stories video, print PDF.
-              // Lemon turns '' into null and rejects it, so no add-ons means no field.
-              add_ons: options.quote.addOns.map((a) => a.id).join(',') || undefined,
-              deliver_at: options.deliverAt ?? undefined,
             },
             name: options.billerName || undefined,
-            discount_code: options.quote.discount ? RECIPIENT_OFFER.code : undefined,
           },
           product_options: {
             name: `XSO Keepsake for ${recipient} · ${aesthetic}`,
@@ -178,7 +175,7 @@ export async function createLemonCheckout(options: {
           variant: {
             data: {
               type: 'variants',
-              id: String(config.variants[options.quote.tier]),
+              id: config.variantId,
             },
           },
         },
@@ -189,10 +186,7 @@ export async function createLemonCheckout(options: {
   const json = (await response.json()) as LemonCheckoutResponse;
   const checkoutUrl = json.data?.attributes?.url;
 
-  if (!response.ok || !checkoutUrl) {
-    const detail = json.errors?.[0]?.detail || `Lemon Squeezy error (${response.status})`;
-    throw new Error(detail);
-  }
+  if (!response.ok || !checkoutUrl) throw checkoutError(response, json);
 
   return { checkoutUrl, redirectUrl };
 }

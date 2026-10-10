@@ -127,7 +127,10 @@ export const AuditScene = memo(function AuditScene({
   reduce,
 }: SceneProps) {
   const { big } = stage;
-  const metrics = Object.entries(data.auditMetrics) as [keyof AuditMetrics, number][];
+  const metrics = useMemo(
+    () => Object.entries(data.auditMetrics) as [keyof AuditMetrics, number][],
+    [data.auditMetrics],
+  );
   const [rating, setRating] = useState(reduce ? movie.stars : 0);
   useEffect(() => {
     if (reduce || !active) {
@@ -151,7 +154,7 @@ export const AuditScene = memo(function AuditScene({
       controls.stop();
       timers.forEach((id) => window.clearTimeout(id));
     };
-  }, [active, metrics.length, movie.stars, reduce]);
+  }, [active, metrics, movie.stars, reduce]);
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-6">
       <Slate index={index} title={sceneTitle(movie, scene, data)} big={big} />
