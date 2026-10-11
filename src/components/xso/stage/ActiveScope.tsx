@@ -14,6 +14,11 @@ export function ActiveScope({ active, children }: { active: boolean; children: R
   return <Active.Provider value={parent && active}>{children}</Active.Provider>;
 }
 
+/** Whether this content is in front right now. */
+export function useActive(): boolean {
+  return useContext(Active);
+}
+
 /** Turns true the first time this content is in front, and stays true. */
 export function useFirstActive(): boolean {
   const active = useContext(Active);

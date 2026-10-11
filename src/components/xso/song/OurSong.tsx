@@ -4,14 +4,20 @@ import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
 import { Disc3, Music2, X } from 'lucide-react';
+import { hush } from '@/lib/sound';
 import { spotifyEmbedUrl, type SongAttachment } from '@/lib/spotify';
+import { useActive } from '@/components/xso/stage/ActiveScope';
 
 /** Spotify's compact player; the full-size one needs 352px. */
 const PLAYER_HEIGHT = 152;
+/** Past this, a player that hasn't loaded (offline, blocked, Spotify down) gives way to a card. */
+const EMBED_TIMEOUT_MS = 12_000;
 
 /**
  * The Spotify player, mounted only once it nears the viewport so a keepsake with a song costs
- * nothing until the recipient gets there. A skeleton holds its place while it loads.
+ * nothing until the recipient gets there. A skeleton holds its place while it loads; if it never
+ * does, a plain card with the cover and a link takes over. While it's in front and on screen the
+ * app's own music and effects step aside, since the mixer can't reach into Spotify's frame.
  */
 export const SpotifyPlayer = memo(function SpotifyPlayer({
   song,
@@ -22,31 +28,99 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const near = useInView(box, { once: true, margin: '200px' });
-  const [loaded, setLoaded] = useState(false);
+  const onScreen = useInView(box, { amount: 0.5 });
+  const active = useActive();
+  const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
+
+  useEffect(() => {
+    if (!near || state !== 'loading') return;
+    const timer = window.setTimeout(() => setState('failed'), EMBED_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [near, state]);
+
+  const hushing = onScreen && active && state !== 'failed';
+  useEffect(() => {
+    if (!hushing) return;
+    hush(true);
+    return () => hush(false);
+  }, [hushing]);
 
   return (
-    <div
-      ref={box}
-      className={`relative w-full overflow-hidden rounded-xl bg-[#121212] ${className}`}
-      style={{ height: PLAYER_HEIGHT }}
-    >
-      {loaded ? null : <PlayerSkeleton song={song} />}
-      {near ? (
-        <iframe
-          title={`Spotify player: ${song.title}`}
-          src={spotifyEmbedUrl(song)}
-          width="100%"
-          height={PLAYER_HEIGHT}
-          loading="lazy"
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          referrerPolicy="strict-origin-when-cross-origin"
-          onLoad={() => setLoaded(true)}
-          className={`absolute inset-0 h-full w-full border-0 transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
-        />
-      ) : null}
+    <div className={className}>
+      {state === 'failed' ? (
+        <SongFallback song={song} />
+      ) : (
+        <div
+          ref={box}
+          className="relative w-full overflow-hidden rounded-xl bg-[#121212]"
+          style={{ height: PLAYER_HEIGHT }}
+        >
+          {state === 'ready' ? null : <PlayerSkeleton song={song} />}
+          {near ? (
+            <iframe
+              title={`Spotify player: ${song.title}`}
+              src={spotifyEmbedUrl(song)}
+              width="100%"
+              height={PLAYER_HEIGHT}
+              loading="lazy"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              referrerPolicy="strict-origin-when-cross-origin"
+              onLoad={() => setState((s) => (s === 'loading' ? 'ready' : s))}
+              onError={() => setState('failed')}
+              className={`absolute inset-0 h-full w-full border-0 transition-opacity duration-300 ${state === 'ready' ? 'opacity-100' : 'opacity-0'}`}
+            />
+          ) : null}
+        </div>
+      )}
+      {state === 'failed' ? null : (
+        <p className="mt-1.5 text-[11.5px] leading-snug opacity-70">
+          Tap play. Full songs require Spotify login; otherwise, you&apos;ll hear a preview.
+        </p>
+      )}
+      <OpenInSpotify song={song} />
     </div>
   );
 });
+
+function OpenInSpotify({ song }: { song: SongAttachment }) {
+  return (
+    <a
+      href={song.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-full bg-[#1db954] px-4 text-[13px] font-semibold text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1db954]"
+    >
+      <Music2 className="h-4 w-4" aria-hidden /> Open in Spotify
+    </a>
+  );
+}
+
+/** When the player can't load: the cover, the title and artist, and the link still work. */
+function SongFallback({ song }: { song: SongAttachment }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-[#121212] p-3 text-white">
+      {song.thumbnail ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={song.thumbnail}
+          alt={`Cover of ${song.title}`}
+          className="h-16 w-16 shrink-0 rounded-lg object-cover"
+        />
+      ) : (
+        <span className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-[#1db954]/20 text-[#1db954]">
+          <Music2 className="h-7 w-7" aria-hidden />
+        </span>
+      )}
+      <div className="min-w-0">
+        <p className="truncate text-[15px] font-semibold">{song.title}</p>
+        {song.artist ? <p className="truncate text-[13px] text-white/70">{song.artist}</p> : null}
+        <p className="mt-0.5 text-[11.5px] text-white/60">
+          The player didn&apos;t load. Open it in Spotify instead.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function PlayerSkeleton({ song }: { song: SongAttachment }) {
   return (
@@ -127,7 +201,7 @@ export function SongFold({
   wide: boolean;
 }) {
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-y-auto overscroll-contain" data-no-drag>
       {label}
       <p
         className={`mt-1.5 truncate font-serif font-semibold leading-tight ${wide ? 'text-[28px]' : 'text-[20px]'}`}

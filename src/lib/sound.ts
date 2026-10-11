@@ -518,8 +518,11 @@ export function soundOn(): boolean {
   return enabled;
 }
 
+/** Players outside the mixer (the Spotify embed) currently on screen; the app stays quiet. */
+let hushes = 0;
+
 const audible = () =>
-  enabled && surfaces > 0 && typeof document !== 'undefined' && !document.hidden;
+  enabled && hushes === 0 && surfaces > 0 && typeof document !== 'undefined' && !document.hidden;
 
 function setEnabled(on: boolean) {
   enabled = on;
@@ -616,7 +619,7 @@ function context(): AudioContext | null {
 
 function applyMaster() {
   if (!ctx || !master) return;
-  master.gain.setTargetAtTime(enabled ? 1 : 0, ctx.currentTime, 0.015);
+  master.gain.setTargetAtTime(enabled && hushes === 0 ? 1 : 0, ctx.currentTime, 0.015);
 }
 
 // Ducking: transient effects push it out for their length; voice and textures hold it.
@@ -1002,6 +1005,33 @@ export function stopAll({ resumable = false }: { resumable?: boolean } = {}) {
   record('stop', false);
 }
 
+/**
+ * Hold while a player the mixer can't reach (the Spotify embed) is on screen: app music and voice
+ * notes pause, effects and beds stop, and nothing new is heard. When the last hold is released,
+ * whatever was playing picks up again.
+ */
+export function hush(on: boolean) {
+  const was = hushes > 0;
+  hushes = Math.max(0, hushes + (on ? 1 : -1));
+  const now = hushes > 0;
+  if (now === was) return;
+  record(now ? 'hush' : 'unhush', false);
+  applyMaster();
+  if (now) {
+    stopEffects();
+    media.forEach((entry) => {
+      entry.resume = !entry.el.paused;
+      entry.el.pause();
+    });
+    return;
+  }
+  media.forEach((entry) => {
+    if (!entry.resume) return;
+    entry.resume = false;
+    if (audible()) void entry.el.play().catch(() => {});
+  });
+}
+
 if (typeof window !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
@@ -1167,6 +1197,7 @@ export function soundState() {
   return {
     enabled,
     surfaces,
+    hushed: hushes > 0,
     context: ctx?.state ?? 'none',
     master: master?.gain.value ?? 0,
     voices: live,
