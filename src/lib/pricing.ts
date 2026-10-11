@@ -69,10 +69,48 @@ export function resolveTier(style: GiftStyle): TierId {
   return CLASSIC_STYLES.includes(style) ? 'classic' : 'premium';
 }
 
+export type AddOnId = 'spotify_song';
+
+export interface AddOnSpec {
+  id: AddOnId;
+  label: string;
+  description: string;
+  /** Set a price to 0 to make the add-on free; it still has to be chosen at checkout. */
+  prices: Amounts;
+}
+
+export const ADD_ONS: Record<AddOnId, AddOnSpec> = {
+  spotify_song: {
+    id: 'spotify_song',
+    label: 'Our Song (Spotify)',
+    description: 'Add a song that plays with your keepsake.',
+    prices: { USD: 199, INR: 16900 },
+  },
+};
+
+export const ADD_ON_ORDER: AddOnId[] = ['spotify_song'];
+
+export function isAddOnId(value: unknown): value is AddOnId {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(ADD_ONS, value);
+}
+
+/** Known add-ons only, once each, in display order. */
+export function sanitizeAddOns(value: unknown): AddOnId[] {
+  const picked = new Set(Array.isArray(value) ? value.filter(isAddOnId) : []);
+  return ADD_ON_ORDER.filter((id) => picked.has(id));
+}
+
+export interface QuoteLine {
+  id: AddOnId;
+  label: string;
+  amount: number;
+}
+
 export interface Quote {
   tier: TierId;
   currency: CurrencyCode;
   base: number;
+  addOns: QuoteLine[];
   total: number;
 }
 
@@ -81,11 +119,28 @@ export function quote(options: {
   /** Ignored: price is by format. Kept so existing callers do not have to change. */
   cardCount?: number;
   currency?: CurrencyCode;
+  addOns?: readonly AddOnId[];
 }): Quote {
   const currency = options.currency ?? DEFAULT_CURRENCY;
   const tier = resolveTier(options.style);
   const base = TIERS[tier].prices[currency];
-  return { tier, currency, base, total: base };
+  const addOns = sanitizeAddOns(options.addOns).map((id) => ({
+    id,
+    label: ADD_ONS[id].label,
+    amount: ADD_ONS[id].prices[currency],
+  }));
+  return {
+    tier,
+    currency,
+    base,
+    addOns,
+    total: addOns.reduce((sum, line) => sum + line.amount, base),
+  };
+}
+
+export function addOnPrice(id: AddOnId, currency: CurrencyCode = DEFAULT_CURRENCY): string {
+  const amount = ADD_ONS[id].prices[currency];
+  return amount ? `+${formatPrice(amount, currency)}` : 'Free';
 }
 
 export function formatPrice(amount: number, currency: CurrencyCode = DEFAULT_CURRENCY): string {

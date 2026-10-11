@@ -23,7 +23,8 @@ import {
 import { packContent, useXsoStore, type PackContent } from '@/store/useXsoStore';
 import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
-import { formatPrice, TIERS } from '@/lib/pricing';
+import { formatPrice, sanitizeAddOns, TIERS, type AddOnId } from '@/lib/pricing';
+import { AddOnChecklist } from '@/components/storefront/customizer/OrderSummary';
 import { useQuote } from '@/lib/pricingClient';
 import type { ThemeId } from '@/lib/themes';
 import type { FormatKey, FormatLayers } from '@/lib/formats';
@@ -120,7 +121,15 @@ export function XSOCustomizerModal() {
   const style = toGiftStyle(config.format);
   const { vibe, selectedCards: cards } = config;
   const photos = config.media.photos;
-  const price = useQuote(style, cards.length);
+  const [addOns, setAddOns] = useState<AddOnId[]>([]);
+  const toggleAddOn = useCallback(
+    (id: AddOnId, on: boolean) =>
+      setAddOns((current) =>
+        sanitizeAddOns(on ? [...current, id] : current.filter((a) => a !== id)),
+      ),
+    [],
+  );
+  const price = useQuote(style, cards.length, addOns);
 
   const [step, setStep] = useState(0);
   const [crafted, setCrafted] = useState<CraftSource | null>(null);
@@ -408,14 +417,15 @@ export function XSOCustomizerModal() {
         currency: price.currency,
         aesthetic: style,
         cards: cards.length,
+        add_ons: addOns.join(','),
       });
-      const mode = await startCheckout(style, order);
+      const mode = await startCheckout(style, order, addOns);
       if (mode === 'overlay') setPaying(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
       setPaying(false);
     }
-  }, [busy, cards.length, commit, order, price, style]);
+  }, [addOns, busy, cards.length, commit, order, price, style]);
 
   /** Warm Lemon.js while the sender is finishing their customizations. */
   useEffect(() => {
@@ -535,11 +545,7 @@ export function XSOCustomizerModal() {
               {step === 1 ? (
                 <>
                   <CardChecklist format={config.format} cards={cards} onCards={setCards} />
-                  <TierMeter
-                    format={config.format}
-                    price={price}
-                    onMovieBox={tryMovieBox}
-                  />
+                  <TierMeter format={config.format} price={price} onMovieBox={tryMovieBox} />
                 </>
               ) : null}
 
@@ -587,9 +593,13 @@ export function XSOCustomizerModal() {
                     photoSlot={photoPicker}
                     onFocusCard={setFocusCard}
                   />
+                  <AddOnChecklist
+                    selected={addOns}
+                    onToggle={toggleAddOn}
+                    currency={price.currency}
+                  />
                 </div>
               ) : null}
-
             </div>
           </div>
         </div>
@@ -629,6 +639,7 @@ export function XSOCustomizerModal() {
                 <span className="min-w-0 truncate">
                   <span className="font-semibold text-[#fdf2f8]">{TIERS[price.tier].name}</span> ·{' '}
                   {cards.length} {cards.length === 1 ? 'card' : 'cards'}
+                  {price.addOns.map((line) => ` + ${line.label}`).join('')}
                 </span>
                 <span className="shrink-0 font-receipt text-[15px] font-bold tabular-nums text-[#fdf2f8]">
                   {formatPrice(price.total, price.currency)}

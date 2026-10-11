@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { quote, type Quote } from '@/lib/pricing';
+import { quote, type AddOnId, type Quote } from '@/lib/pricing';
 import { selectedCards } from '@/lib/formatCards';
 import { useXsoStore } from '@/store/useXsoStore';
 import type { GiftStyle, XsoData } from '@/types/xso';
@@ -17,11 +17,14 @@ export function captureRef(): void {
   } catch {}
 }
 
-export function useQuote(style: GiftStyle, cardCount: number = 0) {
-  return useMemo<Quote>(
-    () => quote({ style, cardCount }),
-    [cardCount, style],
-  );
+const NONE: readonly AddOnId[] = [];
+
+export function useQuote(
+  style: GiftStyle,
+  cardCount: number = 0,
+  addOns: readonly AddOnId[] = NONE,
+) {
+  return useMemo<Quote>(() => quote({ style, cardCount, addOns }), [addOns, cardCount, style]);
 }
 
 /** Quote for the gift draft in the store, for pages outside the customizer. */

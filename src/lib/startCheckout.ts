@@ -2,6 +2,7 @@ import { useXsoStore } from '@/store/useXsoStore';
 import { pickXsoPayload } from '@/lib/xsoPayload';
 import { loadLemonJs, openLemonOverlay } from '@/lib/lemonJs';
 import { playSound, soundOn } from '@/lib/sound';
+import type { AddOnId } from '@/lib/pricing';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
 /** Long enough for the success chord to ring before the page moves on (which stops all sound). */
@@ -15,6 +16,7 @@ const SUCCESS_HOLD_MS = 900;
 export async function startCheckout(
   style: GiftStyle,
   order?: XsoData,
+  addOns: readonly AddOnId[] = [],
 ): Promise<'overlay' | 'redirect'> {
   const data = pickXsoPayload({ ...(order ?? useXsoStore.getState()), giftStyle: style });
   const overlay = await loadLemonJs();
@@ -24,6 +26,7 @@ export async function startCheckout(
     body: JSON.stringify({
       data,
       overlay,
+      addOns,
     }),
   });
   const json = (await response.json().catch(() => ({}))) as {

@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
 import { pickXsoPayload } from '@/lib/xsoPayload';
-import { TIERS, type Quote } from '@/lib/pricing';
+import { TIERS, sanitizeAddOns, type AddOnId, type Quote } from '@/lib/pricing';
 import { displayTitle, getCartridge } from '@/lib/cartridges';
 import type { GiftStyle } from '@/types/xso';
 import { markGiftPaid, saveGift, type StoredGift } from '@/lib/giftStore';
@@ -11,7 +11,10 @@ import type { XsoData } from '@/types/xso';
 export interface LemonConfig {
   apiKey: string;
   storeId: string;
-  /** The one Lemon Squeezy product used for every $14.99 keepsake. */
+  /**
+   * The one Lemon Squeezy product used for every keepsake. Add-ons don't need variants of their
+   * own: they're priced into the checkout's `custom_price`.
+   */
   variantId: string;
   webhookSecret?: string;
 }
@@ -58,7 +61,10 @@ export function getAppUrl(requestUrl?: string): string {
   return 'http://localhost:3000';
 }
 
-export async function createPendingGift(data: XsoData): Promise<StoredGift> {
+export async function createPendingGift(
+  data: XsoData,
+  addOns: readonly AddOnId[] = [],
+): Promise<StoredGift> {
   const id = createGiftId();
   const payload = pickXsoPayload({ ...data, id });
   return saveGift({
@@ -66,7 +72,17 @@ export async function createPendingGift(data: XsoData): Promise<StoredGift> {
     data: payload,
     status: 'pending',
     createdAt: new Date().toISOString(),
+    addOns: addOns.length ? { requested: [...addOns], paid: [] } : undefined,
   });
+}
+
+/** Lemon custom data values are strings: add-on ids, comma-separated. */
+export function encodeAddOns(addOns: readonly { id: AddOnId }[]): string {
+  return addOns.map((line) => line.id).join(',');
+}
+
+export function decodeAddOns(value: unknown): AddOnId[] {
+  return typeof value === 'string' ? sanitizeAddOns(value.split(',')) : [];
 }
 
 interface LemonCheckoutResponse {
@@ -115,6 +131,7 @@ export async function createLemonCheckout(options: {
   const description = [
     `${tierName} · ${aesthetic}`,
     options.cardNames.join(', '),
+    quote.addOns.length ? `With ${quote.addOns.map((line) => line.label).join(', ')}` : '',
     'A private link, ready the moment you check out. No shipping, no waiting.',
   ]
     .filter(Boolean)
@@ -141,6 +158,7 @@ export async function createLemonCheckout(options: {
               gift_id: options.giftId,
               gift_style: options.giftStyle,
               tier: options.quote.tier,
+              add_ons: encodeAddOns(options.quote.addOns),
             },
             name: options.billerName || undefined,
           },
@@ -191,6 +209,9 @@ export async function createLemonCheckout(options: {
   return { checkoutUrl, redirectUrl };
 }
 
-export async function activateGiftPreview(giftId: string): Promise<StoredGift | null> {
-  return markGiftPaid(giftId, 'preview');
+export async function activateGiftPreview(
+  giftId: string,
+  addOns: readonly AddOnId[] = [],
+): Promise<StoredGift | null> {
+  return markGiftPaid(giftId, 'preview', addOns);
 }
