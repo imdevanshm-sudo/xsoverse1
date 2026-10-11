@@ -1,3 +1,5 @@
+import type { SongAttachment } from '@/lib/spotify';
+
 export interface LineItem {
   id: string;
   qty: string;
@@ -114,6 +116,11 @@ export interface XsoData {
   birthdayMessage: string;
   voiceNoteUrl?: string;
   scratchOffReward: string;
+  /**
+   * "Our Song", a paid add-on. Stored with the order, but only delivered to the recipient when the
+   * paid order confirms the add-on (see `hasPaidAddOn`).
+   */
+  song?: SongAttachment;
   /** Absent on gifts made before modular scrapbooks; see `resolveScrapbook`. */
   scrapbook?: ScrapbookLayers;
   loop?: LoopLayers;

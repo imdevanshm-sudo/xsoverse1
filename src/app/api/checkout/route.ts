@@ -50,8 +50,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const payload = pickXsoPayload(body.data);
+    const picked = pickXsoPayload(body.data);
     const addOns = sanitizeAddOns(body.addOns);
+    const withSong = addOns.includes('spotify_song');
+    if (withSong && !picked.song) {
+      return NextResponse.json(
+        { error: 'Our Song needs a valid Spotify link. Paste one, or untick the add-on.' },
+        { status: 400 },
+      );
+    }
+    const payload = withSong ? picked : { ...picked, song: undefined };
     const cards = selectedCards(payload, payload.giftStyle);
     const price = quote({
       style: payload.giftStyle,

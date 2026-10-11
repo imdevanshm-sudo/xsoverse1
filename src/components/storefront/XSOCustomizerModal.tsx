@@ -25,6 +25,7 @@ import { useCustomizerModal } from '@/store/useCustomizerModal';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { formatPrice, sanitizeAddOns, TIERS, type AddOnId } from '@/lib/pricing';
 import { AddOnChecklist } from '@/components/storefront/customizer/OrderSummary';
+import { OurSongFields } from '@/components/storefront/customizer/OurSongFields';
 import { useQuote } from '@/lib/pricingClient';
 import type { ThemeId } from '@/lib/themes';
 import type { FormatKey, FormatLayers } from '@/lib/formats';
@@ -376,6 +377,7 @@ export function XSOCustomizerModal() {
       personalize(
         {
           ...withCards,
+          song: addOns.includes('spotify_song') ? withCards.song : undefined,
           id: draftId,
           giftStyle: style,
           photos:
@@ -385,8 +387,9 @@ export function XSOCustomizerModal() {
         },
         { recipient: name, sender: vibe.senderName.trim() },
       ),
-    [draftId, name, photos, scrapbook, style, vibe.senderName, withCards],
+    [addOns, draftId, name, photos, scrapbook, style, vibe.senderName, withCards],
   );
+  const songMissing = addOns.includes('spotify_song') && !order.song;
 
   /** Keeps the gift draft in sync with the order (theme first, since it resets content). */
   const commit = useCallback(() => {
@@ -407,6 +410,10 @@ export function XSOCustomizerModal() {
 
   const checkout = useCallback(async () => {
     if (busy) return;
+    if (songMissing) {
+      setError('Paste a working Spotify link for Our Song, or untick the add-on.');
+      return;
+    }
     setPaying(true);
     setError(null);
     try {
@@ -425,7 +432,7 @@ export function XSOCustomizerModal() {
       setError(err instanceof Error ? err.message : 'Checkout failed. Please try again.');
       setPaying(false);
     }
-  }, [addOns, busy, cards.length, commit, order, price, style]);
+  }, [addOns, busy, cards.length, commit, order, price, songMissing, style]);
 
   /** Warm Lemon.js while the sender is finishing their customizations. */
   useEffect(() => {
@@ -597,6 +604,11 @@ export function XSOCustomizerModal() {
                     selected={addOns}
                     onToggle={toggleAddOn}
                     currency={price.currency}
+                    details={(id) =>
+                      id === 'spotify_song' ? (
+                        <OurSongFields song={draft.song} onSong={(song) => patchDraft({ song })} />
+                      ) : null
+                    }
                   />
                 </div>
               ) : null}
@@ -645,10 +657,15 @@ export function XSOCustomizerModal() {
                   {formatPrice(price.total, price.currency)}
                 </span>
               </p>
+              {songMissing && !error ? (
+                <p className="mb-2.5 text-[12.5px] leading-snug text-[#fdba74]">
+                  Our Song needs a working Spotify link before you can check out.
+                </p>
+              ) : null}
               <MatteCta
                 onClick={checkout}
                 loading={paying}
-                disabled={busy || processing > 0}
+                disabled={busy || processing > 0 || songMissing}
                 label={`${STEPS[DETAILS].next} (${formatPrice(price.total)})`}
                 loadingLabel="Locking it in…"
                 ariaLabel={`Lock it in and pay ${formatPrice(price.total)}`}

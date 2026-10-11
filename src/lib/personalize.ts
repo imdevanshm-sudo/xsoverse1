@@ -7,6 +7,7 @@ const SKIP = new Set([
   'voiceUrl',
   'spotifyUrl',
   'soundtrack',
+  'song',
 ]);
 /** Signatures that are also everyday words; renaming them would rewrite every "me" in the copy. */
 const COMMON = new Set(['me', 'you', 'us', 'i', 'we']);
