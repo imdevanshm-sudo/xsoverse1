@@ -100,35 +100,6 @@ function focusSlot(id: CardId | undefined): number | undefined {
   return i >= 0 ? i : undefined;
 }
 
-// #region agent log
-function dbgOn() {
-  try {
-    if (/[?&]dbg=1/.test(location.search)) sessionStorage.setItem('xso-dbg', '1');
-    return sessionStorage.getItem('xso-dbg') === '1';
-  } catch {
-    return false;
-  }
-}
-
-function dbgLog(message: string, data: Record<string, unknown>, hypothesisId: string) {
-  if (!dbgOn()) return;
-  fetch('/api/debug-log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: '51bbe9',
-      runId: 'phone-1',
-      hypothesisId,
-      location: 'XSOCustomizerModal.tsx',
-      message,
-      data,
-      timestamp: Date.now(),
-    }),
-    keepalive: true,
-  }).catch(() => {});
-}
-// #endregion
-
 /** One flow for every order: format, cards, vibe, photos, then preview and pay. */
 export function XSOCustomizerModal() {
   useSoundSurface();
@@ -186,9 +157,6 @@ export function XSOCustomizerModal() {
     (format: OrderFormat) => {
       if (format === config.format) return;
       const next = toGiftStyle(format);
-      // #region agent log
-      dbgLog('pickFormat tap', { to: next, at: Math.round(performance.now()) }, 'D');
-      // #endregion
       track('aesthetic_chosen', { aesthetic: next });
       setConfig((c) => ({
         ...c,
@@ -199,107 +167,6 @@ export function XSOCustomizerModal() {
     },
     [config.format, draft],
   );
-
-  // #region agent log
-  useEffect(() => {
-    if (!dbgOn()) return;
-    const opened = performance.now();
-    const nav = navigator as Navigator & { deviceMemory?: number };
-    dbgLog(
-      'modal mount',
-      {
-        at: Math.round(opened),
-        lite: document.documentElement.classList.contains('lite'),
-        dpr: window.devicePixelRatio,
-        mem: nav.deviceMemory ?? null,
-        cores: navigator.hardwareConcurrency ?? null,
-        vw: window.innerWidth,
-        vh: window.innerHeight,
-        ua: navigator.userAgent.slice(0, 120),
-      },
-      'A',
-    );
-    const tasks: number[][] = [];
-    let po: PerformanceObserver | null = null;
-    try {
-      po = new PerformanceObserver((l) =>
-        l
-          .getEntries()
-          .forEach((e) => tasks.push([Math.round(e.startTime), Math.round(e.duration)])),
-      );
-      po.observe({ type: 'longtask' });
-    } catch {}
-    let lastScroll = -1e9;
-    let pointer: { inPreview: boolean; at: number } | null = null;
-    const onScroll = () => (lastScroll = performance.now());
-    const body = bodyRef.current;
-    body?.addEventListener('scroll', onScroll, { passive: true });
-    const onDown = (e: PointerEvent) => {
-      const el = e.target as Element | null;
-      pointer = {
-        inPreview: Boolean(el?.closest('[aria-label="Live preview"]')),
-        at: performance.now(),
-      };
-    };
-    const onUp = () => (pointer = null);
-    window.addEventListener('pointerdown', onDown, true);
-    window.addEventListener('pointerup', onUp, true);
-    window.addEventListener('pointercancel', onUp, true);
-    let frames = 0;
-    let first = 0;
-    let slow: (number | boolean | string)[][] = [];
-    let prev = 0;
-    let raf = 0;
-    const tick = (now: number) => {
-      if (!first) first = Math.round(now - opened);
-      if (prev) {
-        const gap = now - prev;
-        if (gap > 34)
-          slow.push([
-            Math.round(now),
-            Math.round(gap),
-            now - lastScroll < 200 ? 'scrolling' : 'still',
-            pointer ? (pointer.inPreview ? 'finger-on-preview' : 'finger-elsewhere') : 'no-finger',
-          ]);
-      }
-      prev = now;
-      frames += 1;
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    const flush = window.setInterval(() => {
-      const anims = document.getAnimations().filter((a) => a.playState === 'running');
-      dbgLog(
-        'window 2s',
-        {
-          firstFrameAfterMountMs: first,
-          fps: Math.round(frames / 2),
-          slowFrames: slow.slice(0, 25),
-          longTasks: tasks.splice(0),
-          scrollTop: body?.scrollTop ?? null,
-          runningAnims: anims.length,
-          animNames: Array.from(
-            new Set(anims.map((a) => (a as CSSAnimation).animationName || 'js')),
-          ).slice(0, 8),
-          hidden: document.hidden,
-          step: titleRef.current?.textContent ?? null,
-        },
-        'A,B,C,E',
-      );
-      frames = 0;
-      slow = [];
-    }, 2000);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearInterval(flush);
-      po?.disconnect();
-      body?.removeEventListener('scroll', onScroll);
-      window.removeEventListener('pointerdown', onDown, true);
-      window.removeEventListener('pointerup', onUp, true);
-      window.removeEventListener('pointercancel', onUp, true);
-    };
-  }, []);
-  // #endregion
 
   const tryMovieBox = useCallback(() => pickFormat('movie_box'), [pickFormat]);
   const lastTier = useRef(price.tier);
