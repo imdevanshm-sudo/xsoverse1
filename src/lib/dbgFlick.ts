@@ -41,7 +41,7 @@ interface Flick {
 
 const running = () => document.getAnimations().filter((a) => a.playState === 'running').length;
 
-const VARIANTS = ['base', 'frameSquare', 'cardSquare', 'deskNoMask'];
+const VARIANTS = ['postfix'];
 let variant = 0;
 function applyVariant() {
   document.documentElement.dataset.dbgv = VARIANTS[variant % VARIANTS.length];

@@ -2901,6 +2901,17 @@ html.is-landscape .xso-dock {
   }
 }
 
+/*
+ * Touch screens: square deck cards. A rounded clip over the card's own layers makes the GPU
+ * redraw every card offscreen each frame of a flick; a square clip is nearly free.
+ */
+@media (pointer: coarse) {
+  .deck-card,
+  .deck-shadow {
+    border-radius: 0;
+  }
+}
+
 /* Touch screens: card surfaces never claim vertical swipes, so the page always scrolls. */
 @media (pointer: coarse) {
   .deck-drag,
