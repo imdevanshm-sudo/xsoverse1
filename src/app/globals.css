@@ -3471,14 +3471,20 @@ html.lite .scrap-wood {
 }
 
 /* #region agent log: temporary per-flick GPU experiments (?dbg=1 only) */
-html[data-dbgv='frameSquare'] [aria-label='Live preview'] .rounded-2xl {
-  border-radius: 0;
+html[data-dbgv='noShadow'] .deck-shadow,
+html[data-dbgv='allThree'] .deck-shadow {
+  display: none;
 }
-html[data-dbgv='cardSquare'] .deck-card {
-  border-radius: 0;
+html[data-dbgv='noOverlays'] .deck-card__dim,
+html[data-dbgv='noOverlays'] .deck-card__sheen,
+html[data-dbgv='noOverlays'] .deck-card__light,
+html[data-dbgv='allThree'] .deck-card__dim,
+html[data-dbgv='allThree'] .deck-card__sheen,
+html[data-dbgv='allThree'] .deck-card__light {
+  display: none;
 }
-html[data-dbgv='deskNoMask'] .deck-desk {
-  -webkit-mask-image: none;
-  mask-image: none;
+html[data-dbgv='noAnims'] .deck-card *,
+html[data-dbgv='allThree'] .deck-card * {
+  animation: none !important;
 }
 /* #endregion */
