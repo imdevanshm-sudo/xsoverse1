@@ -3460,27 +3460,14 @@ html.lite .scrap-wood {
 }
 
 /* #region agent log: temporary per-flick GPU experiments (?dbg=1 only) */
-html[data-dbgv='noShadow'] .deck-shadow,
-html[data-dbgv='allOff'] .deck-shadow {
-  display: none;
-}
-html[data-dbgv='noClipMask'] [aria-label='Live preview'] .rounded-2xl,
-html[data-dbgv='noClipMask'] .deck-card,
-html[data-dbgv='allOff'] [aria-label='Live preview'] .rounded-2xl,
-html[data-dbgv='allOff'] .deck-card {
+html[data-dbgv='frameSquare'] [aria-label='Live preview'] .rounded-2xl {
   border-radius: 0;
 }
-html[data-dbgv='noClipMask'] .deck-desk,
-html[data-dbgv='allOff'] .deck-desk {
+html[data-dbgv='cardSquare'] .deck-card {
+  border-radius: 0;
+}
+html[data-dbgv='deskNoMask'] .deck-desk {
   -webkit-mask-image: none;
   mask-image: none;
-}
-html[data-dbgv='noOverlays'] .deck-card__dim,
-html[data-dbgv='noOverlays'] .deck-card__sheen,
-html[data-dbgv='noOverlays'] .deck-card__light,
-html[data-dbgv='allOff'] .deck-card__dim,
-html[data-dbgv='allOff'] .deck-card__sheen,
-html[data-dbgv='allOff'] .deck-card__light {
-  display: none;
 }
 /* #endregion */
