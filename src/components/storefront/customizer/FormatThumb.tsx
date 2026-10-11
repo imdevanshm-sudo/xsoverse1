@@ -2,6 +2,7 @@
 
 import {
   memo,
+  startTransition,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -9,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { FormatPreview } from '@/components/xso/preview/FormatPreview';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
@@ -16,6 +18,18 @@ import type { GiftStyle, XsoData } from '@/types/xso';
 const DESK_W = 380;
 const DESK_H = 470;
 const SCALE = { small: 0.45, large: 0.78 } as const;
+/** Past the sheet's slide-in and the format flip, so building the desk doesn't stall either. */
+const LIVE_AFTER_MS = 380;
+
+/** False for the first moments after mount, then true (rendered as an interruptible update). */
+function useLiveAfterMount(): boolean {
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => startTransition(() => setLive(true)), LIVE_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return live;
+}
 
 /** Scale that makes the desk fill its container's width (never above 1:1). */
 function useFitScale(enabled: boolean, fallback: number) {
@@ -64,6 +78,7 @@ export const FormatThumb = memo(function FormatThumb({
   interactive?: boolean;
 }) {
   const deferred = useDeferredValue(data);
+  const live = useLiveAfterMount();
   const [current, setCurrent] = useState<string | null>(null);
   const onChange = useCallback((_: number, label: string) => setCurrent(label), []);
   const makeInert = useCallback(
@@ -90,21 +105,25 @@ export const FormatThumb = memo(function FormatThumb({
         {badge ? (
           <span className="absolute inset-x-2 top-2 z-10 flex justify-center">{badge}</span>
         ) : null}
-        <div
-          ref={makeInert}
-          aria-hidden={!interactive}
-          className={`absolute left-0 top-0 origin-top-left ${interactive ? '' : 'pointer-events-none'}`}
-          style={{ width: DESK_W, height: DESK_H, transform: `scale(${scale})` }}
-        >
-          <FormatPreview
-            style={style}
-            data={deferred}
-            size="fill"
-            chrome={false}
-            focusIndex={focus}
-            onChange={interactive ? onChange : undefined}
-          />
-        </div>
+        {live ? (
+          <div
+            ref={makeInert}
+            aria-hidden={!interactive}
+            className={`absolute left-0 top-0 origin-top-left ${interactive ? '' : 'pointer-events-none'}`}
+            style={{ width: DESK_W, height: DESK_H, transform: `scale(${scale})` }}
+          >
+            <FormatPreview
+              style={style}
+              data={deferred}
+              size="fill"
+              chrome={false}
+              focusIndex={focus}
+              onChange={interactive ? onChange : undefined}
+            />
+          </div>
+        ) : (
+          <StyleThumb style={style} sizes={`${Math.round(DESK_W * scale)}px`} priority />
+        )}
       </Frame>
       {interactive ? (
         <p className="flex items-center gap-2 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#c99aae]">

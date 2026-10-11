@@ -1005,22 +1005,16 @@ html.is-landscape .xso-dock {
     0 30px 60px -24px rgba(0, 0, 0, 0.55);
 }
 
+/*
+ * The backdrop scrolls with the page. A fixed backdrop (attachment or a fixed ::before) makes
+ * Chrome repaint the whole viewport on every scroll frame, which is what lags on Android.
+ */
 .desk,
 .preview-paper {
   position: relative;
   isolation: isolate;
   color: var(--paper-cream);
   background-color: var(--desk-900);
-}
-
-/* Painted once on a fixed compositor layer; `background-attachment: fixed` repaints every scroll frame. */
-.desk::before,
-.preview-paper::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
   background-image:
     var(--stone-noise),
     radial-gradient(ellipse 70% 42% at 50% 0%, rgba(251, 146, 60, 0.13), transparent 70%),
@@ -1033,7 +1027,6 @@ html.is-landscape .xso-dock {
     auto,
     auto,
     auto;
-  transform: translateZ(0);
 }
 
 /* Warm glass: frosted plum that picks up the sunset light behind it */

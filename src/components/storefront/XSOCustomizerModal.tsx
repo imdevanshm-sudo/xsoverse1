@@ -520,7 +520,7 @@ export function XSOCustomizerModal() {
 
         <div
           ref={bodyRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-4"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#180e15] px-5 pb-6 pt-4"
         >
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,380px)] md:items-start md:gap-8">
             <aside
