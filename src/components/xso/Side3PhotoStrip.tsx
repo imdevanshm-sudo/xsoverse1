@@ -117,7 +117,7 @@ const Strip = memo(function Strip({
               initial={reducedMotion ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={reducedMotion ? LIGHT_TWEEN : { delay: 0.08 * i, duration: 0.35 }}
-              className="relative overflow-hidden will-change-transform"
+              className="relative overflow-hidden"
               style={{
                 border: '3px solid rgba(255,255,255,0.95)',
               }}

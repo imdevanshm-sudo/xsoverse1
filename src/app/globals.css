@@ -1474,9 +1474,6 @@ html.is-landscape .xso-dock {
   overflow: hidden;
   border-radius: 16px;
   color: var(--paper-ink);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  transform: translateZ(0);
 }
 
 .deck-card__body {
@@ -2644,7 +2641,6 @@ html.is-landscape .xso-dock {
 .deck-card__dim {
   background: #0e0c0b;
   opacity: 0;
-  will-change: opacity;
 }
 
 .deck-card__sheen {
