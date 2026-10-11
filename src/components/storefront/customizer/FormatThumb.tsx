@@ -65,6 +65,7 @@ export const FormatThumb = memo(function FormatThumb({
   onEdit,
   badge,
   interactive = false,
+  stillUntilTap = false,
 }: {
   data: XsoData;
   style: GiftStyle;
@@ -76,9 +77,13 @@ export const FormatThumb = memo(function FormatThumb({
   badge?: ReactNode;
   /** Tap, swipe and flip the cards exactly as the recipient will. */
   interactive?: boolean;
+  /** Show the pre-rendered still and only build the live desk once it's tapped. */
+  stillUntilTap?: boolean;
 }) {
   const deferred = useDeferredValue(data);
-  const live = useLiveAfterMount();
+  const mounted = useLiveAfterMount();
+  const [tapped, setTapped] = useState(false);
+  const live = mounted && (!stillUntilTap || tapped);
   const [current, setCurrent] = useState<string | null>(null);
   const onChange = useCallback((_: number, label: string) => setCurrent(label), []);
   const makeInert = useCallback(
@@ -124,6 +129,18 @@ export const FormatThumb = memo(function FormatThumb({
         ) : (
           <StyleThumb style={style} sizes={`${Math.round(DESK_W * scale)}px`} priority />
         )}
+        {stillUntilTap && !tapped ? (
+          <button
+            type="button"
+            onClick={() => setTapped(true)}
+            aria-label="Play the live preview"
+            className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/55 via-transparent to-transparent pb-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]"
+          >
+            <span className="rounded-full bg-[#2d1b22]/90 px-4 py-2 font-receipt text-[11px] font-bold uppercase tracking-[0.18em] text-[#fdf2f8] ring-1 ring-white/15">
+              ▶ Tap to play
+            </span>
+          </button>
+        ) : null}
       </Frame>
       {interactive ? (
         <p className="flex items-center gap-2 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#c99aae]">

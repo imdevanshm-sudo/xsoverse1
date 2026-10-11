@@ -43,7 +43,7 @@ export const FormatShowcase = memo(function FormatShowcase({
             className="rounded-2xl shadow-[0_24px_60px_-20px_rgba(0,0,0,.8)]"
             style={{ boxShadow: `0 0 0 1px ${cart.accentSoft}, 0 24px 60px -20px rgba(0,0,0,.8)` }}
           >
-            <FormatThumb data={data} style={style} fit interactive />
+            <FormatThumb data={data} style={style} fit interactive stillUntilTap />
           </motion.div>
         </AnimatePresence>
       </div>
