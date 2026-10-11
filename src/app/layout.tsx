@@ -9,6 +9,7 @@ import {
 } from 'next/font/google';
 import { LiteModeWatch } from '@/components/layout/LiteModeWatch';
 import { OrientationRoot } from '@/components/layout/OrientationRoot';
+import { PerfHud } from '@/components/layout/PerfHud';
 import { LITE_HEAD_SCRIPT } from '@/lib/liteMode';
 import { PolaroidLightboxHost } from '@/components/xso/PolaroidLightboxHost';
 import './globals.css';
@@ -109,6 +110,7 @@ export default function RootLayout({
       <body className="font-sans xso-safe-shell">
         <OrientationRoot />
         <LiteModeWatch />
+        <PerfHud />
         {children}
         <PolaroidLightboxHost />
       </body>

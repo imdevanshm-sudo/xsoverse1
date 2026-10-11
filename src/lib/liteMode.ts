@@ -3,8 +3,8 @@
  * looping glows and shimmers, film grain, SVG wood grain) on devices that can't keep up.
  *
  * Two triggers: a head script flags known-weak hardware before first paint, and a frame-rate
- * watch catches the rest (iPhones don't report memory or cores). `?lite=1` forces it on,
- * `?lite=0` turns it off for good on that browser.
+ * watch catches the rest (iPhones don't report memory or cores). `?lite=1` turns it on and
+ * `?lite=0` off, both remembered on that browser.
  */
 
 export const LITE_STORAGE_KEY = 'xso-lite';
@@ -13,7 +13,7 @@ export const LITE_STORAGE_KEY = 'xso-lite';
 export const LITE_HEAD_SCRIPT = `(function(){try{
 var d=document.documentElement,q=location.search,k='${LITE_STORAGE_KEY}',s=localStorage.getItem(k);
 if(/[?&]lite=0/.test(q)){localStorage.setItem(k,'0');return}
-if(/[?&]lite=1/.test(q))s='1';
+if(/[?&]lite=1/.test(q)){localStorage.setItem(k,'1');s='1'}
 var n=navigator,c=n.connection,m=n.deviceMemory,h=n.hardwareConcurrency;
 var weak=(c&&c.saveData)||(m!==undefined&&(m<=3||(h>0&&h<=4)));
 if(s==='1'||(s!=='0'&&weak))d.classList.add('lite')
