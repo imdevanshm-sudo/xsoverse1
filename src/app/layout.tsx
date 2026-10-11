@@ -7,7 +7,9 @@ import {
   Space_Grotesk,
   Space_Mono,
 } from 'next/font/google';
+import { LiteModeWatch } from '@/components/layout/LiteModeWatch';
 import { OrientationRoot } from '@/components/layout/OrientationRoot';
+import { LITE_HEAD_SCRIPT } from '@/lib/liteMode';
 import { PolaroidLightboxHost } from '@/components/xso/PolaroidLightboxHost';
 import './globals.css';
 
@@ -99,9 +101,14 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${spaceGrotesk.variable} ${pressStart.variable} ${spaceMono.variable} ${courierPrime.variable} ${caveat.variable} ${fraunces.variable}`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: LITE_HEAD_SCRIPT }} />
+      </head>
       <body className="font-sans xso-safe-shell">
         <OrientationRoot />
+        <LiteModeWatch />
         {children}
         <PolaroidLightboxHost />
       </body>

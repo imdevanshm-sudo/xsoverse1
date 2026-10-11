@@ -31,12 +31,17 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
   const onScreen = useInView(box, { amount: 0.5 });
   const active = useActive();
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  /** Spotify's player is heavy; a card waiting in the stack shouldn't load it during the unwrap. */
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (near && active) setArmed(true);
+  }, [near, active]);
 
   useEffect(() => {
-    if (!near || state !== 'loading') return;
+    if (!armed || state !== 'loading') return;
     const timer = window.setTimeout(() => setState('failed'), EMBED_TIMEOUT_MS);
     return () => window.clearTimeout(timer);
-  }, [near, state]);
+  }, [armed, state]);
 
   const hushing = onScreen && active && state !== 'failed';
   useEffect(() => {
@@ -56,7 +61,7 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
           style={{ height: PLAYER_HEIGHT }}
         >
           {state === 'ready' ? null : <PlayerSkeleton song={song} />}
-          {near ? (
+          {armed ? (
             <iframe
               title={`Spotify player: ${song.title}`}
               src={spotifyEmbedUrl(song)}

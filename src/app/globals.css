@@ -3429,3 +3429,39 @@ html.is-landscape .xso-dock {
   border-top: 1px dashed rgba(45, 27, 34, 0.35);
   padding-top: 8px;
 }
+
+/*
+ * Lite mode (html.lite, set by lib/liteMode on weak or struggling devices): keep every layout and
+ * interaction, drop the effects that make older GPUs repaint or re-blur every frame.
+ */
+html.lite *,
+html.lite *::before,
+html.lite *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.lite .desk-unopened,
+html.lite .led-peach::after,
+html.lite .immersive-cta::after,
+html.lite .projector-beam,
+html.lite .projector-beam-flicker,
+html.lite .crt-flicker,
+html.lite .film-vignette {
+  animation: none !important;
+}
+
+html.lite .scratch-shimmer,
+html.lite .dust-mote,
+html.lite .projector-dust {
+  display: none !important;
+}
+
+html.lite .film-grain {
+  inset: 0;
+  animation: none;
+}
+
+html.lite .scrap-wood {
+  --wood-grain: linear-gradient(transparent, transparent);
+}
