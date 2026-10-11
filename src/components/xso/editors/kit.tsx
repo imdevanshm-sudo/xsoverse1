@@ -2,11 +2,16 @@
 
 import { memo, useCallback, useId, useRef, useState, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Check, ChevronDown, ImagePlus, Mic, Plus, Star, Trash2, X } from 'lucide-react';
+import { Check, ChevronDown, ImagePlus, Plus, Star, Trash2, Upload, X } from 'lucide-react';
+import { VoiceRecorder } from '@/components/xso/editors/VoiceRecorder';
+import { uploadAudio, usePlayableAudio } from '@/lib/audioUpload';
 import { newId } from '@/lib/constants';
-import { compressImage, readAudio } from '@/lib/media';
+import { compressImage } from '@/lib/media';
 import { CINEMATIC } from '@/lib/motion';
+import { STORED_AUDIO_MAX_BYTES } from '@/lib/soundtracks';
 import type { AuditMetrics, LineItem } from '@/types/xso';
+
+const VOICE_ACCEPT = 'audio/mpeg,audio/mp4,audio/x-m4a,audio/aac,audio/wav,audio/webm,audio/ogg';
 
 export const TONES = {
   dark: {
@@ -285,11 +290,15 @@ export const LineItemsEditor = memo(function LineItemsEditor({
   );
 });
 
+/**
+ * A voice note: recorded here (up to three minutes) or uploaded, kept in private audio storage
+ * rather than inlined in the gift.
+ */
 export function AudioField({
   t,
   value,
   onChange,
-  label = 'Upload a voice note · up to 1.5 MB',
+  label = `Upload a voice memo · up to ${STORED_AUDIO_MAX_BYTES / 1_000_000} MB`,
 }: {
   t: Tone;
   value?: string;
@@ -299,17 +308,24 @@ export function AudioField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const playable = usePlayableAudio(value);
 
-  const choose = async (file: File | undefined) => {
-    if (!file) return;
+  const save = async (clip: Blob) => {
     setBusy(true);
     setError(null);
     try {
-      onChange(await readAudio(file));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      onChange(await uploadAudio(clip));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const choose = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      await save(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
     }
   };
 
@@ -317,7 +333,11 @@ export function AudioField({
     <div className="grid gap-2">
       {value ? (
         <div className="flex items-center gap-2">
-          <audio controls preload="none" src={value} className="h-10 min-w-0 flex-1" />
+          {playable ? (
+            <audio controls preload="none" src={playable} className="h-10 min-w-0 flex-1" />
+          ) : (
+            <p className={`min-w-0 flex-1 text-[13px] ${t.detail}`}>Loading your voice note…</p>
+          )}
           <button
             type="button"
             onClick={() => onChange(undefined)}
@@ -328,20 +348,23 @@ export function AudioField({
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
-          className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-3 font-receipt text-[11px] font-bold uppercase tracking-[0.12em] disabled:opacity-60 focus-visible:outline focus-visible:outline-2 ${t.button}`}
-        >
-          <Mic className="h-4 w-4" aria-hidden />
-          {busy ? 'Pressing to tape…' : label}
-        </button>
+        <>
+          <VoiceRecorder t={t} onRecorded={save} />
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-3 font-receipt text-[11px] font-bold uppercase tracking-[0.12em] disabled:opacity-60 focus-visible:outline focus-visible:outline-2 ${t.button}`}
+          >
+            <Upload className="h-4 w-4" aria-hidden />
+            {busy ? 'Pressing to tape…' : label}
+          </button>
+        </>
       )}
       <input
         ref={inputRef}
         type="file"
-        accept="audio/*"
+        accept={VOICE_ACCEPT}
         className="sr-only"
         tabIndex={-1}
         onChange={(e) => {

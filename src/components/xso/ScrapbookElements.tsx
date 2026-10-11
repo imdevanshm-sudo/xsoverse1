@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useId, useRef, useState, type ReactNode } from 'react';
 import { ELEMENT_META, LIMITS, STICKY_COLORS, spotifyLink } from '@/lib/scrapbook';
+import { joinReward, splitReward } from '@/lib/reward';
 import {
   SCRAPBOOK_ELEMENTS,
   type ScrapbookElement,
@@ -22,7 +23,13 @@ import {
 
 export type ScrapbookFields = Pick<
   XsoData,
-  'merchantName' | 'timestamp' | 'lineItems' | 'birthdayMessage' | 'billerName' | 'voiceNoteUrl'
+  | 'merchantName'
+  | 'timestamp'
+  | 'lineItems'
+  | 'birthdayMessage'
+  | 'billerName'
+  | 'voiceNoteUrl'
+  | 'scratchOffReward'
 > & { scrapbook: ScrapbookLayers };
 
 type FieldPatch = Partial<Omit<ScrapbookFields, 'scrapbook'>>;
@@ -178,6 +185,14 @@ export const ScrapbookElements = memo(function ScrapbookElements({
                 onChange={(e) => onLayers({ ticketWhen: e.target.value })}
               />
             </Labeled>
+            <div className="min-[420px]:col-span-2">
+              <ScratchFields
+                t={t}
+                label="Under the tear-off strip"
+                reward={fields.scratchOffReward}
+                onPatch={onPatch}
+              />
+            </div>
           </div>
         );
       case 'voice':
@@ -263,6 +278,62 @@ export function LetterFields({
   );
 }
 
+/** The scratch-off under the letter: a code and what it's good for. Empty hides the foil. */
+export function ScratchFields({
+  t,
+  reward,
+  onPatch,
+  label = 'Scratch-off · revealed when they scratch the foil',
+}: {
+  t: Tone;
+  reward: string;
+  onPatch: (patch: { scratchOffReward: string }) => void;
+  label?: string;
+}) {
+  const { code, perk } = splitReward(reward);
+  return (
+    <div className="grid gap-2">
+      <p className={t.field}>{label}</p>
+      <div className="grid gap-3 min-[420px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+        <Labeled t={t} label="Secret code">
+          <input
+            className={`${t.input} font-receipt font-bold uppercase tracking-[0.1em]`}
+            value={code}
+            maxLength={24}
+            placeholder="BESTIE-4-LIFE"
+            onChange={(e) =>
+              onPatch({
+                scratchOffReward: joinReward(
+                  e.target.value.toUpperCase().replace(/\s+/g, '-'),
+                  perk,
+                ),
+              })
+            }
+          />
+        </Labeled>
+        <Labeled t={t} label="What it's good for">
+          <input
+            className={t.input}
+            value={perk}
+            maxLength={80}
+            placeholder="One free emergency pep talk"
+            onChange={(e) => onPatch({ scratchOffReward: joinReward(code, e.target.value) })}
+          />
+        </Labeled>
+      </div>
+      {reward ? (
+        <button
+          type="button"
+          onClick={() => onPatch({ scratchOffReward: '' })}
+          className={`justify-self-start rounded-full border px-3 py-1.5 text-[12.5px] font-semibold focus-visible:outline focus-visible:outline-2 ${t.button}`}
+        >
+          Remove the scratch-off
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function StickyEditor({
   t,
   secret,
@@ -325,15 +396,7 @@ function StickyEditor({
   );
 }
 
-function SongField({
-  t,
-  songUrl,
-  onLayers,
-}: {
-  t: Tone;
-  songUrl: string;
-  onLayers: OnLayers;
-}) {
+function SongField({ t, songUrl, onLayers }: { t: Tone; songUrl: string; onLayers: OnLayers }) {
   const [song, setSong] = useState(songUrl);
   const songValid = song.trim() === '' || Boolean(spotifyLink(song));
   return (

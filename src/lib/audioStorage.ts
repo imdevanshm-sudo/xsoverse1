@@ -72,10 +72,18 @@ export async function signAudio(ref: string): Promise<string | null> {
   return error || !data ? null : data.signedUrl;
 }
 
-/** The gift as the recipient receives it: a stored soundtrack gets its signed play URL. */
+/** The gift as the recipient receives it: stored soundtracks and voice notes get signed play URLs. */
 export async function withPlayableAudio(data: XsoData): Promise<XsoData> {
-  const ref = data.rewind?.soundtrack;
-  if (!ref?.startsWith('storage:') || !isAudioStorageConfigured()) return data;
-  const soundtrackUrl = await signAudio(ref).catch(() => null);
-  return soundtrackUrl ? { ...data, rewind: { ...data.rewind!, soundtrackUrl } } : data;
+  if (!isAudioStorageConfigured()) return data;
+  const sign = (ref: string | undefined) =>
+    ref?.startsWith('storage:') ? signAudio(ref).catch(() => null) : Promise.resolve(null);
+  const [soundtrackUrl, voiceNoteUrl] = await Promise.all([
+    sign(data.rewind?.soundtrack),
+    sign(data.voiceNoteUrl),
+  ]);
+  return {
+    ...data,
+    ...(soundtrackUrl ? { rewind: { ...data.rewind!, soundtrackUrl } } : {}),
+    ...(voiceNoteUrl ? { voiceNoteUrl } : {}),
+  };
 }

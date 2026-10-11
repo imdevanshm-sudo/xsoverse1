@@ -19,7 +19,7 @@ import {
   type ScrapbookLayers,
   type XsoData,
 } from '@/types/xso';
-import { LetterFields, ScrapbookElements } from '@/components/xso/ScrapbookElements';
+import { LetterFields, ScratchFields, ScrapbookElements } from '@/components/xso/ScrapbookElements';
 import {
   AudioField,
   EditorRow,
@@ -263,7 +263,12 @@ function LoopCardFields({
   fields,
   onPatch,
   photoSlot,
-}: Pick<EditorProps, 't' | 'fields' | 'onPatch' | 'photoSlot'> & { id: LoopCard }) {
+  extras = true,
+}: Pick<EditorProps, 't' | 'fields' | 'onPatch' | 'photoSlot'> & {
+  id: LoopCard;
+  /** The voice note and scratch-off, for formats whose letter card shows them. */
+  extras?: boolean;
+}) {
   switch (id) {
     case 'receipt':
       return (
@@ -330,14 +335,19 @@ function LoopCardFields({
             signOff={fields.billerName}
             onPatch={onPatch}
           />
-          <div>
-            <p className={`mb-1.5 ${t.field}`}>Audio snippet</p>
-            <AudioField
-              t={t}
-              value={fields.voiceNoteUrl}
-              onChange={(voiceNoteUrl) => onPatch({ voiceNoteUrl })}
-            />
-          </div>
+          {extras ? (
+            <>
+              <div>
+                <p className={`mb-1.5 ${t.field}`}>Voice note</p>
+                <AudioField
+                  t={t}
+                  value={fields.voiceNoteUrl}
+                  onChange={(voiceNoteUrl) => onPatch({ voiceNoteUrl })}
+                />
+              </div>
+              <ScratchFields t={t} reward={fields.scratchOffReward} onPatch={onPatch} />
+            </>
+          ) : null}
         </div>
       );
   }
@@ -735,7 +745,7 @@ const CARD_EDIT_DETAIL: Record<CardId, string> = {
   receipt: 'Store name, timestamp and the itemized bill',
   audit: 'Scores, red flags, green flags and the stamp',
   photos: 'Upload up to 3 photos',
-  letter: 'The closing letter, sign-off and an audio snippet',
+  letter: 'The closing letter and sign-off',
   liner: 'Tape label and your review',
   polaroids: '',
   sticky: '',
@@ -820,7 +830,12 @@ export const CardDetailsEditor = memo(function CardDetailsEditor({
       case 'letter':
         return (
           <div className="grid gap-4">
-            <LoopCardFields id="letter" photoSlot={photoSlot} {...props} />
+            <LoopCardFields
+              id="letter"
+              photoSlot={photoSlot}
+              extras={style === 'loop' || style === 'rewind'}
+              {...props}
+            />
             {movie ? <SceneFields {...props} index={3} /> : null}
           </div>
         );
@@ -844,7 +859,11 @@ export const CardDetailsEditor = memo(function CardDetailsEditor({
             key={card.id}
             t={t}
             label={card.label}
-            detail={CARD_EDIT_DETAIL[card.id] || card.detail}
+            detail={
+              card.id === 'letter' && (style === 'loop' || style === 'rewind')
+                ? 'The letter, sign-off, a voice note and the scratch-off'
+                : CARD_EDIT_DETAIL[card.id] || card.detail
+            }
             open={open.has(card.id)}
             onExpand={() => {
               if (!open.has(card.id)) {

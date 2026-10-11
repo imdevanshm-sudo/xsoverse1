@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Mic, Square } from 'lucide-react';
 import type { Tone } from '@/components/xso/editors/kit';
-import { VOICE_NOTE_MAX_SECONDS } from '@/lib/soundtracks';
+import { VOICE_NOTE_MAX_SECONDS, clockTime } from '@/lib/soundtracks';
 
 /** Containers the browsers we support can record, best first (Safari only does MP4). */
 const RECORD_TYPES = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm'];
-/** Speech needs far less than music: a full minute stays around half a megabyte. */
+/** Speech needs far less than music: three full minutes stay around 1.5 MB. */
 const SPEECH_BITRATE = 64_000;
 
 type Phase = 'idle' | 'asking' | 'recording' | 'saving';
@@ -119,8 +119,8 @@ export function VoiceRecorder({
       : phase === 'saving'
         ? 'Saving your voice note…'
         : recording
-          ? `Stop recording · 0:${String(left).padStart(2, '0')} left`
-          : `Record a voice note · up to ${VOICE_NOTE_MAX_SECONDS} s`;
+          ? `Stop recording · ${clockTime(left)} left`
+          : `Record a voice note · up to ${VOICE_NOTE_MAX_SECONDS / 60} min`;
 
   return (
     <div className="grid gap-1.5">
@@ -142,7 +142,7 @@ export function VoiceRecorder({
         {label}
       </button>
       <span className="sr-only" aria-live="polite">
-        {recording && (left === 10 || left === 5) ? `${left} seconds left` : ''}
+        {recording && (left === 60 || left === 10 || left === 5) ? `${left} seconds left` : ''}
       </span>
       {error ? (
         <p role="alert" className={`text-[12.5px] ${t.error}`}>

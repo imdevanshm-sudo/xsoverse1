@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { readAsDataUrl } from '@/lib/media';
 import {
   AUDIO_TYPES,
@@ -60,4 +61,20 @@ export async function playableAudio(value: string, direct: string | null): Promi
   }).catch(() => null);
   const body = (await response?.json().catch(() => null)) as { url?: string | null } | null;
   return body?.url ?? null;
+}
+
+/** A voice note's playable URL: as-is for inline clips, signed (once loaded) for stored ones. */
+export function usePlayableAudio(value: string | undefined): string | undefined {
+  const stored = value?.startsWith('storage:') ? value : undefined;
+  const [signed, setSigned] = useState<{ ref: string; url: string | null } | null>(null);
+  useEffect(() => {
+    if (!stored) return;
+    let live = true;
+    void playableAudio(stored, null).then((url) => live && setSigned({ ref: stored, url }));
+    return () => {
+      live = false;
+    };
+  }, [stored]);
+  if (!stored) return value;
+  return signed?.ref === stored ? (signed.url ?? undefined) : undefined;
 }

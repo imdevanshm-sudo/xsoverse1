@@ -1,13 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { usePlayableAudio } from '@/lib/audioUpload';
 import { attachMedia, mediaElement, optIn, type MediaHandle } from '@/lib/sound';
 
 /**
  * A voice note behind a play button, mixed through the sound manager on the voice bus (levelled
  * to −16 LUFS, never ducked). Nothing downloads until the first press, which also opts in to sound.
  */
-export function useVoiceClip(src: string | undefined) {
+export function useVoiceClip(value: string | undefined) {
+  const src = usePlayableAudio(value);
+  const pending = Boolean(value) && !src;
   const audio = useRef<HTMLAudioElement | null>(null);
   const mix = useRef<MediaHandle | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -23,6 +26,7 @@ export function useVoiceClip(src: string | undefined) {
   );
 
   const toggle = useCallback(() => {
+    if (pending) return;
     if (!src) return setPlaying((on) => !on);
     let clip = audio.current;
     if (!clip) {
@@ -35,7 +39,7 @@ export function useVoiceClip(src: string | undefined) {
     if (!clip.paused) return clip.pause();
     optIn();
     void clip.play().catch(() => setPlaying(false));
-  }, [src]);
+  }, [src, pending]);
 
   return { audio, playing, toggle, stop: () => audio.current?.pause() };
 }

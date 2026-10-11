@@ -109,8 +109,10 @@ export const SOUNDTRACK_UPLOAD_MAX_CHARS = Math.ceil((SOUNDTRACK_UPLOAD_MAX_BYTE
 
 /** Files in audio storage: larger uploads and voice notes, kept out of the gift JSON. */
 export const STORED_AUDIO_MAX_BYTES = 10_000_000;
-/** A voice note is a short message, not a podcast. */
-export const VOICE_NOTE_MAX_SECONDS = 60;
+/** A voice note is a message, not a podcast: three minutes is about 1.5 MB at speech bitrate. */
+export const VOICE_NOTE_MAX_SECONDS = 180;
+/** Legacy voice notes were inlined as data URLs of up to 1.5 MB. */
+const VOICE_NOTE_INLINE_MAX_CHARS = Math.ceil((1_500_000 * 4) / 3) + 64;
 export const AUDIO_TYPES: Record<string, string> = {
   'audio/mpeg': 'mp3',
   'audio/mp3': 'mp3',
@@ -141,6 +143,18 @@ export function sanitizeSoundtrack(
   }
   if (value.startsWith('storage:')) return stored && STORED_AUDIO.test(value) ? value : '';
   return value.length <= SOUNDTRACK_UPLOAD_MAX_CHARS && UPLOAD.test(value) ? value : '';
+}
+
+/** A letter's voice note: a stored recording or upload, or a small inline clip. */
+export function sanitizeVoiceNote(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value) return undefined;
+  if (value.startsWith('storage:')) return STORED_AUDIO.test(value) ? value : undefined;
+  return value.length <= VOICE_NOTE_INLINE_MAX_CHARS && UPLOAD.test(value) ? value : undefined;
+}
+
+/** "2:05" for a count of seconds. */
+export function clockTime(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
 /** Playable URL for a bundled or inline soundtrack, or null (stored files need a signed URL). */
