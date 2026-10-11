@@ -25,6 +25,7 @@ import {
 import { RotateCw } from 'lucide-react';
 import { LOOP_CARDS, type XsoData } from '@/types/xso';
 import { playSound } from '@/lib/sound';
+import { dbgLand, dbgLaunch, dbgPointer } from '@/lib/dbgFlick';
 import { ActiveScope } from '@/components/xso/stage/ActiveScope';
 import { resolveLoop } from '@/lib/formats';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
@@ -206,7 +207,13 @@ const Deck = memo(function Deck({
   const launch = useCallback((index: number) => {
     const { order: current, flying: inAir } = latest.current;
     if (inAir !== null || current[0] !== index) return false;
+    // #region agent log
+    const soundStart = performance.now();
+    // #endregion
     playSound(restarting.current ? 'loop.restart' : 'loop.slide');
+    // #region agent log
+    dbgLaunch('launch', Math.round(performance.now() - soundStart));
+    // #endregion
     /** With reduced motion the card lands in the same tick, before React has re-rendered. */
     latest.current.flying = index;
     setFlying(index);
@@ -223,6 +230,9 @@ const Deck = memo(function Deck({
       count: total,
     } = latest.current;
     if (inAir !== index) return;
+    // #region agent log
+    dbgLand();
+    // #endregion
     setMoved(true);
     /** The end card is offered once: flicked away, it leaves the pile and the loop carries on. */
     const rest = current.filter((i) => i !== index);
@@ -500,6 +510,14 @@ const DeckCard = memo(function DeckCard({
   const onDragEnd = (_: unknown, info: PanInfo) => {
     dragEndedAt.current = performance.now();
     const { offset, velocity } = info;
+    // #region agent log
+    dbgPointer('dragEnd', {
+      dx: Math.round(offset.x),
+      dy: Math.round(offset.y),
+      vx: Math.round(velocity.x),
+      vy: Math.round(velocity.y),
+    });
+    // #endregion
     const far = Math.hypot(offset.x, offset.y) > FLICK_DISTANCE;
     const fast = Math.hypot(velocity.x, velocity.y) > FLICK_VELOCITY;
     if (far || fast) {
@@ -574,10 +592,17 @@ const DeckCard = memo(function DeckCard({
         onPointerUp={() => {
           pending.current = null;
         }}
-        onPointerCancel={() => {
+        onPointerCancel={(event) => {
           pending.current = null;
+          // #region agent log
+          dbgPointer('cancel', { type: event.pointerType });
+          // #endregion
         }}
         whileDrag={{ scale: 1.03 }}
+        // #region agent log
+        onDragStart={() => dbgPointer('dragStart')}
+        onDrag={() => dbgPointer('move')}
+        // #endregion
         onDragEnd={onDragEnd}
         onClick={(event) => {
           if (!active || performance.now() - dragEndedAt.current < 250) return;
