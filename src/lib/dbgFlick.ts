@@ -33,9 +33,13 @@ interface Flick {
   landAt: number;
   landRenderMs: number;
   gaps: number[];
+  render: number[];
+  anims: number[];
   tasks: number[][];
   cancels: number;
 }
+
+const running = () => document.getAnimations().filter((a) => a.playState === 'running').length;
 
 let flick: Flick | null = null;
 let observer: PerformanceObserver | null = null;
@@ -54,13 +58,32 @@ export function dbgLaunch(via: string, soundMs: number) {
     } catch {}
   }
   const t0 = performance.now();
-  flick = { t0, via, soundMs, landAt: 0, landRenderMs: 0, gaps: [], tasks: [], cancels: 0 };
+  flick = {
+    t0,
+    via,
+    soundMs,
+    landAt: 0,
+    landRenderMs: 0,
+    gaps: [],
+    render: [],
+    anims: [running()],
+    tasks: [],
+    cancels: 0,
+  };
   const current = flick;
   let prev = t0;
+  const channel = new MessageChannel();
+  let frameStart = 0;
+  channel.port1.onmessage = () => {
+    current.render.push(Math.round(performance.now() - frameStart));
+  };
   const tick = (now: number) => {
     if (flick !== current) return;
     current.gaps.push(Math.round(now - prev));
     prev = now;
+    frameStart = performance.now();
+    channel.port2.postMessage(0);
+    if (current.gaps.length === 15) current.anims.push(running());
     if (current.landAt && now - current.landAt > 450) {
       flick = null;
       count += 1;
@@ -78,7 +101,11 @@ export function dbgLaunch(via: string, soundMs: number) {
           over34: g.filter((x) => x > 34).length,
           p50: sorted[sorted.length >> 1],
           max: sorted[sorted.length - 1],
-          gapsSeq: g.slice(0, 60),
+          gapsSeq: g.slice(0, 45),
+          renderSeq: current.render.slice(0, 45),
+          renderP50: [...current.render].sort((a, b) => a - b)[current.render.length >> 1],
+          renderMax: Math.max(0, ...current.render),
+          animsAtLaunchAndMid: current.anims,
           longTasks: current.tasks,
           cancels: current.cancels,
           dpr: window.devicePixelRatio,
