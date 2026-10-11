@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { getLemonConfig } from '@/lib/lemon';
+import { decodeAddOns, getLemonConfig } from '@/lib/lemon';
 import { markGiftPaid } from '@/lib/giftStore';
 
 export const runtime = 'nodejs';
@@ -11,6 +11,7 @@ interface LemonWebhookPayload {
     custom_data?: {
       gift_id?: string;
       giftId?: string;
+      add_ons?: string;
     };
   };
   data?: {
@@ -65,14 +66,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, ignoredStatus: attributes?.status });
   }
 
-  const giftId =
-    payload.meta?.custom_data?.gift_id || payload.meta?.custom_data?.giftId;
+  const giftId = payload.meta?.custom_data?.gift_id || payload.meta?.custom_data?.giftId;
   if (!giftId) {
     return NextResponse.json({ received: true, warning: 'Missing gift_id' });
   }
 
   const orderId = attributes.identifier || payload.data?.id || undefined;
-  const gift = await markGiftPaid(giftId, orderId);
+  /** Set by our checkout route alongside the price that includes them, and signed by Lemon. */
+  const addOns = decodeAddOns(payload.meta?.custom_data?.add_ons);
+  const gift = await markGiftPaid(giftId, orderId, addOns);
   if (!gift) {
     return NextResponse.json({ received: true, warning: 'Gift not found' });
   }

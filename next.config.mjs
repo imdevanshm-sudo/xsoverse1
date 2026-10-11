@@ -6,6 +6,25 @@ const nextConfig = {
   async redirects() {
     return [{ source: '/studio', destination: '/customize', permanent: false }];
   },
+  /**
+   * Frames only: the Spotify player for "Our Song", the Lemon Squeezy checkout overlay (on Lemon's
+   * domain or the store's custom domain) and Vercel's preview toolbar. Other content is unrestricted.
+   */
+  async headers() {
+    const frameSrc = [
+      "'self'",
+      'https://open.spotify.com',
+      'https://*.lemonsqueezy.com',
+      'https://store.xsoverse.app',
+      'https://vercel.live',
+    ].join(' ');
+    return [
+      {
+        source: '/:path*',
+        headers: [{ key: 'Content-Security-Policy', value: `frame-src ${frameSrc}` }],
+      },
+    ];
+  },
   experimental: {
     optimizePackageImports: [
       'lucide-react',

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withPlayableAudio } from '@/lib/audioStorage';
-import { getGift } from '@/lib/giftStore';
+import { getGift, hasPaidAddOn } from '@/lib/giftStore';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,6 +19,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
   if (gift.status !== 'paid') {
     return NextResponse.json({ error: 'Gift is not ready yet' }, { status: 402, headers: PRIVATE });
   }
-  const data = await withPlayableAudio(gift.data);
+  const paidSong = hasPaidAddOn(gift, 'spotify_song') ? gift.data.song : undefined;
+  const data = await withPlayableAudio({ ...gift.data, song: paidSong });
   return NextResponse.json({ data }, { headers: PRIVATE });
 }
