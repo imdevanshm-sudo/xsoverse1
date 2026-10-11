@@ -84,7 +84,7 @@ function Lightbox({ data }: { data: PolaroidData }) {
     >
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[#120a0e]/65 backdrop-blur-md"
+        className="pointer-events-none absolute inset-0 bg-[#120a0e]/85"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

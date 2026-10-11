@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 import { FormatPreview } from '@/components/xso/preview/FormatPreview';
+import { PolaroidZoomOff } from '@/components/xso/PolaroidThumb';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
 /** The desk the recipient opens, rendered at full size and scaled down. */
@@ -121,14 +122,16 @@ export const FormatThumb = memo(function FormatThumb({
             className={`absolute left-0 top-0 origin-top-left ${interactive ? '' : 'pointer-events-none'}`}
             style={{ width: DESK_W, height: DESK_H, transform: `scale(${scale})` }}
           >
-            <FormatPreview
-              style={style}
-              data={deferred}
-              size="fill"
-              chrome={false}
-              focusIndex={focus}
-              onChange={interactive ? onChange : undefined}
-            />
+            <PolaroidZoomOff.Provider value>
+              <FormatPreview
+                style={style}
+                data={deferred}
+                size="fill"
+                chrome={false}
+                focusIndex={focus}
+                onChange={interactive ? onChange : undefined}
+              />
+            </PolaroidZoomOff.Provider>
           </div>
         ) : (
           <StyleThumb style={style} sizes={`${Math.round(DESK_W * scale)}px`} priority />

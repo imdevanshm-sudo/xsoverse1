@@ -616,7 +616,7 @@ const DeckCard = memo(function DeckCard({
           {id === 'letter' ? <span aria-hidden className="deck-card__creases" /> : null}
           {id === 'receipt' ? <span aria-hidden className="deck-card__thermal-fade" /> : null}
           <span aria-hidden className="deck-card__light" />
-          {reduce ? null : (
+          {reduce || !(active || inAir) ? null : (
             <motion.span
               aria-hidden
               className="deck-card__sheen"

@@ -1,8 +1,11 @@
 'use client';
 
-import { memo, useRef, type CSSProperties, type ReactNode } from 'react';
+import { createContext, memo, useContext, useRef, type CSSProperties, type ReactNode } from 'react';
 import { originOf, usePolaroidStore, type PolaroidBack } from '@/store/usePolaroidStore';
 import { preloadLightbox } from '@/components/xso/PolaroidLightboxHost';
+
+/** Inside small previews a photo is just part of the card, so a tap flicks the card instead. */
+export const PolaroidZoomOff = createContext(false);
 
 /**
  * A photo that opens in the global lightbox. Decks and desks treat `[data-polaroid]`
@@ -34,6 +37,13 @@ export const PolaroidThumb = memo(function PolaroidThumb({
   const node = useRef<HTMLButtonElement>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
 
+  if (useContext(PolaroidZoomOff)) {
+    return (
+      <span className={`block ${className}`} style={style}>
+        {children}
+      </span>
+    );
+  }
   return (
     <button
       ref={node}
