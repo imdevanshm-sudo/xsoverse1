@@ -30,7 +30,8 @@ import { resolveLoop } from '@/lib/formats';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
-import { getArtifacts, type Artifact } from '@/components/xso/viewers/shared';
+import { getArtifacts, withSong, type Artifact } from '@/components/xso/viewers/shared';
+import { LoopSongCard } from '@/components/xso/song/OurSong';
 import { useProgress } from '@/components/xso/stage/useProgress';
 import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
 import { DeckProgress, SideZone, SwipeHint } from '@/components/xso/stage/DeckControls';
@@ -72,6 +73,7 @@ const MATERIALS: Record<SlotId, Material> = {
   audit: { surface: 'mat-cardstock', sheen: 0.35 },
   photos: { surface: 'mat-photo', sheen: 0.9 },
   letter: { surface: 'mat-letter', sheen: 0.14 },
+  song: { surface: 'mat-cardstock', sheen: 0.35 },
   end: { surface: 'mat-letter', sheen: 0.14 },
 };
 
@@ -97,9 +99,21 @@ export const MemoryDeck = memo(function MemoryDeck(props: DeckProps) {
   const { cards } = resolveLoop(data);
   const key = cards.join('|');
   const all = useMemo(() => getArtifacts(data), [data]);
+  const song = data.song;
   const artifacts = useMemo(
-    () => all.filter((artifact) => key.split('|').includes(artifact.id)),
-    [all, key],
+    () =>
+      withSong(
+        all.filter((artifact) => key.split('|').includes(artifact.id)),
+        song
+          ? {
+              id: 'song',
+              label: 'Our song',
+              rotation: -1.2,
+              content: <LoopSongCard song={song} />,
+            }
+          : null,
+      ),
+    [all, key, song],
   );
   const focused =
     focusIndex === undefined
@@ -108,7 +122,7 @@ export const MemoryDeck = memo(function MemoryDeck(props: DeckProps) {
   /** A different hand of cards is a new deck; remounting keeps the pile order valid. */
   return (
     <Deck
-      key={key}
+      key={`${key}|${song?.id ?? ''}`}
       {...props}
       artifacts={artifacts}
       focusIndex={focused === undefined || focused < 0 ? undefined : focused}
@@ -148,6 +162,7 @@ const Deck = memo(function Deck({
       audit: artifacts.find((a) => a.id === 'audit')?.content,
       photos: artifacts.find((a) => a.id === 'photos')?.content,
       letter: <Side4BirthdayCard data={data} bare />,
+      song: artifacts.find((a) => a.id === 'song')?.content,
       end: <YourTurn source="loop_end" onDismiss={() => throws.current[end]?.()} />,
     }),
     [artifacts, data, end],

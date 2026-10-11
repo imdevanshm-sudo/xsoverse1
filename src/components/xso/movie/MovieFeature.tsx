@@ -18,6 +18,7 @@ import type { MovieLayers, XsoData } from '@/types/xso';
 import { useStage } from '@/components/xso/movie/useStage';
 import { OpeningSlate } from '@/components/xso/movie/OpeningSlate';
 import { EndScreen } from '@/components/xso/movie/EndScreen';
+import { SoundtrackCredit } from '@/components/xso/song/OurSong';
 import {
   AuditScene,
   LetterScene,
@@ -32,9 +33,12 @@ import {
 export interface MovieFrame {
   id: string;
   label: string;
-  /** Which of the four scenes it plays (receipt, audit, photos, letter). */
+  /** Which scene it plays: 0–3 are receipt, audit, photos, letter; then the soundtrack credit. */
   scene: number;
 }
+
+/** "Our Song": a credit scene that holds until the viewer moves on, so the song isn't cut off. */
+export const SOUNDTRACK_SCENE = 4;
 
 const SWIPE_PX = 40;
 /** The projector's flutter plays out before the score fades in under it. */
@@ -312,6 +316,10 @@ function SceneBody(props: SceneProps) {
       ) : (
         <TitleCards {...props} />
       );
+    case SOUNDTRACK_SCENE:
+      return props.data.song ? (
+        <SoundtrackCredit song={props.data.song} big={props.stage.big} />
+      ) : null;
     default:
       return <LetterScene {...props} />;
   }

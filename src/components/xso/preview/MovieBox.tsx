@@ -29,8 +29,8 @@ import { CINEMA_EASE, CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { auditLabel, resolveMovie } from '@/lib/formats';
 import { stackCards } from '@/lib/formatCards';
 import { LazyMedia } from '@/components/xso/LazyMedia';
-import { getArtifacts, type Artifact } from '@/components/xso/viewers/shared';
-import { MovieFeature } from '@/components/xso/movie/MovieFeature';
+import { getArtifacts, withSong, type Artifact } from '@/components/xso/viewers/shared';
+import { MovieFeature, SOUNDTRACK_SCENE } from '@/components/xso/movie/MovieFeature';
 
 /** Crank travel that pulls one frame through the gate. */
 const STEP = 180;
@@ -105,13 +105,19 @@ export const MovieBox = memo(function MovieBox(props: ProjectorProps) {
   const focused =
     focusIndex === undefined ? undefined : artifacts.findIndex((a) => a.scene === focusIndex);
   if (props.size === 'fill') {
+    const frames = withSong(
+      artifacts,
+      data.song
+        ? { id: 'song', label: 'Soundtrack', rotation: 0, content: null, scene: SOUNDTRACK_SCENE }
+        : null,
+    );
     return (
       <MovieFeature
-        key={key}
+        key={`${key}|${data.song ? 'song' : ''}`}
         data={data}
         onChange={props.onChange}
         movie={movie}
-        frames={artifacts}
+        frames={frames}
         cta={props.cta}
         focusIndex={focused === undefined || focused < 0 ? undefined : focused}
       />

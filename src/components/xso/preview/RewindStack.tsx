@@ -21,7 +21,13 @@ import { CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { selectedCards, stackCards } from '@/lib/formatCards';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
-import { getArtifacts, seededOffset, type Artifact } from '@/components/xso/viewers/shared';
+import {
+  getArtifacts,
+  seededOffset,
+  withSong,
+  type Artifact,
+} from '@/components/xso/viewers/shared';
+import { SideATape } from '@/components/xso/song/OurSong';
 import { useProgress } from '@/components/xso/stage/useProgress';
 import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
 import { DeckProgress, SideZone, SwipeHint } from '@/components/xso/stage/DeckControls';
@@ -116,7 +122,22 @@ export const RewindStack = memo(function RewindStack(props: StackProps) {
   const review = data.rewind?.review.trim() ?? '';
   const cards = selectedCards(data, 'rewind');
   const key = cards.join('|');
-  const base = useMemo(() => getArtifacts(data, stackCards(data, 'rewind')), [data]);
+  const base = useMemo(
+    () =>
+      withSong(
+        getArtifacts(data, stackCards(data, 'rewind')),
+        data.song
+          ? {
+              id: 'song',
+              label: 'Side A',
+              rotation: 0,
+              contentScale: 1,
+              content: <SideATape song={data.song} />,
+            }
+          : null,
+      ),
+    [data],
+  );
   const artifacts = useMemo<Sheet[]>(
     () =>
       review && key.split('|').includes('liner')

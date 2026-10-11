@@ -34,7 +34,8 @@ import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { PolaroidThumb } from '@/components/xso/PolaroidThumb';
 import { overallStars } from '@/components/xso/Side2Audit';
-import { getArtifacts, type Artifact } from '@/components/xso/viewers/shared';
+import { getArtifacts, withSong, type Artifact } from '@/components/xso/viewers/shared';
+import { SongFold } from '@/components/xso/song/OurSong';
 import { useProgress } from '@/components/xso/stage/useProgress';
 import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
 
@@ -168,9 +169,14 @@ export const AccordionRibbon = memo(function AccordionRibbon(props: RibbonProps)
   const { data, focusIndex } = props;
   const cards = stackCards(data, 'accordion');
   const key = cards.join('|');
+  const hasSong = Boolean(data.song);
   const artifacts = useMemo(
-    () => getArtifacts(data, key.split('|') as Artifact['id'][]),
-    [data, key],
+    () =>
+      withSong(
+        getArtifacts(data, key.split('|') as Artifact['id'][]),
+        hasSong ? { id: 'song', label: 'Our song', rotation: 0, content: null } : null,
+      ),
+    [data, key, hasSong],
   );
   const focused =
     focusIndex === undefined
@@ -178,7 +184,7 @@ export const AccordionRibbon = memo(function AccordionRibbon(props: RibbonProps)
       : artifacts.findIndex((a) => a.id === LOOP_CARDS[focusIndex]);
   return (
     <Ribbon
-      key={key}
+      key={`${key}|${hasSong ? 'song' : ''}`}
       {...props}
       artifacts={artifacts}
       focusIndex={focused === undefined || focused < 0 ? undefined : focused}
@@ -894,6 +900,7 @@ const FOLD_NAMES: Record<Artifact['id'], string> = {
   receipt: 'the receipt',
   audit: 'the audit',
   photos: 'the faces',
+  song: 'our song',
   letter: 'the note',
 };
 
@@ -920,6 +927,9 @@ const PanelFace = memo(function PanelFace({
       Fold {String(index + 1).padStart(2, '0')} · {FOLD_NAMES[id]}
     </p>
   );
+  if (id === 'song' && data.song) {
+    return <SongFold song={data.song} label={label} wide={wide} />;
+  }
   if (id === 'receipt') {
     return (
       <div className={`xso-receipt flex h-full flex-col font-receipt leading-snug ${t.body}`}>

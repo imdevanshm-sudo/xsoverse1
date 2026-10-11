@@ -37,6 +37,7 @@ import { usePolaroidStore, type PolaroidBack } from '@/store/usePolaroidStore';
 import { preloadLightbox } from '@/components/xso/PolaroidLightboxHost';
 import { usePauseOffscreen } from '@/hooks/usePauseOffscreen';
 import { useVoiceClip } from '@/components/xso/stage/useVoiceClip';
+import { RecordSleeve } from '@/components/xso/song/OurSong';
 
 const PICK_UP = { type: 'spring' as const, stiffness: 300, damping: 25 };
 /** Slow and a little floaty, like sliding paper across felt. */
@@ -226,6 +227,8 @@ function buildItems(
   composition: Composition,
 ): DeskItemSpec[] {
   const on = new Set(layers.elements);
+  /** A paid "Our Song" always gets the cassette spot, where its record sleeve sits. */
+  if (data.song) on.add('voice');
   const photos = data.photos.filter(Boolean).slice(0, 3);
   const jitter = (id: string, base: number) =>
     Math.max(-6, Math.min(8, base + seededOffset(data.id || 'xso', id.length * 7 + base, 1.5)));
@@ -1299,12 +1302,17 @@ const SongCard = memo(function SongCard({ data, songUrl }: { data: XsoData; song
       <p className="font-receipt text-[9px] uppercase tracking-[0.2em] text-[#9a6a7e]">
         Side A · {data.voiceNoteUrl ? 'press play' : 'our song'}
       </p>
+      {data.song ? (
+        <div className="mt-1.5 w-[64%]" data-no-drag>
+          <RecordSleeve song={data.song} />
+        </div>
+      ) : null}
       {data.voiceNoteUrl ? (
         <div className="mt-1">
           <VoiceSnippet src={data.voiceNoteUrl} from={data.billerName} />
         </div>
       ) : null}
-      {songUrl ? (
+      {songUrl && !data.song ? (
         <a
           href={songUrl}
           target="_blank"
@@ -1314,7 +1322,7 @@ const SongCard = memo(function SongCard({ data, songUrl }: { data: XsoData; song
           <Play className="h-3 w-3 fill-current" aria-hidden /> play our song
         </a>
       ) : null}
-      {!data.voiceNoteUrl && !songUrl ? (
+      {!data.voiceNoteUrl && !songUrl && !data.song ? (
         <p className="mt-1 font-hand text-[16px] leading-none text-[#3a2530]/60">your song here</p>
       ) : null}
     </article>

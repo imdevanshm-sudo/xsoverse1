@@ -37,7 +37,8 @@ export const LIGHT_TWEEN = {
 };
 
 export interface Artifact {
-  id: 'receipt' | 'audit' | 'photos' | 'letter';
+  /** `song` is the paid "Our Song" card, added by the formats that deal it. */
+  id: 'receipt' | 'audit' | 'photos' | 'letter' | 'song';
   label: string;
   rotation: number;
   contentScale?: number;
@@ -77,6 +78,13 @@ export function getArtifacts(data: XsoData, cards?: readonly Artifact['id'][]): 
     },
   ];
   return cards ? all.filter((a) => cards.includes(a.id)) : all;
+}
+
+/** Deals the song card just before the letter (or last, without one). */
+export function withSong<T extends { id: string }>(items: T[], song: T | null): T[] {
+  if (!song) return items;
+  const at = items.findIndex((item) => item.id === 'letter');
+  return at < 0 ? [...items, song] : [...items.slice(0, at), song, ...items.slice(at)];
 }
 
 export function rotateFrom<T>(items: T[], start: number): T[] {

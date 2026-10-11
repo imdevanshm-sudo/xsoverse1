@@ -23,6 +23,7 @@ import {
   type Texture,
 } from '@/lib/sound';
 import { MIXTAPE_TRACKS, SOUNDTRACKS } from '@/lib/soundtracks';
+import type { SongAttachment } from '@/lib/spotify';
 import { getMockXsoData, type GiftStyle, type XsoData } from '@/types/xso';
 
 const SECTIONS: { format: SoundFormat; title: string }[] = [
@@ -38,14 +39,41 @@ const SECTIONS: { format: SoundFormat; title: string }[] = [
 const EVENTS = Object.keys(SOUND_EVENTS) as SoundEvent[];
 const fmt = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(1)}`;
 
-export function SoundTest({ viewer, voice }: { viewer?: GiftStyle; voice: boolean }) {
+const SAMPLE_SONG: SongAttachment = {
+  provider: 'spotify',
+  type: 'track',
+  id: '4cOdK2wGLETKBW3PvgPWqT',
+  url: 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT',
+  title: 'Never Gonna Give You Up',
+  artist: 'Rick Astley',
+  thumbnail: 'https://image-cdn-ak.spotifycdn.com/image/ab67616d00001e02baf89eb11ec7c657805d2da0',
+  dedication: 'the one we screamed on every road trip',
+};
+
+export function SoundTest({
+  viewer,
+  voice,
+  song,
+}: {
+  viewer?: GiftStyle;
+  voice: boolean;
+  song: boolean;
+}) {
   useSoundSurface();
-  if (viewer) return <ViewerHarness style={viewer} voice={voice} />;
+  if (viewer) return <ViewerHarness style={viewer} voice={voice} song={song} />;
   return <EventBoard />;
 }
 
 /** One format's real recipient flow on sample data, plus a way to close it. */
-function ViewerHarness({ style, voice }: { style: GiftStyle; voice: boolean }) {
+function ViewerHarness({
+  style,
+  voice,
+  song,
+}: {
+  style: GiftStyle;
+  voice: boolean;
+  song: boolean;
+}) {
   const [open, setOpen] = useState(true);
   const data = useMemo<XsoData>(() => {
     const mock = getMockXsoData();
@@ -62,8 +90,9 @@ function ViewerHarness({ style, voice }: { style: GiftStyle; voice: boolean }) {
         voice,
         transcript: voice ? 'Happy birthday!' : '',
       },
+      song: song ? SAMPLE_SONG : undefined,
     };
-  }, [style, voice]);
+  }, [song, style, voice]);
   return (
     <main className="fixed inset-0 bg-black">
       {open ? (

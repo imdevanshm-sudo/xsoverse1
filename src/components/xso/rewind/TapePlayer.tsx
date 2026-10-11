@@ -15,6 +15,7 @@ export const TRACK_TITLES: Record<string, string> = {
   audit: 'Friendship audit',
   photos: 'Photo booth',
   letter: 'The letter',
+  song: 'Our song',
   liner: 'Liner notes',
   end: 'Your turn',
 };
