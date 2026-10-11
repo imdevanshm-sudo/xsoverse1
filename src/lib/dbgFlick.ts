@@ -41,12 +41,19 @@ interface Flick {
 
 const running = () => document.getAnimations().filter((a) => a.playState === 'running').length;
 
+const VARIANTS = ['base', 'noShadow', 'noClipMask', 'noOverlays', 'allOff'];
+let variant = 0;
+function applyVariant() {
+  document.documentElement.dataset.dbgv = VARIANTS[variant % VARIANTS.length];
+}
+
 let flick: Flick | null = null;
 let observer: PerformanceObserver | null = null;
 let count = 0;
 
 export function dbgLaunch(via: string, soundMs: number) {
   if (!on()) return;
+  if (!document.documentElement.dataset.dbgv) applyVariant();
   if (!observer) {
     try {
       observer = new PerformanceObserver((l) =>
@@ -89,9 +96,13 @@ export function dbgLaunch(via: string, soundMs: number) {
       count += 1;
       const g = current.gaps;
       const sorted = [...g].sort((a, b) => a - b);
+      const used = document.documentElement.dataset.dbgv;
+      variant += 1;
+      applyVariant();
       send(
         `flick ${count}`,
         {
+          variant: used,
           via: current.via,
           soundMs: current.soundMs,
           flightMs: Math.round(current.landAt - current.t0),
