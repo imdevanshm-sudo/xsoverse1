@@ -105,7 +105,11 @@ export const FormatThumb = memo(function FormatThumb({
           ? { type: 'button' as const, onClick: onEdit, 'aria-label': 'Edit every detail' }
           : {})}
         className={`relative shrink-0 overflow-hidden rounded-2xl ${interactive ? 'touch-pan-y' : ''} ${onEdit && !interactive ? 'cursor-pointer ring-[#ec4899]/60 transition-shadow hover:ring-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]' : ''}`}
-        style={{ width: DESK_W * scale, height: DESK_H * scale }}
+        style={
+          fit
+            ? { width: '100%', maxWidth: DESK_W, aspectRatio: `${DESK_W} / ${DESK_H}` }
+            : { width: DESK_W * scale, height: DESK_H * scale }
+        }
       >
         {badge ? (
           <span className="absolute inset-x-2 top-2 z-10 flex justify-center">{badge}</span>

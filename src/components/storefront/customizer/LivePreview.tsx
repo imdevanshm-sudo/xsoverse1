@@ -32,20 +32,18 @@ export const FormatShowcase = memo(function FormatShowcase({
   return (
     <div>
       <PaneLabel>Live preview · {displayTitle(cart)}</PaneLabel>
-      <div className="[perspective:1200px]">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={style}
-            initial={reduce ? { opacity: 0 } : { opacity: 0, rotateY: -28, scale: 0.94 }}
-            animate={{ opacity: 1, rotateY: 0, scale: 1 }}
-            exit={reduce ? { opacity: 0 } : { opacity: 0, rotateY: 28, scale: 0.94 }}
-            transition={{ duration: reduce ? 0.12 : 0.32, ease: [0.22, 1, 0.36, 1] }}
-            className="rounded-2xl shadow-[0_24px_60px_-20px_rgba(0,0,0,.8)]"
-            style={{ boxShadow: `0 0 0 1px ${cart.accentSoft}, 0 24px 60px -20px rgba(0,0,0,.8)` }}
-          >
-            <FormatThumb data={data} style={style} fit interactive stillUntilTap />
-          </motion.div>
-        </AnimatePresence>
+      <div
+        className="rounded-2xl"
+        style={{ boxShadow: `0 0 0 1px ${cart.accentSoft}, 0 24px 60px -20px rgba(0,0,0,.8)` }}
+      >
+        <motion.div
+          key={style}
+          initial={reduce ? false : { opacity: 0.35, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <FormatThumb data={data} style={style} fit interactive stillUntilTap />
+        </motion.div>
       </div>
       <p className="mt-3 text-center font-serif text-[15px] font-semibold text-[#fed7aa]">
         {cart.tagline}
