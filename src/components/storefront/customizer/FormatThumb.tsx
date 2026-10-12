@@ -121,7 +121,7 @@ export const FormatThumb = memo(function FormatThumb({
           <div
             ref={makeInert}
             aria-hidden={!interactive}
-            className={`absolute left-0 top-0 origin-top-left ${interactive ? '' : 'pointer-events-none'}`}
+            className={`thumb-lite absolute left-0 top-0 origin-top-left ${interactive ? '' : 'pointer-events-none'}`}
             style={{ width: DESK_W, height: DESK_H, transform: `scale(${scale})` }}
           >
             <PolaroidZoomOff.Provider value>
