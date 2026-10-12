@@ -72,6 +72,7 @@ export function AddOnChecklist({
   currency: CurrencyCode;
   details?: (id: AddOnId) => ReactNode;
 }) {
+  if (ADD_ON_ORDER.length === 0) return null;
   return (
     <section aria-labelledby="addons-title" className="grid gap-2">
       <h3 id="addons-title" className="font-serif text-[1.05rem] font-semibold leading-tight">
