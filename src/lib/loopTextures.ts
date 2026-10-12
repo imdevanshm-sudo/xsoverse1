@@ -104,11 +104,15 @@ function speckles(width: number, height: number, count: number, seed: number) {
     s = (s * 16807) % 2147483647;
     return (s - 1) / 2147483646;
   };
-  const patches = Array.from({ length: 5 }, () =>
-    `<ellipse cx="${(rand() * width).toFixed(0)}" cy="${(rand() * height).toFixed(0)}" rx="${(30 + rand() * 50).toFixed(0)}" ry="${(10 + rand() * 18).toFixed(0)}" fill="#000" fill-opacity="${(0.12 + rand() * 0.18).toFixed(2)}"/>`,
+  const patches = Array.from(
+    { length: 5 },
+    () =>
+      `<ellipse cx="${(rand() * width).toFixed(0)}" cy="${(rand() * height).toFixed(0)}" rx="${(30 + rand() * 50).toFixed(0)}" ry="${(10 + rand() * 18).toFixed(0)}" fill="#000" fill-opacity="${(0.12 + rand() * 0.18).toFixed(2)}"/>`,
   ).join('');
-  const holes = Array.from({ length: count }, () =>
-    `<circle cx="${(rand() * width).toFixed(1)}" cy="${(rand() * height).toFixed(1)}" r="${(0.6 + rand() * 2).toFixed(1)}" fill="#000" fill-opacity="${(0.55 + rand() * 0.45).toFixed(2)}"/>`,
+  const holes = Array.from(
+    { length: count },
+    () =>
+      `<circle cx="${(rand() * width).toFixed(1)}" cy="${(rand() * height).toFixed(1)}" r="${(0.6 + rand() * 2).toFixed(1)}" fill="#000" fill-opacity="${(0.55 + rand() * 0.45).toFixed(2)}"/>`,
   ).join('');
   return patches + holes;
 }
@@ -139,15 +143,12 @@ function inkStamp(id: string, text: string, x: number, y: number, rotate: number
 }
 
 export function buildMemoryTextureUrls(data: XsoData) {
-  const stampDate =
-    (data.timestamp.split(/[\s/]/)[0] || '03.15') + " · FILED";
+  const stampDate = (data.timestamp.split(/[\s/]/)[0] || '03.15') + ' · FILED';
   const shownItems = data.lineItems.slice(0, RECEIPT_MAX_ITEMS);
   const hiddenCount = data.lineItems.length - shownItems.length;
   const receiptLines =
     shownItems
-      .map((item, index) =>
-        receiptRow(item.qty, item.description, item.price, 176 + index * 26),
-      )
+      .map((item, index) => receiptRow(item.qty, item.description, item.price, 176 + index * 26))
       .join('') +
     (hiddenCount > 0
       ? `<text x="${DESC_LEFT}" y="${176 + shownItems.length * 26}" class="row" opacity=".65">+${hiddenCount} MORE</text>`
@@ -273,10 +274,11 @@ function wrapWords(value: string, max: number) {
 }
 
 function escapeXml(value: string) {
+  // Regex replace, not replaceAll: older Android and iOS browsers lack it.
   return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
