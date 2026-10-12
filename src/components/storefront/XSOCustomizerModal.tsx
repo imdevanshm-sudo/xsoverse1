@@ -125,47 +125,6 @@ export function XSOCustomizerModal() {
   const [addOns, setAddOns] = useState<AddOnId[]>([]);
   const toggleAddOn = useCallback((id: AddOnId, on: boolean) => {
     setAddOns((current) => sanitizeAddOns(on ? [...current, id] : current.filter((a) => a !== id)));
-    // #region agent probe: blank dialog after an add-on tap (remove after diagnosis)
-    const probe = (when: number) =>
-      window.setTimeout(() => {
-        const dialog = document.querySelector('[role="dialog"]') as HTMLElement | null;
-        const header = dialog?.querySelector('header');
-        const body = dialog?.children[1] as HTMLElement | undefined;
-        const vv = window.visualViewport;
-        const rect = (el?: Element | null) => {
-          if (!el) return null;
-          const r = el.getBoundingClientRect();
-          return [r.x, r.y, r.width, r.height].map(Math.round);
-        };
-        const hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-        void fetch('/api/client-error', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: `probe addon=${id} on=${on} t=${when}`,
-            stack: JSON.stringify({
-              dlgScroll: dialog ? [dialog.scrollTop, dialog.scrollLeft] : null,
-              bodyScroll: body ? [body.scrollTop, body.scrollHeight, body.clientHeight] : null,
-              win: [scrollX, scrollY, innerWidth, innerHeight],
-              vv: vv
-                ? [vv.offsetTop, vv.height, vv.scale].map((n) => Math.round(n * 100) / 100)
-                : null,
-              dlg: rect(dialog),
-              header: rect(header),
-              dlgStyle: dialog
-                ? [getComputedStyle(dialog).opacity, getComputedStyle(dialog).transform]
-                : null,
-              hit: hit ? `${hit.tagName}.${String(hit.className).slice(0, 60)}` : null,
-              active: document.activeElement?.tagName,
-            }),
-            path: location.pathname,
-          }),
-          keepalive: true,
-        }).catch(() => {});
-      }, when);
-    probe(150);
-    probe(1200);
-    // #endregion
   }, []);
   const price = useQuote(style, cards.length, addOns);
 
