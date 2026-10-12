@@ -158,7 +158,10 @@ export async function createLemonCheckout(options: {
               gift_id: options.giftId,
               gift_style: options.giftStyle,
               tier: options.quote.tier,
-              add_ons: encodeAddOns(options.quote.addOns),
+              // Lemon rejects empty strings in custom data.
+              ...(options.quote.addOns.length
+                ? { add_ons: encodeAddOns(options.quote.addOns) }
+                : {}),
             },
             name: options.billerName || undefined,
           },
