@@ -86,7 +86,8 @@ export function AddOnChecklist({
               key={id}
               className={`rounded-2xl border ${on ? 'border-[#ec4899]/55 bg-[#2a1520]' : 'border-white/10 bg-[#21131b]'}`}
             >
-              <label className="flex min-h-[3.5rem] cursor-pointer items-center gap-3 px-3 py-2.5">
+              {/* `relative` keeps the sr-only checkbox in this row; otherwise focusing it scrolls the dialog. */}
+              <label className="relative flex min-h-[3.5rem] cursor-pointer items-center gap-3 px-3 py-2.5">
                 <input
                   type="checkbox"
                   checked={on}

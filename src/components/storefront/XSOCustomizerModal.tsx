@@ -471,6 +471,13 @@ export function XSOCustomizerModal() {
         initial={reduce ? false : { y: 48, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+        onScroll={(e) => {
+          // Only the body scrolls. Focusing a hidden input can scroll this clipped frame and push
+          // every step off screen on Android, so snap it back.
+          if (e.target !== e.currentTarget) return;
+          e.currentTarget.scrollTop = 0;
+          e.currentTarget.scrollLeft = 0;
+        }}
         className="relative flex max-h-[90vh] min-h-[min(640px,85vh)] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#180e15] text-[#fdf2f8] shadow-[0_-12px_40px_rgba(0,0,0,.5)] supports-[height:100svh]:max-h-[90svh] supports-[height:100svh]:min-h-[min(640px,85svh)] md:min-h-[min(680px,90vh)] md:max-w-4xl md:rounded-3xl"
       >
         <header className="flex items-center gap-3 border-b border-white/10 px-5 pb-3 pt-4">
