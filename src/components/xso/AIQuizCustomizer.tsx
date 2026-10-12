@@ -40,13 +40,30 @@ const PILL = {
   },
 } as const;
 
+/** Retries dropped connections twice, then explains the failure in plain words. */
+async function postWithRetry(url: string, body: unknown, signal: AbortSignal): Promise<Response> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+      });
+    } catch (err) {
+      if (signal.aborted) throw err;
+      if (attempt >= 2) {
+        throw new Error(
+          'Connection dropped. Check your internet and tap again; your answers are saved.',
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+    }
+  }
+}
+
 export async function requestStory(input: CraftInput, signal: AbortSignal): Promise<CraftResponse> {
-  const res = await fetch('/api/generate-xso', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-    signal,
-  });
+  const res = await postWithRetry('/api/generate-xso', input, signal);
   const json = (await res.json().catch(() => ({}))) as Partial<CraftResponse> & { error?: string };
   if (!res.ok || !json.story) throw new Error(json.error || 'The story machine jammed. Try again.');
   return { story: json.story, source: json.source ?? 'template' };
@@ -91,18 +108,17 @@ export function useMemoryQuestions(
     abortRef.current = controller;
     setState((s) => ({ ...s, key, loading: true, error: null }));
     try {
-      const res = await fetch('/api/generate-xso', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const res = await postWithRetry(
+        '/api/generate-xso',
+        {
           mode: 'questions',
           relationship,
           tone: tone ?? undefined,
           recipientName: nameRef.current.trim() || undefined,
           exclude: seenRef.current,
-        }),
-        signal: controller.signal,
-      });
+        },
+        controller.signal,
+      );
       const json = (await res.json().catch(() => ({}))) as Partial<QuestionsResponse> & {
         error?: string;
       };
