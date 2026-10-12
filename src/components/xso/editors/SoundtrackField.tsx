@@ -186,6 +186,10 @@ export function SoundtrackField({
         )}
         {busy ? 'Uploading…' : `Upload your own · MP3 or M4A, up to ${MB} MB`}
       </button>
+      <p className={`-mt-1 text-[11.5px] leading-snug ${t.detail}`}>
+        Only upload audio you made or have the rights to share. Commercial songs belong on Spotify:
+        add them as Our Song instead.
+      </p>
       <input
         ref={inputRef}
         type="file"

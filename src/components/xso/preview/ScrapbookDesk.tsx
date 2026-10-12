@@ -603,7 +603,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
 
   const LABELS: Record<ItemKind, (item: DeskItemSpec) => string> = {
     receipt: () => 'Receipt — look closer',
-    polaroid: (item) => `Polaroid ${item.photo!.index + 1} — look closer`,
+    polaroid: (item) => `Photo ${item.photo!.index + 1} — look closer`,
     card: (item) => `Memory card ${item.photo!.index + 1} — look closer`,
     sticky: () => 'Sticky note — look closer',
     ticket: () => 'Ticket stub — look closer',

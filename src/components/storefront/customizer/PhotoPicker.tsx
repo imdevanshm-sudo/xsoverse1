@@ -116,6 +116,9 @@ export const PhotoPicker = memo(function PhotoPicker({
           );
         })}
       </div>
+      <p className="mt-2 text-[11.5px] leading-snug text-[#c99aae]">
+        Use photos you took or have permission to share.
+      </p>
       <input
         ref={inputRef}
         type="file"
