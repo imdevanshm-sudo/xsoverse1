@@ -66,20 +66,23 @@ export function AddOnChecklist({
   onToggle,
   currency,
   details,
+  hidden,
 }: {
   selected: readonly AddOnId[];
   onToggle: (id: AddOnId, on: boolean) => void;
   currency: CurrencyCode;
   details?: (id: AddOnId) => ReactNode;
+  hidden?: readonly AddOnId[];
 }) {
-  if (ADD_ON_ORDER.length === 0) return null;
+  const offered = ADD_ON_ORDER.filter((id) => !hidden?.includes(id));
+  if (offered.length === 0) return null;
   return (
     <section aria-labelledby="addons-title" className="grid gap-2">
       <h3 id="addons-title" className="font-serif text-[1.05rem] font-semibold leading-tight">
         Add-ons
       </h3>
       <ul className="m-0 grid list-none gap-2 p-0">
-        {ADD_ON_ORDER.map((id) => {
+        {offered.map((id) => {
           const spec = ADD_ONS[id];
           const on = selected.includes(id);
           return (

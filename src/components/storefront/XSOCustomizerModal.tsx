@@ -427,6 +427,11 @@ export function XSOCustomizerModal() {
     [addOns, draftId, name, photos, scrapbook, style, vibe.senderName, withCards],
   );
   const songMissing = addOns.includes('spotify_song') && !order.song;
+  /** The Scrapbook's Voice Note piece already takes a song, so Our Song would be a second one. */
+  const voicePiece = scrapbook && withCards.scrapbook.elements.includes('voice');
+  useEffect(() => {
+    if (voicePiece) setAddOns((current) => current.filter((id) => id !== 'spotify_song'));
+  }, [voicePiece]);
 
   /** Keeps the gift draft in sync with the order (theme first, since it resets content). */
   const commit = useCallback(() => {
@@ -645,6 +650,7 @@ export function XSOCustomizerModal() {
                     onFocusCard={setFocusCard}
                   />
                   <AddOnChecklist
+                    hidden={voicePiece ? ['spotify_song'] : undefined}
                     selected={addOns}
                     onToggle={toggleAddOn}
                     currency={price.currency}
