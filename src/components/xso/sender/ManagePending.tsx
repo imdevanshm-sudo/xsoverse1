@@ -4,8 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const MAX_ATTEMPTS = 20;
-const MAX_PAID_ATTEMPTS = 60;
+/** Lemon Squeezy retries slow webhooks, so paid gifts keep checking for about five minutes. */
+const FAST_PAID_ATTEMPTS = 30;
+const MAX_PAID_ATTEMPTS = FAST_PAID_ATTEMPTS + 70;
 const INTERVAL_MS = 900;
+const SLOW_INTERVAL_MS = 4000;
 
 /** Waits on the sender's dashboard until the payment webhook marks the gift paid. */
 export function ManagePending({ giftId, preview }: { giftId: string; preview: boolean }) {
@@ -40,10 +43,15 @@ export function ManagePending({ giftId, preview }: { giftId: string; preview: bo
           return;
         }
         if (response.status === 402 && attempts < (preview ? MAX_ATTEMPTS : MAX_PAID_ATTEMPTS)) {
+          const slow = !preview && attempts >= FAST_PAID_ATTEMPTS;
           setMessage(
-            preview ? 'Activating preview gift…' : 'Payment received. Letting the seal set…',
+            preview
+              ? 'Activating preview gift…'
+              : slow
+                ? 'Your payment is safe. Confirming it can take a minute, so keep this page open. The link in your receipt email opens this page too.'
+                : 'Payment received. Letting the seal set…',
           );
-          timer = window.setTimeout(poll, INTERVAL_MS);
+          timer = window.setTimeout(poll, slow ? SLOW_INTERVAL_MS : INTERVAL_MS);
           return;
         }
         setError(
@@ -51,7 +59,7 @@ export function ManagePending({ giftId, preview }: { giftId: string; preview: bo
             ? 'We could not find this gift. Contact support with the gift ID below.'
             : preview
               ? 'Preview gift could not be activated.'
-              : 'Payment is still processing. Try again in a moment.',
+              : 'Your payment is safe, but we are still confirming it. Tap below to check again, or reply to your receipt email with the gift ID below and we will sort it out.',
         );
       } catch {
         if (cancelled) return;
