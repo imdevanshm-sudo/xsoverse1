@@ -22,20 +22,32 @@ const EMBED_TIMEOUT_MS = 12_000;
 export const SpotifyPlayer = memo(function SpotifyPlayer({
   song,
   className = '',
+  guard = true,
 }: {
   song: SongAttachment;
   className?: string;
+  /**
+   * Spotify's frame swallows every touch, so a swipe that starts on it never reaches the deck.
+   * A clear cover keeps swipes with the deck until a tap hands the player over.
+   */
+  guard?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const near = useInView(box, { once: true, margin: '200px' });
   const onScreen = useInView(box, { amount: 0.5 });
   const active = useActive();
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [unlocked, setUnlocked] = useState(!guard);
+  const press = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (guard && !active) setUnlocked(false);
+  }, [guard, active]);
   /** Spotify's player is heavy; a card waiting in the stack shouldn't load it during the unwrap. */
   const [armed, setArmed] = useState(false);
   useEffect(() => {
     if (near && active) setArmed(true);
   }, [near, active]);
+  const covered = guard && !unlocked && armed && state !== 'failed';
 
   useEffect(() => {
     if (!armed || state !== 'loading') return;
@@ -75,11 +87,41 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
               className={`absolute inset-0 h-full w-full border-0 transition-opacity duration-300 ${state === 'ready' ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : null}
+          {covered ? (
+            // A div, not a button: the decks ignore drags that start on buttons.
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label={`Turn on the Spotify player for ${credit(song)}`}
+              className="absolute inset-0 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#1db954]"
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                e.stopPropagation();
+                setUnlocked(true);
+              }}
+              onPointerDown={(e) => {
+                press.current = { x: e.clientX, y: e.clientY };
+              }}
+              onClick={(e) => {
+                const start = press.current;
+                press.current = null;
+                const moved = start
+                  ? Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10
+                  : false;
+                if (moved) return;
+                e.stopPropagation();
+                setUnlocked(true);
+              }}
+            />
+          ) : null}
         </div>
       )}
       {state === 'failed' ? null : (
         <p className="mt-1.5 text-[11.5px] leading-snug opacity-70">
-          Tap play. Full songs require Spotify login; otherwise, you&apos;ll hear a preview.
+          {covered
+            ? 'Tap the player to turn it on, then tap play. Full songs need a Spotify login; otherwise you’ll hear a preview.'
+            : 'Tap play. Full songs require Spotify login; otherwise, you’ll hear a preview.'}
         </p>
       )}
       <OpenInSpotify song={song} />
@@ -354,7 +396,7 @@ function SongLightbox({
                 “{song.dedication}”
               </p>
             ) : null}
-            <SpotifyPlayer song={song} className="mt-3" />
+            <SpotifyPlayer song={song} className="mt-3" guard={false} />
           </motion.div>
         </motion.div>
       ) : null}

@@ -26,13 +26,14 @@ export const SwipeHint = memo(function SwipeHint({
         <motion.div
           key="swipe-hint"
           role="status"
-          className="pointer-events-none absolute inset-x-0 bottom-[18%] z-50 flex justify-center"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, transition: { duration: 0.35 } }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
         >
-          <span className="inline-flex items-center gap-2.5 rounded-full bg-[#1b0f15]/80 py-2 pl-3 pr-4 font-receipt text-[14px] uppercase tracking-[0.18em] text-[#fde7d4] shadow-[0_10px_30px_rgba(0,0,0,.45)] backdrop-blur-sm">
+          {/* Straddles the card's bottom edge, which is only the torn-paper border. */}
+          <span className="inline-flex translate-y-1/2 items-center gap-2.5 rounded-full bg-[#1b0f15]/80 py-2 pl-3 pr-4 font-receipt text-[14px] uppercase tracking-[0.18em] text-[#fde7d4] shadow-[0_10px_30px_rgba(0,0,0,.45)] backdrop-blur-sm">
             <motion.span
               aria-hidden
               className="inline-flex"
