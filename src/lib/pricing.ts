@@ -88,7 +88,11 @@ export const ADD_ONS: Record<AddOnId, AddOnSpec> = {
   },
 };
 
-export const ADD_ON_ORDER: AddOnId[] = ['spotify_song'];
+/**
+ * Add-ons on sale. Our Song is off: Spotify's terms bar charging for its content, and the Letter
+ * Card already takes a Spotify link for free. Gifts already sold with it still play their song.
+ */
+export const ADD_ON_ORDER: AddOnId[] = [];
 
 export function isAddOnId(value: unknown): value is AddOnId {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(ADD_ONS, value);
