@@ -172,13 +172,15 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
       },
     });
     log('attached');
+    const giftId = decodeURIComponent(new URL(viewUrl).pathname.split('/')[2] ?? '');
+    // Skips the "Enter full screen" prompt, as if this tab had already answered it.
+    await page.evaluateOnNewDocument((key) => {
+      try {
+        sessionStorage.setItem(key, '1');
+      } catch {}
+    }, `xso:immersive:${giftId}`);
     await page.goto(viewUrl, { waitUntil: 'load', timeout: 30_000 });
     log('loaded');
-    for (let i = 0; i < 50; i++) {
-      if (await page.evaluate(() => /unwrap/i.test(document.body.innerText))) break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-    log('ready');
     await page.addStyleTag({ content: RECORDING_CSS });
     await page.evaluate(() => {
       const credit = document.createElement('div');
@@ -186,14 +188,30 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
       credit.textContent = 'XSOVERSE.APP';
       document.body.appendChild(credit);
     });
-    await tapText(page, 'skip');
-
-    await recorder.start(out);
-    log('capturing');
     const wait: Wait = (ms) => recorder.waitForTimeout(ms);
+    // Frames until the wrapped gift is on top (preloader gone) are dropped, so the video opens on it.
+    await recorder.start(out, { dropCapturedFrames: true });
+    log('warming up');
+    let wrapped = false;
+    for (let i = 0; i < 100 && !wrapped; i++) {
+      await wait(100);
+      wrapped = await page.evaluate(() => {
+        const button = Array.from(document.querySelectorAll('button')).find((b) =>
+          /unwrap/i.test(b.textContent ?? ''),
+        );
+        if (!button) return false;
+        const box = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return hit === button || Boolean(hit && button.contains(hit));
+      });
+    }
+    if (!wrapped) throw new Error('Gift never became ready');
+    recorder.dropCapturedFrames = false;
+    const videoStart = recorder.captureTimestamp;
+    log('capturing');
     const more = () =>
-      recorder.captureTimestamp < MAX_VIDEO_MS && Date.now() - started < MAX_REAL_MS;
-    await wait(900);
+      recorder.captureTimestamp - videoStart < MAX_VIDEO_MS && Date.now() - started < MAX_REAL_MS;
+    await wait(1200);
     if (!(await tapText(page, 'unwrap'))) throw new Error('Gift could not be opened');
     await wait(4000);
     log('unwrapped');
