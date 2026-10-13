@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getGift } from '@/lib/giftStore';
 import { viewPath } from '@/lib/giftLinks';
 import { getSupabaseServer, isSupabaseConfigured } from '@/lib/supabaseServer';
-import { benchmarkRecorder, recordGift } from '@/lib/storyRecorder';
+import { recordGift } from '@/lib/storyRecorder';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ const PRIVATE = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollo
 const BUCKET = 'story-videos';
 const URL_SECONDS = 60 * 60;
 /** Bump when the recording changes, so gifts are re-recorded instead of served stale. */
-const RECORDING_VERSION = 6;
+const RECORDING_VERSION = 7;
 
 let bucketReady: Promise<void> | null = null;
 
@@ -58,11 +58,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   const origin = new URL(request.url).origin;
-  if (process.env.VERCEL_ENV === 'preview' && new URL(request.url).searchParams.has('bench')) {
-    const results = await benchmarkRecorder(`${origin}${viewPath(gift.id)}`, gift.data.giftStyle);
-    return NextResponse.json(results, { headers: PRIVATE });
-  }
-
   const path = `v${RECORDING_VERSION}/${gift.id}.mp4`;
   try {
     await ensureBucket();
