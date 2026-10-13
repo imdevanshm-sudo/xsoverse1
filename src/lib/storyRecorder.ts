@@ -16,7 +16,9 @@ const VIEW_W = 360;
 const VIEW_H = 640;
 const OUT_W = 720;
 const OUT_H = 1280;
-const FPS = 30;
+const FPS = 24;
+/** Rendered at 1.5x and scaled up: software rendering is the bottleneck, not detail. */
+const SCALE = 1.5;
 /** Longest playthrough, in the video's own time. */
 const MAX_VIDEO_MS = 45_000;
 /** Real-time cap, inside the route's 300s limit. */
@@ -70,40 +72,46 @@ async function ffmpegPath(): Promise<string> {
 
 /** Taps the first visible, enabled element matching one of the selectors. */
 async function tap(page: Page, selectors: string[]): Promise<boolean> {
-  return page.evaluate((list) => {
-    for (const selector of list) {
-      for (const el of Array.from(document.querySelectorAll<HTMLElement>(selector))) {
-        const box = el.getBoundingClientRect();
-        if (!box.width || !box.height || (el as HTMLButtonElement).disabled) continue;
-        el.click();
-        return true;
+  return page
+    .evaluate((list) => {
+      for (const selector of list) {
+        for (const el of Array.from(document.querySelectorAll<HTMLElement>(selector))) {
+          const box = el.getBoundingClientRect();
+          if (!box.width || !box.height || (el as HTMLButtonElement).disabled) continue;
+          el.click();
+          return true;
+        }
       }
-    }
-    return false;
-  }, selectors);
+      return false;
+    }, selectors)
+    .catch(() => false);
 }
 
 async function tapText(page: Page, pattern: string): Promise<boolean> {
-  return page.evaluate((source) => {
-    const match = new RegExp(source, 'i');
-    const button = Array.from(document.querySelectorAll('button')).find((b) =>
-      match.test(b.textContent ?? ''),
-    );
-    button?.click();
-    return Boolean(button);
-  }, pattern);
+  return page
+    .evaluate((source) => {
+      const match = new RegExp(source, 'i');
+      const button = Array.from(document.querySelectorAll('button')).find((b) =>
+        match.test(b.textContent ?? ''),
+      );
+      button?.click();
+      return Boolean(button);
+    }, pattern)
+    .catch(() => false);
 }
 
 /** True once the gift's own last page (not the corner pill) is on top. */
 function atEnd(page: Page): Promise<boolean> {
-  return page.evaluate(() =>
-    Array.from(document.querySelectorAll('a')).some((a) => {
-      if (a.textContent?.trim() !== 'Make one back' || a.closest('[data-chrome]')) return false;
-      const box = a.getBoundingClientRect();
-      const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-      return hit === a || Boolean(hit && a.contains(hit));
-    }),
-  );
+  return page
+    .evaluate(() =>
+      Array.from(document.querySelectorAll('a')).some((a) => {
+        if (a.textContent?.trim() !== 'Make one back' || a.closest('[data-chrome]')) return false;
+        const box = a.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return hit === a || Boolean(hit && a.contains(hit));
+      }),
+    )
+    .catch(() => false);
 }
 
 type Wait = (ms: number) => Promise<void>;
@@ -115,7 +123,10 @@ async function playThrough(page: Page, style: GiftStyle, wait: Wait, more: () =>
       await tap(page, ['[aria-label="Play"]']);
       while (more()) {
         await wait(1000);
-        if (await page.evaluate(() => document.body.innerText.includes('Fin.'))) {
+        const fin = await page
+          .evaluate(() => document.body.innerText.includes('Fin.'))
+          .catch(() => false);
+        if (fin) {
           return wait(2500);
         }
       }
@@ -158,7 +169,7 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
     await page.setViewport({
       width: VIEW_W,
       height: VIEW_H,
-      deviceScaleFactor: OUT_W / VIEW_W,
+      deviceScaleFactor: SCALE,
       isMobile: true,
       hasTouch: true,
     });
@@ -172,6 +183,10 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
       },
     });
     log('attached');
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) log(`navigated to ${frame.url()}`);
+    });
+    page.on('pageerror', (error) => log(`page error: ${String(error)}`));
     const giftId = decodeURIComponent(new URL(viewUrl).pathname.split('/')[2] ?? '');
     // Skips the "Enter full screen" prompt, as if this tab had already answered it.
     await page.evaluateOnNewDocument((key) => {
