@@ -25,14 +25,6 @@ import { useSoundSurface } from '@/lib/sound';
 /** The scrapbook reports its four memory groups; every stack reports each card it deals. */
 const SCRAPBOOK_MEMORIES = 4;
 
-const STAGE_HINT: Record<GiftStyle, string> = {
-  loop: 'Tap the stack · let it come back around',
-  rewind: 'Tap the stack · then call it all back',
-  scrapbook: 'Pick something up · turn it over',
-  accordion: 'Pull the ribbon · let it unfold',
-  moviebox: 'Turn the crank · roll the reel',
-};
-
 function countBits(n: number) {
   let count = 0;
   for (let v = n; v; v &= v - 1) count += 1;
@@ -92,15 +84,6 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
     <div>
       <div className="mx-auto grid w-full max-w-xl gap-10 px-5 pb-[calc(10rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6 sm:pt-8 lg:max-w-5xl lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-14 lg:pb-48 lg:pt-10">
         <div className="flex min-w-0 flex-col items-center">
-          <div className="mb-4 flex w-full max-w-[400px] items-center justify-between gap-3">
-            <p className="min-w-0 truncate font-receipt text-[11px] uppercase tracking-[0.18em] text-[#e0b4c6]">
-              {STAGE_HINT[lockedStyle]}
-            </p>
-            <p className="shrink-0 rounded-full border border-[#5a3442] px-2 py-0.5 font-receipt text-[10px] tracking-[0.16em] text-[#c99aae]">
-              {cart.code}
-            </p>
-          </div>
-
           <PreviewStage style={lockedStyle} data={previewData} onChange={goTo} />
 
           <button
