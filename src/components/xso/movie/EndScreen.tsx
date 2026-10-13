@@ -6,6 +6,7 @@ import { RotateCcw, Share2 } from 'lucide-react';
 import type { StageSize } from '@/components/xso/movie/useStage';
 import { viewPath } from '@/lib/giftLinks';
 import { track } from '@/lib/analytics';
+import { ShareStoryButton } from '@/components/xso/ShareStory';
 
 /**
  * The closing card: "Fin.", then the way back to the store, sharing and a replay. Drafts in the
@@ -85,6 +86,10 @@ export const EndScreen = memo(function EndScreen({
             <Share2 className="h-4 w-4" aria-hidden />
             {copied ? 'Link copied' : 'Share this'}
           </button>
+          <ShareStoryButton
+            source="movie_end"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#fffaf0]/30 px-5 font-receipt text-[13px] uppercase tracking-[0.16em] text-[#fffaf0] transition-colors hover:border-[#fdba74]/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+          />
         </motion.div>
       ) : null}
 

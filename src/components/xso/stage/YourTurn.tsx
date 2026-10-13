@@ -2,6 +2,7 @@
 
 import { memo } from 'react';
 import { track } from '@/lib/analytics';
+import { ShareStoryButton } from '@/components/xso/ShareStory';
 
 export const YOUR_TURN = 'Your turn';
 
@@ -52,6 +53,12 @@ export const YourTurn = memo(function YourTurn({
       >
         Make one back
       </a>
+      <ShareStoryButton
+        source={source}
+        className={`mt-2 inline-flex w-full max-w-[340px] items-center justify-center gap-2 rounded-full border border-[#b4234a]/40 px-5 font-receipt uppercase tracking-[0.16em] text-[#b4234a] transition-colors hover:bg-[#b4234a]/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b4234a]/60 ${
+          large ? 'min-h-12 text-[14px]' : 'min-h-11 text-[12px]'
+        }`}
+      />
       {onDismiss ? (
         <button
           type="button"

@@ -6,7 +6,8 @@ export type TrackEvent =
   | 'checkout_started'
   | 'checkout_completed'
   | 'make_one_back'
-  | 'movie_shared';
+  | 'movie_shared'
+  | 'story_video';
 
 type Props = Record<string, string | number | boolean | null | undefined>;
 
