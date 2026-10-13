@@ -33,12 +33,25 @@ const RECORDING_CSS = `
   }
 `;
 
-async function launch(): Promise<Browser> {
+/** SwiftShader's emulated GPU, or Chrome's plain software raster and compositor. */
+type Raster = 'swiftshader' | 'software';
+const GPU_ARGS =
+  /^--(use-gl|use-angle|enable-unsafe-swiftshader|in-process-gpu|ignore-gpu-blocklist)/;
+
+async function launch(raster: Raster = 'swiftshader'): Promise<Browser> {
   const puppeteer = (await import('puppeteer-core')).default;
   if (process.env.VERCEL) {
     const chromium = (await import('@sparticuz/chromium')).default;
+    const args =
+      raster === 'software'
+        ? [
+            ...chromium.args.filter((arg) => !GPU_ARGS.test(arg)),
+            '--disable-gpu',
+            '--disable-gpu-compositing',
+          ]
+        : chromium.args;
     return puppeteer.launch({
-      args: chromium.args,
+      args,
       executablePath: await chromium.executablePath(),
       headless: 'shell',
     });
@@ -202,17 +215,23 @@ async function playThrough(page: Page, style: GiftStyle, wait: Wait, more: () =>
   }
 }
 
-export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buffer> {
+type Options = { raster?: Raster; scale?: number; benchMs?: number };
+
+export async function recordGift(
+  viewUrl: string,
+  style: GiftStyle,
+  { raster = 'swiftshader', scale = OUT_W / VIEW_W, benchMs }: Options = {},
+): Promise<Buffer> {
   const started = Date.now();
   const log = (stage: string) => console.log(`[story-video] ${stage} +${Date.now() - started}ms`);
-  const browser = await launch();
+  const browser = await launch(raster);
   log('launched');
   try {
     const page = await browser.newPage();
     await page.setViewport({
       width: VIEW_W,
       height: VIEW_H,
-      deviceScaleFactor: OUT_W / VIEW_W,
+      deviceScaleFactor: scale,
       isMobile: true,
       hasTouch: true,
     });
@@ -261,7 +280,8 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
     if (!(await tapText(page, 'unwrap'))) throw new Error('Gift could not be opened');
     await wait(4500);
     log('unwrapped');
-    await playThrough(page, style, wait, () => Date.now() - started < MAX_REAL_MS);
+    const until = benchMs ? Date.now() + benchMs : started + MAX_REAL_MS;
+    await playThrough(page, style, wait, () => Date.now() < until);
     await client.send('Page.stopScreencast').catch(() => {});
     const seconds = (Date.now() - recordingFrom) / 1000;
     log(
@@ -273,4 +293,25 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
   } finally {
     await browser.close().catch(() => {});
   }
+}
+
+/** Preview only: capture rate under each renderer and scale, to pick the fastest. */
+export async function benchmarkRecorder(viewUrl: string, style: GiftStyle) {
+  const results: Record<string, number | string> = {};
+  const configs: Array<[string, Options]> = [
+    ['swiftshader@2', { raster: 'swiftshader', scale: 2 }],
+    ['software@2', { raster: 'software', scale: 2 }],
+    ['software@1.5', { raster: 'software', scale: 1.5 }],
+    ['swiftshader@1', { raster: 'swiftshader', scale: 1 }],
+    ['software@1', { raster: 'software', scale: 1 }],
+  ];
+  for (const [name, options] of configs) {
+    try {
+      const out = await recordGift(viewUrl, style, { ...options, benchMs: 9000 });
+      results[name] = Math.round((JSON.parse(out.toString()) as { fps: number }).fps * 10) / 10;
+    } catch (error) {
+      results[name] = String(error).slice(0, 200);
+    }
+  }
+  return results;
 }
