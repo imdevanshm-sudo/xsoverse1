@@ -12,7 +12,7 @@ const PRIVATE = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollo
 const BUCKET = 'story-videos';
 const URL_SECONDS = 60 * 60;
 /** Bump when the recording changes, so gifts are re-recorded instead of served stale. */
-const RECORDING_VERSION = 2;
+const RECORDING_VERSION = 3;
 
 let bucketReady: Promise<void> | null = null;
 
