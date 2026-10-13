@@ -30,7 +30,9 @@ export interface StoryInput {
 }
 
 export function storyInput(data: XsoData): StoryInput {
-  const letter = data.birthdayMessage.replace(/\s+/g, ' ').trim();
+  const [first = '', ...rest] = data.birthdayMessage.trim().split('\n');
+  const greeting = rest.length > 0 && first.trim().endsWith(',') && first.length < 40;
+  const letter = (greeting ? rest.join(' ') : data.birthdayMessage).replace(/\s+/g, ' ').trim();
   const sentence = (letter.match(/^.*?[.!?](\s|$)/)?.[0] ?? letter).trim();
   return {
     name: data.customerName.trim(),
