@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getGift } from '@/lib/giftStore';
 import { viewPath } from '@/lib/giftLinks';
 import { getSupabaseServer, isSupabaseConfigured } from '@/lib/supabaseServer';
-import { recordGift } from '@/lib/storyRecorder';
+import { benchmarkRecorder, recordGift } from '@/lib/storyRecorder';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,13 +57,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Storage unavailable' }, { status: 503, headers: PRIVATE });
   }
 
+  const origin = new URL(request.url).origin;
+  if (process.env.VERCEL_ENV === 'preview' && new URL(request.url).searchParams.has('bench')) {
+    const results = await benchmarkRecorder(`${origin}${viewPath(gift.id)}`, gift.data.giftStyle);
+    return NextResponse.json(results, { headers: PRIVATE });
+  }
+
   const path = `v${RECORDING_VERSION}/${gift.id}.mp4`;
   try {
     await ensureBucket();
     const cached = await signed(path);
     if (cached) return NextResponse.json({ url: cached }, { headers: PRIVATE });
 
-    const origin = new URL(request.url).origin;
     const video = await recordGift(`${origin}${viewPath(gift.id)}`, gift.data.giftStyle);
     const { error } = await getSupabaseServer()
       .storage.from(BUCKET)
