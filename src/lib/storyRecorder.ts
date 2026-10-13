@@ -1,35 +1,29 @@
-import { randomUUID } from 'crypto';
-import { readFile, rm, symlink } from 'fs/promises';
+import { spawn } from 'child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import type { Browser, Page } from 'puppeteer-core';
+import type { Browser, CDPSession, Page } from 'puppeteer-core';
 import type { GiftStyle } from '@/types/xso';
 
 /**
  * Records a received gift being opened and played through, in a headless browser on the server,
- * as a vertical MP4 for the recipient's story. Capture runs on virtual time (puppeteer-capture):
- * the page's clock only moves one frame at a time, so animations come out smooth however slow the
- * server renders. Silent: the gift's sounds and songs stay out.
+ * as a vertical MP4 for the recipient's story. Real-time screencast: frames arrive whenever the
+ * page repaints and are re-timed to a constant rate. Silent: the gift's sounds and songs stay out.
  */
 
 const VIEW_W = 360;
 const VIEW_H = 640;
 const OUT_W = 720;
 const OUT_H = 1280;
-const FPS = 24;
-/** Rendered at 1.5x and scaled up: software rendering is the bottleneck, not detail. */
-const SCALE = 1.5;
-/** Longest playthrough, in the video's own time. */
-const MAX_VIDEO_MS = 45_000;
-/** Real-time cap, inside the route's 300s limit. */
-const MAX_REAL_MS = 220_000;
+/** Real-time cap, inside the route's 300s limit (encoding and upload come after). */
+const MAX_REAL_MS = 120_000;
 /** Each card, fold or piece stays on screen this long. */
-const DWELL_MS = 3000;
+const DWELL_MS = 3200;
 
 /** Overlays that help a person but clutter a recording; plus a small site credit. */
 const RECORDING_CSS = `
   [data-chrome] { display: none !important; }
-  /* Software rendering: every standing layer is a full bitmap, and dozens exhaust the memory. */
+  /* Software rendering: every standing layer is a full bitmap to repaint. */
   *, *::before, *::after { will-change: auto !important; }
   #story-credit {
     position: fixed; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
@@ -39,30 +33,20 @@ const RECORDING_CSS = `
   }
 `;
 
-/** puppeteer-capture only accepts a binary whose path names chrome-headless-shell. */
-async function headlessShell(): Promise<string> {
-  if (process.env.CHROME_HEADLESS_SHELL) return process.env.CHROME_HEADLESS_SHELL;
-  const chromium = (await import('@sparticuz/chromium')).default;
-  const binary = await chromium.executablePath();
-  const link = join(tmpdir(), 'chrome-headless-shell');
-  await symlink(binary, link).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== 'EEXIST') throw error;
-  });
-  return link;
-}
-
-/** puppeteer-capture's own `launch` require()s the ESM-only puppeteer-core, so launch here instead. */
 async function launch(): Promise<Browser> {
   const puppeteer = (await import('puppeteer-core')).default;
-  const { PuppeteerCaptureViaHeadlessExperimental } =
-    await import('puppeteer-capture/lib/PuppeteerCaptureViaHeadlessExperimental');
-  const chromium = process.env.CHROME_HEADLESS_SHELL
-    ? null
-    : (await import('@sparticuz/chromium')).default;
+  if (process.env.VERCEL) {
+    const chromium = (await import('@sparticuz/chromium')).default;
+    return puppeteer.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: 'shell',
+    });
+  }
   return puppeteer.launch({
-    executablePath: await headlessShell(),
-    headless: 'shell',
-    args: [...(chromium?.args ?? []), ...PuppeteerCaptureViaHeadlessExperimental.REQUIRED_ARGS],
+    executablePath:
+      process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    headless: true,
   });
 }
 
@@ -70,6 +54,63 @@ async function ffmpegPath(): Promise<string> {
   const path = (await import('ffmpeg-static')).default as unknown as string | null;
   if (!path) throw new Error('ffmpeg unavailable');
   return path;
+}
+
+type Frame = { data: Buffer; at: number };
+
+async function startScreencast(client: CDPSession, frames: Frame[]) {
+  client.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
+    frames.push({ data: Buffer.from(data, 'base64'), at: metadata.timestamp ?? Date.now() / 1000 });
+    void client.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
+  });
+  await client.send('Page.startScreencast', {
+    format: 'jpeg',
+    quality: 82,
+    maxWidth: OUT_W,
+    maxHeight: OUT_H,
+  });
+}
+
+/** Variable-rate screencast frames → constant 30fps H.264, padded to 9:16. */
+async function encode(frames: Frame[]): Promise<Buffer> {
+  if (frames.length < 10) throw new Error('Too few frames captured');
+  const dir = await mkdtemp(join(tmpdir(), 'story-'));
+  try {
+    const name = (i: number) => join(dir, `${String(i).padStart(5, '0')}.jpg`);
+    const list: string[] = [];
+    for (let i = 0; i < frames.length; i++) {
+      await writeFile(name(i), frames[i].data);
+      const next = frames[i + 1]?.at ?? frames[i].at + 1.5;
+      // The screencast only sends a frame when something changes, so still moments are long gaps.
+      const duration = Math.min(10, Math.max(1 / 60, next - frames[i].at));
+      list.push(`file '${name(i)}'`, `duration ${duration.toFixed(4)}`);
+    }
+    list.push(`file '${name(frames.length - 1)}'`);
+    await writeFile(join(dir, 'list.txt'), list.join('\n'));
+    const out = join(dir, 'story.mp4');
+    const scale = `scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=decrease`;
+    const pad = `pad=${OUT_W}:${OUT_H}:(ow-iw)/2:(oh-ih)/2:color=black`;
+    const args = [
+      '-y',
+      ...['-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt')],
+      ...['-vf', `fps=30,${scale},${pad},format=yuv420p`],
+      ...['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-movflags', '+faststart'],
+      out,
+    ];
+    const bin = await ffmpegPath();
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn(bin, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+      let log = '';
+      proc.stderr.on('data', (chunk) => (log = (log + chunk).slice(-2000)));
+      proc.on('error', reject);
+      proc.on('close', (code) =>
+        code === 0 ? resolve() : reject(new Error(`ffmpeg ${code}: ${log}`)),
+      );
+    });
+    return await readFile(out);
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 /** Taps the first visible, enabled element matching one of the selectors. */
@@ -117,6 +158,7 @@ function atEnd(page: Page): Promise<boolean> {
 }
 
 type Wait = (ms: number) => Promise<void>;
+const wait: Wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Plays the gift the way a first-time viewer would, one beat per card. */
 async function playThrough(page: Page, style: GiftStyle, wait: Wait, more: () => boolean) {
@@ -163,32 +205,16 @@ async function playThrough(page: Page, style: GiftStyle, wait: Wait, more: () =>
 export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buffer> {
   const started = Date.now();
   const log = (stage: string) => console.log(`[story-video] ${stage} +${Date.now() - started}ms`);
-  const out = join(tmpdir(), `story-${randomUUID()}.mp4`);
   const browser = await launch();
   log('launched');
-  const { freemem } = await import('os');
-  const memory = setInterval(() => log(`free memory ${Math.round(freemem() / 1e6)}MB`), 15_000);
   try {
     const page = await browser.newPage();
     await page.setViewport({
       width: VIEW_W,
       height: VIEW_H,
-      deviceScaleFactor: SCALE,
+      deviceScaleFactor: OUT_W / VIEW_W,
       isMobile: true,
       hasTouch: true,
-    });
-    const { capture } = await import('puppeteer-capture/lib/capture');
-    const recorder = await capture(page as never, {
-      fps: FPS,
-      size: `${OUT_W}x${OUT_H}`,
-      ffmpeg: await ffmpegPath(),
-      customFfmpegConfig: async (ffmpeg) => {
-        ffmpeg.outputOptions(['-pix_fmt', 'yuv420p', '-crf', '23', '-movflags', '+faststart']);
-      },
-    });
-    log('attached');
-    page.on('framenavigated', (frame) => {
-      if (frame === page.mainFrame()) log(`navigated to ${frame.url()}`);
     });
     page.on('pageerror', (error) => log(`page error: ${String(error)}`));
     const giftId = decodeURIComponent(new URL(viewUrl).pathname.split('/')[2] ?? '');
@@ -199,7 +225,6 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
       } catch {}
     }, `xso:immersive:${giftId}`);
     await page.goto(viewUrl, { waitUntil: 'load', timeout: 30_000 });
-    log('loaded');
     await page.addStyleTag({ content: RECORDING_CSS });
     await page.evaluate(() => {
       const credit = document.createElement('div');
@@ -207,42 +232,45 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
       credit.textContent = 'XSOVERSE.APP';
       document.body.appendChild(credit);
     });
-    const wait: Wait = (ms) => recorder.waitForTimeout(ms);
-    // Frames until the wrapped gift is on top (preloader gone) are dropped, so the video opens on it.
-    await recorder.start(out, { dropCapturedFrames: true });
-    log('warming up');
+    log('loaded');
+
+    // Recording starts once the wrapped gift is on top (preloader gone), so the video opens on it.
     let wrapped = false;
-    for (let i = 0; i < 100 && !wrapped; i++) {
-      await wait(100);
-      wrapped = await page.evaluate(() => {
-        const button = Array.from(document.querySelectorAll('button')).find((b) =>
-          /unwrap/i.test(b.textContent ?? ''),
-        );
-        if (!button) return false;
-        const box = button.getBoundingClientRect();
-        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-        return hit === button || Boolean(hit && button.contains(hit));
-      });
+    for (let i = 0; i < 60 && !wrapped; i++) {
+      await wait(250);
+      wrapped = await page
+        .evaluate(() => {
+          const button = Array.from(document.querySelectorAll('button')).find((b) =>
+            /unwrap/i.test(b.textContent ?? ''),
+          );
+          if (!button) return false;
+          const box = button.getBoundingClientRect();
+          const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+          return hit === button || Boolean(hit && button.contains(hit));
+        })
+        .catch(() => false);
     }
     if (!wrapped) throw new Error('Gift never became ready');
-    recorder.dropCapturedFrames = false;
-    const videoStart = recorder.captureTimestamp;
+
+    const client = await page.createCDPSession();
+    const frames: Frame[] = [];
+    await startScreencast(client, frames);
+    const recordingFrom = Date.now();
     log('capturing');
-    const more = () =>
-      recorder.captureTimestamp - videoStart < MAX_VIDEO_MS && Date.now() - started < MAX_REAL_MS;
     await wait(1200);
     if (!(await tapText(page, 'unwrap'))) throw new Error('Gift could not be opened');
-    await wait(4000);
+    await wait(4500);
     log('unwrapped');
-    await playThrough(page, style, wait, more);
-    log(`played ${Math.round(recorder.captureTimestamp)}ms of video`);
-    await recorder.stop();
+    await playThrough(page, style, wait, () => Date.now() - started < MAX_REAL_MS);
+    await client.send('Page.stopScreencast').catch(() => {});
+    const seconds = (Date.now() - recordingFrom) / 1000;
+    log(
+      `captured ${frames.length} frames in ${seconds.toFixed(1)}s (${(frames.length / seconds).toFixed(1)}fps)`,
+    );
+    const video = await encode(frames);
     log('encoded');
-    await recorder.detach();
-    return await readFile(out);
+    return video;
   } finally {
-    clearInterval(memory);
     await browser.close().catch(() => {});
-    await rm(out, { force: true }).catch(() => {});
   }
 }
