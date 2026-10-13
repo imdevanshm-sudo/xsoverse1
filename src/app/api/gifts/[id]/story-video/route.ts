@@ -11,6 +11,8 @@ export const maxDuration = 300;
 const PRIVATE = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' };
 const BUCKET = 'story-videos';
 const URL_SECONDS = 60 * 60;
+/** Bump when the recording changes, so gifts are re-recorded instead of served stale. */
+const RECORDING_VERSION = 2;
 
 let bucketReady: Promise<void> | null = null;
 
@@ -55,7 +57,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Storage unavailable' }, { status: 503, headers: PRIVATE });
   }
 
-  const path = `${gift.id}.mp4`;
+  const path = `v${RECORDING_VERSION}/${gift.id}.mp4`;
   try {
     await ensureBucket();
     const cached = await signed(path);

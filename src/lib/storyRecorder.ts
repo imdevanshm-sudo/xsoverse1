@@ -1,22 +1,28 @@
-import { spawn } from 'child_process';
-import { mkdtemp, rm, writeFile } from 'fs/promises';
+import { randomUUID } from 'crypto';
+import { readFile, rm, symlink } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import type { Browser, CDPSession, Page } from 'puppeteer-core';
+import type { Browser, Page } from 'puppeteer-core';
 import type { GiftStyle } from '@/types/xso';
 
 /**
  * Records a received gift being opened and played through, in a headless browser on the server,
- * as a vertical MP4 for the recipient's story. Silent: the gift's sounds and songs stay out.
+ * as a vertical MP4 for the recipient's story. Capture runs on virtual time (puppeteer-capture):
+ * the page's clock only moves one frame at a time, so animations come out smooth however slow the
+ * server renders. Silent: the gift's sounds and songs stay out.
  */
 
 const VIEW_W = 360;
 const VIEW_H = 640;
 const OUT_W = 720;
 const OUT_H = 1280;
-const MAX_RECORD_MS = 50_000;
+const FPS = 30;
+/** Longest playthrough, in the video's own time. */
+const MAX_VIDEO_MS = 45_000;
+/** Real-time cap, inside the route's 300s limit. */
+const MAX_REAL_MS = 220_000;
 /** Each card, fold or piece stays on screen this long. */
-const DWELL_MS = 3200;
+const DWELL_MS = 3000;
 
 /** Overlays that help a person but clutter a recording; plus a small site credit. */
 const RECORDING_CSS = `
@@ -29,24 +35,34 @@ const RECORDING_CSS = `
   }
 `;
 
-async function launch(): Promise<Browser> {
-  const puppeteer = await import('puppeteer-core');
-  if (process.env.VERCEL) {
-    const chromium = (await import('@sparticuz/chromium')).default;
-    return puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: 'shell',
-    });
-  }
-  return puppeteer.launch({
-    executablePath:
-      process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    headless: true,
+/** puppeteer-capture only accepts a binary whose path names chrome-headless-shell. */
+async function headlessShell(): Promise<string> {
+  if (process.env.CHROME_HEADLESS_SHELL) return process.env.CHROME_HEADLESS_SHELL;
+  const chromium = (await import('@sparticuz/chromium')).default;
+  const binary = await chromium.executablePath();
+  const link = join(tmpdir(), 'chrome-headless-shell');
+  await symlink(binary, link).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== 'EEXIST') throw error;
   });
+  return link;
 }
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+async function launch(): Promise<Browser> {
+  const { launch: launchCapture } = await import('puppeteer-capture');
+  const chromium = process.env.CHROME_HEADLESS_SHELL
+    ? null
+    : (await import('@sparticuz/chromium')).default;
+  return (await launchCapture({
+    executablePath: await headlessShell(),
+    args: chromium ? chromium.args : [],
+  })) as unknown as Browser;
+}
+
+async function ffmpegPath(): Promise<string> {
+  const path = (await import('ffmpeg-static')).default as unknown as string | null;
+  if (!path) throw new Error('ffmpeg unavailable');
+  return path;
+}
 
 /** Taps the first visible, enabled element matching one of the selectors. */
 async function tap(page: Page, selectors: string[]): Promise<boolean> {
@@ -63,28 +79,52 @@ async function tap(page: Page, selectors: string[]): Promise<boolean> {
   }, selectors);
 }
 
+async function tapText(page: Page, pattern: string): Promise<boolean> {
+  return page.evaluate((source) => {
+    const match = new RegExp(source, 'i');
+    const button = Array.from(document.querySelectorAll('button')).find((b) =>
+      match.test(b.textContent ?? ''),
+    );
+    button?.click();
+    return Boolean(button);
+  }, pattern);
+}
+
+/** True once the gift's own last page (not the corner pill) is on top. */
+function atEnd(page: Page): Promise<boolean> {
+  return page.evaluate(() =>
+    Array.from(document.querySelectorAll('a')).some((a) => {
+      if (a.textContent?.trim() !== 'Make one back' || a.closest('[data-chrome]')) return false;
+      const box = a.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+      return hit === a || Boolean(hit && a.contains(hit));
+    }),
+  );
+}
+
+type Wait = (ms: number) => Promise<void>;
+
 /** Plays the gift the way a first-time viewer would, one beat per card. */
-async function playThrough(page: Page, style: GiftStyle, deadline: number) {
-  const more = () => Date.now() < deadline;
+async function playThrough(page: Page, style: GiftStyle, wait: Wait, more: () => boolean) {
   switch (style) {
     case 'moviebox': {
       await tap(page, ['[aria-label="Play"]']);
       while (more()) {
         await wait(1000);
-        const done = await page.evaluate(() => document.body.innerText.includes('Fin.'));
-        if (done) return void (await wait(2500));
+        if (await page.evaluate(() => document.body.innerText.includes('Fin.'))) {
+          return wait(2500);
+        }
       }
       return;
     }
     case 'scrapbook': {
       for (let i = 0; i < 8 && more(); i++) {
-        const opened = await tap(page, ['[role="button"][aria-label$="(not opened yet)"]']);
-        if (!opened) break;
+        if (!(await tap(page, ['[role="button"][aria-label$="(not opened yet)"]']))) break;
         await wait(DWELL_MS);
         await page.keyboard.press('Escape');
         await wait(900);
       }
-      return void (await wait(1500));
+      return wait(1500);
     }
     case 'accordion': {
       for (let i = 0; i < 10 && more(); i++) {
@@ -94,101 +134,18 @@ async function playThrough(page: Page, style: GiftStyle, deadline: number) {
       return;
     }
     default: {
-      for (let i = 0; i < 8 && more(); i++) {
+      for (let i = 0; i < 10 && more(); i++) {
         await wait(DWELL_MS);
-        const atEnd = await page.evaluate(() =>
-          Array.from(document.querySelectorAll('a')).some((a) => {
-            if (a.textContent?.trim() !== 'Make one back' || a.closest('[data-chrome]')) {
-              return false;
-            }
-            const box = a.getBoundingClientRect();
-            const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-            return hit === a || a.contains(hit);
-          }),
-        );
-        if (atEnd) return void (await wait(1500));
-        if (!(await tap(page, ['[aria-label="Next card"]']))) break;
+        if (await atEnd(page)) return wait(1500);
+        await tap(page, ['[aria-label="Next card"]']);
       }
     }
   }
 }
 
-type Frame = { data: Buffer; at: number };
-
-async function capture(client: CDPSession, frames: Frame[]) {
-  client.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
-    frames.push({ data: Buffer.from(data, 'base64'), at: metadata.timestamp ?? Date.now() / 1000 });
-    void client.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
-  });
-  await client.send('Page.startScreencast', {
-    format: 'jpeg',
-    quality: 82,
-    maxWidth: OUT_W,
-    maxHeight: OUT_H,
-  });
-}
-
-async function ffmpegPath(): Promise<string> {
-  const path = (await import('ffmpeg-static')).default as unknown as string | null;
-  if (!path) throw new Error('ffmpeg unavailable');
-  return path;
-}
-
-/** Variable-rate screencast frames → constant 30fps H.264, padded to 9:16. */
-async function encode(frames: Frame[]): Promise<Buffer> {
-  if (frames.length < 10) throw new Error('Too few frames captured');
-  const dir = await mkdtemp(join(tmpdir(), 'story-'));
-  try {
-    const list: string[] = [];
-    for (let i = 0; i < frames.length; i++) {
-      const file = join(dir, `${String(i).padStart(5, '0')}.jpg`);
-      await writeFile(file, frames[i].data);
-      const next = frames[i + 1]?.at ?? frames[i].at + 1.5;
-      // The screencast only sends a frame when something changes, so still moments are long gaps.
-      const duration = Math.min(10, Math.max(1 / 60, next - frames[i].at));
-      list.push(`file '${file}'`, `duration ${duration.toFixed(4)}`);
-    }
-    list.push(`file '${join(dir, `${String(frames.length - 1).padStart(5, '0')}.jpg`)}'`);
-    await writeFile(join(dir, 'list.txt'), list.join('\n'));
-    const out = join(dir, 'story.mp4');
-    const args = [
-      '-y',
-      '-f',
-      'concat',
-      '-safe',
-      '0',
-      '-i',
-      join(dir, 'list.txt'),
-      '-vf',
-      `fps=30,scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=decrease,pad=${OUT_W}:${OUT_H}:(ow-iw)/2:(oh-ih)/2:color=black,format=yuv420p`,
-      '-c:v',
-      'libx264',
-      '-preset',
-      'veryfast',
-      '-crf',
-      '24',
-      '-movflags',
-      '+faststart',
-      out,
-    ];
-    const bin = await ffmpegPath();
-    await new Promise<void>((resolve, reject) => {
-      const proc = spawn(bin, args, { stdio: ['ignore', 'ignore', 'pipe'] });
-      let log = '';
-      proc.stderr.on('data', (chunk) => (log = (log + chunk).slice(-2000)));
-      proc.on('error', reject);
-      proc.on('close', (code) =>
-        code === 0 ? resolve() : reject(new Error(`ffmpeg ${code}: ${log}`)),
-      );
-    });
-    const { readFile } = await import('fs/promises');
-    return await readFile(out);
-  } finally {
-    await rm(dir, { recursive: true, force: true }).catch(() => {});
-  }
-}
-
 export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buffer> {
+  const started = Date.now();
+  const out = join(tmpdir(), `story-${randomUUID()}.mp4`);
   const browser = await launch();
   try {
     const page = await browser.newPage();
@@ -199,6 +156,15 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
       isMobile: true,
       hasTouch: true,
     });
+    const { capture } = await import('puppeteer-capture');
+    const recorder = await capture(page as never, {
+      fps: FPS,
+      size: `${OUT_W}x${OUT_H}`,
+      ffmpeg: await ffmpegPath(),
+      customFfmpegConfig: async (ffmpeg) => {
+        ffmpeg.outputOptions(['-pix_fmt', 'yuv420p', '-crf', '23', '-movflags', '+faststart']);
+      },
+    });
     await page.goto(viewUrl, { waitUntil: 'networkidle2', timeout: 30_000 });
     await page.addStyleTag({ content: RECORDING_CSS });
     await page.evaluate(() => {
@@ -207,31 +173,21 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
       credit.textContent = 'XSOVERSE.APP';
       document.body.appendChild(credit);
     });
-    await page.evaluate(() => {
-      const skip = Array.from(document.querySelectorAll('button')).find((b) =>
-        /skip/i.test(b.textContent ?? ''),
-      );
-      skip?.click();
-    });
-    await wait(600);
+    await tapText(page, 'skip');
 
-    const client = await page.createCDPSession();
-    const frames: Frame[] = [];
-    await capture(client, frames);
-    await wait(800);
-    const unwrapped = await page.evaluate(() => {
-      const button = Array.from(document.querySelectorAll('button')).find((b) =>
-        /unwrap/i.test(b.textContent ?? ''),
-      );
-      button?.click();
-      return Boolean(button);
-    });
-    if (!unwrapped) throw new Error('Gift could not be opened');
-    await wait(4200);
-    await playThrough(page, style, Date.now() + MAX_RECORD_MS);
-    await client.send('Page.stopScreencast').catch(() => {});
-    return await encode(frames);
+    await recorder.start(out);
+    const wait: Wait = (ms) => recorder.waitForTimeout(ms);
+    const more = () =>
+      recorder.captureTimestamp < MAX_VIDEO_MS && Date.now() - started < MAX_REAL_MS;
+    await wait(900);
+    if (!(await tapText(page, 'unwrap'))) throw new Error('Gift could not be opened');
+    await wait(4000);
+    await playThrough(page, style, wait, more);
+    await recorder.stop();
+    await recorder.detach();
+    return await readFile(out);
   } finally {
     await browser.close().catch(() => {});
+    await rm(out, { force: true }).catch(() => {});
   }
 }
