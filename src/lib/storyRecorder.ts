@@ -47,15 +47,19 @@ async function headlessShell(): Promise<string> {
   return link;
 }
 
+/** puppeteer-capture's own `launch` require()s the ESM-only puppeteer-core, so launch here instead. */
 async function launch(): Promise<Browser> {
-  const { launch: launchCapture } = await import('puppeteer-capture');
+  const puppeteer = (await import('puppeteer-core')).default;
+  const { PuppeteerCaptureViaHeadlessExperimental } =
+    await import('puppeteer-capture/lib/PuppeteerCaptureViaHeadlessExperimental');
   const chromium = process.env.CHROME_HEADLESS_SHELL
     ? null
     : (await import('@sparticuz/chromium')).default;
-  return (await launchCapture({
+  return puppeteer.launch({
     executablePath: await headlessShell(),
-    args: chromium ? chromium.args : [],
-  })) as unknown as Browser;
+    headless: 'shell',
+    args: [...(chromium?.args ?? []), ...PuppeteerCaptureViaHeadlessExperimental.REQUIRED_ARGS],
+  });
 }
 
 async function ffmpegPath(): Promise<string> {
@@ -156,7 +160,7 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
       isMobile: true,
       hasTouch: true,
     });
-    const { capture } = await import('puppeteer-capture');
+    const { capture } = await import('puppeteer-capture/lib/capture');
     const recorder = await capture(page as never, {
       fps: FPS,
       size: `${OUT_W}x${OUT_H}`,
