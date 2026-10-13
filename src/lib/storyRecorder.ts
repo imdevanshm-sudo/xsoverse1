@@ -29,6 +29,8 @@ const DWELL_MS = 3000;
 /** Overlays that help a person but clutter a recording; plus a small site credit. */
 const RECORDING_CSS = `
   [data-chrome] { display: none !important; }
+  /* Software rendering: every standing layer is a full bitmap, and dozens exhaust the memory. */
+  *, *::before, *::after { will-change: auto !important; }
   #story-credit {
     position: fixed; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     z-index: 2147483647; padding: 5px 11px; border-radius: 999px;
@@ -164,6 +166,8 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
   const out = join(tmpdir(), `story-${randomUUID()}.mp4`);
   const browser = await launch();
   log('launched');
+  const { freemem } = await import('os');
+  const memory = setInterval(() => log(`free memory ${Math.round(freemem() / 1e6)}MB`), 15_000);
   try {
     const page = await browser.newPage();
     await page.setViewport({
@@ -237,6 +241,7 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
     await recorder.detach();
     return await readFile(out);
   } finally {
+    clearInterval(memory);
     await browser.close().catch(() => {});
     await rm(out, { force: true }).catch(() => {});
   }
