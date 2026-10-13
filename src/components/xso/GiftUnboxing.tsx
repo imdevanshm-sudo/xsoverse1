@@ -33,6 +33,7 @@ import { FitStage } from '@/components/xso/stage/FitStage';
 import { FirstVisitHint } from '@/components/xso/stage/FirstVisitHint';
 import { SoundToggle } from '@/components/xso/stage/SoundToggle';
 import { ActiveScope } from '@/components/xso/stage/ActiveScope';
+import { ShareStoryButton, StoryGiftProvider } from '@/components/xso/ShareStory';
 import { optIn, playSound, useSoundSurface } from '@/lib/sound';
 import type { GiftWrapper } from '@/lib/giftWrapper';
 import { track } from '@/lib/analytics';
@@ -157,7 +158,7 @@ export function GiftUnboxing({
   }, [wrapGone, contents]);
   const toggle = <SoundToggle labeled={LABELED_SOUND.includes(wrapper.giftStyle)} />;
   const content = (
-    <>
+    <StoryGiftProvider value={framed ? null : contents}>
       {lit ? <AccordionDesk /> : null}
       {toggle}
       <AnimatePresence onExitComplete={() => setWrapGone(true)}>
@@ -201,7 +202,7 @@ export function GiftUnboxing({
           <OpeningDot key="opening" lit={lit} />
         ) : null}
       </AnimatePresence>
-    </>
+    </StoryGiftProvider>
   );
 
   if (framed) {
@@ -295,6 +296,10 @@ const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
             >
               Make one back
             </a>
+            <ShareStoryButton
+              source="end_sheet"
+              className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-white/20 px-5 font-receipt text-[13px] uppercase tracking-[0.16em] text-[#fffaf0] transition-colors hover:border-[#fdba74]/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+            />
             <button
               type="button"
               onClick={dismiss}
