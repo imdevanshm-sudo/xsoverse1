@@ -149,8 +149,10 @@ async function playThrough(page: Page, style: GiftStyle, wait: Wait, more: () =>
 
 export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buffer> {
   const started = Date.now();
+  const log = (stage: string) => console.log(`[story-video] ${stage} +${Date.now() - started}ms`);
   const out = join(tmpdir(), `story-${randomUUID()}.mp4`);
   const browser = await launch();
+  log('launched');
   try {
     const page = await browser.newPage();
     await page.setViewport({
@@ -169,7 +171,14 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
         ffmpeg.outputOptions(['-pix_fmt', 'yuv420p', '-crf', '23', '-movflags', '+faststart']);
       },
     });
-    await page.goto(viewUrl, { waitUntil: 'networkidle2', timeout: 30_000 });
+    log('attached');
+    await page.goto(viewUrl, { waitUntil: 'load', timeout: 30_000 });
+    log('loaded');
+    for (let i = 0; i < 50; i++) {
+      if (await page.evaluate(() => /unwrap/i.test(document.body.innerText))) break;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    log('ready');
     await page.addStyleTag({ content: RECORDING_CSS });
     await page.evaluate(() => {
       const credit = document.createElement('div');
@@ -180,14 +189,18 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
     await tapText(page, 'skip');
 
     await recorder.start(out);
+    log('capturing');
     const wait: Wait = (ms) => recorder.waitForTimeout(ms);
     const more = () =>
       recorder.captureTimestamp < MAX_VIDEO_MS && Date.now() - started < MAX_REAL_MS;
     await wait(900);
     if (!(await tapText(page, 'unwrap'))) throw new Error('Gift could not be opened');
     await wait(4000);
+    log('unwrapped');
     await playThrough(page, style, wait, more);
+    log(`played ${Math.round(recorder.captureTimestamp)}ms of video`);
     await recorder.stop();
+    log('encoded');
     await recorder.detach();
     return await readFile(out);
   } finally {
