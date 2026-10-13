@@ -598,20 +598,9 @@ const DeckCard = memo(function DeckCard({
         />
 
         <div className={`deck-card ${material.surface} ${active ? 'cursor-grab' : ''}`}>
-          {chrome && id === 'receipt' ? <ReceiptTelemetry number={number} /> : null}
-
           <div ref={body} className="deck-card__body">
             <ActiveScope active={active}>{face}</ActiveScope>
           </div>
-
-          {chrome ? (
-            <div className="deck-card__footer">
-              <span className="truncate">
-                No. {String(number).padStart(2, '0')} · {label}
-              </span>
-              {active ? <span className="shrink-0 text-[#ec4899]">Flick · tap</span> : null}
-            </div>
-          ) : null}
 
           {id === 'letter' ? <span aria-hidden className="deck-card__creases" /> : null}
           {id === 'receipt' ? <span aria-hidden className="deck-card__thermal-fade" /> : null}
@@ -637,15 +626,6 @@ const DeckCard = memo(function DeckCard({
 });
 
 /** Faded print-head header, like the machine line on a real thermal slip. */
-const ReceiptTelemetry = memo(function ReceiptTelemetry({ number }: { number: number }) {
-  return (
-    <div aria-hidden className="receipt-telemetry">
-      <span>TERM 03 · TXN 0041{number}7</span>
-      <span className="receipt-telemetry__bars">▮▮▯▮▯▮▮▯▮</span>
-    </div>
-  );
-});
-
 /** Shown each time the pile comes back round: the loop, made visible. */
 const LoopCue = memo(function LoopCue({ round, reduce }: { round: number; reduce: boolean }) {
   const [shown, setShown] = useState(false);

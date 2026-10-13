@@ -63,10 +63,7 @@ export const TapePlayer = memo(function TapePlayer({
 }) {
   const count = tracks.filter((t) => t.id !== 'end').length;
   const bonus = tracks[current]?.id === 'end';
-  const side = bonus ? 'B' : sideOf(current, count);
-  const sideTitle = side === 'A' ? tape.sideA || 'Side A' : tape.sideB || 'Side B';
   const track = tracks[current];
-  const number = bonus ? 'Bonus' : `${String(current + 1).padStart(2, '0')}`;
   const Icon = playing ? Pause : Play;
   const what = voice ? 'voice note' : 'tape';
   const [reading, setReading] = useState(false);
@@ -86,31 +83,9 @@ export const TapePlayer = memo(function TapePlayer({
           <Icon className={`h-5 w-5 ${playing ? '' : 'translate-x-[1px]'}`} aria-hidden />
         </button>
 
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-2 font-receipt text-[11px] uppercase tracking-[0.2em] text-[#7a4a2c]">
-            <span className="tape-player__side" aria-label={`Side ${side}`}>
-              {side}
-            </span>
-            <span className="truncate">
-              {sideTitle}
-              {tape.tapeDate ? ` · ${tape.tapeDate}` : ''}
-            </span>
-          </p>
-          <p className="mt-0.5 truncate font-hand text-[22px] leading-none text-[#2d1b22]">
-            <span className="mr-1.5 font-receipt text-[12px] tracking-[0.1em] text-[#b45309]">
-              {number}
-            </span>
-            {track?.title}
-          </p>
-        </div>
-
-        <span
-          aria-hidden
-          className={`tape-player__reels ${playing ? 'is-playing' : ''} ${transcript ? 'max-[399px]:hidden' : ''}`}
-        >
-          <i />
-          <i />
-        </span>
+        <p className="min-w-0 flex-1 truncate font-hand text-[22px] leading-none text-[#2d1b22]">
+          {track?.title}
+        </p>
 
         {transcript ? (
           <button

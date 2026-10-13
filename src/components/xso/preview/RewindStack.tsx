@@ -363,8 +363,6 @@ const Stack = memo(function Stack({
       aria-roledescription="card stack"
     >
       <Backlight pulsing={!reduce && visible} turn={reduce ? 0 : turn} />
-      <TapeRibbon />
-
       <TapePlayer
         tape={tapeOf(data)}
         tracks={tracks}
@@ -649,24 +647,6 @@ const Backlight = memo(function Backlight({ pulsing, turn }: { pulsing: boolean;
   );
 });
 
-/** Brown magnetic tape unspooled behind the pile, with a thin highlight along its gloss. */
-function TapeRibbon() {
-  const path = 'M -10 330 C 60 250, 30 120, 140 110 S 300 190, 330 80 S 420 20, 440 60';
-  return (
-    <svg aria-hidden viewBox="0 0 430 420" preserveAspectRatio="none" className="rewind-ribbon">
-      <path d={path} fill="none" stroke="#3a2214" strokeWidth="16" strokeLinecap="round" />
-      <path d={path} fill="none" stroke="#5b3720" strokeWidth="10" strokeLinecap="round" />
-      <path
-        d={path}
-        fill="none"
-        stroke="rgba(255,214,170,0.22)"
-        strokeWidth="1.5"
-        transform="translate(0 -3)"
-      />
-    </svg>
-  );
-}
-
 /** Hover lift: a touch closer, with a softer, wider shadow pooling underneath. */
 const LIFTABLE: Variants = {
   rest: { scale: 1 },
@@ -754,14 +734,6 @@ const RewindCard = memo(function RewindCard({
         <div className="rewind-card__body">
           <ActiveScope active={active}>{face}</ActiveScope>
         </div>
-        {chrome ? (
-          <div className="deck-card__footer">
-            <span className="truncate">
-              No. {String(number).padStart(2, '0')} · {artifact.label}
-            </span>
-            {active ? <span className="shrink-0 text-[#ec4899]">Tap · pull back</span> : null}
-          </div>
-        ) : null}
         <span aria-hidden className="rewind-card__glow" />
         <span aria-hidden className="rewind-card__grain" />
       </div>
