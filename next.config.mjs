@@ -26,6 +26,14 @@ const nextConfig = {
     ];
   },
   experimental: {
+    /** The story-video recorder: a headless browser and ffmpeg, loaded as-is with their binaries. */
+    serverComponentsExternalPackages: ['puppeteer-core', '@sparticuz/chromium', 'ffmpeg-static'],
+    outputFileTracingIncludes: {
+      '/api/gifts/[id]/story-video': [
+        './node_modules/@sparticuz/chromium/bin/**',
+        './node_modules/ffmpeg-static/ffmpeg',
+      ],
+    },
     optimizePackageImports: [
       'lucide-react',
       'framer-motion',

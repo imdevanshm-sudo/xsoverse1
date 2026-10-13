@@ -4,21 +4,31 @@ import { createContext, useContext, useEffect, useRef, useState, type SyntheticE
 import { createPortal } from 'react-dom';
 import { Download, Loader2, Share2, X } from 'lucide-react';
 import { track } from '@/lib/analytics';
-import { canRecordStory, renderStoryVideo, storyInput } from '@/lib/storyVideo';
-import type { XsoData } from '@/types/xso';
 
-/** The opened gift, for the recipient's "Post to your story". Absent in previews and drafts. */
-const StoryGift = createContext<XsoData | null>(null);
+/** The opened gift's ID, for the recipient's "Post to your story". Absent in previews and drafts. */
+const StoryGift = createContext<string | null>(null);
 export const StoryGiftProvider = StoryGift.Provider;
+
+/** Recording takes about a minute; the bar eases towards full so the wait never looks stuck. */
+const EXPECTED_MS = 60_000;
+
+async function fetchStory(giftId: string): Promise<File> {
+  const response = await fetch(`/api/gifts/${encodeURIComponent(giftId)}/story-video`, {
+    method: 'POST',
+  });
+  const body = (await response.json().catch(() => ({}))) as { url?: string; error?: string };
+  if (!response.ok || !body.url) throw new Error(body.error ?? 'Recording failed');
+  const video = await fetch(body.url);
+  if (!video.ok) throw new Error('Download failed');
+  return new File([await video.blob()], 'my-xso.mp4', { type: 'video/mp4' });
+}
 
 const stop = (event: SyntheticEvent) => event.stopPropagation();
 
 export function ShareStoryButton({ source, className }: { source: string; className: string }) {
-  const data = useContext(StoryGift);
-  const [supported, setSupported] = useState(false);
+  const giftId = useContext(StoryGift);
   const [open, setOpen] = useState(false);
-  useEffect(() => setSupported(canRecordStory()), []);
-  if (!data || !supported) return null;
+  if (!giftId) return null;
   return (
     <>
       <button
@@ -29,13 +39,14 @@ export function ShareStoryButton({ source, className }: { source: string; classN
           setOpen(true);
         }}
         className={className}
+        data-chrome
       >
         <Share2 className="h-4 w-4" aria-hidden />
         Post to your story
       </button>
       {open
         ? createPortal(
-            <StorySheet data={data} source={source} onClose={() => setOpen(false)} />,
+            <StorySheet giftId={giftId} source={source} onClose={() => setOpen(false)} />,
             document.body,
           )
         : null}
@@ -49,11 +60,11 @@ type Render =
   | { state: 'failed' };
 
 function StorySheet({
-  data,
+  giftId,
   source,
   onClose,
 }: {
-  data: XsoData;
+  giftId: string;
   source: string;
   onClose: () => void;
 }) {
@@ -67,19 +78,27 @@ function StorySheet({
     let live = true;
     let url = '';
     setRender({ state: 'rendering', progress: 0 });
-    renderStoryVideo(storyInput(data), (progress) => {
-      if (live) setRender({ state: 'rendering', progress });
-    })
+    const started = Date.now();
+    const timer = window.setInterval(() => {
+      const progress = 0.95 * (1 - Math.exp(-(Date.now() - started) / (EXPECTED_MS / 2)));
+      if (live)
+        setRender((current) =>
+          current.state === 'rendering' ? { ...current, progress } : current,
+        );
+    }, 500);
+    fetchStory(giftId)
       .then((file) => {
         url = URL.createObjectURL(file);
         if (live) setRender({ state: 'ready', file, url });
       })
-      .catch(() => live && setRender({ state: 'failed' }));
+      .catch(() => live && setRender({ state: 'failed' }))
+      .finally(() => window.clearInterval(timer));
     return () => {
       live = false;
+      window.clearInterval(timer);
       if (url) URL.revokeObjectURL(url);
     };
-  }, [data, attempt]);
+  }, [giftId, attempt]);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -139,7 +158,7 @@ function StorySheet({
           Post to your story
         </h2>
         <p className="mx-auto mt-1 max-w-[30ch] text-[13px] leading-snug text-[#e0b4c6]">
-          Shows your photos and the letter&apos;s first line only. Your gift link stays private.
+          A recording of your whole gift, letter included. Your gift link stays private.
         </p>
 
         <div className="mx-auto mt-4 aspect-[9/16] max-h-[52svh] overflow-hidden rounded-2xl bg-black">
@@ -157,7 +176,7 @@ function StorySheet({
               {render.state === 'failed' ? (
                 <>
                   <p className="text-[14px] leading-snug text-[#fda4af]">
-                    We couldn&apos;t make the video on this browser.
+                    We couldn&apos;t record your gift right now.
                   </p>
                   <button
                     type="button"
@@ -171,8 +190,7 @@ function StorySheet({
                 <>
                   <Loader2 className="h-6 w-6 animate-spin text-[#f9a8d4]" aria-hidden />
                   <p className="font-receipt text-[12px] uppercase tracking-[0.18em] text-[#e0b4c6]">
-                    Making your video…{' '}
-                    {render.state === 'rendering' ? Math.round(render.progress * 100) : 0}%
+                    Recording your gift…
                   </p>
                   <span className="block h-1.5 w-full max-w-[200px] overflow-hidden rounded-full bg-white/10">
                     <span
@@ -182,6 +200,9 @@ function StorySheet({
                       }}
                     />
                   </span>
+                  <p className="text-[12px] leading-snug text-white/55">
+                    About a minute. Keep this page open.
+                  </p>
                 </>
               )}
             </div>

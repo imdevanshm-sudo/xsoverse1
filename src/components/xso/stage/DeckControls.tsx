@@ -26,6 +26,7 @@ export const SwipeHint = memo(function SwipeHint({
         <motion.div
           key="swipe-hint"
           role="status"
+          data-chrome
           className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

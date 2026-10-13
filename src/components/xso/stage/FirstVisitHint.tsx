@@ -38,6 +38,7 @@ export function FirstVisitHint({ text }: { text: string }) {
         <motion.p
           key="hint"
           role="status"
+          data-chrome
           className="pointer-events-none absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-40 mx-auto w-max max-w-[90%] rounded-full bg-black/55 px-4 py-2 text-center font-receipt text-[13px] uppercase tracking-[0.16em] text-[#fde7d4] backdrop-blur-sm md:text-[14px]"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}

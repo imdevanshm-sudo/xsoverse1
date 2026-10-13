@@ -158,7 +158,7 @@ export function GiftUnboxing({
   }, [wrapGone, contents]);
   const toggle = <SoundToggle labeled={LABELED_SOUND.includes(wrapper.giftStyle)} />;
   const content = (
-    <StoryGiftProvider value={framed ? null : contents}>
+    <StoryGiftProvider value={framed || draft ? null : giftId}>
       {lit ? <AccordionDesk /> : null}
       {toggle}
       <AnimatePresence onExitComplete={() => setWrapGone(true)}>
@@ -258,6 +258,7 @@ const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
         {pill && !sheet ? (
           <motion.a
             key="make-one-back"
+            data-chrome
             href={href}
             onClick={() => track('make_one_back', { source: 'pill' })}
             initial={{ opacity: 0 }}
@@ -274,6 +275,7 @@ const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
         {sheet ? (
           <motion.aside
             key="make-one-back-sheet"
+            data-chrome
             aria-label="Make one back"
             className="absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-[70] mx-auto max-w-[420px] rounded-[28px] border border-white/10 bg-[#1b0f15]/95 p-5 text-center shadow-[0_30px_80px_-20px_rgba(0,0,0,.9)] backdrop-blur-md"
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40 }}

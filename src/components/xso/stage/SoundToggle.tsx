@@ -17,6 +17,7 @@ export function SoundToggle({ labeled = false }: { labeled?: boolean }) {
       onClick={toggleSound}
       aria-pressed={on}
       aria-label="Sound"
+      data-chrome
       title={on ? 'Sound on: tap to mute' : 'Sound off: tap to turn on'}
       className={`absolute left-3 top-[calc(0.75rem+env(safe-area-inset-top,0px))] z-50 rounded-full border backdrop-blur-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/70 ${
         labeled
