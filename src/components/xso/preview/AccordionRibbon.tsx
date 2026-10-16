@@ -890,8 +890,9 @@ const TYPE = {
   },
 };
 
-const PRINT_TILT = [-3.5, 2, -1.5];
-const CARD_PAPERS = ['#f8d5e1', '#f6cd85', '#d9e7d0'];
+const PRINT_TILT = [-3.5, 2, -1.5, 1.8, -2.2, 0.8];
+const CARD_PAPERS = ['#f8d5e1', '#f6cd85', '#d9e7d0', '#d6e4f5', '#f3d9c9', '#e8d5f0'];
+const MAX_PRINTS = 6;
 
 interface Print {
   src?: string;
@@ -901,23 +902,29 @@ interface Print {
 }
 
 /**
- * The sender's own photos, up to three. The theme's stand-in cards only show when nothing was
- * uploaded, and a gift with no photos at all gets plain paper cards written from the receipt.
+ * The sender's own photos (up to six). Theme placeholders only when nothing was uploaded;
+ * a gift with no photos gets wrapping paper cards written from the receipt.
  */
 function printsOf(data: XsoData): Print[] {
   const uploaded = data.photos.filter((src) => src && !isPlaceholderPhoto(src));
-  const photos = (uploaded.length ? uploaded : data.photos.filter(Boolean)).slice(0, 3);
+  const photos = (uploaded.length ? uploaded : []).slice(0, MAX_PRINTS);
   if (photos.length) {
     return photos.map((src, i) => ({ src, caption: photoCaption(data, i) }));
   }
   const year = `'${data.timestamp.split(' ')[0].slice(-2)} ♡`;
-  const captions = [`${data.customerName} & ${data.billerName}`, data.occasion.toLowerCase(), year];
-  return [0, 1, 2].map((i) => {
+  const captions = [
+    `${data.customerName} & ${data.billerName}`,
+    data.occasion.toLowerCase(),
+    year,
+    data.greenFlags[0]?.toLowerCase() ?? 'a favourite take',
+  ];
+  const count = Math.min(4, Math.max(2, data.lineItems.length || 2));
+  return Array.from({ length: count }, (_, i) => {
     const lore = data.lineItems[i]?.description.toLowerCase();
     return {
       text: lore ? `the ${lore} era` : 'one I keep coming back to',
-      paper: CARD_PAPERS[i],
-      caption: captions[i],
+      paper: CARD_PAPERS[i % CARD_PAPERS.length],
+      caption: captions[i] ?? year,
     };
   });
 }
@@ -1228,26 +1235,27 @@ const PanelFace = memo(function PanelFace({
     const prints = printsOf(data);
     const n = Math.max(1, prints.length);
     /** Caption strip plus the print's border, so the photo never pushes past the fold. */
-    const chrome = wide ? 46 : 34;
-    /** On a phone three prints overlap like a fanned hand, so each stays big enough to see. */
-    const fan = !wide && n === 3;
-    const across = fan ? 34 : Math.floor(92 / n);
+    const chrome = wide ? 52 : 42;
+    /** Fan a few prints on a phone so each stays big enough to see. */
+    const fan = !wide && n >= 3 && n <= 4;
+    const cols = n <= 2 ? n : n <= 4 ? 2 : 3;
+    const across = fan ? Math.floor(78 / Math.min(n, 3)) : Math.floor(94 / cols);
     return (
       <div className="flex h-full flex-col">
         {label}
         <div
-          className={`mt-2 flex min-h-0 flex-1 items-center justify-center ${fan ? '' : 'gap-[4%]'}`}
+          className={`mt-2 flex min-h-0 flex-1 flex-wrap content-center items-center justify-center ${fan ? '' : 'gap-x-[3%] gap-y-3'}`}
           style={{ containerType: 'size' }}
         >
           {prints.map((print, i) => (
             <figure
               key={i}
-              className="flex shrink-0 flex-col bg-white p-[4%] pb-0 shadow-[0_2px_8px_rgba(45,27,34,0.2)]"
+              className="flex shrink-0 flex-col bg-white p-[3.5%] pb-0 shadow-[0_3px_10px_rgba(45,27,34,0.22)]"
               style={{
-                width: `min(${across}cqw, calc((100cqh - ${chrome}px) * 0.76))`,
+                width: `min(${across}cqw, calc((100cqh - ${chrome}px) * ${n > 4 ? 0.55 : 0.72}))`,
                 rotate: `${PRINT_TILT[i % PRINT_TILT.length]}deg`,
-                marginInline: fan ? '-2cqw' : undefined,
-                translate: fan && i === 1 ? '0 -4%' : undefined,
+                marginInline: fan ? '-1.5cqw' : undefined,
+                translate: fan && i % 2 === 1 ? '0 -3%' : undefined,
               }}
             >
               <div
@@ -1267,14 +1275,14 @@ const PanelFace = memo(function PanelFace({
                       src={print.src}
                       alt={`Memory ${i + 1}`}
                       fill
-                      sizes={wide ? '220px' : '(max-width: 768px) 30vw, 120px'}
+                      sizes={wide ? '240px' : '(max-width: 768px) 42vw, 140px'}
                       className="absolute inset-0 h-full w-full object-cover"
                     />
                   </PolaroidThumb>
                 ) : (
                   <p
-                    className={`absolute inset-0 grid place-items-center p-[10%] text-center font-hand leading-tight text-[#3a2530] ${
-                      wide ? 'text-[22px]' : 'text-[15px]'
+                    className={`absolute inset-0 grid place-items-center overflow-hidden p-[8%] text-center font-hand leading-snug text-[#3a2530] [overflow-wrap:anywhere] ${
+                      wide ? 'text-[20px]' : 'text-[15px]'
                     }`}
                   >
                     {print.text}
@@ -1282,8 +1290,8 @@ const PanelFace = memo(function PanelFace({
                 )}
               </div>
               <figcaption
-                className={`truncate text-center font-hand leading-none text-[#3a2530] ${
-                  wide ? 'py-2.5 text-[20px]' : 'py-1.5 text-[15px]'
+                className={`break-words text-center font-hand leading-snug text-[#3a2530] [overflow-wrap:anywhere] ${
+                  wide ? 'px-1 py-2.5 text-[18px]' : 'px-0.5 py-1.5 text-[14px]'
                 }`}
               >
                 {print.caption}
