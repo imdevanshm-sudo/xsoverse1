@@ -155,6 +155,8 @@ const Projector = memo(function Projector({
   const crank = useMotionValue(0);
   const [step, setStep] = useState(0);
   const [notes, setNotes] = useState(false);
+  /** Film-strip cells are tiny until playback; keep them off until the first advance. */
+  const [stripOn, setStripOn] = useState(false);
   const stepRef = useRef(0);
   const toothRef = useRef(0);
   /** Frame the mechanism is heading for, so quick repeated taps queue up instead of colliding. */
@@ -185,6 +187,7 @@ const Projector = memo(function Projector({
   }, []);
 
   const grab = useCallback(() => {
+    setStripOn(true);
     stop();
     fx.humStart();
   }, [stop, fx]);
@@ -214,6 +217,7 @@ const Projector = memo(function Projector({
 
   const advance = useCallback(
     (direction: 1 | -1) => {
+      setStripOn(true);
       stop();
       goal.current += direction;
       const target = goal.current * STEP;
@@ -370,23 +374,29 @@ const Projector = memo(function Projector({
         </AnimatePresence>
       </div>
 
-      <FilmStrip
-        data={data}
-        crank={crank}
-        count={count}
-        labels={labels}
-        onGrab={grab}
-        onRelease={coast}
-        onSwipe={coarse ? swipe : undefined}
-      />
+      {stripOn ? (
+        <FilmStrip
+          data={data}
+          crank={crank}
+          count={count}
+          labels={labels}
+          onGrab={grab}
+          onRelease={coast}
+          onSwipe={coarse ? swipe : undefined}
+        />
+      ) : null}
 
       <div className="relative z-10 mt-3 flex w-full items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="font-receipt text-[10px] uppercase tracking-[0.2em] text-[#fdba74]">
-            Reel {String(frame + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
+            {artifacts[frame].label}
           </p>
-          <p className="truncate font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6a7e]">
-            {artifacts[frame].label} · {coarse ? 'swipe to next frame' : 'tap the frame'}
+          <p className="font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6a7e]">
+            {stripOn
+              ? coarse
+                ? 'swipe to next frame'
+                : 'tap the frame'
+              : 'Turn the crank to start'}
           </p>
         </div>
         <div className="flex items-center gap-2">
