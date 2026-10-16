@@ -640,7 +640,7 @@ const FrameFace = memo(function FrameFace({
   slate?: boolean;
 }) {
   const scene = !slate ? null : (
-    <p className="truncate font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80">
+    <p className="font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80 [overflow-wrap:anywhere]">
       Scene {String(index + 1).padStart(2, '0')}
       {titled && shot?.title ? ` · ${shot.title}` : ''}
     </p>
@@ -698,7 +698,9 @@ const FrameBody = memo(function FrameBody({
               key={item.id}
               className="flex justify-between gap-3 border-b border-[#fffaf0]/10 py-0.5"
             >
-              <span className="truncate">{item.description}</span>
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                {item.description}
+              </span>
               <span className="shrink-0">{item.price}</span>
             </p>
           ))}
@@ -717,7 +719,7 @@ const FrameBody = memo(function FrameBody({
         <div className="mt-2 space-y-1.5">
           {Object.entries(data.auditMetrics).map(([key, score]) => (
             <div key={key} className="flex items-center gap-2">
-              <span className="w-16 truncate font-receipt text-[9px] uppercase tracking-[0.14em] text-[#fffaf0]/75">
+              <span className="min-w-[4.5rem] max-w-[7rem] break-words font-receipt text-[9px] uppercase leading-tight tracking-[0.14em] text-[#fffaf0]/75 [overflow-wrap:anywhere]">
                 {auditLabel(data, key as keyof AuditMetrics)}
               </span>
               <span className="h-1 flex-1 overflow-hidden rounded-full bg-[#fffaf0]/10">
