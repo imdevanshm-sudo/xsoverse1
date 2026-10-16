@@ -201,9 +201,18 @@ export const MovieFeature = memo(function MovieFeature({
       onKeyDown={onKey}
       className="movie-feature relative flex h-full w-full touch-pan-y items-center justify-center overflow-hidden bg-[#050203] text-[#fffaf0] outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
     >
+      {/* Desktop: a blurred, dimmed copy of the scene fills the room behind the framed stage. */}
+      {stage.width && !stage.flush && started && !finished ? (
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute inset-[-12%] scale-110 opacity-45 blur-3xl saturate-75">
+            <SceneBody {...props} />
+          </div>
+          <div className="absolute inset-0 bg-[#050203]/6" />
+        </div>
+      ) : null}
       {stage.width ? (
         <div
-          className="movie-stage relative overflow-hidden bg-[#0b0507]"
+          className={`movie-stage relative overflow-hidden bg-[#0b0507] ${stage.flush ? '' : 'shadow-[0_40px_120px_-20px_rgba(0,0,0,0.85)] ring-1 ring-[#fffaf0]/10'}`}
           style={{ width: stage.width, height: stage.height }}
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}

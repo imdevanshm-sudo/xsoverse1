@@ -461,19 +461,19 @@ export const LetterScene = memo(function LetterScene({
 
   return (
     <div
-      className="flex h-full w-full items-center justify-center overflow-y-auto px-7 py-20"
+      className="flex h-full w-full items-center justify-center overflow-y-auto px-6 py-16 sm:px-10 sm:py-20"
       onClick={() => setLine(total)}
     >
-      <div className={`w-full ${big ? 'max-w-[640px]' : 'max-w-[340px]'}`}>
+      <div className={`w-full ${big ? 'max-w-[720px]' : 'max-w-[min(100%,28rem)]'}`}>
         <p
-          className={`font-hand leading-none text-[#fffaf0] ${big ? 'text-[44px]' : 'text-[34px]'}`}
+          className={`font-hand leading-none text-[#fffaf0] ${big ? 'text-[48px]' : 'text-[36px]'}`}
         >
           Dear {data.customerName},
         </p>
         <p className="sr-only">{data.birthdayMessage}</p>
         <div
           aria-hidden
-          className={`mt-5 space-y-2 font-serif italic text-[#fffaf0]/90 ${big ? 'text-[20px] leading-relaxed' : 'text-[17px] leading-snug'}`}
+          className={`mt-6 space-y-3 font-serif italic text-[#fffaf0]/92 ${big ? 'text-[24px] leading-relaxed' : 'text-[22px] leading-snug'}`}
         >
           {lines.map((text, i) => {
             if (i < line) return <p key={i}>{text}</p>;
