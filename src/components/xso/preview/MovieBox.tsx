@@ -34,8 +34,8 @@ import { MovieFeature, SOUNDTRACK_SCENE } from '@/components/xso/movie/MovieFeat
 
 /** Crank travel that pulls one frame through the gate. */
 const STEP = 180;
-/** Film strip cell width (px). */
-const CELL = 68;
+/** Film strip cell width (px) — wide enough that scene labels stay readable. */
+const CELL = 96;
 const COPIES = 3;
 const RATCHET = 30;
 /** Minimum horizontal travel for a touch swipe to count as "next frame". */
@@ -155,8 +155,8 @@ const Projector = memo(function Projector({
   const crank = useMotionValue(0);
   const [step, setStep] = useState(0);
   const [notes, setNotes] = useState(false);
-  /** Film-strip cells are tiny until playback; keep them off until the first advance. */
-  const [stripOn, setStripOn] = useState(false);
+  /** Film-strip thumbnails stay hidden until the reel has moved once, so they don't fight the opener. */
+  const [rolling, setRolling] = useState(false);
   const stepRef = useRef(0);
   const toothRef = useRef(0);
   /** Frame the mechanism is heading for, so quick repeated taps queue up instead of colliding. */
@@ -176,6 +176,7 @@ const Projector = memo(function Projector({
     const direction = next > stepRef.current ? 1 : -1;
     stepRef.current = next;
     setStep(next);
+    setRolling(true);
     fx.step(direction);
     const index = wrap(next, count);
     onChange?.(index, artifacts[index].label);
@@ -187,7 +188,6 @@ const Projector = memo(function Projector({
   }, []);
 
   const grab = useCallback(() => {
-    setStripOn(true);
     stop();
     fx.humStart();
   }, [stop, fx]);
@@ -217,7 +217,6 @@ const Projector = memo(function Projector({
 
   const advance = useCallback(
     (direction: 1 | -1) => {
-      setStripOn(true);
       stop();
       goal.current += direction;
       const target = goal.current * STEP;
@@ -346,7 +345,7 @@ const Projector = memo(function Projector({
           >
             {story.subtitles[scene]}
           </motion.p>
-          {notes ? <span className="film-screen__hint">hide notes</span> : null}
+          <span className="film-screen__hint">{notes ? 'hide notes' : "director's notes"}</span>
         </motion.button>
 
         <AnimatePresence>
@@ -374,7 +373,7 @@ const Projector = memo(function Projector({
         </AnimatePresence>
       </div>
 
-      {stripOn ? (
+      {rolling ? (
         <FilmStrip
           data={data}
           crank={crank}
@@ -389,14 +388,10 @@ const Projector = memo(function Projector({
       <div className="relative z-10 mt-3 flex w-full items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="font-receipt text-[10px] uppercase tracking-[0.2em] text-[#fdba74]">
-            {artifacts[frame].label}
+            Scene {String(frame + 1).padStart(2, '0')}
           </p>
-          <p className="font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6a7e]">
-            {stripOn
-              ? coarse
-                ? 'swipe to next frame'
-                : 'tap the frame'
-              : 'Turn the crank to start'}
+          <p className="font-receipt text-[10px] uppercase tracking-[0.16em] text-[#9a6a7e] [overflow-wrap:anywhere]">
+            {artifacts[frame].label}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -613,7 +608,7 @@ const FilmStrip = memo(function FilmStrip({
                   className="absolute inset-0 h-full w-full object-cover opacity-80"
                 />
               ) : null}
-              <span className="relative">
+              <span className="relative px-1 text-center font-receipt text-[10px] uppercase leading-tight tracking-[0.12em] [overflow-wrap:anywhere]">
                 {String(index + 1).padStart(2, '0')}
                 <br />
                 {labels[index]}
@@ -645,7 +640,7 @@ const FrameFace = memo(function FrameFace({
   slate?: boolean;
 }) {
   const scene = !slate ? null : (
-    <p className="font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80 [overflow-wrap:anywhere]">
+    <p className="truncate font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80">
       Scene {String(index + 1).padStart(2, '0')}
       {titled && shot?.title ? ` · ${shot.title}` : ''}
     </p>
@@ -701,9 +696,9 @@ const FrameBody = memo(function FrameBody({
           {data.lineItems.slice(0, 3).map((item) => (
             <p
               key={item.id}
-              className="flex items-start justify-between gap-3 border-b border-[#fffaf0]/10 py-0.5"
+              className="flex justify-between gap-3 border-b border-[#fffaf0]/10 py-0.5"
             >
-              <span className="min-w-0 break-words [overflow-wrap:anywhere]">{item.description}</span>
+              <span className="truncate">{item.description}</span>
               <span className="shrink-0">{item.price}</span>
             </p>
           ))}
@@ -721,18 +716,15 @@ const FrameBody = memo(function FrameBody({
         </p>
         <div className="mt-2 space-y-1.5">
           {Object.entries(data.auditMetrics).map(([key, score]) => (
-            <div key={key} className="grid grid-cols-[minmax(0,1fr)_2fr_1.5rem] items-center gap-2">
-              <span className="break-words font-receipt text-[9px] uppercase leading-tight tracking-[0.1em] text-[#fffaf0]/75 [overflow-wrap:anywhere]">
+            <div key={key} className="flex items-center gap-2">
+              <span className="w-16 truncate font-receipt text-[9px] uppercase tracking-[0.14em] text-[#fffaf0]/75">
                 {auditLabel(data, key as keyof AuditMetrics)}
               </span>
-              <span className="h-1.5 overflow-hidden rounded-full bg-[#fffaf0]/10">
+              <span className="h-1 flex-1 overflow-hidden rounded-full bg-[#fffaf0]/10">
                 <span
                   className="block h-full origin-left rounded-full bg-gradient-to-r from-[#fdba74] to-[#f472b6]"
                   style={{ transform: `scaleX(${score / 100})` }}
                 />
-              </span>
-              <span className="text-right font-receipt text-[9px] tabular-nums text-[#fffaf0]/75">
-                {score}
               </span>
             </div>
           ))}
