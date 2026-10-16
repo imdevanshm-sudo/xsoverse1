@@ -342,7 +342,8 @@ export const SOUND_EVENTS = {
     fadeInMs: 1500,
     duck: false,
   }),
-  // Accordion
+  // Accordion — creak pitches differ open vs close; stamps reuse audit.stamp; letter uses letter.pen.
+  // Levels sit on REFERENCE_LUFS (−20). Silent until optIn (Unwrap / Play / Sound toggle).
   'fold.open': e({
     format: 'accordion',
     style: 'Paper fold creaking open',
@@ -350,7 +351,8 @@ export const SOUND_EVENTS = {
     level: 'paper',
     synth: 'creak',
     file: 'fold-creak.mp3',
-    pitch: 1.06,
+    pitch: 1.08,
+    gainDb: -1,
   }),
   'fold.close': e({
     format: 'accordion',
@@ -359,7 +361,8 @@ export const SOUND_EVENTS = {
     level: 'paper',
     synth: 'creak',
     file: 'fold-creak.mp3',
-    pitch: 0.86,
+    pitch: 0.84,
+    gainDb: -1,
   }),
   'fold.shut': e({
     format: 'accordion',
@@ -368,6 +371,7 @@ export const SOUND_EVENTS = {
     level: 'paper',
     synth: 'settle',
     file: 'fold-shut.mp3',
+    gainDb: -2,
   }),
   'accordion.end': e({
     format: 'accordion',
@@ -376,6 +380,7 @@ export const SOUND_EVENTS = {
     level: 'chime',
     synth: 'closing',
     file: 'accordion-end.mp3',
+    gainDb: -1,
   }),
   // Movie Box
   'movie.start': e({
