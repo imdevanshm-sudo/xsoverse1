@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { decodeAddOns, getLemonConfig } from '@/lib/lemon';
 import { markGiftPaid } from '@/lib/giftStore';
+import { isEmail, mailConfigured, sendBuyerGiftReady } from '@/lib/mail';
 
 export const runtime = 'nodejs';
 
@@ -20,6 +21,10 @@ interface LemonWebhookPayload {
       status?: string;
       identifier?: string;
       store_id?: number | string;
+      user_email?: string;
+      customer_email?: string;
+      email?: string;
+      user_name?: string;
     };
   };
 }
@@ -32,6 +37,16 @@ function verifySignature(rawBody: string, signature: string | null, secret: stri
   } catch {
     return false;
   }
+}
+
+/** Lemon puts the buyer's address on the order; field names have varied slightly. */
+function buyerEmail(payload: LemonWebhookPayload): string | null {
+  const attrs = payload.data?.attributes;
+  const candidates = [attrs?.user_email, attrs?.customer_email, attrs?.email];
+  for (const value of candidates) {
+    if (isEmail(value)) return value.trim();
+  }
+  return null;
 }
 
 export async function POST(request: Request) {
@@ -79,5 +94,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, warning: 'Gift not found' });
   }
 
-  return NextResponse.json({ received: true, giftId: gift.id, status: gift.status });
+  let emailed: 'sent' | 'skipped' | 'failed' = 'skipped';
+  const to = buyerEmail(payload);
+  if (to && mailConfigured()) {
+    try {
+      await sendBuyerGiftReady({
+        to,
+        giftId: gift.id,
+        recipientName: gift.data.customerName,
+        senderName: gift.data.billerName,
+        requestUrl: request.url,
+      });
+      emailed = 'sent';
+    } catch (error) {
+      emailed = 'failed';
+      console.error('[mail] buyer gift-ready failed', gift.id, String(error));
+    }
+  }
+
+  return NextResponse.json({
+    received: true,
+    giftId: gift.id,
+    status: gift.status,
+    emailed,
+  });
 }
