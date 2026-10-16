@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from 'react';
 import {
   animate,
@@ -929,6 +930,113 @@ const FOLD_NAMES: Record<Artifact['id'], string> = {
   letter: 'the note',
 };
 
+type FoldType = (typeof TYPE)['narrow'];
+
+/** Receipt fold: line items reveal one by one; a stamp lands on the total. */
+const ReceiptFold = memo(function ReceiptFold({
+  data,
+  label,
+  wide,
+  current,
+  type: t,
+}: {
+  data: XsoData;
+  label: ReactNode;
+  wide: boolean;
+  current: boolean;
+  type: FoldType;
+}) {
+  const reduce = Boolean(useReducedMotion());
+  const items = data.lineItems.slice(0, t.rows);
+  const [shown, setShown] = useState(reduce || !current ? items.length : 0);
+  const [stamped, setStamped] = useState(reduce || !current);
+  useEffect(() => {
+    if (!current) {
+      setShown(0);
+      setStamped(false);
+      return;
+    }
+    if (reduce) {
+      setShown(items.length);
+      setStamped(true);
+      return;
+    }
+    setShown(0);
+    setStamped(false);
+    const timers: number[] = [];
+    items.forEach((_, i) => {
+      timers.push(window.setTimeout(() => setShown(i + 1), 180 + i * 220));
+    });
+    timers.push(
+      window.setTimeout(
+        () => {
+          setStamped(true);
+          playSound('audit.stamp');
+        },
+        220 + items.length * 220 + 280,
+      ),
+    );
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, [current, items.length, reduce]);
+
+  return (
+    <div className={`xso-receipt flex h-full flex-col font-receipt leading-snug ${t.body}`}>
+      {label}
+      <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
+        {data.merchantName}
+      </p>
+      <p className={`uppercase opacity-60 ${t.label}`}>{data.timestamp}</p>
+      <div className="my-2 border-t border-dashed border-current/40" />
+      <ul className={`min-h-0 flex-1 space-y-1 overflow-y-auto ${wide ? 'space-y-1.5' : ''}`}>
+        {items.map((item, i) => (
+          <li
+            key={item.id}
+            className={`flex items-start justify-between gap-3 transition-opacity duration-300 ${
+              i < shown ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+              {item.qty ? `${item.qty} ` : ''}
+              {item.description}
+            </span>
+            <span className="shrink-0 tabular-nums">{item.price}</span>
+          </li>
+        ))}
+      </ul>
+      <div
+        className={`relative mt-2 border-t border-dashed border-current/40 pt-1.5 font-bold ${t.total}`}
+      >
+        <p className="flex justify-between gap-3">
+          <span>Total</span>
+          <span>{data.total}</span>
+        </p>
+        <motion.span
+          aria-hidden
+          className={`pointer-events-none absolute -right-1 -top-3 -rotate-12 rounded border-2 border-[#b4234a] px-2 py-0.5 font-receipt font-bold uppercase tracking-[0.14em] text-[#b4234a] ${t.stamp}`}
+          initial={false}
+          animate={
+            stamped
+              ? { opacity: 1, scale: 1, rotate: -12 }
+              : { opacity: 0, scale: 1.4, rotate: -28 }
+          }
+          transition={
+            reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 16, mass: 0.7 }
+          }
+        >
+          {data.total}
+        </motion.span>
+      </div>
+      {data.accordion?.sentiment ? (
+        <p
+          className={`mt-1 text-right font-hand leading-snug text-[#b4234a] [overflow-wrap:anywhere] ${t.hand}`}
+        >
+          {data.accordion.sentiment}
+        </p>
+      ) : null}
+    </div>
+  );
+});
+
 const PanelFace = memo(function PanelFace({
   data,
   id,
@@ -959,37 +1067,7 @@ const PanelFace = memo(function PanelFace({
     return <SongFold song={data.song} label={label} wide={wide} />;
   }
   if (id === 'receipt') {
-    return (
-      <div className={`xso-receipt flex h-full flex-col font-receipt leading-snug ${t.body}`}>
-        {label}
-        <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
-          {data.merchantName}
-        </p>
-        <p className={`uppercase opacity-60 ${t.label}`}>{data.timestamp}</p>
-        <div className="my-2 border-t border-dashed border-current/40" />
-        <div className={`min-h-0 flex-1 overflow-hidden ${wide ? 'space-y-1' : 'space-y-0.5'}`}>
-          {data.lineItems.slice(0, t.rows).map((item) => (
-            <p key={item.id} className="flex justify-between gap-3">
-              <span className="truncate">
-                {item.qty} {item.description}
-              </span>
-              <span className="shrink-0">{item.price}</span>
-            </p>
-          ))}
-        </div>
-        <p
-          className={`mt-2 flex justify-between border-t border-dashed border-current/40 pt-1.5 font-bold ${t.total}`}
-        >
-          <span>Total</span>
-          <span>{data.total}</span>
-        </p>
-        {data.accordion?.sentiment ? (
-          <p className={`mt-1 truncate text-right font-hand leading-none text-[#b4234a] ${t.hand}`}>
-            {data.accordion.sentiment}
-          </p>
-        ) : null}
-      </div>
-    );
+    return <ReceiptFold data={data} label={label} wide={wide} current={current} type={t} />;
   }
   if (id === 'audit') {
     return (
