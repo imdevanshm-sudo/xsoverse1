@@ -206,7 +206,7 @@ export const MovieFeature = memo(function MovieFeature({
                 <motion.article
                   key={index}
                   aria-label={`Scene ${index + 1} of ${count}: ${frame.label}`}
-                  className="absolute inset-0"
+                  className="absolute inset-0 pb-[7.5rem]"
                   initial={reduce ? false : { opacity: 0, scale: 1.04 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={
@@ -217,11 +217,6 @@ export const MovieFeature = memo(function MovieFeature({
                   transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <SceneBody {...props} />
-                  {frame.scene !== 3 && caption ? (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-20 z-10 px-6">
-                      <Subtitle big={stage.big}>{caption}</Subtitle>
-                    </div>
-                  ) : null}
                 </motion.article>
               </AnimatePresence>
               {reduce ? null : (
@@ -234,6 +229,12 @@ export const MovieFeature = memo(function MovieFeature({
                   transition={{ duration: 0.45, ease: 'easeOut' }}
                 />
               )}
+
+              {frame.scene !== 3 && caption ? (
+                <div className="pointer-events-none absolute inset-x-0 bottom-[4.25rem] z-10 px-6 pb-[env(safe-area-inset-bottom,0px)]">
+                  <Subtitle big={stage.big}>{caption}</Subtitle>
+                </div>
+              ) : null}
 
               <nav
                 aria-label="Scenes"

@@ -50,7 +50,7 @@ export const Slate = memo(function Slate({
   );
 });
 
-/** Film subtitle: always real text, sitting above the controls. */
+/** Film subtitle: always real text, sitting in the reserved caption zone above the controls. */
 export const Subtitle = memo(function Subtitle({
   children,
   big,
@@ -61,7 +61,7 @@ export const Subtitle = memo(function Subtitle({
   if (!children) return null;
   return (
     <p
-      className={`mx-auto max-w-[36ch] text-balance text-center font-serif italic leading-snug text-[#fffaf0] [text-shadow:0_1px_8px_rgba(0,0,0,0.95)] ${big ? 'text-[20px]' : 'text-[16px]'}`}
+      className={`mx-auto max-w-[36ch] text-balance text-center font-serif italic leading-snug text-[#fffaf0] [text-shadow:0_1px_10px_rgba(0,0,0,0.95),0_0_2px_rgba(0,0,0,0.9)] ${big ? 'text-[22px]' : 'text-[18px]'}`}
     >
       {children}
     </p>
