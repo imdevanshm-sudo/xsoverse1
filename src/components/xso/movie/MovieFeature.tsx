@@ -142,23 +142,42 @@ export const MovieFeature = memo(function MovieFeature({
 
   const onKey = useCallback(
     (e: KeyboardEvent<HTMLElement>) => {
-      if (e.key === 'ArrowRight') goTo(index + 1);
-      else if (e.key === 'ArrowLeft') goTo(index - 1);
-      else return;
-      e.preventDefault();
+      if (e.key === 'ArrowRight') {
+        goTo(index + 1);
+        e.preventDefault();
+      } else if (e.key === 'ArrowLeft') {
+        goTo(index - 1);
+        e.preventDefault();
+      } else if (e.key === ' ' || e.key === 'Spacebar') {
+        if (started && !finished) setPaused((p) => !p);
+        e.preventDefault();
+      }
     },
-    [goTo, index],
+    [finished, goTo, index, started],
   );
 
   const downX = useRef<number | null>(null);
   const onPointerDown = (e: PointerEvent) => {
+    if ((e.target as HTMLElement).closest('button, a, [data-chrome]')) {
+      downX.current = null;
+      return;
+    }
     downX.current = e.clientX;
   };
   const onPointerUp = (e: PointerEvent) => {
     if (downX.current === null) return;
-    const dx = e.clientX - downX.current;
+    const startX = downX.current;
+    const dx = e.clientX - startX;
     downX.current = null;
-    if (Math.abs(dx) >= SWIPE_PX) goTo(index + (dx < 0 ? 1 : -1));
+    if (Math.abs(dx) >= SWIPE_PX) {
+      goTo(index + (dx < 0 ? 1 : -1));
+      return;
+    }
+    /** Tap left / right thirds to step scenes; the centre stays clear for reading. */
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < rect.width * 0.28) goTo(index - 1);
+    else if (x > rect.width * 0.72) goTo(index + 1);
   };
 
   const props: SceneProps = {
@@ -176,10 +195,11 @@ export const MovieFeature = memo(function MovieFeature({
   return (
     <section
       ref={room}
+      tabIndex={0}
       aria-label="Movie Box"
       aria-roledescription="film"
       onKeyDown={onKey}
-      className="movie-feature relative flex h-full w-full touch-pan-y items-center justify-center overflow-hidden bg-[#050203] text-[#fffaf0]"
+      className="movie-feature relative flex h-full w-full touch-pan-y items-center justify-center overflow-hidden bg-[#050203] text-[#fffaf0] outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
     >
       {stage.width ? (
         <div
@@ -249,9 +269,9 @@ export const MovieFeature = memo(function MovieFeature({
                     className="movie-control absolute left-4"
                   >
                     {paused ? (
-                      <Play className="h-5 w-5" aria-hidden />
+                      <Play className="h-6 w-6 translate-x-px" aria-hidden />
                     ) : (
-                      <Pause className="h-5 w-5" aria-hidden />
+                      <Pause className="h-6 w-6" aria-hidden />
                     )}
                   </button>
                 )}
@@ -262,9 +282,9 @@ export const MovieFeature = memo(function MovieFeature({
                   aria-label="Previous scene"
                   className="movie-control"
                 >
-                  <ChevronLeft className="h-5 w-5" aria-hidden />
+                  <ChevronLeft className="h-6 w-6" aria-hidden />
                 </button>
-                <ol className="flex items-center gap-1.5">
+                <ol className="flex items-center gap-1.5" aria-label="Scene progress">
                   {frames.map((f, i) => (
                     <li key={f.id}>
                       <button
@@ -272,11 +292,11 @@ export const MovieFeature = memo(function MovieFeature({
                         onClick={() => goTo(i)}
                         aria-label={`Scene ${i + 1}: ${f.label}`}
                         aria-current={i === index ? 'step' : undefined}
-                        className="grid h-8 w-6 place-items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+                        className="grid h-11 w-7 place-items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
                       >
                         <span
-                          className={`block h-1 rounded-full transition-[width,background-color] duration-300 ${
-                            i === index ? 'w-5 bg-[#fdba74]' : 'w-2 bg-[#fffaf0]/35'
+                          className={`block h-1.5 rounded-full transition-[width,background-color] duration-300 ${
+                            i === index ? 'w-6 bg-[#fdba74]' : 'w-2.5 bg-[#fffaf0]/35'
                           }`}
                         />
                       </button>
@@ -289,7 +309,7 @@ export const MovieFeature = memo(function MovieFeature({
                   aria-label={index === count - 1 ? 'End' : 'Next scene'}
                   className="movie-control"
                 >
-                  <ChevronRight className="h-5 w-5" aria-hidden />
+                  <ChevronRight className="h-6 w-6" aria-hidden />
                 </button>
               </nav>
             </>
