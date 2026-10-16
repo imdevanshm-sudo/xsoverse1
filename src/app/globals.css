@@ -1642,15 +1642,19 @@ html.is-landscape .xso-dock {
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 18px 18px 14px;
+  padding: 20px 18px 16px;
 }
 
 .accordion-panel__face--wide {
-  padding: 26px 34px 22px;
+  padding: 28px 36px 24px;
+}
+
+.recipient-stage .accordion-panel__face .xso-receipt {
+  font-size: 14px;
 }
 
 .recipient-stage .accordion-panel__face--wide .xso-receipt {
-  font-size: 16px;
+  font-size: 17px;
 }
 
 .accordion-panel__grain,
@@ -1662,7 +1666,8 @@ html.is-landscape .xso-dock {
   pointer-events: none;
 }
 
-/* Tooth and fibre: noise, faint laid lines and a soft mottle, multiplied into the cream. */
+/* Tooth and fibre: noise, faint laid lines and a soft mottle, multiplied into the cream.
+   background-position shifts with the hinge so the paper feels like it moves. */
 .accordion-panel__grain {
   z-index: 2;
   background-image:
@@ -1676,7 +1681,8 @@ html.is-landscape .xso-dock {
     auto,
     auto;
   mix-blend-mode: multiply;
-  opacity: 0.9;
+  opacity: 0.85;
+  will-change: background-position;
 }
 
 /* Fold shadows: the paper darkens into each crease as it closes, and clears as it lies flat. */
@@ -1764,6 +1770,12 @@ html.is-landscape .xso-dock {
   background-color: rgba(253, 186, 116, 0.5);
 }
 
+.accordion-wax {
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 200, 210, 0.35), transparent 45%),
+    radial-gradient(circle at 70% 75%, rgba(40, 0, 20, 0.35), transparent 50%), #8b1e3f;
+}
+
 /* The letter inks itself in, word by word, each on its own delay (`--d`). */
 .accordion-letter {
   scrollbar-width: none;
@@ -1808,7 +1820,7 @@ html.is-landscape .xso-dock {
   padding: 0 14px;
   color: #fdf2f8;
   font-family: var(--font-courier-prime), monospace;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1821,7 +1833,7 @@ html.is-landscape .xso-dock {
 
 .accordion-control--full {
   padding: 0 18px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .accordion-control:hover:not(:disabled) {
@@ -1840,9 +1852,9 @@ html.is-landscape .xso-dock {
 
 /* Fold names beside the counter; the one in focus is lit and underlined. */
 .accordion-crumb {
-  min-height: 36px;
+  min-height: 44px;
   border-radius: 999px;
-  padding: 0 12px;
+  padding: 0 14px;
   color: rgba(224, 180, 198, 0.7);
   font-family: var(--font-courier-prime), monospace;
   font-size: 13px;

@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from 'react';
 import {
   animate,
@@ -58,8 +59,8 @@ const SHUT = 86;
 
 /** Scroll drives the ribbon almost 1:1; a light spring only takes the edge off wheel steps. */
 const TRAVEL = { stiffness: 320, damping: 36 };
-/** Folds lag the travel a touch and overshoot slightly, like paper settling. */
-const CREASE = { stiffness: 70, damping: 15, mass: 1.2 };
+/** Folds lag the travel and settle with a soft bounce, like paper finding its crease. */
+const CREASE = { stiffness: 58, damping: 12, mass: 1.35 };
 const SNAPPY = { stiffness: 1000, damping: 100 };
 /** Paper let go of after a pull: eases home with barely any overshoot, so it never wobbles. */
 const TENSION = { stiffness: 300, damping: 24, mass: 0.8 };
@@ -242,12 +243,16 @@ const Ribbon = memo(function Ribbon({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  /** Recipients get a reading column: full-bleed on phones, up to 680px wide on desktop. */
+  /** Recipients: full-bleed on phones, 560–720px reading column on desktop. */
   const fill = size === 'fill';
-  const panelW = fill ? Math.min(box.w - 16, 680) : Math.min(box.w - 24, 360);
+  const panelW = fill
+    ? box.w < 768
+      ? Math.max(280, box.w - 8)
+      : clamp(Math.round(box.w * 0.72), 560, 720)
+    : Math.min(box.w - 24, 360);
   const wide = panelW >= 520;
   const panelH = fill
-    ? clamp(Math.round(Math.min(box.h * 0.62, panelW * (wide ? 0.8 : 1.15))), 240, 520)
+    ? clamp(Math.round(Math.min(box.h * 0.72, panelW * (wide ? 0.85 : 1.2))), 280, 560)
     : clamp(Math.round(box.h * 0.56), 190, 320);
   const step = Math.round(panelH * SCROLL_PER_FOLD);
 
@@ -446,6 +451,20 @@ const Ribbon = memo(function Ribbon({
     setEnding(false);
     goToRef.current(count - 1);
   }, [count]);
+  const foldBack = useCallback(() => {
+    setDismissed(true);
+    setEnding(false);
+    setRead(false);
+    chimed.current = false;
+    setOpenRef.current(false);
+    window.setTimeout(
+      () => {
+        goToRef.current(0, true);
+        setOpenRef.current(true);
+      },
+      reduce ? 0 : 480,
+    );
+  }, [reduce]);
   const activeLabel = active < count ? artifacts[active].label : END_LABEL;
   const label =
     active < count ? `panel ${active + 1} of ${count}: ${activeLabel}` : `last fold: ${END_LABEL}`;
@@ -458,7 +477,7 @@ const Ribbon = memo(function Ribbon({
   return (
     <section
       className={`relative isolate flex w-full flex-col items-center ${
-        fill ? 'h-full max-w-[720px]' : 'max-w-[400px]'
+        fill ? 'h-full max-w-[720px] md:max-w-[720px]' : 'max-w-[400px]'
       }`}
       aria-label="Accordion letter"
       aria-roledescription="folding ribbon"
@@ -516,8 +535,10 @@ const Ribbon = memo(function Ribbon({
         onKeyDown={(event) => {
           const keys: Record<string, number> = {
             ArrowDown: active + 1,
+            ArrowRight: active + 1,
             PageDown: active + 1,
             ArrowUp: active - 1,
+            ArrowLeft: active - 1,
             PageUp: active - 1,
             Home: 0,
             End: last,
@@ -570,6 +591,7 @@ const Ribbon = memo(function Ribbon({
                     height={panelH}
                     wide={wide}
                     data={data}
+                    reduce={reduce}
                     reading={artifact.id === 'letter' && opened && !held && active === index}
                     current={opened && !held && active === index}
                     onRead={artifact.id === 'letter' ? markRead : undefined}
@@ -585,7 +607,9 @@ const Ribbon = memo(function Ribbon({
                     height={panelH}
                     wide={wide}
                     data={data}
+                    reduce={reduce}
                     onDismiss={keepLooking}
+                    onReplay={foldBack}
                     onSelect={selectPanel}
                   />
                 ) : null}
@@ -599,22 +623,33 @@ const Ribbon = memo(function Ribbon({
         <div
           className={`flex w-full items-center gap-4 ${wide ? 'justify-between' : 'justify-center'}`}
         >
-          <p className="whitespace-nowrap font-receipt uppercase text-[#fde7d4]" aria-hidden>
-            <span
-              className={`tracking-[0.1em] ${wide ? 'text-[24px]' : 'text-[19px]'} text-[#fdba74]`}
-            >
-              {String(Math.min(active, count - 1) + 1).padStart(2, '0')}
-            </span>
-            <span className={`tracking-[0.1em] ${wide ? 'text-[24px]' : 'text-[19px]'}`}>
-              {' '}
-              / {String(count).padStart(2, '0')}
-            </span>
-            {wide && active < count ? null : (
+          <div className="min-w-0">
+            <p className="whitespace-nowrap font-receipt uppercase text-[#fde7d4]" aria-hidden>
+              <span
+                className={`tracking-[0.1em] ${wide ? 'text-[24px]' : 'text-[19px]'} text-[#fdba74]`}
+              >
+                {String(Math.min(active, count - 1) + 1).padStart(2, '0')}
+              </span>
+              <span className={`tracking-[0.1em] ${wide ? 'text-[24px]' : 'text-[19px]'}`}>
+                {' '}
+                / {String(count).padStart(2, '0')}
+              </span>
               <span className="ml-3 text-[13px] tracking-[0.18em] text-[#e0b4c6]">
                 {activeLabel}
               </span>
-            )}
-          </p>
+            </p>
+            <div
+              aria-hidden
+              className="mt-1.5 h-1 w-full max-w-[12rem] overflow-hidden rounded-full bg-[#fffaf0]/12"
+            >
+              <span
+                className="block h-full rounded-full bg-[#fdba74] transition-[width] duration-300"
+                style={{
+                  width: `${((Math.min(active, count - 1) + 1) / count) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
           {wide ? (
             <ol aria-label="Folds" className="flex items-center gap-1">
               {artifacts.map((artifact, index) => (
@@ -697,10 +732,12 @@ const RibbonPanel = memo(function RibbonPanel({
   height,
   wide,
   data,
+  reduce = false,
   reading,
   current = false,
   onRead,
   onDismiss,
+  onReplay,
   onSelect,
 }: {
   id: FoldId;
@@ -709,28 +746,41 @@ const RibbonPanel = memo(function RibbonPanel({
   height: number;
   wide: boolean;
   data: XsoData;
+  reduce?: boolean;
   reading?: boolean;
   /** The fold facing the reader, so its own animations and sounds wait for it. */
   current?: boolean;
   onRead?: () => void;
   onDismiss?: () => void;
+  onReplay?: () => void;
   onSelect: (index: number) => void;
 }) {
   const y = useTransform(fold, (f) => f.ys[index]);
-  const z = useTransform(fold, (f) => f.zs[index]);
-  const rotateX = useTransform(fold, (f) => f.angles[index]);
+  const z = useTransform(fold, (f) => (reduce ? 0 : f.zs[index]));
+  const rotateX = useTransform(fold, (f) => (reduce ? 0 : f.angles[index]));
+  /** Prefer fade over hinge when motion is reduced. */
+  const fade = useTransform(fold, (f) => {
+    if (!reduce) return 1;
+    const tip = Math.abs(f.angles[index]) / SHUT;
+    return 1 - tip * 0.55;
+  });
   /** Light falls from above: panels tipped up catch it, panels tipped down sit in the crease's shadow. */
-  const sheen = useTransform(rotateX, (a) => Math.max(0, Math.sin(a * RAD)) * 0.6);
+  const sheen = useTransform(rotateX, (a) =>
+    reduce || id === 'letter' ? 0 : Math.max(0, Math.sin(a * RAD)) * 0.55,
+  );
   const shade = useTransform(rotateX, (a) => {
+    if (reduce || id === 'letter') return 0;
     const s = Math.sin(a * RAD);
-    return Math.max(0, -s) * 0.62 + Math.abs(s) * 0.08;
+    return Math.max(0, -s) * 0.55 + Math.abs(s) * 0.06;
   });
   const creaseTop = useTransform(fold, (f) =>
-    index === 0 ? 0 : creaseDepth(f.angles[index - 1], f.angles[index]),
+    reduce || index === 0 ? 0 : creaseDepth(f.angles[index - 1], f.angles[index]),
   );
   const creaseBottom = useTransform(fold, (f) =>
-    index === f.angles.length - 1 ? 0 : creaseDepth(f.angles[index], f.angles[index + 1]),
+    reduce || index === f.angles.length - 1 ? 0 : creaseDepth(f.angles[index], f.angles[index + 1]),
   );
+  /** Fibre of the paper shifts slightly as the hinge turns. */
+  const grainShift = useTransform(rotateX, (a) => `${a * 0.35}px ${-a * 0.2}px`);
 
   return (
     <motion.div
@@ -740,6 +790,7 @@ const RibbonPanel = memo(function RibbonPanel({
         y,
         z,
         rotateX,
+        opacity: fade,
         transformOrigin: '50% 0%',
         willChange: 'transform, opacity',
       }}
@@ -747,7 +798,15 @@ const RibbonPanel = memo(function RibbonPanel({
     >
       <div className={`accordion-panel__face ${wide ? 'accordion-panel__face--wide' : ''}`}>
         {id === 'end' ? (
-          <YourTurn source="accordion_end" large={wide} onDismiss={onDismiss} />
+          <YourTurn
+            source="accordion_end"
+            large={wide}
+            onDismiss={onDismiss}
+            onReplay={onReplay}
+            offer
+            giftId={data.id}
+            shareTitle={data.customerName ? `A keepsake for ${data.customerName}` : 'A keepsake'}
+          />
         ) : (
           <ActiveScope active={current}>
             <PanelFace
@@ -755,13 +814,18 @@ const RibbonPanel = memo(function RibbonPanel({
               id={id}
               index={index}
               wide={wide}
+              current={current}
               reading={reading}
               onRead={onRead}
             />
           </ActiveScope>
         )}
       </div>
-      <span aria-hidden className="accordion-panel__grain" />
+      <motion.span
+        aria-hidden
+        className="accordion-panel__grain"
+        style={{ backgroundPosition: grainShift }}
+      />
       {index > 0 ? (
         <>
           <span aria-hidden className="accordion-panel__seam" />
@@ -835,37 +899,38 @@ const FoldButton = memo(function FoldButton({
 /** Two type scales: the phone-sized ribbon, and the desktop reading column. */
 const TYPE = {
   narrow: {
-    label: 'text-[10px] tracking-[0.22em]',
-    title: 'text-lg',
-    body: 'text-[12px]',
-    total: 'text-sm',
-    hand: 'text-[18px]',
-    audit: 'text-[11px]',
-    bar: 'h-1.5',
-    stamp: 'text-[10px] px-2 py-0.5',
-    dear: 'text-2xl',
-    letter: 'text-[19px]',
-    signoff: 'text-xl',
-    rows: 5,
+    label: 'text-[11px] tracking-[0.2em]',
+    title: 'text-[22px]',
+    body: 'text-[14px]',
+    total: 'text-[15px]',
+    hand: 'text-[20px]',
+    audit: 'text-[14px]',
+    bar: 'h-2',
+    stamp: 'text-[12px] px-2.5 py-1',
+    dear: 'text-[28px]',
+    letter: 'text-[20px]',
+    signoff: 'text-[22px]',
+    rows: 8,
   },
   wide: {
     label: 'text-[13px] tracking-[0.24em]',
-    title: 'text-[30px]',
-    body: 'text-[16px]',
-    total: 'text-lg',
-    hand: 'text-[24px]',
-    audit: 'text-[14px]',
+    title: 'text-[32px]',
+    body: 'text-[17px]',
+    total: 'text-[18px]',
+    hand: 'text-[26px]',
+    audit: 'text-[15px]',
     bar: 'h-2.5',
     stamp: 'text-[15px] px-3 py-1',
-    dear: 'text-[34px]',
+    dear: 'text-[36px]',
     letter: 'text-[22px]',
     signoff: 'text-[28px]',
-    rows: 8,
+    rows: 12,
   },
 };
 
-const PRINT_TILT = [-3.5, 2, -1.5];
-const CARD_PAPERS = ['#f8d5e1', '#f6cd85', '#d9e7d0'];
+const PRINT_TILT = [-3.5, 2, -1.5, 1.8, -2.2, 0.8];
+const CARD_PAPERS = ['#f8d5e1', '#f6cd85', '#d9e7d0', '#d6e4f5', '#f3d9c9', '#e8d5f0'];
+const MAX_PRINTS = 6;
 
 interface Print {
   src?: string;
@@ -875,23 +940,29 @@ interface Print {
 }
 
 /**
- * The sender's own photos, up to three. The theme's stand-in cards only show when nothing was
- * uploaded, and a gift with no photos at all gets plain paper cards written from the receipt.
+ * The sender's own photos (up to six). Theme placeholders only when nothing was uploaded;
+ * a gift with no photos gets wrapping paper cards written from the receipt.
  */
 function printsOf(data: XsoData): Print[] {
   const uploaded = data.photos.filter((src) => src && !isPlaceholderPhoto(src));
-  const photos = (uploaded.length ? uploaded : data.photos.filter(Boolean)).slice(0, 3);
+  const photos = (uploaded.length ? uploaded : []).slice(0, MAX_PRINTS);
   if (photos.length) {
     return photos.map((src, i) => ({ src, caption: photoCaption(data, i) }));
   }
   const year = `'${data.timestamp.split(' ')[0].slice(-2)} ♡`;
-  const captions = [`${data.customerName} & ${data.billerName}`, data.occasion.toLowerCase(), year];
-  return [0, 1, 2].map((i) => {
+  const captions = [
+    `${data.customerName} & ${data.billerName}`,
+    data.occasion.toLowerCase(),
+    year,
+    data.greenFlags[0]?.toLowerCase() ?? 'a favourite take',
+  ];
+  const count = Math.min(4, Math.max(2, data.lineItems.length || 2));
+  return Array.from({ length: count }, (_, i) => {
     const lore = data.lineItems[i]?.description.toLowerCase();
     return {
       text: lore ? `the ${lore} era` : 'one I keep coming back to',
-      paper: CARD_PAPERS[i],
-      caption: captions[i],
+      paper: CARD_PAPERS[i % CARD_PAPERS.length],
+      caption: captions[i] ?? year,
     };
   });
 }
@@ -904,11 +975,271 @@ const FOLD_NAMES: Record<Artifact['id'], string> = {
   letter: 'the note',
 };
 
+type FoldType = (typeof TYPE)['narrow'];
+
+const BAR_START = 0.35;
+const BAR_STAGGER = 0.28;
+
+/** One audit row: wrapping label, proportional fill, score counting up. */
+const AccordionAuditBar = memo(function AccordionAuditBar({
+  label,
+  score,
+  delay,
+  reduce,
+  active,
+  type: t,
+}: {
+  label: string;
+  score: number;
+  delay: number;
+  reduce: boolean;
+  active: boolean;
+  type: FoldType;
+}) {
+  const [shown, setShown] = useState(reduce || !active ? score : 0);
+  useEffect(() => {
+    if (reduce || !active) {
+      setShown(score);
+      return;
+    }
+    setShown(0);
+    const controls = animate(0, score, {
+      duration: 0.9,
+      delay,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate: (v) => setShown(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [active, delay, reduce, score]);
+
+  return (
+    <div>
+      <p
+        className={`flex justify-between gap-2 font-receipt uppercase tracking-[0.12em] ${t.audit}`}
+      >
+        <span className="min-w-0 break-words leading-tight [overflow-wrap:anywhere]">{label}</span>
+        <strong className="shrink-0 tabular-nums">{shown}</strong>
+      </p>
+      <div className={`mt-1 overflow-hidden rounded-full bg-[#2d1b22]/10 ${t.bar}`}>
+        <motion.div
+          className="h-full origin-left rounded-full bg-gradient-to-r from-[#ec4899] to-[#fb923c]"
+          initial={reduce ? false : { scaleX: 0 }}
+          animate={{ scaleX: active ? score / 100 : 0 }}
+          transition={{
+            duration: reduce ? 0 : 0.9,
+            delay: reduce ? 0 : delay,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        />
+      </div>
+    </div>
+  );
+});
+
+/** Audit fold: bars fill in sequence, scores count up, Certified stamp drops in last. */
+const AuditFold = memo(function AuditFold({
+  data,
+  label,
+  wide,
+  current,
+  type: t,
+}: {
+  data: XsoData;
+  label: ReactNode;
+  wide: boolean;
+  current: boolean;
+  type: FoldType;
+}) {
+  const reduce = Boolean(useReducedMotion());
+  const metrics = useMemo(
+    () => Object.entries(data.auditMetrics) as [keyof AuditMetrics, number][],
+    [data.auditMetrics],
+  );
+  const stars = overallStars(data.auditMetrics);
+  const [rating, setRating] = useState(reduce || !current ? stars : 0);
+  const [stamped, setStamped] = useState(reduce || !current);
+  useEffect(() => {
+    if (!current) {
+      setRating(0);
+      setStamped(false);
+      return;
+    }
+    if (reduce) {
+      setRating(stars);
+      setStamped(true);
+      return;
+    }
+    setRating(0);
+    setStamped(false);
+    const total = BAR_START + BAR_STAGGER * metrics.length + 0.55;
+    const controls = animate(0, stars, {
+      duration: total,
+      ease: 'easeOut',
+      onUpdate: setRating,
+    });
+    const timers = [
+      ...metrics.map((_, i) =>
+        window.setTimeout(() => playSound('audit.tick'), (BAR_START + i * BAR_STAGGER) * 1000),
+      ),
+      window.setTimeout(() => {
+        setStamped(true);
+        playSound('audit.stamp');
+      }, total * 1000),
+    ];
+    return () => {
+      controls.stop();
+      timers.forEach((id) => window.clearTimeout(id));
+    };
+  }, [current, metrics, reduce, stars]);
+
+  return (
+    <div className="flex h-full flex-col">
+      {label}
+      <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
+        <span className="tabular-nums">{rating.toFixed(1)}</span> / 5 stars
+      </p>
+      <div className={`mt-3 min-h-0 flex-1 overflow-y-auto ${wide ? 'space-y-3' : 'space-y-2.5'}`}>
+        {metrics.map(([key, score], i) => (
+          <AccordionAuditBar
+            key={key}
+            label={auditLabel(data, key)}
+            score={score}
+            delay={BAR_START + i * BAR_STAGGER}
+            reduce={reduce}
+            active={current}
+            type={t}
+          />
+        ))}
+      </div>
+      <motion.p
+        className={`mt-3 self-end rounded border-2 border-[#b4234a]/80 font-receipt font-bold uppercase tracking-[0.18em] text-[#b4234a] ${t.stamp}`}
+        initial={false}
+        animate={
+          stamped
+            ? { opacity: 1, scale: 1, rotate: -6, y: 0 }
+            : { opacity: 0, scale: 1.35, rotate: -18, y: -18 }
+        }
+        transition={
+          reduce ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 14, mass: 0.75 }
+        }
+      >
+        {data.certifiedStampText}
+      </motion.p>
+    </div>
+  );
+});
+
+/** Receipt fold: line items reveal one by one; a stamp lands on the total. */
+const ReceiptFold = memo(function ReceiptFold({
+  data,
+  label,
+  wide,
+  current,
+  type: t,
+}: {
+  data: XsoData;
+  label: ReactNode;
+  wide: boolean;
+  current: boolean;
+  type: FoldType;
+}) {
+  const reduce = Boolean(useReducedMotion());
+  const items = data.lineItems.slice(0, t.rows);
+  const [shown, setShown] = useState(reduce || !current ? items.length : 0);
+  const [stamped, setStamped] = useState(reduce || !current);
+  useEffect(() => {
+    if (!current) {
+      setShown(0);
+      setStamped(false);
+      return;
+    }
+    if (reduce) {
+      setShown(items.length);
+      setStamped(true);
+      return;
+    }
+    setShown(0);
+    setStamped(false);
+    const timers: number[] = [];
+    items.forEach((_, i) => {
+      timers.push(window.setTimeout(() => setShown(i + 1), 180 + i * 220));
+    });
+    timers.push(
+      window.setTimeout(
+        () => {
+          setStamped(true);
+          playSound('audit.stamp');
+        },
+        220 + items.length * 220 + 280,
+      ),
+    );
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, [current, items.length, reduce]);
+
+  return (
+    <div className={`xso-receipt flex h-full flex-col font-receipt leading-snug ${t.body}`}>
+      {label}
+      <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
+        {data.merchantName}
+      </p>
+      <p className={`uppercase opacity-60 ${t.label}`}>{data.timestamp}</p>
+      <div className="my-2 border-t border-dashed border-current/40" />
+      <ul className={`min-h-0 flex-1 space-y-1 overflow-y-auto ${wide ? 'space-y-1.5' : ''}`}>
+        {items.map((item, i) => (
+          <li
+            key={item.id}
+            className={`flex items-start justify-between gap-3 transition-opacity duration-300 ${
+              i < shown ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+              {item.qty ? `${item.qty} ` : ''}
+              {item.description}
+            </span>
+            <span className="shrink-0 tabular-nums">{item.price}</span>
+          </li>
+        ))}
+      </ul>
+      <div
+        className={`relative mt-2 border-t border-dashed border-current/40 pt-1.5 font-bold ${t.total}`}
+      >
+        <p className="flex justify-between gap-3">
+          <span>Total</span>
+          <span>{data.total}</span>
+        </p>
+        <motion.span
+          aria-hidden
+          className={`pointer-events-none absolute -right-1 -top-3 -rotate-12 rounded border-2 border-[#b4234a] px-2 py-0.5 font-receipt font-bold uppercase tracking-[0.14em] text-[#b4234a] ${t.stamp}`}
+          initial={false}
+          animate={
+            stamped
+              ? { opacity: 1, scale: 1, rotate: -12 }
+              : { opacity: 0, scale: 1.4, rotate: -28 }
+          }
+          transition={
+            reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 16, mass: 0.7 }
+          }
+        >
+          {data.total}
+        </motion.span>
+      </div>
+      {data.accordion?.sentiment ? (
+        <p
+          className={`mt-1 text-right font-hand leading-snug text-[#b4234a] [overflow-wrap:anywhere] ${t.hand}`}
+        >
+          {data.accordion.sentiment}
+        </p>
+      ) : null}
+    </div>
+  );
+});
+
 const PanelFace = memo(function PanelFace({
   data,
   id,
   index,
   wide,
+  current = false,
   reading = false,
   onRead,
 }: {
@@ -916,6 +1247,8 @@ const PanelFace = memo(function PanelFace({
   id: Artifact['id'];
   index: number;
   wide: boolean;
+  /** This fold is facing the reader — start reveals and stamps. */
+  current?: boolean;
   /** The letter is the fold in focus, so it starts writing itself. */
   reading?: boolean;
   onRead?: () => void;
@@ -931,97 +1264,36 @@ const PanelFace = memo(function PanelFace({
     return <SongFold song={data.song} label={label} wide={wide} />;
   }
   if (id === 'receipt') {
-    return (
-      <div className={`xso-receipt flex h-full flex-col font-receipt leading-snug ${t.body}`}>
-        {label}
-        <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
-          {data.merchantName}
-        </p>
-        <p className={`uppercase opacity-60 ${t.label}`}>{data.timestamp}</p>
-        <div className="my-2 border-t border-dashed border-current/40" />
-        <div className={`min-h-0 flex-1 overflow-hidden ${wide ? 'space-y-1' : 'space-y-0.5'}`}>
-          {data.lineItems.slice(0, t.rows).map((item) => (
-            <p key={item.id} className="flex justify-between gap-3">
-              <span className="truncate">
-                {item.qty} {item.description}
-              </span>
-              <span className="shrink-0">{item.price}</span>
-            </p>
-          ))}
-        </div>
-        <p
-          className={`mt-2 flex justify-between border-t border-dashed border-current/40 pt-1.5 font-bold ${t.total}`}
-        >
-          <span>Total</span>
-          <span>{data.total}</span>
-        </p>
-        {data.accordion?.sentiment ? (
-          <p className={`mt-1 truncate text-right font-hand leading-none text-[#b4234a] ${t.hand}`}>
-            {data.accordion.sentiment}
-          </p>
-        ) : null}
-      </div>
-    );
+    return <ReceiptFold data={data} label={label} wide={wide} current={current} type={t} />;
   }
   if (id === 'audit') {
-    return (
-      <div className="flex h-full flex-col">
-        {label}
-        <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
-          {overallStars(data.auditMetrics).toFixed(1)} / 5 stars
-        </p>
-        <div
-          className={`mt-2 min-h-0 flex-1 overflow-hidden ${wide ? 'space-y-2.5' : 'space-y-1.5'}`}
-        >
-          {Object.entries(data.auditMetrics).map(([key, score]) => (
-            <div key={key}>
-              <p
-                className={`flex justify-between gap-2 font-receipt uppercase tracking-[0.14em] ${t.audit}`}
-              >
-                <span className="truncate">{auditLabel(data, key as keyof AuditMetrics)}</span>
-                <strong>{score}</strong>
-              </p>
-              <div className={`mt-0.5 overflow-hidden rounded-full bg-[#2d1b22]/10 ${t.bar}`}>
-                <div
-                  className="h-full origin-left rounded-full bg-gradient-to-r from-[#ec4899] to-[#fb923c]"
-                  style={{ transform: `scaleX(${score / 100})` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-        <p
-          className={`mt-2 self-end -rotate-6 rounded border-2 border-[#b4234a]/70 font-receipt font-bold uppercase tracking-[0.18em] text-[#b4234a]/80 ${t.stamp}`}
-        >
-          {data.certifiedStampText}
-        </p>
-      </div>
-    );
+    return <AuditFold data={data} label={label} wide={wide} current={current} type={t} />;
   }
   if (id === 'photos') {
     const prints = printsOf(data);
     const n = Math.max(1, prints.length);
     /** Caption strip plus the print's border, so the photo never pushes past the fold. */
-    const chrome = wide ? 46 : 34;
-    /** On a phone three prints overlap like a fanned hand, so each stays big enough to see. */
-    const fan = !wide && n === 3;
-    const across = fan ? 34 : Math.floor(92 / n);
+    const chrome = wide ? 52 : 42;
+    /** Fan a few prints on a phone so each stays big enough to see. */
+    const fan = !wide && n >= 3 && n <= 4;
+    const cols = n <= 2 ? n : n <= 4 ? 2 : 3;
+    const across = fan ? Math.floor(78 / Math.min(n, 3)) : Math.floor(94 / cols);
     return (
       <div className="flex h-full flex-col">
         {label}
         <div
-          className={`mt-2 flex min-h-0 flex-1 items-center justify-center ${fan ? '' : 'gap-[4%]'}`}
+          className={`mt-2 flex min-h-0 flex-1 flex-wrap content-center items-center justify-center ${fan ? '' : 'gap-x-[3%] gap-y-3'}`}
           style={{ containerType: 'size' }}
         >
           {prints.map((print, i) => (
             <figure
               key={i}
-              className="flex shrink-0 flex-col bg-white p-[4%] pb-0 shadow-[0_2px_8px_rgba(45,27,34,0.2)]"
+              className="flex shrink-0 flex-col bg-white p-[3.5%] pb-0 shadow-[0_3px_10px_rgba(45,27,34,0.22)]"
               style={{
-                width: `min(${across}cqw, calc((100cqh - ${chrome}px) * 0.76))`,
+                width: `min(${across}cqw, calc((100cqh - ${chrome}px) * ${n > 4 ? 0.55 : 0.72}))`,
                 rotate: `${PRINT_TILT[i % PRINT_TILT.length]}deg`,
-                marginInline: fan ? '-2cqw' : undefined,
-                translate: fan && i === 1 ? '0 -4%' : undefined,
+                marginInline: fan ? '-1.5cqw' : undefined,
+                translate: fan && i % 2 === 1 ? '0 -3%' : undefined,
               }}
             >
               <div
@@ -1041,14 +1313,14 @@ const PanelFace = memo(function PanelFace({
                       src={print.src}
                       alt={`Memory ${i + 1}`}
                       fill
-                      sizes={wide ? '220px' : '(max-width: 768px) 30vw, 120px'}
+                      sizes={wide ? '240px' : '(max-width: 768px) 42vw, 140px'}
                       className="absolute inset-0 h-full w-full object-cover"
                     />
                   </PolaroidThumb>
                 ) : (
                   <p
-                    className={`absolute inset-0 grid place-items-center p-[10%] text-center font-hand leading-tight text-[#3a2530] ${
-                      wide ? 'text-[22px]' : 'text-[15px]'
+                    className={`absolute inset-0 grid place-items-center overflow-hidden p-[8%] text-center font-hand leading-snug text-[#3a2530] [overflow-wrap:anywhere] ${
+                      wide ? 'text-[20px]' : 'text-[15px]'
                     }`}
                   >
                     {print.text}
@@ -1056,8 +1328,8 @@ const PanelFace = memo(function PanelFace({
                 )}
               </div>
               <figcaption
-                className={`truncate text-center font-hand leading-none text-[#3a2530] ${
-                  wide ? 'py-2.5 text-[20px]' : 'py-1.5 text-[15px]'
+                className={`break-words text-center font-hand leading-snug text-[#3a2530] [overflow-wrap:anywhere] ${
+                  wide ? 'px-1 py-2.5 text-[18px]' : 'px-0.5 py-1.5 text-[14px]'
                 }`}
               >
                 {print.caption}
@@ -1094,10 +1366,9 @@ const PEN_LINES = 3;
 const PEN_FADE_MS = 900;
 
 /**
- * The letter writes itself in line by line as it comes into focus: each word is inked left to
- * right, and the sign-off follows a short pause. It's sized to fit the fold (never below 20px
- * on desktop or 16px on phones) and scrolls inside the fold if it still doesn't. Tapping it
- * mid-way finishes it; with reduced motion it's simply there.
+ * The letter writes itself line by line: each word inks left to right, a pause before the last
+ * line, then the sign-off, a wax seal, and "Fin.". Sized to at least 20px (22px desktop). Make
+ * one back waits for `onRead` after Fin — never over the text.
  */
 const LetterBody = memo(function LetterBody({
   text,
@@ -1116,10 +1387,11 @@ const LetterBody = memo(function LetterBody({
 }) {
   const reduce = Boolean(useReducedMotion());
   const box = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState(wide ? 22 : 19);
+  const [size, setSize] = useState(wide ? 22 : 20);
   const [lines, setLines] = useState<number[] | null>(null);
   const [overflows, setOverflows] = useState(false);
   const [state, setState] = useState<'idle' | 'play' | 'done'>('idle');
+  const [fin, setFin] = useState(false);
   const paragraphs = useMemo(
     () =>
       text
@@ -1132,8 +1404,8 @@ const LetterBody = memo(function LetterBody({
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
-    const max = wide ? 22 : 19;
-    const min = wide ? 20 : 16;
+    const max = wide ? 22 : 20;
+    const min = wide ? 22 : 20;
     const measure = () => {
       let next = max;
       el.style.fontSize = `${next}px`;
@@ -1169,9 +1441,16 @@ const LetterBody = memo(function LetterBody({
     const seen = new Array<number>(total).fill(0);
     const delays = lines.map((l) => {
       const k = seen[l]++;
-      return l * LINE_TIME + (k / counts[l]) * LINE_TIME * 0.8;
+      /** Extra breath before the final line lands. */
+      const pause = l === total - 1 && total > 1 ? LAST_PAUSE : 0;
+      return l * LINE_TIME + pause + (k / counts[l]) * LINE_TIME * 0.8;
     });
-    return { delays, total, signoffAt: total * LINE_TIME + LAST_PAUSE };
+    return {
+      delays,
+      total,
+      signoffAt: total * LINE_TIME + LAST_PAUSE + 0.35,
+      finAt: total * LINE_TIME + LAST_PAUSE + 1.1,
+    };
   }, [lines]);
 
   const onReadRef = useRef(onRead);
@@ -1181,6 +1460,7 @@ const LetterBody = memo(function LetterBody({
   const finish = useCallback(() => {
     pen.stop(300);
     setState('done');
+    setFin(true);
     onReadRef.current?.();
   }, [pen]);
   useEffect(() => {
@@ -1196,12 +1476,13 @@ const LetterBody = memo(function LetterBody({
     setState('play');
   }, [reading, state, timing, reduce, finish]);
 
-  /** While writing, keep the newest line in view when the letter is taller than its fold. */
+  /** While writing, keep the newest line in view; reveal Fin after the seal. */
   useEffect(() => {
     if (state !== 'play' || !timing) return;
     const el = box.current;
     const started = performance.now();
-    const done = window.setTimeout(finish, (timing.signoffAt + 0.7) * 1000);
+    const finTimer = window.setTimeout(() => setFin(true), timing.finAt * 1000);
+    const done = window.setTimeout(finish, (timing.finAt + 0.85) * 1000);
     const follow = window.setInterval(() => {
       if (!el || el.scrollHeight <= el.clientHeight + 1) return;
       const elapsed = (performance.now() - started) / 1000;
@@ -1217,6 +1498,7 @@ const LetterBody = memo(function LetterBody({
     }, 250);
     return () => {
       window.clearTimeout(done);
+      window.clearTimeout(finTimer);
       window.clearInterval(follow);
     };
   }, [state, timing, lines, finish]);
@@ -1225,7 +1507,7 @@ const LetterBody = memo(function LetterBody({
   return (
     <div
       ref={box}
-      className={`accordion-letter letter--${state} mt-2 min-h-0 flex-1 overflow-y-auto font-hand leading-[1.22] text-[#3a2530] outline-none focus-visible:ring-2 focus-visible:ring-[#b4234a]/40`}
+      className={`accordion-letter letter--${state} mt-2 min-h-0 flex-1 overflow-y-auto font-hand leading-[1.28] text-[#3a2530] outline-none focus-visible:ring-2 focus-visible:ring-[#b4234a]/40`}
       style={{ fontSize: size }}
       tabIndex={overflows ? 0 : undefined}
       aria-label={overflows ? 'Letter (scrolls)' : undefined}
@@ -1236,7 +1518,7 @@ const LetterBody = memo(function LetterBody({
       }}
     >
       {paragraphs.map((words, p) => (
-        <p key={p} className="mb-[0.45em]">
+        <p key={p} className="mb-[0.5em]">
           {words.map((word) => {
             const i = w++;
             return (
@@ -1253,7 +1535,7 @@ const LetterBody = memo(function LetterBody({
           })}
         </p>
       ))}
-      <p className={`mt-1 text-right leading-none text-[#b4234a] ${signoffClass}`}>
+      <p className={`mt-2 text-right leading-none text-[#b4234a] ${signoffClass}`}>
         <span
           className="accordion-letter__word"
           style={{ '--d': `${timing?.signoffAt ?? 0}s` } as CSSProperties}
@@ -1261,6 +1543,18 @@ const LetterBody = memo(function LetterBody({
           {signoff}
         </span>
       </p>
+      <motion.div
+        aria-hidden
+        className="mt-4 flex flex-col items-center gap-2"
+        initial={false}
+        animate={fin ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+        transition={reduce ? { duration: 0 } : { duration: 0.7, ease: 'easeOut' }}
+      >
+        <span className="accordion-wax grid h-14 w-14 place-items-center rounded-full bg-[#8b1e3f] font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#fde7d4] shadow-[inset_0_2px_6px_rgba(255,255,255,0.2),0_4px_12px_rgba(45,10,30,0.35)]">
+          ✦
+        </span>
+        <span className="font-serif text-[28px] italic text-[#3a2530]/75">Fin.</span>
+      </motion.div>
     </div>
   );
 });
