@@ -58,8 +58,8 @@ const SHUT = 86;
 
 /** Scroll drives the ribbon almost 1:1; a light spring only takes the edge off wheel steps. */
 const TRAVEL = { stiffness: 320, damping: 36 };
-/** Folds lag the travel a touch and overshoot slightly, like paper settling. */
-const CREASE = { stiffness: 70, damping: 15, mass: 1.2 };
+/** Folds lag the travel and settle with a soft bounce, like paper finding its crease. */
+const CREASE = { stiffness: 58, damping: 12, mass: 1.35 };
 const SNAPPY = { stiffness: 1000, damping: 100 };
 /** Paper let go of after a pull: eases home with barely any overshoot, so it never wobbles. */
 const TENSION = { stiffness: 300, damping: 24, mass: 0.8 };
@@ -574,6 +574,7 @@ const Ribbon = memo(function Ribbon({
                     height={panelH}
                     wide={wide}
                     data={data}
+                    reduce={reduce}
                     reading={artifact.id === 'letter' && opened && !held && active === index}
                     current={opened && !held && active === index}
                     onRead={artifact.id === 'letter' ? markRead : undefined}
@@ -589,6 +590,7 @@ const Ribbon = memo(function Ribbon({
                     height={panelH}
                     wide={wide}
                     data={data}
+                    reduce={reduce}
                     onDismiss={keepLooking}
                     onSelect={selectPanel}
                   />
@@ -701,6 +703,7 @@ const RibbonPanel = memo(function RibbonPanel({
   height,
   wide,
   data,
+  reduce = false,
   reading,
   current = false,
   onRead,
@@ -713,6 +716,7 @@ const RibbonPanel = memo(function RibbonPanel({
   height: number;
   wide: boolean;
   data: XsoData;
+  reduce?: boolean;
   reading?: boolean;
   /** The fold facing the reader, so its own animations and sounds wait for it. */
   current?: boolean;
@@ -721,20 +725,31 @@ const RibbonPanel = memo(function RibbonPanel({
   onSelect: (index: number) => void;
 }) {
   const y = useTransform(fold, (f) => f.ys[index]);
-  const z = useTransform(fold, (f) => f.zs[index]);
-  const rotateX = useTransform(fold, (f) => f.angles[index]);
+  const z = useTransform(fold, (f) => (reduce ? 0 : f.zs[index]));
+  const rotateX = useTransform(fold, (f) => (reduce ? 0 : f.angles[index]));
+  /** Prefer fade over hinge when motion is reduced. */
+  const fade = useTransform(fold, (f) => {
+    if (!reduce) return 1;
+    const tip = Math.abs(f.angles[index]) / SHUT;
+    return 1 - tip * 0.55;
+  });
   /** Light falls from above: panels tipped up catch it, panels tipped down sit in the crease's shadow. */
-  const sheen = useTransform(rotateX, (a) => Math.max(0, Math.sin(a * RAD)) * 0.6);
+  const sheen = useTransform(rotateX, (a) =>
+    reduce || id === 'letter' ? 0 : Math.max(0, Math.sin(a * RAD)) * 0.55,
+  );
   const shade = useTransform(rotateX, (a) => {
+    if (reduce || id === 'letter') return 0;
     const s = Math.sin(a * RAD);
-    return Math.max(0, -s) * 0.62 + Math.abs(s) * 0.08;
+    return Math.max(0, -s) * 0.55 + Math.abs(s) * 0.06;
   });
   const creaseTop = useTransform(fold, (f) =>
-    index === 0 ? 0 : creaseDepth(f.angles[index - 1], f.angles[index]),
+    reduce || index === 0 ? 0 : creaseDepth(f.angles[index - 1], f.angles[index]),
   );
   const creaseBottom = useTransform(fold, (f) =>
-    index === f.angles.length - 1 ? 0 : creaseDepth(f.angles[index], f.angles[index + 1]),
+    reduce || index === f.angles.length - 1 ? 0 : creaseDepth(f.angles[index], f.angles[index + 1]),
   );
+  /** Fibre of the paper shifts slightly as the hinge turns. */
+  const grainShift = useTransform(rotateX, (a) => `${a * 0.35}px ${-a * 0.2}px`);
 
   return (
     <motion.div
@@ -744,6 +759,7 @@ const RibbonPanel = memo(function RibbonPanel({
         y,
         z,
         rotateX,
+        opacity: fade,
         transformOrigin: '50% 0%',
         willChange: 'transform, opacity',
       }}
@@ -759,13 +775,18 @@ const RibbonPanel = memo(function RibbonPanel({
               id={id}
               index={index}
               wide={wide}
+              current={current}
               reading={reading}
               onRead={onRead}
             />
           </ActiveScope>
         )}
       </div>
-      <span aria-hidden className="accordion-panel__grain" />
+      <motion.span
+        aria-hidden
+        className="accordion-panel__grain"
+        style={{ backgroundPosition: grainShift }}
+      />
       {index > 0 ? (
         <>
           <span aria-hidden className="accordion-panel__seam" />
@@ -913,6 +934,7 @@ const PanelFace = memo(function PanelFace({
   id,
   index,
   wide,
+  current = false,
   reading = false,
   onRead,
 }: {
@@ -920,6 +942,8 @@ const PanelFace = memo(function PanelFace({
   id: Artifact['id'];
   index: number;
   wide: boolean;
+  /** This fold is facing the reader — start reveals and stamps. */
+  current?: boolean;
   /** The letter is the fold in focus, so it starts writing itself. */
   reading?: boolean;
   onRead?: () => void;

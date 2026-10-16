@@ -1666,7 +1666,8 @@ html.is-landscape .xso-dock {
   pointer-events: none;
 }
 
-/* Tooth and fibre: noise, faint laid lines and a soft mottle, multiplied into the cream. */
+/* Tooth and fibre: noise, faint laid lines and a soft mottle, multiplied into the cream.
+   background-position shifts with the hinge so the paper feels like it moves. */
 .accordion-panel__grain {
   z-index: 2;
   background-image:
@@ -1680,7 +1681,8 @@ html.is-landscape .xso-dock {
     auto,
     auto;
   mix-blend-mode: multiply;
-  opacity: 0.9;
+  opacity: 0.85;
+  will-change: background-position;
 }
 
 /* Fold shadows: the paper darkens into each crease as it closes, and clears as it lies flat. */
