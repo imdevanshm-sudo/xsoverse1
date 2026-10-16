@@ -242,12 +242,16 @@ const Ribbon = memo(function Ribbon({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  /** Recipients get a reading column: full-bleed on phones, up to 680px wide on desktop. */
+  /** Recipients: full-bleed on phones, 560–720px reading column on desktop. */
   const fill = size === 'fill';
-  const panelW = fill ? Math.min(box.w - 16, 680) : Math.min(box.w - 24, 360);
+  const panelW = fill
+    ? box.w < 768
+      ? Math.max(280, box.w - 8)
+      : clamp(Math.round(box.w * 0.72), 560, 720)
+    : Math.min(box.w - 24, 360);
   const wide = panelW >= 520;
   const panelH = fill
-    ? clamp(Math.round(Math.min(box.h * 0.62, panelW * (wide ? 0.8 : 1.15))), 240, 520)
+    ? clamp(Math.round(Math.min(box.h * 0.72, panelW * (wide ? 0.85 : 1.2))), 280, 560)
     : clamp(Math.round(box.h * 0.56), 190, 320);
   const step = Math.round(panelH * SCROLL_PER_FOLD);
 
@@ -458,7 +462,7 @@ const Ribbon = memo(function Ribbon({
   return (
     <section
       className={`relative isolate flex w-full flex-col items-center ${
-        fill ? 'h-full max-w-[720px]' : 'max-w-[400px]'
+        fill ? 'h-full max-w-[720px] md:max-w-[720px]' : 'max-w-[400px]'
       }`}
       aria-label="Accordion letter"
       aria-roledescription="folding ribbon"
@@ -835,32 +839,32 @@ const FoldButton = memo(function FoldButton({
 /** Two type scales: the phone-sized ribbon, and the desktop reading column. */
 const TYPE = {
   narrow: {
-    label: 'text-[10px] tracking-[0.22em]',
-    title: 'text-lg',
-    body: 'text-[12px]',
-    total: 'text-sm',
-    hand: 'text-[18px]',
-    audit: 'text-[11px]',
-    bar: 'h-1.5',
-    stamp: 'text-[10px] px-2 py-0.5',
-    dear: 'text-2xl',
-    letter: 'text-[19px]',
-    signoff: 'text-xl',
-    rows: 5,
+    label: 'text-[11px] tracking-[0.2em]',
+    title: 'text-[22px]',
+    body: 'text-[14px]',
+    total: 'text-[15px]',
+    hand: 'text-[20px]',
+    audit: 'text-[14px]',
+    bar: 'h-2',
+    stamp: 'text-[12px] px-2.5 py-1',
+    dear: 'text-[28px]',
+    letter: 'text-[20px]',
+    signoff: 'text-[22px]',
+    rows: 8,
   },
   wide: {
     label: 'text-[13px] tracking-[0.24em]',
-    title: 'text-[30px]',
-    body: 'text-[16px]',
-    total: 'text-lg',
-    hand: 'text-[24px]',
-    audit: 'text-[14px]',
+    title: 'text-[32px]',
+    body: 'text-[17px]',
+    total: 'text-[18px]',
+    hand: 'text-[26px]',
+    audit: 'text-[15px]',
     bar: 'h-2.5',
     stamp: 'text-[15px] px-3 py-1',
-    dear: 'text-[34px]',
+    dear: 'text-[36px]',
     letter: 'text-[22px]',
     signoff: 'text-[28px]',
-    rows: 8,
+    rows: 12,
   },
 };
 
@@ -1116,7 +1120,7 @@ const LetterBody = memo(function LetterBody({
 }) {
   const reduce = Boolean(useReducedMotion());
   const box = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState(wide ? 22 : 19);
+  const [size, setSize] = useState(wide ? 22 : 20);
   const [lines, setLines] = useState<number[] | null>(null);
   const [overflows, setOverflows] = useState(false);
   const [state, setState] = useState<'idle' | 'play' | 'done'>('idle');
@@ -1132,8 +1136,8 @@ const LetterBody = memo(function LetterBody({
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
-    const max = wide ? 22 : 19;
-    const min = wide ? 20 : 16;
+    const max = wide ? 22 : 20;
+    const min = wide ? 22 : 20;
     const measure = () => {
       let next = max;
       el.style.fontSize = `${next}px`;
