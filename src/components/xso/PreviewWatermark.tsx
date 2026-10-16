@@ -19,7 +19,7 @@ const tile = (width: number, height: number, marks: string) =>
 const PHONE = tile(520, 640, mark(250, 330));
 const DESKTOP = tile(1400, 900, mark(360, 240) + mark(1050, 680));
 
-const LAYER = 'pointer-events-none fixed inset-0 z-[130] select-none opacity-[0.045]';
+const LAYER = 'pointer-events-none fixed inset-0 z-[130] select-none opacity-[0.03]';
 
 /**
  * Sits over everything on the sender's previews, so a screenshot or screen recording can't pass
