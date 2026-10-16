@@ -1770,6 +1770,12 @@ html.is-landscape .xso-dock {
   background-color: rgba(253, 186, 116, 0.5);
 }
 
+.accordion-wax {
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 200, 210, 0.35), transparent 45%),
+    radial-gradient(circle at 70% 75%, rgba(40, 0, 20, 0.35), transparent 50%), #8b1e3f;
+}
+
 /* The letter inks itself in, word by word, each on its own delay (`--d`). */
 .accordion-letter {
   scrollbar-width: none;

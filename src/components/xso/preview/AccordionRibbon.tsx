@@ -1328,10 +1328,9 @@ const PEN_LINES = 3;
 const PEN_FADE_MS = 900;
 
 /**
- * The letter writes itself in line by line as it comes into focus: each word is inked left to
- * right, and the sign-off follows a short pause. It's sized to fit the fold (never below 20px
- * on desktop or 16px on phones) and scrolls inside the fold if it still doesn't. Tapping it
- * mid-way finishes it; with reduced motion it's simply there.
+ * The letter writes itself line by line: each word inks left to right, a pause before the last
+ * line, then the sign-off, a wax seal, and "Fin.". Sized to at least 20px (22px desktop). Make
+ * one back waits for `onRead` after Fin — never over the text.
  */
 const LetterBody = memo(function LetterBody({
   text,
@@ -1354,6 +1353,7 @@ const LetterBody = memo(function LetterBody({
   const [lines, setLines] = useState<number[] | null>(null);
   const [overflows, setOverflows] = useState(false);
   const [state, setState] = useState<'idle' | 'play' | 'done'>('idle');
+  const [fin, setFin] = useState(false);
   const paragraphs = useMemo(
     () =>
       text
@@ -1403,9 +1403,16 @@ const LetterBody = memo(function LetterBody({
     const seen = new Array<number>(total).fill(0);
     const delays = lines.map((l) => {
       const k = seen[l]++;
-      return l * LINE_TIME + (k / counts[l]) * LINE_TIME * 0.8;
+      /** Extra breath before the final line lands. */
+      const pause = l === total - 1 && total > 1 ? LAST_PAUSE : 0;
+      return l * LINE_TIME + pause + (k / counts[l]) * LINE_TIME * 0.8;
     });
-    return { delays, total, signoffAt: total * LINE_TIME + LAST_PAUSE };
+    return {
+      delays,
+      total,
+      signoffAt: total * LINE_TIME + LAST_PAUSE + 0.35,
+      finAt: total * LINE_TIME + LAST_PAUSE + 1.1,
+    };
   }, [lines]);
 
   const onReadRef = useRef(onRead);
@@ -1415,6 +1422,7 @@ const LetterBody = memo(function LetterBody({
   const finish = useCallback(() => {
     pen.stop(300);
     setState('done');
+    setFin(true);
     onReadRef.current?.();
   }, [pen]);
   useEffect(() => {
@@ -1430,12 +1438,13 @@ const LetterBody = memo(function LetterBody({
     setState('play');
   }, [reading, state, timing, reduce, finish]);
 
-  /** While writing, keep the newest line in view when the letter is taller than its fold. */
+  /** While writing, keep the newest line in view; reveal Fin after the seal. */
   useEffect(() => {
     if (state !== 'play' || !timing) return;
     const el = box.current;
     const started = performance.now();
-    const done = window.setTimeout(finish, (timing.signoffAt + 0.7) * 1000);
+    const finTimer = window.setTimeout(() => setFin(true), timing.finAt * 1000);
+    const done = window.setTimeout(finish, (timing.finAt + 0.85) * 1000);
     const follow = window.setInterval(() => {
       if (!el || el.scrollHeight <= el.clientHeight + 1) return;
       const elapsed = (performance.now() - started) / 1000;
@@ -1451,6 +1460,7 @@ const LetterBody = memo(function LetterBody({
     }, 250);
     return () => {
       window.clearTimeout(done);
+      window.clearTimeout(finTimer);
       window.clearInterval(follow);
     };
   }, [state, timing, lines, finish]);
@@ -1459,7 +1469,7 @@ const LetterBody = memo(function LetterBody({
   return (
     <div
       ref={box}
-      className={`accordion-letter letter--${state} mt-2 min-h-0 flex-1 overflow-y-auto font-hand leading-[1.22] text-[#3a2530] outline-none focus-visible:ring-2 focus-visible:ring-[#b4234a]/40`}
+      className={`accordion-letter letter--${state} mt-2 min-h-0 flex-1 overflow-y-auto font-hand leading-[1.28] text-[#3a2530] outline-none focus-visible:ring-2 focus-visible:ring-[#b4234a]/40`}
       style={{ fontSize: size }}
       tabIndex={overflows ? 0 : undefined}
       aria-label={overflows ? 'Letter (scrolls)' : undefined}
@@ -1470,7 +1480,7 @@ const LetterBody = memo(function LetterBody({
       }}
     >
       {paragraphs.map((words, p) => (
-        <p key={p} className="mb-[0.45em]">
+        <p key={p} className="mb-[0.5em]">
           {words.map((word) => {
             const i = w++;
             return (
@@ -1487,7 +1497,7 @@ const LetterBody = memo(function LetterBody({
           })}
         </p>
       ))}
-      <p className={`mt-1 text-right leading-none text-[#b4234a] ${signoffClass}`}>
+      <p className={`mt-2 text-right leading-none text-[#b4234a] ${signoffClass}`}>
         <span
           className="accordion-letter__word"
           style={{ '--d': `${timing?.signoffAt ?? 0}s` } as CSSProperties}
@@ -1495,6 +1505,18 @@ const LetterBody = memo(function LetterBody({
           {signoff}
         </span>
       </p>
+      <motion.div
+        aria-hidden
+        className="mt-4 flex flex-col items-center gap-2"
+        initial={false}
+        animate={fin ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+        transition={reduce ? { duration: 0 } : { duration: 0.7, ease: 'easeOut' }}
+      >
+        <span className="accordion-wax grid h-14 w-14 place-items-center rounded-full bg-[#8b1e3f] font-receipt text-[11px] font-bold uppercase tracking-[0.16em] text-[#fde7d4] shadow-[inset_0_2px_6px_rgba(255,255,255,0.2),0_4px_12px_rgba(45,10,30,0.35)]">
+          ✦
+        </span>
+        <span className="font-serif text-[28px] italic text-[#3a2530]/75">Fin.</span>
+      </motion.div>
     </div>
   );
 });
