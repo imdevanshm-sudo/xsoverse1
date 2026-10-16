@@ -94,12 +94,12 @@ export const ReceiptScene = memo(function ReceiptScene({
         <div className="my-3 border-t border-dashed border-[#2a1712]/40" />
         <ul className="space-y-1.5">
           {data.lineItems.slice(0, 5).map((item) => (
-            <li key={item.id} className="flex justify-between gap-3">
-              <span className="truncate">
+            <li key={item.id} className="flex items-start justify-between gap-3">
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">
                 {item.qty ? `${item.qty} ` : ''}
                 {item.description}
               </span>
-              <span className="shrink-0">{item.price}</span>
+              <span className="shrink-0 tabular-nums">{item.price}</span>
             </li>
           ))}
         </ul>

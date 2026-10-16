@@ -645,7 +645,7 @@ const FrameFace = memo(function FrameFace({
   slate?: boolean;
 }) {
   const scene = !slate ? null : (
-    <p className="truncate font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80">
+    <p className="font-receipt text-[9px] uppercase tracking-[0.3em] text-[#fdba74]/80 [overflow-wrap:anywhere]">
       Scene {String(index + 1).padStart(2, '0')}
       {titled && shot?.title ? ` · ${shot.title}` : ''}
     </p>
@@ -701,9 +701,9 @@ const FrameBody = memo(function FrameBody({
           {data.lineItems.slice(0, 3).map((item) => (
             <p
               key={item.id}
-              className="flex justify-between gap-3 border-b border-[#fffaf0]/10 py-0.5"
+              className="flex items-start justify-between gap-3 border-b border-[#fffaf0]/10 py-0.5"
             >
-              <span className="truncate">{item.description}</span>
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">{item.description}</span>
               <span className="shrink-0">{item.price}</span>
             </p>
           ))}
