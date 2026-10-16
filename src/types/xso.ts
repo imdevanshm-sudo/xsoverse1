@@ -139,11 +139,13 @@ export const XSO_SIDES = [
 ] as const;
 
 export function svgPhoto(label: string, bg: string, fg: string): string {
+  /** foreignObject so long lore wraps instead of cropping mid-word ("ISSED THE TRAIN"). */
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="320" viewBox="0 0 240 320">
     <rect width="240" height="320" fill="${bg}"/>
     <rect x="16" y="16" width="208" height="248" fill="${fg}" opacity="0.15"/>
-    <text x="120" y="160" text-anchor="middle" fill="${fg}" font-family="monospace" font-size="18" font-weight="700">${label}</text>
-    <text x="120" y="290" text-anchor="middle" fill="${fg}" font-family="monospace" font-size="12" opacity="0.7">Y2K • 2000</text>
+    <foreignObject x="24" y="100" width="192" height="120">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;height:100%;padding:0 4px;box-sizing:border-box;color:${fg};font-family:ui-monospace,Menlo,monospace;font-size:16px;font-weight:700;line-height:1.25;text-align:center;text-transform:uppercase;overflow-wrap:anywhere;word-break:break-word">${label}</div>
+    </foreignObject>
   </svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }

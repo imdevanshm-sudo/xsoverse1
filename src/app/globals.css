@@ -1964,10 +1964,8 @@ html.is-landscape .xso-dock {
 }
 
 .film-face__letter {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 @media (min-width: 768px) {
@@ -2045,8 +2043,8 @@ html.is-landscape .xso-dock {
   letter-spacing: 0.01em;
   color: #fffaf0;
   text-shadow:
-    0 1px 8px rgba(0, 0, 0, 0.95),
-    0 0 2px rgba(0, 0, 0, 0.9);
+    0 1px 2px rgba(0, 0, 0, 0.85),
+    0 0 10px rgba(0, 0, 0, 0.45);
 }
 
 .film-screen__hint {
@@ -2126,20 +2124,20 @@ html.is-landscape .xso-dock {
   border-radius: 2px;
   background: rgba(40, 18, 12, 0.72);
   font-family: var(--font-courier-prime), monospace;
-  font-size: 7.5px;
-  line-height: 1.2;
-  letter-spacing: 0.12em;
+  font-size: 10px;
+  line-height: 1.25;
+  letter-spacing: 0.1em;
   text-align: center;
   text-transform: uppercase;
-  color: rgba(255, 237, 213, 0.85);
+  color: rgba(255, 237, 213, 0.9);
 }
 
 .celluloid__gate {
   position: absolute;
   inset-block: 0;
   left: 50%;
-  width: 72px;
-  margin-left: -36px;
+  width: 100px;
+  margin-left: -50px;
   pointer-events: none;
   border-inline: 2px solid rgba(253, 242, 248, 0.55);
   box-shadow: 0 0 0 999px rgba(20, 8, 12, 0.35);
@@ -2569,8 +2567,24 @@ html.is-landscape .xso-dock {
     linear-gradient(180deg, rgba(253, 211, 140, 0.82), rgba(234, 170, 80, 0.78));
   box-shadow: 0 1px 2px rgba(40, 20, 8, 0.25);
   clip-path: polygon(
-    0 12%, 4% 0, 8% 10%, 12% 0, 100% 0, 96% 14%, 100% 30%, 96% 48%, 100% 66%, 96% 84%, 100% 100%,
-    10% 100%, 6% 88%, 2% 100%, 0 82%, 4% 64%, 0 46%, 4% 28%
+    0 12%,
+    4% 0,
+    8% 10%,
+    12% 0,
+    100% 0,
+    96% 14%,
+    100% 30%,
+    96% 48%,
+    100% 66%,
+    96% 84%,
+    100% 100%,
+    10% 100%,
+    6% 88%,
+    2% 100%,
+    0 82%,
+    4% 64%,
+    0 46%,
+    4% 28%
   );
 }
 

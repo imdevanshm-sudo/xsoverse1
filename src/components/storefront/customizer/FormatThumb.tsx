@@ -151,14 +151,14 @@ export const FormatThumb = memo(function FormatThumb({
           </button>
         ) : null}
       </Frame>
-      {interactive && !current ? (
+      {interactive && current ? (
+        <p className="font-receipt text-[10px] uppercase tracking-[0.18em] text-[#fdf2f8]">
+          {current}
+        </p>
+      ) : interactive && !(stillUntilTap && tapped) ? (
         <p className="flex items-center gap-2 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#c99aae]">
           <span aria-hidden>👆</span>
           Tap or swipe to play
-        </p>
-      ) : interactive && current ? (
-        <p className="font-receipt text-[10px] uppercase tracking-[0.18em] text-[#fdf2f8]">
-          {current}
         </p>
       ) : null}
       {large || fit || interactive ? null : (
