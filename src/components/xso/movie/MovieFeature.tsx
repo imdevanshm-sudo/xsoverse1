@@ -25,7 +25,6 @@ import {
   PhotoScene,
   ReceiptScene,
   Subtitle,
-  TitleCards,
   montagePhotos,
   type SceneProps,
 } from '@/components/xso/movie/scenes';
@@ -230,7 +229,8 @@ export const MovieFeature = memo(function MovieFeature({
                 />
               )}
 
-              {frame.scene !== 3 && caption ? (
+              {/* Photo scene carries its own per-slide captions so they don't repeat. */}
+              {frame.scene !== 2 && frame.scene !== 3 && caption ? (
                 <div className="pointer-events-none absolute inset-x-0 bottom-[4.25rem] z-10 px-6 pb-[env(safe-area-inset-bottom,0px)]">
                   <Subtitle big={stage.big}>{caption}</Subtitle>
                 </div>
@@ -312,11 +312,8 @@ function SceneBody(props: SceneProps) {
     case 1:
       return <AuditScene {...props} />;
     case 2:
-      return montagePhotos(props.data, props.movie).length ? (
-        <PhotoScene {...props} />
-      ) : (
-        <TitleCards {...props} />
-      );
+      return <PhotoScene {...props} />;
+
     case SOUNDTRACK_SCENE:
       return props.data.song ? (
         <SoundtrackCredit song={props.data.song} big={props.stage.big} />
