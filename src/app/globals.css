@@ -1820,7 +1820,7 @@ html.is-landscape .xso-dock {
   padding: 0 14px;
   color: #fdf2f8;
   font-family: var(--font-courier-prime), monospace;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1833,7 +1833,7 @@ html.is-landscape .xso-dock {
 
 .accordion-control--full {
   padding: 0 18px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .accordion-control:hover:not(:disabled) {
@@ -1852,9 +1852,9 @@ html.is-landscape .xso-dock {
 
 /* Fold names beside the counter; the one in focus is lit and underlined. */
 .accordion-crumb {
-  min-height: 36px;
+  min-height: 44px;
   border-radius: 999px;
-  padding: 0 12px;
+  padding: 0 14px;
   color: rgba(224, 180, 198, 0.7);
   font-family: var(--font-courier-prime), monospace;
   font-size: 13px;

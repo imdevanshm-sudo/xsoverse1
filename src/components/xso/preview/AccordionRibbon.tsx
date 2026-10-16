@@ -451,6 +451,20 @@ const Ribbon = memo(function Ribbon({
     setEnding(false);
     goToRef.current(count - 1);
   }, [count]);
+  const foldBack = useCallback(() => {
+    setDismissed(true);
+    setEnding(false);
+    setRead(false);
+    chimed.current = false;
+    setOpenRef.current(false);
+    window.setTimeout(
+      () => {
+        goToRef.current(0, true);
+        setOpenRef.current(true);
+      },
+      reduce ? 0 : 480,
+    );
+  }, [reduce]);
   const activeLabel = active < count ? artifacts[active].label : END_LABEL;
   const label =
     active < count ? `panel ${active + 1} of ${count}: ${activeLabel}` : `last fold: ${END_LABEL}`;
@@ -521,8 +535,10 @@ const Ribbon = memo(function Ribbon({
         onKeyDown={(event) => {
           const keys: Record<string, number> = {
             ArrowDown: active + 1,
+            ArrowRight: active + 1,
             PageDown: active + 1,
             ArrowUp: active - 1,
+            ArrowLeft: active - 1,
             PageUp: active - 1,
             Home: 0,
             End: last,
@@ -593,6 +609,7 @@ const Ribbon = memo(function Ribbon({
                     data={data}
                     reduce={reduce}
                     onDismiss={keepLooking}
+                    onReplay={foldBack}
                     onSelect={selectPanel}
                   />
                 ) : null}
@@ -606,22 +623,33 @@ const Ribbon = memo(function Ribbon({
         <div
           className={`flex w-full items-center gap-4 ${wide ? 'justify-between' : 'justify-center'}`}
         >
-          <p className="whitespace-nowrap font-receipt uppercase text-[#fde7d4]" aria-hidden>
-            <span
-              className={`tracking-[0.1em] ${wide ? 'text-[24px]' : 'text-[19px]'} text-[#fdba74]`}
-            >
-              {String(Math.min(active, count - 1) + 1).padStart(2, '0')}
-            </span>
-            <span className={`tracking-[0.1em] ${wide ? 'text-[24px]' : 'text-[19px]'}`}>
-              {' '}
-              / {String(count).padStart(2, '0')}
-            </span>
-            {wide && active < count ? null : (
+          <div className="min-w-0">
+            <p className="whitespace-nowrap font-receipt uppercase text-[#fde7d4]" aria-hidden>
+              <span
+                className={`tracking-[0.1em] ${wide ? 'text-[24px]' : 'text-[19px]'} text-[#fdba74]`}
+              >
+                {String(Math.min(active, count - 1) + 1).padStart(2, '0')}
+              </span>
+              <span className={`tracking-[0.1em] ${wide ? 'text-[24px]' : 'text-[19px]'}`}>
+                {' '}
+                / {String(count).padStart(2, '0')}
+              </span>
               <span className="ml-3 text-[13px] tracking-[0.18em] text-[#e0b4c6]">
                 {activeLabel}
               </span>
-            )}
-          </p>
+            </p>
+            <div
+              aria-hidden
+              className="mt-1.5 h-1 w-full max-w-[12rem] overflow-hidden rounded-full bg-[#fffaf0]/12"
+            >
+              <span
+                className="block h-full rounded-full bg-[#fdba74] transition-[width] duration-300"
+                style={{
+                  width: `${((Math.min(active, count - 1) + 1) / count) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
           {wide ? (
             <ol aria-label="Folds" className="flex items-center gap-1">
               {artifacts.map((artifact, index) => (
@@ -709,6 +737,7 @@ const RibbonPanel = memo(function RibbonPanel({
   current = false,
   onRead,
   onDismiss,
+  onReplay,
   onSelect,
 }: {
   id: FoldId;
@@ -723,6 +752,7 @@ const RibbonPanel = memo(function RibbonPanel({
   current?: boolean;
   onRead?: () => void;
   onDismiss?: () => void;
+  onReplay?: () => void;
   onSelect: (index: number) => void;
 }) {
   const y = useTransform(fold, (f) => f.ys[index]);
@@ -768,7 +798,15 @@ const RibbonPanel = memo(function RibbonPanel({
     >
       <div className={`accordion-panel__face ${wide ? 'accordion-panel__face--wide' : ''}`}>
         {id === 'end' ? (
-          <YourTurn source="accordion_end" large={wide} onDismiss={onDismiss} />
+          <YourTurn
+            source="accordion_end"
+            large={wide}
+            onDismiss={onDismiss}
+            onReplay={onReplay}
+            offer
+            giftId={data.id}
+            shareTitle={data.customerName ? `A keepsake for ${data.customerName}` : 'A keepsake'}
+          />
         ) : (
           <ActiveScope active={current}>
             <PanelFace
