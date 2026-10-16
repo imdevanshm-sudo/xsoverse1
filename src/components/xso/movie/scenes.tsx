@@ -2,8 +2,9 @@
 
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, animate, motion } from 'framer-motion';
-import type { AuditMetrics, MovieLayers, XsoData } from '@/types/xso';
+import { isPlaceholderPhoto, type AuditMetrics, type MovieLayers, type XsoData } from '@/types/xso';
 import { auditLabel } from '@/lib/formats';
+import { photoCaption } from '@/lib/photoStrips';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { playSound, useTexture } from '@/lib/sound';
 import type { StageSize } from '@/components/xso/movie/useStage';
@@ -240,10 +241,25 @@ export const AuditScene = memo(function AuditScene({
   );
 });
 
-/** Photos the sender uploaded for the montage: the scene's own still first, then the gift's. */
+/**
+ * Photos for the montage: real uploads first (scene still, then gift photos). Theme placeholders
+ * only when nothing was uploaded — those render as wrapping cards, not cropped SVG text.
+ */
 export function montagePhotos(data: XsoData, movie: MovieLayers): string[] {
   const own = movie.scenes[2]?.image;
-  return [own, ...data.photos].filter((src): src is string => Boolean(src)).slice(0, 6);
+  const candidates = [own, ...data.photos].filter((src): src is string => Boolean(src));
+  const uploaded = candidates.filter((src) => !isPlaceholderPhoto(src));
+  return (uploaded.length ? uploaded : []).slice(0, 6);
+}
+
+/** Lore lines used when the sender left no photos. */
+export function montageFallback(data: XsoData): string[] {
+  return [
+    ...data.greenFlags.slice(0, 2),
+    ...data.lineItems.slice(0, 2).map((item) => item.description),
+  ]
+    .filter(Boolean)
+    .slice(0, 4);
 }
 
 const SLIDE_MS = 5000;
@@ -254,20 +270,28 @@ const DRIFT = [
   { from: { scale: 1.04, x: '-2%', y: '2%' }, to: { scale: 1.14, x: '2%', y: '-1%' } },
 ];
 
-/** The montage: the sender's photos as a slow Ken Burns slideshow with crossfades. */
-export const PhotoScene = memo(function PhotoScene({ data, movie, active, reduce }: SceneProps) {
+/** The montage: uploaded photos as a Ken Burns slideshow, or wrapping lore cards as fallback. */
+export const PhotoScene = memo(function PhotoScene({
+  data,
+  movie,
+  active,
+  reduce,
+  stage,
+}: SceneProps) {
   const photos = montagePhotos(data, movie);
+  const cards = useMemo(() => (photos.length ? [] : montageFallback(data)), [data, photos.length]);
+  const slides = photos.length || cards.length;
   const [slide, setSlide] = useState(0);
   useEffect(() => {
-    if (!active || photos.length < 2) return;
+    if (!active || slides < 2) return;
     const timer = window.setInterval(
-      () => setSlide((n) => (n + 1) % photos.length),
+      () => setSlide((n) => (n + 1) % slides),
       reduce ? SLIDE_MS * 1.5 : SLIDE_MS,
     );
     return () => window.clearInterval(timer);
-  }, [active, photos.length, reduce]);
-  const current = slide % photos.length;
-  const next = (current + 1) % photos.length;
+  }, [active, reduce, slides]);
+  const current = slides ? slide % slides : 0;
+  const next = slides ? (current + 1) % slides : 0;
   /** One soft shutter per new slide. */
   const shown = useRef(current);
   useEffect(() => {
@@ -276,6 +300,36 @@ export const PhotoScene = memo(function PhotoScene({ data, movie, active, reduce
     playSound('movie.shutter');
   }, [current]);
   const drift = DRIFT[current % DRIFT.length];
+  const caption = photos.length
+    ? photoCaption(data, current)
+    : cards[current]
+      ? photoCaption(data, current)
+      : movie.scenes[2]?.caption;
+
+  if (!photos.length) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 overflow-hidden bg-[#0b0507] px-6 pb-8">
+        <AnimatePresence initial={false} mode="wait">
+          <motion.p
+            key={current}
+            className={`w-full max-w-[20ch] break-words rounded-sm border border-[#fdba74]/25 bg-[#1b0e0b] px-5 py-6 text-center font-serif italic leading-snug text-[#fffaf0] [overflow-wrap:anywhere] ${stage.big ? 'text-[28px]' : 'text-[22px]'}`}
+            style={{ transform: `rotate(${[-1.5, 1, -0.5, 0.8][current % 4]}deg)` }}
+            initial={reduce ? false : { opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduce ? 0 : 0.6 }}
+          >
+            {cards[current]}
+          </motion.p>
+        </AnimatePresence>
+        {caption ? (
+          <p className="mt-2 max-w-[36ch] text-balance text-center font-serif text-[18px] italic text-[#fffaf0]/85 [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]">
+            {caption}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
@@ -296,7 +350,7 @@ export const PhotoScene = memo(function PhotoScene({ data, movie, active, reduce
           >
             <LazyMedia
               src={photos[current]}
-              alt={`Memory ${current + 1} of ${photos.length}`}
+              alt={caption || `Memory ${current + 1} of ${photos.length}`}
               fill
               sizes="100vw"
               className="absolute inset-0 h-full w-full object-cover"
@@ -309,9 +363,9 @@ export const PhotoScene = memo(function PhotoScene({ data, movie, active, reduce
         aria-hidden
         className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 via-black/35 to-transparent"
       />
-      {photos.length > 1 ? (
-        <p className="absolute right-4 top-4 rounded-full bg-black/45 px-2.5 py-1 font-receipt text-[12px] tabular-nums tracking-[0.14em] text-[#fffaf0]/85">
-          {current + 1} / {photos.length}
+      {caption ? (
+        <p className="pointer-events-none absolute inset-x-0 bottom-[5.25rem] z-10 px-6 text-balance text-center font-serif text-[18px] italic text-[#fffaf0] [text-shadow:0_1px_10px_rgba(0,0,0,0.95)]">
+          {caption}
         </p>
       ) : null}
     </div>
@@ -320,12 +374,7 @@ export const PhotoScene = memo(function PhotoScene({ data, movie, active, reduce
 
 /** Without photos, the montage is a run of title cards made from the gift's own words. */
 export function montageCards(data: XsoData): string[] {
-  return [
-    ...data.greenFlags.slice(0, 2),
-    ...data.lineItems.slice(0, 2).map((item) => item.description),
-  ]
-    .filter(Boolean)
-    .slice(0, 3);
+  return montageFallback(data).slice(0, 3);
 }
 
 export const TitleCards = memo(function TitleCards({ data, stage }: SceneProps) {
@@ -335,7 +384,7 @@ export const TitleCards = memo(function TitleCards({ data, stage }: SceneProps) 
       {cards.map((text, i) => (
         <p
           key={i}
-          className={`w-full rounded-sm border border-[#fdba74]/25 bg-[#1b0e0b] px-5 py-4 text-center font-serif italic text-[#fffaf0] ${stage.big ? 'max-w-[520px] text-[22px]' : 'max-w-[320px] text-[18px]'}`}
+          className={`w-full break-words rounded-sm border border-[#fdba74]/25 bg-[#1b0e0b] px-5 py-4 text-center font-serif italic leading-snug text-[#fffaf0] [overflow-wrap:anywhere] ${stage.big ? 'max-w-[520px] text-[22px]' : 'max-w-[320px] text-[18px]'}`}
           style={{ transform: `rotate(${[-1.5, 1, -0.5][i]}deg)` }}
         >
           {text}
