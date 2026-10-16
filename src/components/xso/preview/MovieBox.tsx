@@ -721,15 +721,18 @@ const FrameBody = memo(function FrameBody({
         </p>
         <div className="mt-2 space-y-1.5">
           {Object.entries(data.auditMetrics).map(([key, score]) => (
-            <div key={key} className="flex items-center gap-2">
-              <span className="w-16 truncate font-receipt text-[9px] uppercase tracking-[0.14em] text-[#fffaf0]/75">
+            <div key={key} className="grid grid-cols-[minmax(0,1fr)_2fr_1.5rem] items-center gap-2">
+              <span className="break-words font-receipt text-[9px] uppercase leading-tight tracking-[0.1em] text-[#fffaf0]/75 [overflow-wrap:anywhere]">
                 {auditLabel(data, key as keyof AuditMetrics)}
               </span>
-              <span className="h-1 flex-1 overflow-hidden rounded-full bg-[#fffaf0]/10">
+              <span className="h-1.5 overflow-hidden rounded-full bg-[#fffaf0]/10">
                 <span
                   className="block h-full origin-left rounded-full bg-gradient-to-r from-[#fdba74] to-[#f472b6]"
                   style={{ transform: `scaleX(${score / 100})` }}
                 />
+              </span>
+              <span className="text-right font-receipt text-[9px] tabular-nums text-[#fffaf0]/75">
+                {score}
               </span>
             </div>
           ))}

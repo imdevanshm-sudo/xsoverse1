@@ -116,6 +116,60 @@ export const ReceiptScene = memo(function ReceiptScene({
 const BAR_START = 0.5;
 const BAR_STAGGER = 0.28;
 
+/** One audit row: label wraps, bar fills proportionally, score counts up with it. */
+const AuditBar = memo(function AuditBar({
+  label,
+  score,
+  delay,
+  reduce,
+  active,
+}: {
+  label: string;
+  score: number;
+  delay: number;
+  reduce: boolean;
+  active: boolean;
+}) {
+  const [shown, setShown] = useState(reduce || !active ? score : 0);
+  useEffect(() => {
+    if (reduce || !active) {
+      setShown(score);
+      return;
+    }
+    setShown(0);
+    const controls = animate(0, score, {
+      duration: 0.9,
+      delay,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate: (v) => setShown(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [active, delay, reduce, score]);
+
+  return (
+    <li className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,2.2fr)_2.5rem] items-center gap-2.5 sm:gap-3">
+      <span className="break-words font-receipt text-[13px] uppercase leading-tight tracking-[0.08em] text-[#fffaf0]/85 [overflow-wrap:anywhere] sm:text-[14px]">
+        {label}
+      </span>
+      <span className="h-2.5 overflow-hidden rounded-full bg-[#fffaf0]/10">
+        <motion.span
+          className="block h-full origin-left rounded-full bg-gradient-to-r from-[#fdba74] to-[#f472b6]"
+          initial={reduce ? false : { scaleX: 0 }}
+          animate={{ scaleX: active ? score / 100 : 0 }}
+          transition={{
+            duration: reduce ? 0 : 0.9,
+            delay: reduce ? 0 : delay,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        />
+      </span>
+      <span className="text-right font-receipt text-[14px] tabular-nums text-[#fffaf0]/85">
+        {shown}
+      </span>
+    </li>
+  );
+});
+
 /** The audit: bars fill one after another while the star rating counts up to its score. */
 export const AuditScene = memo(function AuditScene({
   data,
@@ -137,6 +191,7 @@ export const AuditScene = memo(function AuditScene({
       setRating(movie.stars);
       return;
     }
+    setRating(0);
     const total = BAR_START + BAR_STAGGER * metrics.length + 0.6;
     const controls = animate(0, movie.stars, {
       duration: total,
@@ -156,7 +211,7 @@ export const AuditScene = memo(function AuditScene({
     };
   }, [active, metrics, movie.stars, reduce]);
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-6">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-5 sm:px-6">
       <Slate index={index} title={sceneTitle(movie, scene, data)} big={big} />
       <p
         className={`font-serif font-semibold text-[#fffaf0] ${big ? 'text-[56px]' : 'text-[44px]'}`}
@@ -169,31 +224,16 @@ export const AuditScene = memo(function AuditScene({
           ★
         </span>
       </p>
-      <ul className={`w-full space-y-3 ${big ? 'max-w-[520px]' : 'max-w-[330px]'}`}>
+      <ul className={`w-full space-y-3.5 ${big ? 'max-w-[560px]' : 'max-w-[360px]'}`}>
         {metrics.map(([key, score], i) => (
-          <li
+          <AuditBar
             key={key}
-            className="grid grid-cols-[minmax(0,8.5rem)_1fr_2.25rem] items-center gap-3"
-          >
-            <span className="truncate font-receipt text-[14px] uppercase tracking-[0.1em] text-[#fffaf0]/85">
-              {auditLabel(data, key)}
-            </span>
-            <span className="h-2 overflow-hidden rounded-full bg-[#fffaf0]/10">
-              <motion.span
-                className="block h-full origin-left rounded-full bg-gradient-to-r from-[#fdba74] to-[#f472b6]"
-                initial={reduce ? false : { scaleX: 0 }}
-                animate={{ scaleX: score / 100 }}
-                transition={{
-                  duration: reduce ? 0 : 0.9,
-                  delay: reduce ? 0 : BAR_START + i * BAR_STAGGER,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              />
-            </span>
-            <span className="text-right font-receipt text-[14px] tabular-nums text-[#fffaf0]/85">
-              {score}
-            </span>
-          </li>
+            label={auditLabel(data, key)}
+            score={score}
+            delay={BAR_START + i * BAR_STAGGER}
+            reduce={reduce}
+            active={active}
+          />
         ))}
       </ul>
     </div>
