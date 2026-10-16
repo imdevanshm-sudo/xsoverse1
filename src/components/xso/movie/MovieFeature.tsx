@@ -25,6 +25,7 @@ import {
   PhotoScene,
   ReceiptScene,
   Subtitle,
+  montageFallback,
   montagePhotos,
   type SceneProps,
 } from '@/components/xso/movie/scenes';
@@ -45,11 +46,28 @@ const MUSIC_AFTER_MS = 600;
 /** The score fades out over this long once "Fin" comes up. */
 const MUSIC_OUT_MS = 2000;
 
-/** How long each scene holds before the film moves on; the letter ends itself. */
-function sceneMs(scene: number, photos: number): number | null {
-  if (scene === 0) return 8000;
-  if (scene === 1) return 9000;
-  if (scene === 2) return Math.min(30000, Math.max(10000, photos * 5000));
+/** How long each scene holds before the film moves on; longer copy and more photos get more time. */
+function sceneMs(
+  scene: number,
+  data: XsoData,
+  movie: MovieLayers,
+  photos: number,
+): number | null {
+  const caption = movie.scenes[scene]?.caption?.length ?? 0;
+  if (scene === 0) {
+    const lines = data.lineItems
+      .slice(0, 5)
+      .reduce((n, item) => n + item.description.length + item.price.length, 0);
+    return Math.min(14000, Math.max(6500, 4500 + lines * 28 + caption * 18));
+  }
+  if (scene === 1) {
+    const rows = Object.keys(data.auditMetrics).length;
+    return Math.min(13000, Math.max(7500, 5200 + rows * 950 + caption * 15));
+  }
+  if (scene === 2) {
+    const slides = Math.max(photos, 1);
+    return Math.min(32000, Math.max(8000, slides * 5200));
+  }
   return null;
 }
 
@@ -125,14 +143,27 @@ export const MovieFeature = memo(function MovieFeature({
 
   /** Plays on by itself like a film; pause stops it, and reduced motion leaves it to the viewer. */
   const [paused, setPaused] = useState(false);
-  const photoCount = montagePhotos(data, movie).length;
+  const photoCount =
+    montagePhotos(data, movie).length || montageFallback(data).length || 1;
   useEffect(() => {
     if (!started || finished || paused || reduce || focusIndex !== undefined) return;
-    const ms = sceneMs(frame.scene, photoCount);
+    const ms = sceneMs(frame.scene, data, movie, photoCount);
     if (!ms) return;
     const timer = window.setTimeout(() => goTo(index + 1), ms);
     return () => window.clearTimeout(timer);
-  }, [finished, focusIndex, frame.scene, goTo, index, paused, photoCount, reduce, started]);
+  }, [
+    data,
+    finished,
+    focusIndex,
+    frame.scene,
+    goTo,
+    index,
+    movie,
+    paused,
+    photoCount,
+    reduce,
+    started,
+  ]);
 
   useEffect(() => {
     if (focusIndex === undefined) return;
@@ -226,6 +257,7 @@ export const MovieFeature = memo(function MovieFeature({
               onReplay={replay}
               giftId={data.id}
               recipientName={data.customerName}
+              senderName={data.billerName}
               cta={cta}
             />
           ) : (
@@ -323,7 +355,7 @@ export const MovieFeature = memo(function MovieFeature({
               </nav>
             </>
           )}
-          <span aria-hidden className="film-grain" style={{ zIndex: 25, opacity: 0.07 }} />
+          <span aria-hidden className="film-grain" style={{ zIndex: 25, opacity: 0.05 }} />
           <span aria-hidden className="movie-vignette" />
         </div>
       ) : null}
