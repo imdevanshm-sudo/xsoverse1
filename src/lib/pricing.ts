@@ -64,6 +64,15 @@ export const TIER_ORDER: TierId[] = ['classic', 'premium'];
 export const CLASSIC_STYLES: readonly GiftStyle[] = TIERS.classic.styles;
 export const PREMIUM_STYLES: readonly GiftStyle[] = TIERS.premium.styles;
 
+/**
+ * Shown on "Make one back" after a received gift ends (never earlier). Checkout must apply the
+ * same percent when a recipient starts from that CTA.
+ */
+export const RECIPIENT_OFFER = {
+  percentOff: 15,
+  label: '15% off your first keepsake',
+} as const;
+
 /** The tier an order lands in: by format, not by how many cards are in the stack. */
 export function resolveTier(style: GiftStyle): TierId {
   return CLASSIC_STYLES.includes(style) ? 'classic' : 'premium';

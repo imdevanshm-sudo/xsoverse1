@@ -55,7 +55,7 @@ const END_ONLY: GiftStyle[] = ['rewind'];
 const RIP_AT_MS = 320;
 
 /** Formats whose sound toggle spells out "Sound on" / "Sound off" in a larger pill. */
-const LABELED_SOUND: GiftStyle[] = ['accordion', 'loop'];
+const LABELED_SOUND: GiftStyle[] = ['accordion', 'loop', 'moviebox'];
 
 async function fetchContents(giftId: string): Promise<XsoData> {
   const response = await fetch(`/api/gifts/${encodeURIComponent(giftId)}/open`, {

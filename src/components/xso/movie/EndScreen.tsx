@@ -7,10 +7,11 @@ import type { StageSize } from '@/components/xso/movie/useStage';
 import { viewPath } from '@/lib/giftLinks';
 import { track } from '@/lib/analytics';
 import { ShareStoryButton } from '@/components/xso/ShareStory';
+import { RECIPIENT_OFFER, formatPrice, quote } from '@/lib/pricing';
 
 /**
- * The closing card: "Fin.", then the way back to the store, sharing and a replay. Drafts in the
- * studio (`cta` off) only get the replay.
+ * The closing card: "Fin.", credits, then replay / share / Make one back.
+ * The recipient offer never appears earlier than this screen.
  */
 export const EndScreen = memo(function EndScreen({
   stage,
@@ -18,6 +19,7 @@ export const EndScreen = memo(function EndScreen({
   onReplay,
   giftId,
   recipientName,
+  senderName,
   cta,
 }: {
   stage: StageSize;
@@ -25,10 +27,13 @@ export const EndScreen = memo(function EndScreen({
   onReplay: () => void;
   giftId: string;
   recipientName: string;
+  senderName: string;
   cta: boolean;
 }) {
   const { big } = stage;
   const [copied, setCopied] = useState(false);
+  const list = quote({ style: 'moviebox' });
+  const discounted = Math.round(list.total * (1 - RECIPIENT_OFFER.percentOff / 100));
 
   /** Always the recipient's link, never the page URL (the sender's preview carries a key). */
   const share = async () => {
@@ -38,19 +43,23 @@ export const EndScreen = memo(function EndScreen({
     if (navigator.share) {
       try {
         await navigator.share({ title, url });
-      } catch {}
+      } catch {
+        /* dismissed */
+      }
       return;
     }
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   };
 
   return (
     <motion.div
-      className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-7 bg-[#050203] px-6 text-center"
+      className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-[#050203] px-6 text-center"
       initial={reduce ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1.4, ease: 'easeInOut' }}
@@ -62,6 +71,20 @@ export const EndScreen = memo(function EndScreen({
         transition={{ duration: 1.6, delay: reduce ? 0 : 0.4, ease: 'easeOut' }}
       >
         Fin.
+      </motion.p>
+
+      <motion.p
+        className={`max-w-[28ch] font-receipt uppercase tracking-[0.18em] text-[#fffaf0]/7 ${big ? 'text-[13px]' : 'text-[11px]'}`}
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: reduce ? 0 : 1.1 }}
+      >
+        {[
+          senderName ? `Directed by ${senderName}` : null,
+          recipientName ? `Starring ${recipientName}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       </motion.p>
 
       {cta ? (
@@ -77,6 +100,9 @@ export const EndScreen = memo(function EndScreen({
             className="matte-cta flex min-h-[4rem] w-full flex-col items-center justify-center rounded-full px-6 font-serif text-[20px] font-semibold leading-tight shadow-[0_14px_40px_rgba(236,72,153,.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fdba74]"
           >
             Make one back
+            <span className="mt-1 font-receipt text-[11px] font-normal uppercase tracking-[0.16em] opacity-90">
+              {RECIPIENT_OFFER.label} · from {formatPrice(discounted)}
+            </span>
           </a>
           <button
             type="button"
@@ -84,7 +110,7 @@ export const EndScreen = memo(function EndScreen({
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#fffaf0]/30 px-5 font-receipt text-[13px] uppercase tracking-[0.16em] text-[#fffaf0] transition-colors hover:border-[#fdba74]/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
           >
             <Share2 className="h-4 w-4" aria-hidden />
-            {copied ? 'Link copied' : 'Share this'}
+            {copied ? 'Link copied' : 'Share'}
           </button>
           <ShareStoryButton
             source="movie_end"
@@ -96,10 +122,10 @@ export const EndScreen = memo(function EndScreen({
       <button
         type="button"
         onClick={onReplay}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 font-receipt text-[12px] uppercase tracking-[0.18em] text-[#fffaf0]/70 transition-colors hover:text-[#fffaf0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+        className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 font-receipt text-[12px] uppercase tracking-[0.18em] text-[#fffaf0]/7 transition-colors hover:text-[#fffaf0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
       >
         <RotateCcw className="h-4 w-4" aria-hidden />
-        Watch again
+        Replay
       </button>
       <p className="sr-only" role="status">
         {copied ? 'Link copied' : ''}
