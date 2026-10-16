@@ -932,6 +932,158 @@ const FOLD_NAMES: Record<Artifact['id'], string> = {
 
 type FoldType = (typeof TYPE)['narrow'];
 
+const BAR_START = 0.35;
+const BAR_STAGGER = 0.28;
+
+/** One audit row: wrapping label, proportional fill, score counting up. */
+const AccordionAuditBar = memo(function AccordionAuditBar({
+  label,
+  score,
+  delay,
+  reduce,
+  active,
+  type: t,
+}: {
+  label: string;
+  score: number;
+  delay: number;
+  reduce: boolean;
+  active: boolean;
+  type: FoldType;
+}) {
+  const [shown, setShown] = useState(reduce || !active ? score : 0);
+  useEffect(() => {
+    if (reduce || !active) {
+      setShown(score);
+      return;
+    }
+    setShown(0);
+    const controls = animate(0, score, {
+      duration: 0.9,
+      delay,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate: (v) => setShown(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [active, delay, reduce, score]);
+
+  return (
+    <div>
+      <p
+        className={`flex justify-between gap-2 font-receipt uppercase tracking-[0.12em] ${t.audit}`}
+      >
+        <span className="min-w-0 break-words leading-tight [overflow-wrap:anywhere]">{label}</span>
+        <strong className="shrink-0 tabular-nums">{shown}</strong>
+      </p>
+      <div className={`mt-1 overflow-hidden rounded-full bg-[#2d1b22]/10 ${t.bar}`}>
+        <motion.div
+          className="h-full origin-left rounded-full bg-gradient-to-r from-[#ec4899] to-[#fb923c]"
+          initial={reduce ? false : { scaleX: 0 }}
+          animate={{ scaleX: active ? score / 100 : 0 }}
+          transition={{
+            duration: reduce ? 0 : 0.9,
+            delay: reduce ? 0 : delay,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        />
+      </div>
+    </div>
+  );
+});
+
+/** Audit fold: bars fill in sequence, scores count up, Certified stamp drops in last. */
+const AuditFold = memo(function AuditFold({
+  data,
+  label,
+  wide,
+  current,
+  type: t,
+}: {
+  data: XsoData;
+  label: ReactNode;
+  wide: boolean;
+  current: boolean;
+  type: FoldType;
+}) {
+  const reduce = Boolean(useReducedMotion());
+  const metrics = useMemo(
+    () => Object.entries(data.auditMetrics) as [keyof AuditMetrics, number][],
+    [data.auditMetrics],
+  );
+  const stars = overallStars(data.auditMetrics);
+  const [rating, setRating] = useState(reduce || !current ? stars : 0);
+  const [stamped, setStamped] = useState(reduce || !current);
+  useEffect(() => {
+    if (!current) {
+      setRating(0);
+      setStamped(false);
+      return;
+    }
+    if (reduce) {
+      setRating(stars);
+      setStamped(true);
+      return;
+    }
+    setRating(0);
+    setStamped(false);
+    const total = BAR_START + BAR_STAGGER * metrics.length + 0.55;
+    const controls = animate(0, stars, {
+      duration: total,
+      ease: 'easeOut',
+      onUpdate: setRating,
+    });
+    const timers = [
+      ...metrics.map((_, i) =>
+        window.setTimeout(() => playSound('audit.tick'), (BAR_START + i * BAR_STAGGER) * 1000),
+      ),
+      window.setTimeout(() => {
+        setStamped(true);
+        playSound('audit.stamp');
+      }, total * 1000),
+    ];
+    return () => {
+      controls.stop();
+      timers.forEach((id) => window.clearTimeout(id));
+    };
+  }, [current, metrics, reduce, stars]);
+
+  return (
+    <div className="flex h-full flex-col">
+      {label}
+      <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
+        <span className="tabular-nums">{rating.toFixed(1)}</span> / 5 stars
+      </p>
+      <div className={`mt-3 min-h-0 flex-1 overflow-y-auto ${wide ? 'space-y-3' : 'space-y-2.5'}`}>
+        {metrics.map(([key, score], i) => (
+          <AccordionAuditBar
+            key={key}
+            label={auditLabel(data, key)}
+            score={score}
+            delay={BAR_START + i * BAR_STAGGER}
+            reduce={reduce}
+            active={current}
+            type={t}
+          />
+        ))}
+      </div>
+      <motion.p
+        className={`mt-3 self-end rounded border-2 border-[#b4234a]/80 font-receipt font-bold uppercase tracking-[0.18em] text-[#b4234a] ${t.stamp}`}
+        initial={false}
+        animate={
+          stamped
+            ? { opacity: 1, scale: 1, rotate: -6, y: 0 }
+            : { opacity: 0, scale: 1.35, rotate: -18, y: -18 }
+        }
+        transition={
+          reduce ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 14, mass: 0.75 }
+        }
+      >
+        {data.certifiedStampText}
+      </motion.p>
+    </div>
+  );
+});
+
 /** Receipt fold: line items reveal one by one; a stamp lands on the total. */
 const ReceiptFold = memo(function ReceiptFold({
   data,
@@ -1070,39 +1222,7 @@ const PanelFace = memo(function PanelFace({
     return <ReceiptFold data={data} label={label} wide={wide} current={current} type={t} />;
   }
   if (id === 'audit') {
-    return (
-      <div className="flex h-full flex-col">
-        {label}
-        <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
-          {overallStars(data.auditMetrics).toFixed(1)} / 5 stars
-        </p>
-        <div
-          className={`mt-2 min-h-0 flex-1 overflow-hidden ${wide ? 'space-y-2.5' : 'space-y-1.5'}`}
-        >
-          {Object.entries(data.auditMetrics).map(([key, score]) => (
-            <div key={key}>
-              <p
-                className={`flex justify-between gap-2 font-receipt uppercase tracking-[0.14em] ${t.audit}`}
-              >
-                <span className="truncate">{auditLabel(data, key as keyof AuditMetrics)}</span>
-                <strong>{score}</strong>
-              </p>
-              <div className={`mt-0.5 overflow-hidden rounded-full bg-[#2d1b22]/10 ${t.bar}`}>
-                <div
-                  className="h-full origin-left rounded-full bg-gradient-to-r from-[#ec4899] to-[#fb923c]"
-                  style={{ transform: `scaleX(${score / 100})` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-        <p
-          className={`mt-2 self-end -rotate-6 rounded border-2 border-[#b4234a]/70 font-receipt font-bold uppercase tracking-[0.18em] text-[#b4234a]/80 ${t.stamp}`}
-        >
-          {data.certifiedStampText}
-        </p>
-      </div>
-    );
+    return <AuditFold data={data} label={label} wide={wide} current={current} type={t} />;
   }
   if (id === 'photos') {
     const prints = printsOf(data);
