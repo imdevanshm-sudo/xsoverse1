@@ -346,7 +346,7 @@ const Projector = memo(function Projector({
           >
             {story.subtitles[scene]}
           </motion.p>
-          <span className="film-screen__hint">{notes ? 'hide notes' : "director's notes"}</span>
+          {notes ? <span className="film-screen__hint">hide notes</span> : null}
         </motion.button>
 
         <AnimatePresence>
