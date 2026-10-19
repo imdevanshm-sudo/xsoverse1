@@ -14,7 +14,7 @@ import type { AddOnId } from '@/lib/pricing';
 
 /** From display name must stay "XSO"; address must be on the verified domain. */
 const FROM = process.env.MAIL_FROM?.trim() || 'XSO <xso@xsoverse.app>';
-const SUPPORT = process.env.MAIL_REPLY_TO?.trim() || 'xso@xsoverse.app';
+const SUPPORT = process.env.MAIL_REPLY_TO?.trim() || 'xsoverse@gmail.com';
 
 function resend(): Resend | null {
   const key = process.env.RESEND_API_KEY?.trim();

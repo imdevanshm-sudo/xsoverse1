@@ -270,10 +270,10 @@ export function Store() {
               <dd className="m-0 text-[#e0b4c6]">
                 Write to{' '}
                 <a
-                  href="mailto:xso@xsoverse.app"
+                  href="mailto:xsoverse@gmail.com"
                   className="inline-block py-2.5 text-[#f9a8d4] underline decoration-[#f9a8d4]/40 underline-offset-4"
                 >
-                  xso@xsoverse.app
+                  xsoverse@gmail.com
                 </a>
                 .
               </dd>

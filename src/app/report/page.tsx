@@ -20,7 +20,7 @@ export default function ReportPage({
   const body = giftId
     ? `I received a keepsake I did not expect.\n\nGift ID: ${giftId}\n\n(Please add any details below.)\n`
     : 'I received a keepsake I did not expect.\n\n(Please add any details below.)\n';
-  const mailto = `mailto:xso@xsoverse.app?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const mailto = `mailto:xsoverse@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return (
     <main className="desk min-app-h">
