@@ -49,7 +49,7 @@ export const StickyCreateBar = memo(function StickyCreateBar({
             {displayTitle(cart)}
           </span>
           <span className="block truncate font-receipt text-[11px] uppercase tracking-[0.12em] text-[#c99aae]">
-            {price ? `${price} · ` : ''}No shipping
+            {price ?? 'No shipping'}
           </span>
         </span>
         <button

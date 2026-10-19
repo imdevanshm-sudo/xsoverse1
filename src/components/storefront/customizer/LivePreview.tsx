@@ -46,7 +46,7 @@ export const FormatShowcase = memo(function FormatShowcase({
           <FormatThumb data={data} style={style} fit interactive stillUntilTap />
         </motion.div>
       </div>
-      <p className="mt-3 text-center font-serif text-[15px] font-semibold text-[#fed7aa]">
+      <p className="mt-3 text-balance text-center font-serif text-[15px] font-semibold text-[#fed7aa]">
         {cart.tagline}
       </p>
     </div>

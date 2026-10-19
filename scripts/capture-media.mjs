@@ -39,7 +39,11 @@ const STYLES = [
     id: 'moviebox',
     stage: '.movie-stage',
     act: '[aria-label="Play"]',
-    /** The Movie Box is the keepsake box in the receiver experience; Play lifts its lid. */
+    /**
+     * The Movie Box is the keepsake box in the receiver experience; Play lifts its lid. A shorter
+     * phone keeps its titles and box together at the other stills' portrait shape.
+     */
+    viewport: { width: 390, height: 560 },
     prepare: async (page) => {
       await page.getByRole('button', { name: /see receiver experience/i }).first().click();
       const seal = page.getByRole('button', { name: /break seal/i }).first();
@@ -47,6 +51,16 @@ const STYLES = [
       await page.waitForTimeout(1200);
       await seal.click();
       await page.waitForSelector('[data-keepsake="ready"]', { timeout: 30_000 });
+      /* Only the gift: no preview watermark, exit button or sound toggle in the still. */
+      await page.addStyleTag({
+        content:
+          '[data-preview-watermark], [aria-label="Receiver preview"] > button { display: none !important; }',
+      });
+      await page.evaluate(() =>
+        document.querySelectorAll('button').forEach((button) => {
+          if (/sound (on|off)/i.test(button.textContent || '')) button.style.visibility = 'hidden';
+        }),
+      );
       await page.waitForTimeout(1500);
     },
   },
@@ -75,7 +89,7 @@ async function toWebp(page, pngPath, outPath, width, quality = 0.7) {
 
 async function captureStyle(browser, style, work) {
   const page = await browser.newPage({
-    viewport: { width: 390, height: 844 },
+    viewport: style.viewport ?? { width: 390, height: 844 },
     deviceScaleFactor: 2,
     reducedMotion: 'no-preference',
   });

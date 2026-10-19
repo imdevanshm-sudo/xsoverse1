@@ -157,13 +157,16 @@ export function Store() {
           </Link>
         </header>
 
-        <section className="mt-7 text-center sm:mt-11" aria-labelledby="hero-heading">
+        <section
+          className="mt-7 text-center sm:mt-11 [@media(max-height:480px)]:mt-4"
+          aria-labelledby="hero-heading"
+        >
           <p className="font-receipt text-[11px] uppercase tracking-[0.22em] text-[#f9a8d4]">
             Keepsakes for the words you never said
           </p>
           <h1
             id="hero-heading"
-            className="mt-3 text-balance font-serif text-[2.2rem] font-semibold leading-[1.04] tracking-[-0.02em] text-[#fdf2f8] sm:text-[3rem]"
+            className="mt-3 text-balance font-serif text-[2.2rem] font-semibold leading-[1.04] tracking-[-0.02em] text-[#fdf2f8] sm:text-[3rem] [@media(max-height:480px)]:text-[2rem]"
           >
             Turn your memories into a gift they can <em className="font-medium text-[#f9a8d4]">open.</em>
           </h1>
@@ -314,11 +317,11 @@ const BentoCard = memo(function BentoCard({
           type="button"
           onClick={() => onExample(format.style)}
           aria-label={`Watch an example ${format.name}`}
-          className="group relative block aspect-[4/3] w-[42%] shrink-0 touch-manipulation overflow-hidden rounded-2xl bg-[#1a0f14] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
+          className="group relative block aspect-[4/5] w-[40%] shrink-0 touch-manipulation self-start overflow-hidden rounded-2xl bg-[#1a0f14] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
         >
           <StyleThumb
             style={format.style}
-            sizes="(max-width: 640px) 42vw, 240px"
+            sizes="(max-width: 640px) 40vw, 230px"
             priority={priority}
             className="transition-transform duration-300 group-hover:scale-[1.04]"
           />
@@ -337,11 +340,11 @@ const BentoCard = memo(function BentoCard({
             {cart.tagline}
           </p>
           <p className="mt-1 text-[13.5px] leading-snug text-[#e0b4c6]">{format.blurb}</p>
+          <p className="mt-2 font-receipt text-[11px] uppercase leading-snug tracking-[0.12em] text-[#c99aae]">
+            Best for: {format.bestFor}
+          </p>
         </div>
       </div>
-      <p className="mt-2.5 px-1 font-receipt text-[11px] uppercase tracking-[0.14em] text-[#c99aae]">
-        Best for: {format.bestFor}
-      </p>
       <div className="mt-2.5 grid grid-cols-2 gap-2">
         <button
           type="button"
