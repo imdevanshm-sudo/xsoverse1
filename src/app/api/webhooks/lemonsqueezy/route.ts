@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { decodeAddOns, getLemonConfig } from '@/lib/lemon';
 import { fulfillGiftPayment, getGift, type StoredGift } from '@/lib/giftStore';
+import { logRef } from '@/lib/giftLinks';
 import { verifyPaidOrder, type ExpectedPayment, type LemonOrderPayload } from '@/lib/lemonOrder';
 import { isEmail, mailConfigured, sendBuyerGiftReady } from '@/lib/mail';
 import { quote } from '@/lib/pricing';
@@ -36,9 +37,7 @@ function expectedPaymentOf(gift: StoredGift): ExpectedPayment {
 }
 
 /** Logs can carry the order's UUID but not the gift ID, which opens the gift. */
-function giftRef(giftId: string) {
-  return `${giftId.slice(0, 8)}…`;
-}
+const giftRef = logRef;
 
 export async function POST(request: Request) {
   const config = getLemonConfig();

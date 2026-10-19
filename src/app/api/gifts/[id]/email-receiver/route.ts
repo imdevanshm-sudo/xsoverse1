@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getGift } from '@/lib/giftStore';
+import { logRef } from '@/lib/giftLinks';
 import { isManageKey } from '@/lib/manageKey';
 import { isEmail, mailConfigured, sendReceiverGiftLink } from '@/lib/mail';
 
@@ -56,7 +57,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     });
     lastSent.set(gift.id, Date.now());
   } catch (error) {
-    console.error('[mail] receiver gift failed', gift.id, String(error));
+    console.error('[mail] receiver gift failed', logRef(gift.id), String(error));
     return NextResponse.json(
       { error: 'We couldn’t send that email. Try again in a minute.' },
       { status: 502 },

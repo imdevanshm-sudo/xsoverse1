@@ -109,7 +109,12 @@ export async function POST(request: Request) {
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
-    const message = error instanceof Error ? error.message : 'Checkout failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message = error instanceof Error ? error.message : '';
+    /** Lemon's own messages help the buyer; storage and other internals stay in the log. */
+    const shown = /Lemon Squeezy|Checkout is temporarily unavailable/.test(message)
+      ? message
+      : 'Checkout failed. Please try again in a minute.';
+    console.error('[checkout]', message || error);
+    return NextResponse.json({ error: shown }, { status: 500 });
   }
 }

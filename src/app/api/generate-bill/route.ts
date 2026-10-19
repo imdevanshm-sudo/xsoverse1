@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
+import { ipThrottle } from '@/lib/ipThrottle';
 
 export const runtime = 'nodejs';
 
@@ -73,8 +74,20 @@ function fallbackBill(body: {
   };
 }
 
+/** Public and paid per call: a few bills per IP, and short inputs, before anything reaches the model. */
+const throttled = ipThrottle(10, 60 * 60_000);
+const FIELD_MAX = 120;
+
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
+  if (throttled(req)) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  }
+  const raw = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const body = Object.fromEntries(
+    ['biller_name', 'customer_name', 'occasion', 'vibe', 'inside_jokes']
+      .filter((key) => typeof raw?.[key] === 'string')
+      .map((key) => [key, (raw[key] as string).slice(0, key === 'inside_jokes' ? 400 : FIELD_MAX)]),
+  ) as Partial<Record<'biller_name' | 'customer_name' | 'occasion' | 'vibe' | 'inside_jokes', string>>;
   const {
     biller_name = 'Anonymous',
     customer_name = 'Bestie',
@@ -129,10 +142,7 @@ Be chaotic, funny, self-deprecating, ultra-relatable.`;
     console.error('[generate-bill]', error);
     return NextResponse.json({
       ...fallbackBill(body),
-      _meta: {
-        source: 'fallback',
-        reason: error instanceof Error ? error.message : 'Gemini request failed',
-      },
+      _meta: { source: 'fallback', reason: 'Gemini request failed' },
     });
   }
 }

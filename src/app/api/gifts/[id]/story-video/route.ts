@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getGift } from '@/lib/giftStore';
-import { viewPath } from '@/lib/giftLinks';
+import { logRef, viewPath } from '@/lib/giftLinks';
+import { ipThrottle } from '@/lib/ipThrottle';
 import { getSupabaseServer, isSupabaseConfigured } from '@/lib/supabaseServer';
 import { recordGift } from '@/lib/storyRecorder';
 
@@ -13,6 +14,10 @@ const BUCKET = 'story-videos';
 const URL_SECONDS = 60 * 60;
 /** Bump when the recording changes, so gifts are re-recorded instead of served stale. */
 const RECORDING_VERSION = 7;
+
+/** A recording is a headless browser for up to a few minutes: one per gift at a time, few per IP. */
+const recording = new Map<string, Promise<string>>();
+const throttled = ipThrottle(6, 60 * 60_000);
 
 let bucketReady: Promise<void> | null = null;
 
@@ -64,16 +69,29 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const cached = await signed(path);
     if (cached) return NextResponse.json({ url: cached }, { headers: PRIVATE });
 
-    const video = await recordGift(`${origin}${viewPath(gift.id)}`, gift.data.giftStyle);
-    const { error } = await getSupabaseServer()
-      .storage.from(BUCKET)
-      .upload(path, video, { contentType: 'video/mp4', upsert: true });
-    if (error) throw new Error(error.message);
-    const url = await signed(path);
-    if (!url) throw new Error('Could not sign the video');
-    return NextResponse.json({ url }, { headers: PRIVATE });
+    let job = recording.get(gift.id);
+    if (!job) {
+      if (throttled(request)) {
+        return NextResponse.json(
+          { error: 'Too many videos for now. Try again in a little while.' },
+          { status: 429, headers: PRIVATE },
+        );
+      }
+      job = (async () => {
+        const video = await recordGift(`${origin}${viewPath(gift.id)}`, gift.data.giftStyle);
+        const { error } = await getSupabaseServer()
+          .storage.from(BUCKET)
+          .upload(path, video, { contentType: 'video/mp4', upsert: true });
+        if (error) throw new Error(error.message);
+        const url = await signed(path);
+        if (!url) throw new Error('Could not sign the video');
+        return url;
+      })().finally(() => recording.delete(gift.id));
+      recording.set(gift.id, job);
+    }
+    return NextResponse.json({ url: await job }, { headers: PRIVATE });
   } catch (error) {
-    console.error('[story-video]', gift.id, error);
+    console.error('[story-video]', logRef(gift.id), error);
     return NextResponse.json(
       { error: 'We couldn’t record your gift right now. Try again in a minute.' },
       { status: 500, headers: PRIVATE },

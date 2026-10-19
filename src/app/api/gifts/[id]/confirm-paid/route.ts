@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getGift } from '@/lib/giftStore';
+import { logRef } from '@/lib/giftLinks';
 import { isManageKey } from '@/lib/manageKey';
 import { isEmail, mailConfigured, sendBuyerGiftReady } from '@/lib/mail';
 
 export const runtime = 'nodejs';
+
+/** The re-send goes to any address the dashboard types in, so one per gift per minute. */
+const lastSent = new Map<string, number>();
+const COOLDOWN_MS = 60_000;
 
 /**
  * Reports a gift's payment status to its dashboard and, once paid, re-sends the buyer's links.
@@ -35,6 +40,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   let emailed: 'sent' | 'skipped' | 'failed' = 'skipped';
   if (isEmail(body.email) && mailConfigured()) {
+    if (Date.now() - (lastSent.get(gift.id) ?? 0) < COOLDOWN_MS) {
+      return NextResponse.json(
+        { id: gift.id, status: gift.status, emailed: 'skipped', error: 'Already sent. Wait a minute before sending again.' },
+        { status: 429 },
+      );
+    }
+    lastSent.set(gift.id, Date.now());
     try {
       await sendBuyerGiftReady({
         to: body.email.trim(),
@@ -51,7 +63,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       emailed = 'sent';
     } catch (error) {
       emailed = 'failed';
-      console.error('[mail] confirm-paid buyer email failed', String(error));
+      lastSent.delete(gift.id);
+      console.error('[mail] confirm-paid buyer email failed', logRef(gift.id), String(error));
     }
   }
 

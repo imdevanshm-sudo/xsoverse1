@@ -329,6 +329,43 @@ describe('payment unlock (P0-1)', () => {
     await signedWebhook(orderFor(withSong, { amount: songPrice, addOns: 'spotify_song' }));
     assert.deepEqual((await getGift(withSong)).addOns.paid, ['spotify_song']);
   });
+
+  test('7. the dashboard re-send cannot be used to email an address over and over', async () => {
+    const { giftId } = await startCheckout();
+    await signedWebhook(orderFor(giftId));
+    const key = manageKey(giftId);
+    const emailsBefore = network.emails.length;
+
+    const first = await confirmPaid(giftId, { key, email: 'someone@example.test' });
+    assert.equal((await first.json()).emailed, 'sent');
+    const again = await confirmPaid(giftId, { key, email: 'someone-else@example.test' });
+    assert.equal(again.status, 429);
+    assert.equal(network.emails.length, emailsBefore + 1, 'only one re-send per cooldown');
+
+    const wrongKey = await confirmPaid(giftId, { key: 'not-the-key', email: 'x@example.test' });
+    assert.equal(wrongKey.status, 404);
+    assert.equal(network.emails.length, emailsBefore + 1);
+  });
+
+  test('8. an unpaid gift is never emailed out by the dashboard re-send', async () => {
+    const { giftId } = await startCheckout();
+    const emailsBefore = network.emails.length;
+    const res = await confirmPaid(giftId, { key: manageKey(giftId), email: 'buyer@example.test' });
+    assert.equal((await res.json()).emailed, 'skipped');
+    assert.equal(network.emails.length, emailsBefore);
+    await assertLocked(giftId);
+  });
+});
+
+describe('log redaction', () => {
+  test('gift IDs, which open gifts, are cut down before they reach the log', async () => {
+    const { logRef, redactGiftPath } = await import(src('lib/giftLinks.ts'));
+    const id = 'xso_AbCdEfGhIjKlMnOpQrSt';
+    assert.equal(logRef(id), 'xso_AbCd…');
+    const path = redactGiftPath(`/xso/${id}/view and https://x.test/xso/${id}/manage?key=…`);
+    assert.ok(!path.includes(id), path);
+    assert.ok(path.includes('/xso/xso_AbCd…/view'), path);
+  });
 });
 
 describe('verifyPaidOrder', () => {
