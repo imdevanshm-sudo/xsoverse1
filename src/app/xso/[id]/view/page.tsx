@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: ViewPageProps): Promise<Metad
     description: 'Made for you alone.',
     robots,
     openGraph: { title, description: 'Made for you alone.', type: 'website' },
-    twitter: { card: 'summary', title },
+    twitter: { card: 'summary_large_image', title },
   };
 }
 

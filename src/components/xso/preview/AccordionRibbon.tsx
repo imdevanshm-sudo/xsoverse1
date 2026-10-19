@@ -34,6 +34,7 @@ import { ActiveScope } from '@/components/xso/stage/ActiveScope';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { PolaroidThumb } from '@/components/xso/PolaroidThumb';
+import { StoreName } from '@/components/xso/StoreName';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { getArtifacts, withSong, type Artifact } from '@/components/xso/viewers/shared';
 import { SongFold } from '@/components/xso/song/OurSong';
@@ -245,14 +246,20 @@ const Ribbon = memo(function Ribbon({
   }, []);
   /** Recipients: full-bleed on phones, 560–720px reading column on desktop. */
   const fill = size === 'fill';
+  /** A phone on its side: the fold takes all the height there is, at phone type sizes. */
+  const short = fill && box.h > 0 && box.h < 360 && box.w > box.h;
   const panelW = fill
-    ? box.w < 768
-      ? Math.max(280, box.w - 8)
-      : clamp(Math.round(box.w * 0.72), 560, 720)
+    ? short
+      ? Math.min(box.w - 8, 500)
+      : box.w < 768
+        ? Math.max(280, box.w - 8)
+        : clamp(Math.round(box.w * 0.72), 560, 720)
     : Math.min(box.w - 24, 360);
-  const wide = panelW >= 520;
+  const wide = !short && panelW >= 520;
   const panelH = fill
-    ? clamp(Math.round(Math.min(box.h * 0.72, panelW * (wide ? 0.85 : 1.2))), 280, 560)
+    ? short
+      ? Math.max(160, Math.round(box.h - 8))
+      : clamp(Math.round(Math.min(box.h * 0.72, panelW * (wide ? 0.85 : 1.2))), 280, 560)
     : clamp(Math.round(box.h * 0.56), 190, 320);
   const step = Math.round(panelH * SCROLL_PER_FOLD);
 
@@ -444,7 +451,7 @@ const Ribbon = memo(function Ribbon({
     if (performance.now() - pannedAt.current < 250) return;
     if (!opened) setOpen(true);
     else if (index !== active) goTo(index);
-    else if (coarse) goTo(active === last ? 0 : active + 1);
+    else if (coarse && active < last) goTo(active + 1);
   };
   const keepLooking = useCallback(() => {
     setDismissed(true);
@@ -698,7 +705,7 @@ const Ribbon = memo(function Ribbon({
         </div>
       </div>
       {coarse && size !== 'fill' ? (
-        <p className="mt-2 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#c99aae]">
+        <p className="mt-2 font-receipt text-[12px] uppercase tracking-[0.16em] text-[#c99aae]">
           {!opened
             ? 'Tap to unfold'
             : scrolly
@@ -779,9 +786,6 @@ const RibbonPanel = memo(function RibbonPanel({
   const creaseBottom = useTransform(fold, (f) =>
     reduce || index === f.angles.length - 1 ? 0 : creaseDepth(f.angles[index], f.angles[index + 1]),
   );
-  /** Fibre of the paper shifts slightly as the hinge turns. */
-  const grainShift = useTransform(rotateX, (a) => `${a * 0.35}px ${-a * 0.2}px`);
-
   return (
     <motion.div
       className="accordion-panel gpu-layer absolute inset-x-0 top-0"
@@ -796,7 +800,9 @@ const RibbonPanel = memo(function RibbonPanel({
       }}
       onClick={() => onSelect(index)}
     >
-      <div className={`accordion-panel__face ${wide ? 'accordion-panel__face--wide' : ''}`}>
+      <div
+        className={`accordion-panel__face ${wide ? 'accordion-panel__face--wide' : ''} ${id === 'end' ? 'accordion-panel__face--end' : ''}`}
+      >
         {id === 'end' ? (
           <YourTurn
             source="accordion_end"
@@ -821,11 +827,7 @@ const RibbonPanel = memo(function RibbonPanel({
           </ActiveScope>
         )}
       </div>
-      <motion.span
-        aria-hidden
-        className="accordion-panel__grain"
-        style={{ backgroundPosition: grainShift }}
-      />
+      <span aria-hidden className="accordion-panel__grain" />
       {index > 0 ? (
         <>
           <span aria-hidden className="accordion-panel__seam" />
@@ -899,14 +901,14 @@ const FoldButton = memo(function FoldButton({
 /** Two type scales: the phone-sized ribbon, and the desktop reading column. */
 const TYPE = {
   narrow: {
-    label: 'text-[11px] tracking-[0.2em]',
+    label: 'text-[13px] tracking-[0.16em]',
     title: 'text-[22px]',
     body: 'text-[14px]',
     total: 'text-[15px]',
     hand: 'text-[20px]',
     audit: 'text-[14px]',
     bar: 'h-2',
-    stamp: 'text-[12px] px-2.5 py-1',
+    stamp: 'text-[13px] px-2.5 py-1',
     dear: 'text-[28px]',
     letter: 'text-[20px]',
     signoff: 'text-[22px]',
@@ -1179,9 +1181,7 @@ const ReceiptFold = memo(function ReceiptFold({
   return (
     <div className={`xso-receipt flex h-full flex-col font-receipt leading-snug ${t.body}`}>
       {label}
-      <p className={`mt-1.5 font-serif font-semibold leading-tight ${t.title}`}>
-        {data.merchantName}
-      </p>
+      <StoreName name={data.merchantName} className={`mt-1.5 font-serif !tracking-normal ${t.title}`} />
       <p className={`uppercase opacity-60 ${t.label}`}>{data.timestamp}</p>
       <div className="my-2 border-t border-dashed border-current/40" />
       <ul className={`min-h-0 flex-1 space-y-1 overflow-y-auto ${wide ? 'space-y-1.5' : ''}`}>

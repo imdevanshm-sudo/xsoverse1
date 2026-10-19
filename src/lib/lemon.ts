@@ -6,6 +6,7 @@ import type { GiftStyle } from '@/types/xso';
 import { markGiftPaid, saveGift, type StoredGift } from '@/lib/giftStore';
 import { managePath } from '@/lib/giftLinks';
 import { manageKey } from '@/lib/manageKey';
+import type { ExpectedPayment } from '@/lib/lemonOrder';
 import type { XsoData } from '@/types/xso';
 
 export interface LemonConfig {
@@ -17,6 +18,12 @@ export interface LemonConfig {
    */
   variantId: string;
   webhookSecret?: string;
+  /** Signing secret of the separate webhook Lemon uses for test-mode events. */
+  testWebhookSecret?: string;
+  /** Owner testing switch: checkouts are created in Lemon test mode (test cards only). */
+  testMode: boolean;
+  /** The only buyers whose test-mode orders may unlock a gift on a production deploy. */
+  testEmails: string[];
 }
 
 export function getLemonConfig(): LemonConfig | null {
@@ -31,12 +38,21 @@ export function getLemonConfig(): LemonConfig | null {
     process.env.LEMONSQUEEZY_VARIANT_SINGLE;
   if (!apiKey || !storeId) return null;
   if (!variantId) return null;
+  /** Lemon API keys belong to one mode: test checkouts need a key created in test mode. */
+  const testMode = process.env.LEMONSQUEEZY_TEST_MODE === 'true';
+  const testKey = testMode ? process.env.LEMONSQUEEZY_TEST_API_KEY : undefined;
 
   return {
-    apiKey,
-    storeId,
-    variantId,
+    apiKey: testKey || apiKey,
+    storeId: (testKey && process.env.LEMONSQUEEZY_TEST_STORE_ID) || storeId,
+    variantId: (testKey && process.env.LEMONSQUEEZY_TEST_VARIANT_ID) || variantId,
     webhookSecret: process.env.LEMONSQUEEZY_WEBHOOK_SECRET,
+    testWebhookSecret: process.env.LEMONSQUEEZY_TEST_WEBHOOK_SECRET,
+    testMode,
+    testEmails: (process.env.LEMONSQUEEZY_TEST_EMAILS ?? '')
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
   };
 }
 
@@ -64,6 +80,7 @@ export function getAppUrl(requestUrl?: string): string {
 export async function createPendingGift(
   data: XsoData,
   addOns: readonly AddOnId[] = [],
+  expectedPayment?: ExpectedPayment,
 ): Promise<StoredGift> {
   const id = createGiftId();
   const payload = pickXsoPayload({ ...data, id });
@@ -73,6 +90,7 @@ export async function createPendingGift(
     status: 'pending',
     createdAt: new Date().toISOString(),
     addOns: addOns.length ? { requested: [...addOns], paid: [] } : undefined,
+    expectedPayment,
   });
 }
 
@@ -136,11 +154,6 @@ export async function createLemonCheckout(options: {
   ]
     .filter(Boolean)
     .join('\n');
-  /** Lemon Squeezy fetches media itself, so only public https URLs are usable. */
-  const thumb = options.appUrl.startsWith('https://')
-    ? `${options.appUrl}/thumbs/${options.giftStyle}.webp`
-    : null;
-
   const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
     method: 'POST',
     headers: {
@@ -153,6 +166,7 @@ export async function createLemonCheckout(options: {
         type: 'checkouts',
         attributes: {
           custom_price: options.quote.total,
+          ...(config.testMode ? { test_mode: true } : {}),
           checkout_data: {
             custom: {
               gift_id: options.giftId,
@@ -168,21 +182,21 @@ export async function createLemonCheckout(options: {
           product_options: {
             name: `XSO Keepsake for ${recipient} · ${aesthetic}`,
             description,
-            media: thumb ? [thumb] : undefined,
+            // No product media: custom thumbs + dark checkout were crashing Lemon's Vue
+            // checkout on store.xsoverse.app (blank screen / useCheckoutState loop).
             redirect_url: redirectUrl,
             receipt_button_text: 'Send their gift',
             receipt_link_url: redirectUrl,
             receipt_thank_you_note: `Your keepsake for ${recipient} is sealed. Open your dashboard to send the link.`,
           },
-          // Logo and store colors come from the store's Lemon Squeezy design settings; these
-          // per-checkout options match them to the dark XSO look.
+          // Light hosted checkout only. dark+embed on the custom domain blanks the page.
           checkout_options: {
-            embed: Boolean(options.overlay),
-            media: Boolean(thumb),
+            embed: false,
+            media: false,
             logo: true,
             desc: true,
             discount: true,
-            dark: true,
+            dark: false,
             button_color: '#EC4899',
           },
         },

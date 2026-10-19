@@ -17,23 +17,29 @@ export const metadata: Metadata = {
 
 type ManagePageProps = {
   params: { id: string };
-  searchParams: { key?: string | string[]; preview?: string };
+  searchParams: { key?: string | string[]; preview?: string; paid?: string };
 };
 
 export default async function ManagePage({ params, searchParams }: ManagePageProps) {
   if (!isManageKey(params.id, searchParams.key)) notFound();
   const gift = await getGift(params.id);
   if (!gift) notFound();
+  const manageKey = String(searchParams.key);
 
   return (
     <main className="desk grid min-app-h place-items-center px-4 py-10">
       {gift.status === 'paid' ? (
         <>
-          <SenderDashboard gift={gift} manageKey={String(searchParams.key)} />
+          <SenderDashboard gift={gift} manageKey={manageKey} />
           <TrackCheckoutComplete giftId={gift.id} />
         </>
       ) : (
-        <ManagePending giftId={gift.id} preview={searchParams.preview === '1'} />
+        <ManagePending
+          giftId={gift.id}
+          preview={searchParams.preview === '1'}
+          manageKey={manageKey}
+          paidRedirect={searchParams.paid === '1'}
+        />
       )}
     </main>
   );

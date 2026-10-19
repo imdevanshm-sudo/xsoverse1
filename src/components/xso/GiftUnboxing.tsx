@@ -4,6 +4,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type CSSProperties,
@@ -11,6 +12,7 @@ import {
 } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { PhoneFrame } from '@/components/xso/PhoneFrame';
+import { Pearl } from '@/components/xso/Pearl';
 import {
   AccordionRibbon,
   MemoryDeck,
@@ -54,6 +56,13 @@ const END_ONLY: GiftStyle[] = ['rewind'];
 /** The twine slips first; the paper tears as the flaps start to swing (FLAPS_AT). */
 const RIP_AT_MS = 320;
 
+/**
+ * From the Unwrap tap, the least time the pearl holds the stage before its light lifts to reveal
+ * the gift (about 0.8s more). Keep the reveal well inside the story recorder's 4.5s wait.
+ */
+const PEARL_HOLD_MS = 2600;
+const PEARL_HOLD_REDUCED_MS = 1400;
+
 /** Formats whose sound toggle spells out "Sound on" / "Sound off" in a larger pill. */
 const LABELED_SOUND: GiftStyle[] = ['accordion', 'loop', 'moviebox'];
 
@@ -94,27 +103,38 @@ export function GiftUnboxing({
   useSoundSurface();
   const reduce = Boolean(useReducedMotion());
   const [phase, setPhase] = useState<Phase>('wrapped');
+  /** The parcel has finished leaving; the pearl now holds the stage. */
+  const [parcelGone, setParcelGone] = useState(false);
+  const [pearlTimeUp, setPearlTimeUp] = useState(false);
+  /** Parcel and pearl are both gone: the gift is on stage and can be used. */
   const [wrapGone, setWrapGone] = useState(false);
   const [contents, setContents] = useState<XsoData | null>(null);
   const [failed, setFailed] = useState(false);
   const attempt = useRef(0);
   const ready = useAssetPreloader(TEXTURES, { enabled: !framed });
   const opening = useRef(false);
+  const pearlTimer = useRef<number>();
   const [finished, setFinished] = useState(false);
   const finish = useCallback(() => setFinished(true), []);
-  const latest = useRef({ giftId, draft, style: wrapper.giftStyle });
-  latest.current = { giftId, draft, style: wrapper.giftStyle };
+  const latest = useRef({ giftId, draft, style: wrapper.giftStyle, reduce, phase });
+  latest.current = { giftId, draft, style: wrapper.giftStyle, reduce, phase };
+  useEffect(() => () => window.clearTimeout(pearlTimer.current), []);
 
   /** Contents, their photos and the format's code all load while the wrap tears away. */
   const unwrap = useCallback(() => {
     if (opening.current) return;
     opening.current = true;
-    const { giftId: id, draft: local, style } = latest.current;
+    const { giftId: id, draft: local, style, reduce: still } = latest.current;
     optIn();
     playSound('unwrap.twine');
     playSound('unwrap.rip', { delayMs: RIP_AT_MS });
     setFailed(false);
     setPhase('opening');
+    window.clearTimeout(pearlTimer.current);
+    pearlTimer.current = window.setTimeout(
+      () => setPearlTimeUp(true),
+      still ? PEARL_HOLD_REDUCED_MS : PEARL_HOLD_MS,
+    );
     const run = ++attempt.current;
     const code = preloadFormat(style);
     const load = local ? Promise.resolve(local) : fetchContents(id);
@@ -126,7 +146,10 @@ export function GiftUnboxing({
       .catch(() => {
         if (run !== attempt.current) return;
         opening.current = false;
+        window.clearTimeout(pearlTimer.current);
         setFailed(true);
+        setParcelGone(false);
+        setPearlTimeUp(false);
         setWrapGone(false);
         setPhase('wrapped');
       });
@@ -161,7 +184,7 @@ export function GiftUnboxing({
     <StoryGiftProvider value={framed || draft ? null : giftId}>
       {lit ? <AccordionDesk /> : null}
       {toggle}
-      <AnimatePresence onExitComplete={() => setWrapGone(true)}>
+      <AnimatePresence onExitComplete={() => setParcelGone(true)}>
         {phase === 'wrapped' ? (
           <GiftWrap
             key="gift-wrap"
@@ -202,6 +225,16 @@ export function GiftUnboxing({
           <OpeningDot key="opening" lit={lit} />
         ) : null}
       </AnimatePresence>
+      {/* Holds until the parcel is gone, its minimum time is up and the gift is ready. */}
+      <AnimatePresence
+        onExitComplete={() => {
+          if (latest.current.phase === 'opening') setWrapGone(true);
+        }}
+      >
+        {phase === 'opening' && !(parcelGone && pearlTimeUp && contents) ? (
+          <PearlStage key="pearl" reduce={reduce} />
+        ) : null}
+      </AnimatePresence>
     </StoryGiftProvider>
   );
 
@@ -226,21 +259,16 @@ export function GiftUnboxing({
 }
 
 /**
- * The way back to the store from a received gift, in two sizes: a quiet pill that stays in the
- * corner once the gift has been open a while, and a clear call to action when the viewer reaches
- * the end of it.
+ * The way back to the store from a received gift: a quiet corner pill, but only once the viewer
+ * has reached the end (and set the closing sheet aside), so nothing is sold mid-gift.
  */
 const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
   const reduce = Boolean(useReducedMotion());
-  const [pill, setPill] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const pill = ended;
   const href = '/';
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setPill(true), 6000);
-    return () => window.clearTimeout(timer);
-  }, []);
   useEffect(() => {
     if (!ended || dismissed) return;
     const timer = window.setTimeout(() => setSheet(true), 1200);
@@ -277,7 +305,7 @@ const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
             key="make-one-back-sheet"
             data-chrome
             aria-label="Make one back"
-            className="absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-[70] mx-auto max-w-[420px] rounded-[28px] border border-white/10 bg-[#1b0f15]/95 p-5 text-center shadow-[0_30px_80px_-20px_rgba(0,0,0,.9)] backdrop-blur-md"
+            className="closing-sheet absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-[70] mx-auto max-w-[420px] rounded-[28px] border border-[#e8c48a]/20 p-5 pt-6 text-center shadow-[0_30px_80px_-20px_rgba(0,0,0,.9)] backdrop-blur-md"
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 40 }}
@@ -285,6 +313,10 @@ const MakeOneBack = memo(function MakeOneBack({ ended }: { ended: boolean }) {
               reduce ? { duration: 0.2 } : { type: 'spring', stiffness: 220, damping: 26 }
             }
           >
+            <div className="relative mx-auto mb-3 h-11 w-11">
+              <span aria-hidden className="pearl-floor absolute left-[-70%] top-[76%] h-[46%] w-[240%]" />
+              <Pearl className="relative h-full w-full drop-shadow-[0_0_14px_rgba(255,220,170,0.4)]" />
+            </div>
             <p className="font-receipt text-[12px] uppercase tracking-[0.2em] text-[#e0b4c6]">
               Your turn
             </p>
@@ -338,10 +370,12 @@ const OpeningDot = memo(function OpeningDot({ lit = false }: { lit?: boolean }) 
       transition={{ duration: 0.4 }}
     >
       <motion.span
-        className="block h-1.5 w-1.5 rounded-full bg-white"
+        className="block h-4 w-4"
         animate={{ opacity: [0.15, 0.85, 0.15] }}
         transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity }}
-      />
+      >
+        <Pearl className="h-full w-full" />
+      </motion.span>
     </motion.div>
   );
 });
@@ -423,7 +457,7 @@ const Souvenir = memo(function Souvenir({
       );
     default:
       return (
-        <div className="stage-surface flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
+        <div className="stage-surface loop-stage flex h-full items-center justify-center overflow-hidden bg-[#1a0f14] px-4 py-6">
           <FitStage {...CARD_DESIGN}>
             <div className={CARD_STAGE}>
               <MemoryDeck data={data} size="fill" cta={cta} onFinish={onFinish} />
@@ -520,6 +554,12 @@ const GiftWrap = memo(function GiftWrap({
         aria-hidden
       />
       <TwineBow matte={matte} reduce={reduce} />
+      {/* One warm lamp from the upper right; it goes out as the flaps open onto the dark. */}
+      <motion.div
+        aria-hidden
+        className={`parcel-light pointer-events-none absolute inset-0 ${matte ? 'parcel-light--matte' : ''}`}
+        exit={{ opacity: 0, transition: { delay: reduce ? 0 : FLAPS_AT, duration: 0.35 } }}
+      />
 
       <div className="absolute left-1/2 top-1/2 z-20 w-[min(84%,360px)] -translate-x-1/2 -translate-y-1/2 md:w-[min(84%,420px)]">
         <motion.div
@@ -537,13 +577,13 @@ const GiftWrap = memo(function GiftWrap({
             onClick={onUnwrap}
             whileHover={{ y: -2, scale: 1.02 }}
             whileTap={{ y: 2, scale: 0.97 }}
-            className={`mx-auto mt-6 flex min-h-11 touch-manipulation items-center gap-2 rounded-full border px-6 py-3 font-display text-sm font-extrabold tracking-tight shadow-[0_12px_30px_rgba(0,0,0,.28)] ${
+            className={`mx-auto mt-6 flex min-h-12 touch-manipulation items-center gap-2.5 rounded-full border px-6 py-3 font-serif text-[16px] font-semibold tracking-[0.02em] ${
               matte
-                ? 'border-rose-200/20 bg-[#b52340] text-white'
-                : 'border-[#3d352b]/20 bg-[#27312d] text-[#f5eddd]'
+                ? 'border-rose-200/25 bg-[#b52340] text-white shadow-[0_12px_30px_rgba(0,0,0,.4)]'
+                : 'border-[#e8c48a]/45 bg-[#1d1611]/90 text-[#f7ead2] shadow-[0_14px_34px_rgba(20,10,4,.45),inset_0_1px_0_rgba(255,236,200,0.14)]'
             }`}
           >
-            <span aria-hidden>✨</span>
+            <Pearl className="h-4 w-4 drop-shadow-[0_0_6px_rgba(255,224,170,0.6)]" />
             {matte ? 'Break Seal' : 'Unwrap Gift'}
           </motion.button>
           {failed ? (
@@ -557,6 +597,158 @@ const GiftWrap = memo(function GiftWrap({
         </motion.div>
       </div>
     </motion.section>
+  );
+});
+
+const SETTLE = [0.22, 1, 0.36, 1] as const;
+/** Out-of-focus specks in the dark: few, still, and far from the pearl. */
+const MOTES = [
+  { left: '14%', top: '22%', size: 5, delay: 1.1 },
+  { left: '82%', top: '16%', size: 3, delay: 1.4 },
+  { left: '74%', top: '38%', size: 6, delay: 1.2 },
+  { left: '22%', top: '70%', size: 4, delay: 1.6 },
+  { left: '88%', top: '76%', size: 3, delay: 1.5 },
+];
+
+/**
+ * Between the parcel and the gift: deep dark, a shaft of warm light, and the pearl resting over a
+ * pool of light and its own reflection. When it leaves, the pearl's glow blooms out and the dark
+ * lifts to reveal the gift. Decorative: nothing here is interactive or announced.
+ */
+const PearlStage = memo(function PearlStage({ reduce }: { reduce: boolean }) {
+  return (
+    <motion.div
+      aria-hidden
+      className="pearl-stage pointer-events-none absolute inset-0 z-30 overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{
+        opacity: 1,
+        transition: reduce ? { duration: 0.3 } : { delay: FLAPS_AT, duration: 0.7, ease: 'easeOut' },
+      }}
+      exit={{
+        opacity: 0,
+        transition: reduce ? { duration: 0.4 } : { delay: 0.22, duration: 0.6, ease: [0.4, 0, 0.2, 1] },
+      }}
+    >
+      <motion.div
+        className="pearl-shaft absolute"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { delay: reduce ? 0 : 0.6, duration: reduce ? 0.3 : 1.6 } }}
+      />
+      {reduce
+        ? null
+        : MOTES.map((mote) => (
+            <motion.span
+              key={`${mote.left}-${mote.top}`}
+              className="pearl-mote absolute rounded-full"
+              style={{ left: mote.left, top: mote.top, width: mote.size, height: mote.size }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.7, transition: { delay: mote.delay, duration: 1.4 } }}
+            />
+          ))}
+
+      <div className="absolute left-1/2 top-[52%] aspect-square w-[min(58%,340px)] -translate-x-1/2 -translate-y-1/2">
+        {reduce ? null : (
+          <motion.div
+            className="pearl-ember absolute inset-[-90%] rounded-full"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{
+              opacity: [0, 0.9, 0.3],
+              scale: [0.5, 1, 1.1],
+              transition: { delay: 0.2, duration: 1.5, times: [0, 0.4, 1], ease: 'easeOut' },
+            }}
+          />
+        )}
+        <motion.div
+          className="pearl-floor absolute left-[-45%] top-[88%] h-[34%] w-[190%]"
+          initial={{ opacity: 0, scaleX: reduce ? 1 : 0.6 }}
+          animate={{
+            opacity: 1,
+            scaleX: 1,
+            transition: { delay: reduce ? 0 : 0.75, duration: reduce ? 0.3 : 1.4, ease: SETTLE },
+          }}
+        />
+        <motion.div
+          className="pearl-halo absolute inset-[-38%] rounded-full"
+          initial={{ opacity: 0, scale: reduce ? 1 : 0.7 }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            transition: { delay: reduce ? 0 : 0.85, duration: reduce ? 0.3 : 1.5, ease: SETTLE },
+          }}
+          exit={reduce ? undefined : { opacity: 0.9, scale: 3.4, transition: { duration: 0.8, ease: 'easeOut' } }}
+        />
+        <motion.div
+          className="absolute inset-0"
+          initial={{ opacity: 0, y: reduce ? 0 : 30, scale: reduce ? 1 : 0.94 }}
+          animate={{
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            transition: { delay: reduce ? 0.1 : 0.85, duration: reduce ? 0.4 : 1.35, ease: SETTLE },
+          }}
+          exit={reduce ? undefined : { scale: 0.9, y: -10, transition: { duration: 0.8, ease: SETTLE } }}
+        >
+          <div className="pearl-reflection absolute left-0 top-[101%] h-full w-full">
+            <Pearl large className="h-full w-full -scale-y-100" />
+          </div>
+          <motion.div
+            className="relative h-full w-full"
+            animate={reduce ? undefined : { y: [0, -4, 0] }}
+            transition={{ delay: 2.2, duration: 5, ease: 'easeInOut', repeat: Infinity }}
+          >
+            <Pearl large className="h-full w-full" />
+            <div className="absolute inset-[3%] overflow-hidden rounded-full">
+              <motion.span
+                className="pearl-sheen absolute inset-0"
+                initial={{ x: '-14%', y: '-6%' }}
+                animate={reduce ? undefined : { x: '10%', y: '4%' }}
+                transition={{ delay: 1.2, duration: 3.6, ease: 'easeInOut' }}
+              />
+            </div>
+          </motion.div>
+        </motion.div>
+        {reduce ? null : <PearlArc />}
+      </div>
+    </motion.div>
+  );
+});
+
+/** Over the pearl's shoulder, one thread of gold that draws itself in, then sweeps the stage away. */
+const ARC_PATH = 'M 6 70 C 14 30, 58 6, 96 36';
+
+const PearlArc = memo(function PearlArc() {
+  const id = `pearl-arc${useId().replace(/:/g, '')}`;
+  const stroke = `url(#${id})`;
+  const draw = {
+    initial: { pathLength: 0, pathOffset: 0, opacity: 0 },
+    animate: {
+      pathLength: 1,
+      opacity: 1,
+      transition: { delay: 1.15, duration: 1.6, ease: [0.45, 0, 0.2, 1] },
+    },
+    exit: {
+      pathOffset: 1,
+      opacity: 0,
+      transition: { duration: 0.8, ease: [0.4, 0, 0.6, 1] },
+    },
+  } as const;
+  return (
+    <motion.svg
+      viewBox="0 0 100 100"
+      className="absolute inset-[-34%] h-[168%] w-[168%] overflow-visible"
+      exit={{ rotate: 28, transition: { duration: 0.8, ease: 'easeIn' } }}
+    >
+      <defs>
+        <linearGradient id={id} x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stopColor="#ffd9a0" stopOpacity="0" />
+          <stop offset="55%" stopColor="#ffe2b4" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#fff4dc" stopOpacity="0.15" />
+        </linearGradient>
+      </defs>
+      <motion.path d={ARC_PATH} fill="none" stroke={stroke} strokeWidth={3.2} strokeOpacity={0.22} strokeLinecap="round" {...draw} />
+      <motion.path d={ARC_PATH} fill="none" stroke={stroke} strokeWidth={0.7} strokeLinecap="round" {...draw} />
+    </motion.svg>
   );
 });
 

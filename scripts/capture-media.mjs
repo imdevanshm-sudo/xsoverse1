@@ -35,7 +35,21 @@ const STYLES = [
   { id: 'rewind', stage: '[aria-label="Rewind stack"]', act: '[aria-label^="Rewind — bring"]' },
   { id: 'scrapbook', stage: '[aria-label="Scrapbook desk"]', act: null },
   { id: 'accordion', stage: '[aria-label="Accordion letter"]', act: '[aria-label="Next fold"]' },
-  { id: 'moviebox', stage: '[aria-label="8mm projector"]', act: '[aria-label="Next frame"]' },
+  {
+    id: 'moviebox',
+    stage: '.movie-stage',
+    act: '[aria-label="Play"]',
+    /** The Movie Box is the keepsake box in the receiver experience; Play lifts its lid. */
+    prepare: async (page) => {
+      await page.getByRole('button', { name: /see receiver experience/i }).first().click();
+      const seal = page.getByRole('button', { name: /break seal/i }).first();
+      await seal.waitFor({ state: 'visible', timeout: 30_000 });
+      await page.waitForTimeout(1200);
+      await seal.click();
+      await page.waitForSelector('[data-keepsake="ready"]', { timeout: 30_000 });
+      await page.waitForTimeout(1500);
+    },
+  },
 ];
 
 const ffmpeg = (...args) => execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...args]);
@@ -66,6 +80,7 @@ async function captureStyle(browser, style, work) {
     reducedMotion: 'no-preference',
   });
   await page.goto(`${BASE}/preview?style=${style.id}`, { waitUntil: 'networkidle' });
+  if (style.prepare) await style.prepare(page);
   const stage = page.locator(style.stage).first();
   await stage.scrollIntoViewIfNeeded();
   await page.waitForTimeout(2600);
@@ -136,7 +151,7 @@ async function main() {
   mkdirSync(THUMBS, { recursive: true });
   mkdirSync(REEL, { recursive: true });
   const work = mkdtempSync(path.join(tmpdir(), 'xso-capture-'));
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL });
   try {
     const segments = [];
     for (const style of STYLES) {

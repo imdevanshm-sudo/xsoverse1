@@ -4,6 +4,7 @@ import type { XsoData } from '@/types/xso';
 import { completeXso } from '@/lib/xsoRecord';
 import { sanitizeAddOns, type AddOnId } from '@/lib/pricing';
 import { getSupabaseServer, isSupabaseConfigured } from '@/lib/supabaseServer';
+import type { ExpectedPayment } from '@/lib/lemonOrder';
 
 export type GiftStatus = 'pending' | 'paid';
 
@@ -21,14 +22,21 @@ export interface StoredGift {
   paidAt?: string;
   lemonOrderId?: string;
   addOns?: GiftAddOns;
+  /** What the checkout charged; a webhook order must match it before the gift is paid. */
+  expectedPayment?: ExpectedPayment;
 }
 
 /**
- * Add-on state rides in the `data` column under a key no gift payload uses; it is split off on
- * read, so it never reaches the recipient and the sender's payload can't set it.
+ * Add-on and expected-payment state ride in the `data` column under keys no gift payload uses;
+ * they are split off on read, so they never reach the recipient and the sender's payload can't
+ * set them.
  */
 const ADD_ONS_KEY = '__addOns';
-type RowData = XsoData & { [ADD_ONS_KEY]?: Partial<GiftAddOns> };
+const PAYMENT_KEY = '__payment';
+type RowData = XsoData & {
+  [ADD_ONS_KEY]?: Partial<GiftAddOns>;
+  [PAYMENT_KEY]?: Partial<ExpectedPayment>;
+};
 
 interface GiftRow {
   id: string;
@@ -41,18 +49,35 @@ interface GiftRow {
 
 const TABLE = 'gifts';
 
-function splitData(raw: RowData): { data: XsoData; addOns?: GiftAddOns } {
-  const { [ADD_ONS_KEY]: addOns, ...data } = (raw ?? {}) as RowData;
+function splitData(raw: RowData): {
+  data: XsoData;
+  addOns?: GiftAddOns;
+  expectedPayment?: ExpectedPayment;
+} {
+  const { [ADD_ONS_KEY]: addOns, [PAYMENT_KEY]: payment, ...data } = (raw ?? {}) as RowData;
   return {
     data: completeXso(data as XsoData),
     addOns: addOns
       ? { requested: sanitizeAddOns(addOns.requested), paid: sanitizeAddOns(addOns.paid) }
       : undefined,
+    expectedPayment: readExpectedPayment(payment),
   };
 }
 
+function readExpectedPayment(value: unknown): ExpectedPayment | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const { amount, currency } = value as Partial<ExpectedPayment>;
+  if (!Number.isInteger(amount) || (amount as number) < 0) return undefined;
+  if (typeof currency !== 'string' || !currency) return undefined;
+  return { amount: amount as number, currency };
+}
+
 function joinData(gift: StoredGift): RowData {
-  return gift.addOns ? { ...gift.data, [ADD_ONS_KEY]: gift.addOns } : gift.data;
+  return {
+    ...gift.data,
+    ...(gift.addOns ? { [ADD_ONS_KEY]: gift.addOns } : {}),
+    ...(gift.expectedPayment ? { [PAYMENT_KEY]: gift.expectedPayment } : {}),
+  };
 }
 
 /** Only add-ons that were priced into this gift's checkout can be confirmed by its order. */
@@ -68,7 +93,7 @@ export function hasPaidAddOn(gift: StoredGift, id: AddOnId): boolean {
 }
 
 function fromRow(row: GiftRow): StoredGift {
-  const { data, addOns } = splitData(row.data);
+  const { data, addOns, expectedPayment } = splitData(row.data);
   return {
     id: row.id,
     data,
@@ -77,6 +102,7 @@ function fromRow(row: GiftRow): StoredGift {
     paidAt: row.paid_at ?? undefined,
     lemonOrderId: row.lemon_order_id ?? undefined,
     addOns,
+    expectedPayment,
   };
 }
 
@@ -154,6 +180,47 @@ export async function markGiftPaid(
   return data ? fromRow(data) : null;
 }
 
+export type PaymentFulfillment =
+  | { outcome: 'fulfilled'; gift: StoredGift }
+  | { outcome: 'already_paid'; gift: StoredGift }
+  | { outcome: 'not_found' };
+
+/**
+ * Moves a gift from pending to paid exactly once, for an order the caller has already verified.
+ * The update only matches a pending row, so retried or concurrent webhooks find the gift already
+ * paid and leave it (and its order, add-ons and paid date) untouched.
+ */
+export async function fulfillGiftPayment(
+  gift: StoredGift,
+  lemonOrderId: string,
+  confirmedAddOns: readonly AddOnId[],
+): Promise<PaymentFulfillment> {
+  if (gift.status === 'paid') return { outcome: 'already_paid', gift };
+  if (!shouldUseSupabase()) return fileStore.fulfill(gift.id, lemonOrderId, confirmedAddOns);
+
+  const update: Partial<GiftRow> = {
+    status: 'paid',
+    paid_at: new Date().toISOString(),
+    lemon_order_id: lemonOrderId,
+  };
+  if (gift.addOns) {
+    update.data = joinData({ ...gift, addOns: confirmAddOns(gift, confirmedAddOns) });
+  }
+
+  const { data, error } = await getSupabaseServer()
+    .from(TABLE)
+    .update(update)
+    .eq('id', gift.id)
+    .eq('status', 'pending')
+    .select()
+    .maybeSingle<GiftRow>();
+  if (error) throw new Error(`Failed to update gift: ${error.message}`);
+  if (data) return { outcome: 'fulfilled', gift: fromRow(data) };
+
+  const current = await getGift(gift.id);
+  return current ? { outcome: 'already_paid', gift: current } : { outcome: 'not_found' };
+}
+
 // Local development fallback when Supabase env vars are absent.
 const DATA_DIR = path.join(process.cwd(), '.data');
 const GIFTS_FILE = path.join(DATA_DIR, 'gifts.json');
@@ -202,5 +269,24 @@ const fileStore = {
     if (confirmedAddOns.length) gift.addOns = confirmAddOns(gift, confirmedAddOns);
     await fileStore.writeAll(gifts);
     return gift;
+  },
+
+  async fulfill(
+    id: string,
+    lemonOrderId: string,
+    confirmedAddOns: readonly AddOnId[],
+  ): Promise<PaymentFulfillment> {
+    const gifts = await fileStore.readAll();
+    const gift = gifts[id];
+    if (!gift) return { outcome: 'not_found' };
+    if (gift.status === 'paid') {
+      return { outcome: 'already_paid', gift: { ...gift, data: completeXso(gift.data) } };
+    }
+    gift.status = 'paid';
+    gift.paidAt = new Date().toISOString();
+    gift.lemonOrderId = lemonOrderId;
+    if (gift.addOns) gift.addOns = confirmAddOns(gift, confirmedAddOns);
+    await fileStore.writeAll(gifts);
+    return { outcome: 'fulfilled', gift: { ...gift, data: completeXso(gift.data) } };
   },
 };

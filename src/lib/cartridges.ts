@@ -26,7 +26,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
     title: 'LOOP',
     subtitle: 'Infinite Stack',
     caption: 'Always finds its way back',
-    tagline: 'The ones that keep coming back.',
+    tagline: 'Your inside jokes, printed on a receipt.',
     description:
       'Four keepsakes in one hand-held stack. Flick one away and it slides back under the pile, like the thing you meant to say that keeps circling back at 2am.',
     year: '1989',
@@ -74,7 +74,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
     title: 'ACCORDION',
     subtitle: 'Ribbon Fold',
     caption: 'Nothing left unsaid',
-    tagline: 'One unbroken thread.',
+    tagline: 'A story that unfolds, one fold at a time.',
     description:
       'Every memory folded into one paper ribbon, so nothing gets left out. Pull it open and everything you held back unfolds in a single breath.',
     year: '1995',
@@ -90,7 +90,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
     title: 'MOVIE BOX',
     subtitle: 'Crank Projector',
     caption: 'Your story on a reel',
-    tagline: 'Your story, frame by frame.',
+    tagline: 'Your memories, turned into a little film.',
     description:
       'Each memory becomes a frame on a hand-cranked reel. Turn it slowly and the scenes you never talked about finally get their screening.',
     year: '1978',

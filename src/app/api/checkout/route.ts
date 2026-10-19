@@ -1,4 +1,6 @@
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { TESTER_COOKIE, isTester, siteInTestMode } from '@/lib/testerAccess';
 import {
   activateGiftPreview,
   createLemonCheckout,
@@ -21,6 +23,12 @@ const MAX_BODY_BYTES = 4_000_000;
 
 export async function POST(request: Request) {
   try {
+    if (siteInTestMode() && !(await isTester(cookies().get(TESTER_COOKIE)?.value))) {
+      return NextResponse.json(
+        { error: 'The store is being updated. Please check back shortly.' },
+        { status: 503 },
+      );
+    }
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) {
       return NextResponse.json(
@@ -66,7 +74,10 @@ export async function POST(request: Request) {
       cardCount: cards.length,
       addOns,
     });
-    const gift = await createPendingGift(payload, addOns);
+    const gift = await createPendingGift(payload, addOns, {
+      amount: price.total,
+      currency: price.currency,
+    });
     const appUrl = getAppUrl(request.url);
 
     if (!lemon) {
@@ -79,7 +90,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const { checkoutUrl, redirectUrl } = await createLemonCheckout({
+    const { checkoutUrl } = await createLemonCheckout({
       giftId: gift.id,
       giftStyle: gift.data.giftStyle,
       customerName: gift.data.customerName,
@@ -92,7 +103,8 @@ export async function POST(request: Request) {
       overlay: body.overlay === true,
     });
 
-    return NextResponse.json({ mode: 'lemon', checkoutUrl, redirectUrl });
+    /** Never return the dashboard link here: it would hand an unpaid buyer the manage key. */
+    return NextResponse.json({ mode: 'lemon', checkoutUrl });
   } catch (error) {
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });

@@ -105,6 +105,20 @@ select,
   padding-left: env(safe-area-inset-left, 0px);
 }
 
+/* Lemon.js overlay: keep the iframe viewport-tall even if their embed script stalls. */
+body.lemonsqueezy-open > iframe,
+body > iframe[src*='lemonsqueezy.com'],
+body > iframe[src*='store.xsoverse.app'] {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  z-index: 2147483647 !important;
+  border: 0 !important;
+}
+
 /* Full-bleed page height that survives Instagram chrome + old WebViews */
 .min-app-h {
   min-height: 100vh;
@@ -900,6 +914,32 @@ html.is-landscape .xso-dock {
   }
 }
 
+/* Store / merchant header on receipts & preview cards — wrap, never truncate. */
+.xso-receipt,
+.desk-paper--receipt {
+  container-type: inline-size;
+  container-name: receipt;
+}
+
+.xso-store-name {
+  margin: 0;
+  text-align: center;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  white-space: normal;
+  font-size: clamp(0.65rem, 0.55rem + 0.9vw, 0.8125rem);
+}
+
+@container receipt (max-width: 280px) {
+  .xso-store-name {
+    font-size: clamp(0.62rem, 4.2cqi, 0.75rem);
+  }
+}
+
 /* ── Rubber ink stamp ─────────────────────────────────────────────── */
 .ink-stamp {
   display: inline-block;
@@ -926,10 +966,13 @@ html.is-landscape .xso-dock {
   font-family: var(--font-space-grotesk), sans-serif;
   font-size: 13px;
   font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: 0.14em;
+  line-height: 1.15;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  text-wrap: balance;
+  max-width: 14rem;
 }
 
 .ink-stamp--sm {
@@ -983,6 +1026,8 @@ html.is-landscape .xso-dock {
 :root {
   /* Dark fibre specks for cream card stock */
   --paper-noise: url('/textures/noise-warm.png');
+  /* Long pale fibres laid in handmade paper; a static tile, multiplied over the stock */
+  --paper-fibers: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.008 0.2' numOctaves='2' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.31 0 0 0 0 0.14 -0.55 0 0 0 0.16'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
   /* Light warm grain for the desk surface */
   --stone-noise: url('/textures/noise-light.png');
   --desk-900: #1a0f14;
@@ -1460,9 +1505,16 @@ html.is-landscape .xso-dock {
     0 32px 48px -20px rgba(0, 0, 0, 0.55);
 }
 
+/* The slip on the table: a tight dark contact line, then shadow falling down and to the right,
+   away from the lamp, softer the further it reaches. */
 .deck-shadow--receipt {
   inset: 7px 0;
   border-radius: 2px;
+  box-shadow:
+    0 1px 1px rgba(10, 4, 6, 0.55),
+    1px 2px 3px rgba(10, 4, 6, 0.4),
+    4px 9px 14px -4px rgba(10, 4, 6, 0.45),
+    10px 24px 36px -14px rgba(10, 4, 6, 0.5);
 }
 
 .deck-card {
@@ -1625,15 +1677,22 @@ html.is-landscape .xso-dock {
     radial-gradient(ellipse 34% 28% at 66% 30%, rgba(251, 191, 36, 0.14), transparent 72%);
 }
 
+/* Warm ivory stock lit from the upper left; the cut edges catch the light and the bottom edge
+   shows the sheet's thickness. */
 .accordion-panel {
   overflow: hidden;
-  background: #faf6f0;
+  background:
+    linear-gradient(158deg, rgba(255, 251, 240, 0.65), rgba(255, 251, 240, 0) 42%, rgba(150, 108, 52, 0.08)),
+    #f6eedc;
   color: #2d1b22;
   cursor: pointer;
-  border-inline: 1px solid rgba(180, 35, 74, 0.1);
+  border-inline: 1px solid rgba(150, 110, 52, 0.2);
   box-shadow:
-    0 1px 0 rgba(45, 15, 28, 0.08),
-    0 16px 30px -18px rgba(45, 10, 30, 0.55);
+    inset 0 1px 0 rgba(255, 252, 242, 0.85),
+    inset 0 -1px 0 rgba(120, 82, 34, 0.22),
+    0 1px 0 rgba(90, 58, 22, 0.18),
+    0 2px 0 rgba(236, 222, 192, 0.5),
+    0 16px 30px -18px rgba(40, 18, 8, 0.6);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
@@ -1647,6 +1706,26 @@ html.is-landscape .xso-dock {
 
 .accordion-panel__face--wide {
   padding: 28px 36px 24px;
+}
+
+/* Short landscape: the card stage takes the full phone-sized box instead of a share of the
+   viewport height, and the stage scrolls. */
+.fit-stage-scroll > div > * {
+  height: 100%;
+  max-height: none;
+}
+
+/* The closing fold carries the most controls: on a short fold it scrolls rather than clipping. */
+.accordion-panel__face--end {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.accordion-panel__face--end > div {
+  height: auto;
+  min-height: 100%;
+  justify-content: safe center;
 }
 
 .recipient-stage .accordion-panel__face .xso-receipt {
@@ -1666,23 +1745,23 @@ html.is-landscape .xso-dock {
   pointer-events: none;
 }
 
-/* Tooth and fibre: noise, faint laid lines and a soft mottle, multiplied into the cream.
-   background-position shifts with the hinge so the paper feels like it moves. */
+/* Tooth and fibre: noise, faint laid lines and a soft mottle, multiplied into the cream. */
 .accordion-panel__grain {
   z-index: 2;
   background-image:
+    var(--paper-fibers),
     var(--paper-noise),
     repeating-linear-gradient(0deg, rgba(120, 80, 60, 0.035) 0 1px, transparent 1px 3px),
     radial-gradient(ellipse 60% 40% at 30% 20%, rgba(255, 255, 255, 0.35), transparent 70%),
     radial-gradient(ellipse 70% 50% at 80% 90%, rgba(150, 100, 70, 0.07), transparent 70%);
   background-size:
+    240px 240px,
     128px 128px,
     auto,
     auto,
     auto;
   mix-blend-mode: multiply;
   opacity: 0.85;
-  will-change: background-position;
 }
 
 /* Fold shadows: the paper darkens into each crease as it closes, and clears as it lies flat. */
@@ -1696,10 +1775,10 @@ html.is-landscape .xso-dock {
   bottom: auto;
   background: linear-gradient(
     180deg,
-    rgba(255, 246, 236, 0.55) 0,
-    rgba(40, 14, 26, 0.55) 2px,
-    rgba(40, 14, 26, 0.22) 30%,
-    rgba(40, 14, 26, 0.06) 65%,
+    rgba(255, 248, 230, 0.7) 0,
+    rgba(54, 30, 12, 0.5) 2px,
+    rgba(54, 30, 12, 0.2) 30%,
+    rgba(54, 30, 12, 0.05) 65%,
     transparent
   );
 }
@@ -1708,9 +1787,9 @@ html.is-landscape .xso-dock {
   top: auto;
   background: linear-gradient(
     0deg,
-    rgba(40, 14, 26, 0.6) 0,
-    rgba(40, 14, 26, 0.24) 30%,
-    rgba(40, 14, 26, 0.06) 65%,
+    rgba(54, 30, 12, 0.58) 0,
+    rgba(54, 30, 12, 0.22) 30%,
+    rgba(54, 30, 12, 0.05) 65%,
     transparent
   );
 }
@@ -1721,19 +1800,22 @@ html.is-landscape .xso-dock {
   bottom: auto;
   height: 14px;
   background:
-    radial-gradient(circle, rgba(58, 37, 48, 0.38) 1.1px, transparent 1.6px) 0 0 / 9px 3px repeat-x,
-    linear-gradient(rgba(58, 26, 38, 0.2), rgba(58, 26, 38, 0));
+    radial-gradient(circle, rgba(70, 44, 20, 0.4) 1.1px, transparent 1.6px) 0 0 / 9px 3px repeat-x,
+    linear-gradient(rgba(255, 250, 236, 0.6), rgba(255, 250, 236, 0) 1px),
+    linear-gradient(rgba(70, 40, 16, 0.2), rgba(70, 40, 16, 0));
 }
 
 .accordion-panel__light {
   z-index: 4;
 }
 
+/* Lamp light from the upper left: panels tipped towards it warm up, panels tipped away fall into
+   a brown, not grey, shadow. */
 .accordion-panel__light--sheen {
   background: linear-gradient(
-    180deg,
-    rgba(255, 247, 236, 0.7),
-    rgba(255, 236, 220, 0.12) 62%,
+    165deg,
+    rgba(255, 244, 218, 0.75),
+    rgba(255, 232, 196, 0.14) 62%,
     transparent
   );
 }
@@ -1741,12 +1823,13 @@ html.is-landscape .xso-dock {
 .accordion-panel__light--shade {
   background: linear-gradient(
     180deg,
-    rgba(58, 26, 38, 0.58),
-    rgba(58, 26, 38, 0.3) 55%,
-    rgba(58, 26, 38, 0.46)
+    rgba(60, 34, 14, 0.56),
+    rgba(60, 34, 14, 0.28) 55%,
+    rgba(60, 34, 14, 0.44)
   );
 }
 
+/* Washi tape: translucent, faintly striped, with the stock showing through and torn ends. */
 .accordion-tape {
   position: absolute;
   top: -7px;
@@ -1754,8 +1837,12 @@ html.is-landscape .xso-dock {
   width: 64px;
   height: 18px;
   background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0 4px, transparent 4px 8px),
-    rgba(244, 114, 182, 0.42);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 45%, rgba(120, 80, 30, 0.08)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 4px, transparent 4px 8px),
+    rgba(222, 182, 112, 0.5);
+  box-shadow: 0 1px 2px rgba(60, 34, 14, 0.18);
+  -webkit-mask: linear-gradient(90deg, transparent, #000 3px calc(100% - 3px), transparent);
+  mask: linear-gradient(90deg, transparent, #000 3px calc(100% - 3px), transparent);
   pointer-events: none;
 }
 
@@ -1767,7 +1854,7 @@ html.is-landscape .xso-dock {
 .accordion-tape--right {
   right: 14%;
   transform: rotate(2deg);
-  background-color: rgba(253, 186, 116, 0.5);
+  background-color: rgba(236, 206, 150, 0.55);
 }
 
 .accordion-wax {
@@ -2241,7 +2328,7 @@ html.is-landscape .xso-dock {
   --wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1800' height='480'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0018 0.11' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.025 0 0 0 0 0.012 1.5 0 0 0 -0.6'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
   background-color: #23150f;
   background-image:
-    radial-gradient(ellipse 55% 45% at 28% 18%, rgba(253, 186, 116, 0.17), transparent 70%),
+    radial-gradient(ellipse 62% 50% at 30% 22%, rgba(255, 200, 130, 0.24), transparent 72%),
     radial-gradient(ellipse 50% 40% at 78% 92%, rgba(236, 72, 153, 0.07), transparent 70%),
     radial-gradient(ellipse 120% 100% at 50% 45%, transparent 48%, rgba(6, 2, 3, 0.62) 100%),
     var(--wood-grain),
@@ -2327,24 +2414,28 @@ html.is-landscape .xso-dock {
 
 .desk-paper {
   color: #2d1b22;
-  background-color: #fdfbf7;
+  background-color: #fbf5e8;
   background-image:
     linear-gradient(
-      168deg,
-      rgba(255, 255, 255, 0.5),
+      158deg,
+      rgba(255, 252, 242, 0.6),
       transparent 38%,
-      rgba(120, 80, 50, 0.05) 100%
+      rgba(140, 96, 44, 0.08) 100%
     ),
+    var(--paper-fibers),
     var(--paper-noise);
   background-size:
     auto,
+    240px 240px,
     128px 128px;
-  /* Paper on wood under a warm lamp: a tight contact shadow, a soft spread and an amber halo. */
+  /* Paper on wood under a lamp at the upper left: a tight contact edge, a shadow that falls down
+     and to the right, and a faint amber halo. The top edge catches the light. */
   box-shadow:
+    inset 0 1px 0 rgba(255, 252, 242, 0.7),
     0 1px 1px rgba(20, 8, 4, 0.55),
-    0 4px 8px -2px rgba(20, 8, 4, 0.45),
-    0 16px 30px -10px rgba(10, 4, 2, 0.7),
-    0 0 34px -12px rgba(253, 186, 116, 0.28);
+    2px 4px 7px -2px rgba(20, 8, 4, 0.45),
+    6px 16px 28px -10px rgba(10, 4, 2, 0.7),
+    0 0 34px -12px rgba(253, 186, 116, 0.26);
 }
 
 .desk-focus-glow {
@@ -2375,8 +2466,21 @@ html.is-landscape .xso-dock {
 .desk-paper--polaroid,
 .desk-paper--letter,
 .desk-paper--sheet {
-  background-color: #fdfbf7;
+  background-color: #fbf5e8;
   border-radius: 3px;
+}
+
+/* The print inside the border: a hairline where emulsion meets card, a little depth at the top
+   edge, and a soft satin sheen over the photo. */
+.desk-paper--polaroid > div:first-child::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(160deg, rgba(255, 246, 226, 0.12), transparent 45%, rgba(60, 30, 10, 0.12));
+  box-shadow:
+    inset 0 0 0 1px rgba(40, 20, 8, 0.35),
+    inset 0 2px 5px rgba(20, 8, 2, 0.35);
 }
 
 .desk-paper--back,
@@ -2451,8 +2555,8 @@ html.is-landscape .xso-dock {
       rgba(255, 255, 255, 0.2) 70%,
       transparent
     ),
-    rgba(244, 228, 200, 0.75);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    rgba(236, 214, 168, 0.72);
+  box-shadow: 1px 1px 2px rgba(40, 20, 6, 0.18);
   -webkit-mask-image: linear-gradient(
     90deg,
     transparent 0 2px,
@@ -2549,12 +2653,15 @@ html.is-landscape .xso-dock {
     0 0 70px -16px rgba(245, 158, 11, 0.32);
 }
 
+/* It scrolls, so it sets its own touch-action: only vertical, or the browser takes the sideways
+   swipe that recalls a memory as a pan and cancels it. */
 .rewind-card__body {
   position: relative;
   z-index: 1;
   min-height: 0;
   flex: 1 1 0%;
   overflow-y: auto;
+  touch-action: pan-y;
   overscroll-behavior: contain;
   scrollbar-width: none;
   padding: 10px;
@@ -2600,7 +2707,22 @@ html.is-landscape .xso-dock {
   );
 }
 
-/* The Rewind's room: a warm dark deck with the faint scan lines of magnetic tape. */
+/* Loop's table: a warm lamp pool on the plum surface, so the receipts sit in light, not on a
+   flat colour. Static; the cards bring their own shadows. */
+.loop-stage {
+  background:
+    radial-gradient(ellipse 60% 42% at 50% 40%, rgba(255, 196, 140, 0.16), rgba(255, 196, 140, 0) 70%),
+    radial-gradient(ellipse 120% 90% at 50% 45%, rgba(26, 15, 20, 0) 50%, rgba(8, 3, 6, 0.6) 100%),
+    linear-gradient(180deg, #1f1218 0%, #1a0f14 60%, #140a10 100%);
+}
+
+/* The Rewind's room: a warm dark deck with the faint scan lines of magnetic tape. It clips rather
+   than hides its overflow, so focus moving inside a memory can't scroll the whole stage sideways
+   and push the cassette off a narrow screen. */
+.stage-surface.rewind-stage {
+  overflow: clip;
+}
+
 .rewind-stage {
   background:
     repeating-linear-gradient(180deg, rgba(255, 214, 170, 0.025) 0 1px, transparent 1px 4px),
@@ -2656,10 +2778,11 @@ html.is-landscape .xso-dock {
   border-radius: inherit;
 }
 
-/* Top-down key light: bright leading edge, falloff toward the bottom. */
+/* Key light from the upper left (the same lamp the shadows fall away from): bright leading edge,
+   falloff toward the far corner. */
 .deck-card__light {
   background: linear-gradient(
-    180deg,
+    160deg,
     rgba(255, 248, 236, 0.16),
     transparent 32%,
     transparent 72%,
@@ -2750,15 +2873,33 @@ html.is-landscape .xso-dock {
 }
 
 /* Thermal receipt: torn zigzag ends, punched perforation, feed streaks */
+/* Thermal paper off the roll: the long edges curl away from the light, the print fades a touch
+   towards the tail, and a lamp from the upper left catches the sheet. */
 .mat-receipt {
   border-radius: 2px;
-  background-color: #f7f5f0;
+  background-color: #f3eee2;
   background-image:
-    var(--paper-noise),
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.014) 0 1px, transparent 1px 3px);
+    /* the long edges roll away from the lamp: shade on the far side, a little on the near */
+    linear-gradient(
+      90deg,
+      rgba(70, 48, 24, 0.07),
+      rgba(70, 48, 24, 0) 6%,
+      rgba(70, 48, 24, 0) 90%,
+      rgba(70, 48, 24, 0.12)
+    ),
+    /* matte sheet under one lamp at the upper left; no specular hot spot */
+    linear-gradient(158deg, rgba(255, 251, 241, 0.55), rgba(255, 251, 241, 0) 45%, rgba(90, 64, 34, 0.07)),
+    /* thermal print-head rows and the faint feed streaks of the roll */
+    repeating-linear-gradient(180deg, rgba(60, 50, 40, 0.01) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.01) 0 1px, transparent 1px 3px),
+    /* thermal stock is smooth coated paper: a fine grain, no long fibres */
+    var(--paper-noise);
   background-size:
-    140px 140px,
-    auto;
+    auto,
+    auto,
+    auto,
+    auto,
+    140px 140px;
   -webkit-mask:
     conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / 14px 51% repeat-x,
     conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 14px 51%
@@ -2796,21 +2937,37 @@ html.is-landscape .xso-dock {
   border-top-color: #d9d4ca;
 }
 
+/* Thermal ink is burnt into the coating: multiplied into the paper so its grain shows through,
+   with the faint bleed of a warm print head. */
 .mat-receipt .deck-card__body article {
-  color: #3f3c38 !important;
-  text-shadow: 0 0 0.45px rgba(63, 60, 56, 0.55);
+  color: #2e2a26 !important;
+  mix-blend-mode: multiply;
+  text-shadow: 0 0 0.5px rgba(46, 42, 38, 0.6);
 }
 
+.mat-receipt .xso-store-name {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+}
+
+/* Uneven print density: the head runs lighter towards the tail of the slip, and one column of
+   it is a touch weak, the way a worn printer leaves a pale stripe. Readability is untouched. */
 .deck-card__thermal-fade {
   background:
     linear-gradient(
       90deg,
-      rgba(247, 245, 240, 0.45),
-      transparent 20%,
-      transparent 80%,
-      rgba(247, 245, 240, 0.4)
+      transparent 0 62%,
+      rgba(243, 238, 226, 0.22) 63% 66%,
+      transparent 67%
     ),
-    linear-gradient(180deg, transparent 62%, rgba(247, 245, 240, 0.32));
+    linear-gradient(180deg, transparent 58%, rgba(243, 238, 226, 0.24));
+}
+
+/* Stamps are pressed into the paper rather than glowing on top of it. */
+.mat-receipt .ink-stamp,
+.mat-receipt .ink-ring {
+  mix-blend-mode: multiply;
+  text-shadow: 0 0 0.6px currentColor;
 }
 
 .receipt-telemetry {
@@ -3027,19 +3184,22 @@ html.is-landscape .xso-dock {
 /* Movie Box player controls: round, quiet, always keyboard-visible. */
 .movie-control {
   display: grid;
+  flex-shrink: 0;
   place-items: center;
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 250, 240, 0.18);
-  background: rgba(5, 2, 3, 0.55);
-  color: #fffaf0;
+  border: 1px solid rgba(255, 250, 240, 0.12);
+  background: rgba(5, 2, 3, 0.35);
+  color: rgba(255, 250, 240, 0.85);
   transition:
     opacity 0.2s,
+    color 0.2s,
     border-color 0.2s;
 }
 .movie-control:hover {
   border-color: rgba(253, 186, 116, 0.6);
+  color: #fffaf0;
 }
 .movie-control:disabled {
   opacity: 0.3;
@@ -3071,6 +3231,202 @@ html.is-landscape .xso-dock {
   z-index: 26;
   pointer-events: none;
   background: radial-gradient(ellipse 85% 80% at 50% 50%, transparent 60%, rgba(5, 2, 3, 0.45));
+}
+
+/*
+ * The grain layer overhangs the stage by half on every side, so a hidden-overflow stage can be
+ * scrolled sideways by focus or scroll-into-view; clip makes it unscrollable.
+ */
+.movie-stage {
+  overflow: clip;
+}
+
+/* The song credit scrolls from its top when it's taller than the stage, clear of the sound toggle. */
+.movie-song > div {
+  position: relative;
+  inset: auto;
+  min-height: 100%;
+  padding-top: 4rem;
+  padding-bottom: 7.5rem;
+  justify-content: safe center;
+}
+
+/*
+ * Movie Box screen lighting: a warm key from above, a faint gate frame, and the room the framed
+ * desktop screen sits in. All baked gradients; nothing here animates or blurs.
+ */
+.movie-key {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  background: radial-gradient(ellipse 90% 55% at 50% -8%, rgba(255, 214, 160, 0.11), transparent 70%);
+}
+
+.movie-gate {
+  position: absolute;
+  inset: 0;
+  z-index: 27;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 240, 0.05),
+    inset 0 0 60px rgba(0, 0, 0, 0.45);
+}
+
+.movie-room {
+  background:
+    radial-gradient(ellipse 55% 60% at 50% 48%, rgba(120, 72, 40, 0.16), transparent 72%),
+    radial-gradient(ellipse 120% 90% at 50% 50%, #0a0506 0%, #050203 70%);
+}
+
+/* A cut: warm light leaks across the gate and fades as the next scene settles. */
+.movie-cut {
+  background:
+    radial-gradient(ellipse 70% 90% at 0% 40%, rgba(255, 176, 104, 0.32), transparent 65%),
+    radial-gradient(ellipse 50% 70% at 100% 70%, rgba(255, 210, 160, 0.12), transparent 70%);
+  mix-blend-mode: screen;
+}
+
+/* The receipt as a lit prop: paper fibre, light falling across it, a soft cast shadow. */
+.movie-prop {
+  background-color: #fbf6ec;
+  background-image:
+    linear-gradient(168deg, rgba(255, 252, 244, 0.9) 0%, rgba(251, 246, 236, 0) 38%, rgba(120, 84, 52, 0.12) 100%),
+    url('/textures/noise-warm.png');
+  background-size: auto, 180px 180px;
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.4) inset,
+    0 30px 60px -12px rgba(0, 0, 0, 0.75),
+    0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+.movie-bar {
+  background: linear-gradient(90deg, #fdba74, #f9a8d4);
+  box-shadow: 0 0 10px rgba(253, 186, 116, 0.55);
+}
+
+.movie-hero {
+  isolation: isolate;
+}
+
+.movie-hero::before {
+  content: '';
+  position: absolute;
+  inset: -45% -60%;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgba(255, 196, 128, 0.16), transparent 75%);
+}
+
+/* No-photo montage: intertitles under a single projector spot. */
+.movie-intertitle {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 45%, rgba(255, 220, 170, 0.08), transparent 70%),
+    #0b0507;
+}
+
+/* A warm print grade over the montage photos. */
+.movie-grade {
+  background:
+    linear-gradient(180deg, rgba(255, 196, 128, 0.08), rgba(80, 30, 20, 0.12)),
+    radial-gradient(ellipse 80% 70% at 50% 45%, transparent 55%, rgba(10, 4, 4, 0.35));
+  mix-blend-mode: soft-light;
+}
+
+/* The letter reads under a reading lamp. */
+.movie-lamp {
+  background: radial-gradient(ellipse 75% 60% at 50% 42%, rgba(255, 210, 150, 0.09), transparent 72%);
+}
+
+.movie-slate {
+  background: #0b0507;
+}
+
+.movie-projector {
+  background:
+    radial-gradient(ellipse 70% 55% at 50% -5%, rgba(255, 220, 170, 0.16), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 62%, rgba(253, 186, 116, 0.06), transparent 70%);
+}
+
+.movie-play {
+  box-shadow:
+    0 0 0 1px rgba(253, 186, 116, 0.35),
+    0 0 0 12px rgba(255, 250, 240, 0.06),
+    0 0 50px rgba(255, 214, 160, 0.25),
+    0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+/* The keepsake box's clasp: a small brass press laid over the catch on the front of the box. */
+.keepsake-clasp {
+  color: #2a1608;
+  background:
+    radial-gradient(circle at 35% 30%, #fff1c9 0%, #e2bd76 32%, #b48a43 62%, #7a5622 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 246, 220, 0.8),
+    inset 0 -2px 4px rgba(60, 34, 8, 0.5),
+    0 0 0 3px rgba(20, 10, 5, 0.55),
+    0 0 0 4px rgba(226, 189, 118, 0.35),
+    0 0 36px rgba(255, 196, 120, 0.35),
+    0 10px 24px rgba(0, 0, 0, 0.55);
+  animation: keepsake-clasp-glow 2.8s ease-in-out infinite;
+}
+
+@keyframes keepsake-clasp-glow {
+  50% {
+    box-shadow:
+      inset 0 1px 1px rgba(255, 246, 220, 0.8),
+      inset 0 -2px 4px rgba(60, 34, 8, 0.5),
+      0 0 0 3px rgba(20, 10, 5, 0.55),
+      0 0 0 4px rgba(226, 189, 118, 0.5),
+      0 0 52px rgba(255, 196, 120, 0.55),
+      0 10px 24px rgba(0, 0, 0, 0.55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keepsake-clasp {
+    animation: none;
+  }
+}
+
+.movie-end {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 30%, rgba(255, 214, 160, 0.08), transparent 70%),
+    #050203;
+}
+
+/* The song credit holds for the viewer; this is their way on. */
+.movie-hold-cue {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(253, 186, 116, 0.45);
+  background: rgba(11, 5, 7, 0.7);
+  padding: 0 1.1rem;
+  font-family: var(--font-courier-prime), ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #fffaf0;
+  animation: movie-hold-pulse 2.6s ease-in-out infinite;
+}
+
+.movie-hold-cue:focus-visible {
+  outline: 2px solid #fdba74;
+  outline-offset: 2px;
+}
+
+@keyframes movie-hold-pulse {
+  50% {
+    border-color: rgba(253, 186, 116, 0.85);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .movie-hold-cue {
+    animation: none;
+  }
 }
 
 /* Recipient viewer: the wide canvas sits on a dim, warm backdrop rather than flat black. */
@@ -3269,17 +3625,316 @@ html.is-landscape .xso-dock {
   }
 }
 
-/* The Rewind's mixtape deck: a cream J-card with amber transport and turning reels. */
+/*
+ * The Rewind's cassette, lit by the same lamp as the room (up and to the left): a smoked, matte
+ * plastic shell with a moulded edge, five screws and the head ramp along the bottom; a paper label
+ * stuck to it, with the reel window cut through.
+ */
 .tape-player {
-  border-radius: 10px;
-  border: 1px solid rgba(253, 186, 116, 0.35);
+  --screw: #0d0806 1.3px, rgba(255, 236, 210, 0.3) 1.9px, rgba(0, 0, 0, 0.5) 2.6px, transparent 3.1px;
+  position: relative;
+  border-radius: 12px;
   background:
-    repeating-linear-gradient(0deg, transparent 0 17px, rgba(180, 83, 9, 0.08) 17px 18px),
-    linear-gradient(180deg, #f8eddc 0%, #f1e0c6 100%);
-  padding: 10px 12px 10px 10px;
+    radial-gradient(circle at 9px 9px, var(--screw)),
+    radial-gradient(circle at calc(100% - 9px) 9px, var(--screw)),
+    radial-gradient(circle at 9px calc(100% - 9px), var(--screw)),
+    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), var(--screw)),
+    radial-gradient(circle at 50% 5px, var(--screw)),
+    /* the lamp catching the top-left of the shell, and its far edge falling into shade */
+    linear-gradient(160deg, rgba(255, 236, 214, 0.15) 0%, rgba(255, 236, 214, 0.04) 28%, transparent 52%),
+    linear-gradient(90deg, rgba(255, 236, 214, 0.05), transparent 5%, transparent 93%, rgba(0, 0, 0, 0.22)),
+    linear-gradient(180deg, #3d2c23 0%, #2f2119 52%, #261912 100%);
+  padding: 10px 9px 0;
   box-shadow:
-    0 10px 24px -10px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    /* the moulded rim: a lit top edge, a darker underside */
+    inset 0 1px 0 rgba(255, 236, 210, 0.22),
+    inset 1px 0 0 rgba(255, 236, 210, 0.07),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(12, 6, 4, 0.75),
+    /* the shell's thickness, seen along the bottom and right */
+    1px 3px 0 0 #160d09,
+    /* contact, then the shadow it casts away from the lamp onto the pile */
+    1px 4px 3px rgba(0, 0, 0, 0.55),
+    8px 20px 30px -10px rgba(0, 0, 0, 0.72);
+}
+
+/* Matte plastic is never perfectly even: a faint, fine variation in the moulding. */
+.tape-player::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: var(--paper-noise);
+  background-size: 120px 120px;
+  opacity: 0.08;
+  mix-blend-mode: overlay;
+}
+
+/* The label stuck to the shell: cream paper with a printed band and ruled lines, sitting flush. */
+.tape-player__label {
+  position: relative;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, transparent 0 3px, #d97706 3px 5px, transparent 5px 6px, #9a3412 6px 7px, transparent 7px) top / 100% 8px no-repeat,
+    linear-gradient(160deg, rgba(255, 255, 255, 0.28), transparent 45%),
+    repeating-linear-gradient(0deg, transparent 0 17px, rgba(180, 83, 9, 0.07) 17px 18px),
+    var(--paper-noise) 0 0 / 140px 140px,
+    linear-gradient(180deg, #f6ead6 0%, #eedcbf 100%);
+  padding: 11px 10px 8px 8px;
+  box-shadow:
+    inset 0 0 0 1px rgba(120, 70, 30, 0.14),
+    0 0.5px 0 rgba(255, 236, 210, 0.18),
+    0 1px 1.5px rgba(0, 0, 0, 0.5);
+}
+
+/* A silent tape, marked on its label the way you'd mark it by hand: a rubber-stamped word. */
+.tape-player__silent {
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  padding: 3px 7px 2px;
+  font-family: var(--font-courier-prime), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(154, 52, 18, 0.82);
+  transform: rotate(-3deg);
+  mix-blend-mode: multiply;
+}
+
+/* The label's middle row: the printed side letter, the window, and the date written on it. */
+.tape-player__deck {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 58%) 1fr;
+  align-items: center;
+}
+
+.tape-player__side-letter {
+  justify-self: center;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: #9a3412;
+  mix-blend-mode: multiply;
+}
+
+.tape-player__date {
+  justify-self: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-caveat), 'Comic Sans MS', cursive;
+  font-size: 18px;
+  line-height: 1;
+  color: #3a2530;
+}
+
+/* The window cut through the label: clear plastic over the dark inside of the shell, two packs
+   of brown tape wound round white hubs, and the tape running out along the bottom. */
+.tape-player__window {
+  --hub-l: 19%;
+  --hub-r: 81%;
+  position: relative;
+  height: 38px;
+  overflow: hidden;
+  border-radius: 5px;
+  background:
+    radial-gradient(ellipse 45% 90% at 42% 40%, rgba(255, 220, 180, 0.08), transparent 70%),
+    linear-gradient(180deg, #241811 0%, #2e2018 55%, #1e140e 100%);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.9),
+    inset 0 -1px 0 rgba(255, 236, 210, 0.1),
+    0 0 0 1px rgba(110, 66, 34, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+/* The tape running between the packs, out towards the head. */
+.tape-player__window::after {
+  content: '';
+  position: absolute;
+  left: var(--hub-l);
+  right: calc(100% - var(--hub-r));
+  bottom: 2px;
+  height: 1.5px;
+  background: #1f1108;
+}
+
+/* One restrained reflection on the window's plastic, from the lamp. */
+.tape-player__window::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(112deg, transparent 22%, rgba(255, 240, 222, 0.09) 30%, rgba(255, 240, 222, 0.03) 40%, transparent 46%);
+}
+
+/* The wound tape: full on the left at the start, full on the right at the end. */
+.tape-player__pack {
+  position: absolute;
+  top: 50%;
+  height: 40px;
+  width: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 999px;
+  background:
+    /* the satin sheen of wound tape, lit from the upper left */
+    conic-gradient(from 250deg, transparent 0deg, rgba(255, 214, 176, 0.16) 40deg, transparent 95deg, transparent 220deg, rgba(255, 214, 176, 0.06) 260deg, transparent 300deg),
+    repeating-radial-gradient(circle, transparent 0 1.5px, rgba(0, 0, 0, 0.12) 1.5px 2px),
+    radial-gradient(circle, #3a2013 0%, #2a170c 60%, #1f1108 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 200, 160, 0.14),
+    0 0 0 0.5px rgba(0, 0, 0, 0.8),
+    1px 1px 2px rgba(0, 0, 0, 0.45);
+  transform: scale(var(--pack));
+  transition: transform 250ms linear;
+}
+
+.tape-player__pack--supply {
+  left: var(--hub-l);
+  --pack: calc(0.55 + 0.45 * (1 - var(--wound, 0)));
+}
+
+.tape-player__pack--takeup {
+  left: var(--hub-r);
+  --pack: calc(0.55 + 0.45 * var(--wound, 0));
+}
+
+/* A silent tape winds from memory to memory, so its packs move with the reels. */
+.tape-player__window.is-winding .tape-player__pack {
+  transition-duration: 650ms;
+  transition-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+/* The hubs: white plastic with six teeth around the spindle. These are what turn. */
+.tape-player__reel {
+  position: absolute;
+  top: 50%;
+  display: block;
+  height: 21px;
+  width: 21px;
+  margin: -10.5px 0 0 -10.5px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle closest-side, transparent 0 62%, #efe3cd 64% 90%, rgba(0, 0, 0, 0.4) 93%, transparent 100%),
+    radial-gradient(circle closest-side, #0b0604 0 27%, transparent 29%),
+    repeating-conic-gradient(from 0deg, #e8dac0 0 16deg, #0b0604 16deg 60deg);
+  box-shadow: inset -1px -1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.tape-player__reel--supply {
+  left: var(--hub-l);
+}
+
+.tape-player__reel--takeup {
+  left: var(--hub-r);
+}
+
+.tape-player__window.is-playing .tape-player__reel {
+  animation: tape-reel 2.4s linear infinite;
+}
+
+/* The side's name, printed on the label beside the track marks. */
+.tape-player__strip {
+  min-width: 0;
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-courier-prime), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7a4a2c;
+}
+
+/* Winding between memories: a quick spin, reversed when going back. */
+.tape-player__window.is-winding .tape-player__reel {
+  animation: tape-reel 0.3s linear infinite;
+}
+
+.tape-player__window.is-winding--back .tape-player__reel {
+  animation-direction: reverse;
+}
+
+/* The head ramp along the bottom edge, with the capstan and guide holes. */
+.tape-player__head {
+  position: relative;
+  display: block;
+  height: 13px;
+  width: 64%;
+  margin: 5px auto 0;
+  clip-path: polygon(7% 0, 93% 0, 100% 100%, 0 100%);
+  background:
+    radial-gradient(circle at 14% 58%, #050302 0 2.2px, transparent 2.8px),
+    radial-gradient(circle at 86% 58%, #050302 0 2.2px, transparent 2.8px),
+    linear-gradient(#050302, #050302) 31% 62% / 9px 5px no-repeat,
+    linear-gradient(#050302, #050302) 69% 62% / 9px 5px no-repeat,
+    linear-gradient(#050302, #050302) 50% 62% / 13px 6px no-repeat,
+    linear-gradient(180deg, rgba(255, 236, 210, 0.12), transparent 30%),
+    linear-gradient(180deg, #2c1e17, #21160f);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tape-player__window.is-playing .tape-player__reel,
+  .tape-player__window.is-winding .tape-player__reel {
+    animation: none;
+  }
+
+  .tape-player__pack {
+    transition: none;
+  }
+}
+
+html.lite .tape-player::before {
+  display: none;
+}
+
+html.lite .tape-player__silent,
+html.lite .tape-player__side-letter {
+  mix-blend-mode: normal;
+}
+
+/* A received Loop: the receipt feeds out of the printer the first time it shows. */
+/* Only the reveal is animated: the card's own transforms (the stack physics) are left alone, and
+   nothing is held afterwards, so shadows and overhanging stamps aren't clipped. */
+.recipient-stage .mat-receipt {
+  animation: receipt-feed 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s backwards;
+}
+
+/* Loop mounts under the wrapping paper; the receipt waits until it's actually in view. */
+.recipient-stage [inert] .mat-receipt {
+  animation-play-state: paused;
+}
+
+@keyframes receipt-feed {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recipient-stage .mat-receipt {
+    animation: none;
+  }
+}
+
+html.lite .recipient-stage .mat-receipt {
+  animation: none;
+}
+
+html.lite .mat-receipt .deck-card__body article,
+html.lite .mat-receipt .ink-stamp,
+html.lite .mat-receipt .ink-ring {
+  mix-blend-mode: normal;
 }
 
 .tape-player__play {
@@ -3294,49 +3949,6 @@ html.is-landscape .xso-dock {
 .tape-player__play:active:not(:disabled) {
   transform: translateY(2px);
   box-shadow: 0 1px 0 #92400e;
-}
-
-.tape-player__side {
-  display: inline-grid;
-  height: 18px;
-  min-width: 18px;
-  place-items: center;
-  border-radius: 4px;
-  background: #b45309;
-  color: #fff7ed;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-.tape-player__reels {
-  display: flex;
-  gap: 6px;
-  border-radius: 999px;
-  background: #2d1b22;
-  padding: 5px 7px;
-}
-
-.tape-player__reels i {
-  display: block;
-  height: 16px;
-  width: 16px;
-  border-radius: 999px;
-  background:
-    conic-gradient(
-      from 0deg,
-      #f8eddc 0 12%,
-      transparent 12% 33%,
-      #f8eddc 33% 45%,
-      transparent 45% 66%,
-      #f8eddc 66% 78%,
-      transparent 78%
-    ),
-    radial-gradient(circle, #2d1b22 28%, #6b4a3a 30%);
-  box-shadow: inset 0 0 0 2px #6b4a3a;
-}
-
-.tape-player__reels.is-playing i {
-  animation: tape-reel 1.6s linear infinite;
 }
 
 @keyframes tape-reel {
@@ -3436,12 +4048,6 @@ html.is-landscape .xso-dock {
   box-shadow: 0 1px 0 #92400e;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tape-player__reels.is-playing i {
-    animation: none;
-  }
-}
-
 /*
  * The cassette's fold-out insert: ruled cream card stock with a typed track list. Sizes undo
  * the short-phone card zoom so the notes never read smaller than 18px.
@@ -3495,6 +4101,101 @@ html.is-landscape .xso-dock {
 }
 
 /*
+ * The pearl stage (GiftUnboxing): near-black with a warm lift where the pearl rests, a shaft of
+ * light from the upper right, and a lit floor with the pearl's reflection. Every glow is a baked
+ * gradient; nothing here uses a live blur filter.
+ */
+.pearl-stage {
+  background:
+    radial-gradient(ellipse 60% 42% at 50% 55%, rgba(74, 52, 30, 0.34), transparent 70%),
+    radial-gradient(ellipse 120% 80% at 50% 50%, #0b0706 0%, #050304 62%, #020101 100%);
+}
+
+.pearl-shaft {
+  top: -24%;
+  right: -12%;
+  width: 62%;
+  height: 112%;
+  transform: rotate(24deg);
+  transform-origin: 50% 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 214, 150, 0.05) 28%,
+    rgba(255, 226, 176, 0.17) 47%,
+    rgba(255, 236, 200, 0.21) 50%,
+    rgba(255, 226, 176, 0.17) 53%,
+    rgba(255, 214, 150, 0.05) 72%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.6) 45%, transparent 82%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.6) 45%, transparent 82%);
+}
+
+.pearl-mote {
+  background: radial-gradient(circle, rgba(255, 228, 176, 0.95) 0%, rgba(255, 210, 140, 0.35) 45%, transparent 72%);
+}
+
+.pearl-halo {
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 238, 206, 0.62) 0%,
+    rgba(255, 214, 158, 0.26) 40%,
+    rgba(255, 196, 128, 0.09) 66%,
+    transparent 100%
+  );
+}
+
+.pearl-floor {
+  background:
+    radial-gradient(closest-side, rgba(255, 236, 200, 0.55), rgba(255, 214, 150, 0.16) 42%, transparent 76%),
+    radial-gradient(closest-side, rgba(255, 220, 170, 0.12), transparent 100%);
+}
+
+.pearl-reflection {
+  opacity: 0.22;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, transparent 48%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, transparent 48%);
+}
+
+/* The light that seems to come from inside the parcel as its flaps part. */
+.pearl-ember {
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 226, 170, 0.5) 0%,
+    rgba(255, 196, 120, 0.18) 38%,
+    rgba(255, 180, 100, 0.05) 62%,
+    transparent 100%
+  );
+}
+
+/* The parcel lit by one warm lamp at the upper right, falling off into the room's dark. */
+.parcel-light {
+  background:
+    radial-gradient(ellipse 70% 55% at 74% 16%, rgba(255, 216, 156, 0.36), transparent 62%),
+    radial-gradient(ellipse 85% 72% at 54% 44%, transparent 30%, rgba(16, 8, 3, 0.8) 100%);
+}
+
+.parcel-light--matte {
+  background:
+    radial-gradient(ellipse 70% 55% at 74% 16%, rgba(255, 196, 176, 0.14), transparent 62%),
+    radial-gradient(ellipse 90% 78% at 50% 46%, transparent 42%, rgba(0, 0, 0, 0.62) 100%);
+}
+
+/* The recipient's closing sheet, lit like the pearl stage. */
+.closing-sheet {
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 0%, rgba(255, 214, 150, 0.13), transparent 72%),
+    linear-gradient(180deg, rgba(30, 19, 15, 0.97) 0%, rgba(18, 11, 10, 0.97) 100%);
+}
+
+/* A soft light that slides slowly across the pearl, as if someone just moved a lamp. */
+.pearl-sheen {
+  background: radial-gradient(circle at 38% 30%, rgba(255, 250, 240, 0.42), rgba(255, 244, 226, 0) 34%);
+  mix-blend-mode: screen;
+}
+
+/*
  * Lite mode (html.lite, set by lib/liteMode on weak or struggling devices): keep every layout and
  * interaction, drop the effects that make older GPUs repaint or re-blur every frame.
  */
@@ -3523,6 +4224,21 @@ html.lite .projector-dust {
 
 html.lite .film-grain {
   inset: 0;
+  animation: none;
+}
+
+html.lite .pearl-sheen,
+html.lite .pearl-mote {
+  display: none !important;
+}
+
+html.lite .movie-cut,
+html.lite .movie-grade {
+  display: none !important;
+}
+
+html.lite .movie-hold-cue,
+html.lite .keepsake-clasp {
   animation: none;
 }
 

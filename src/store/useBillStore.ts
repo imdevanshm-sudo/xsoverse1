@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { SAMPLE_BRAND, sampleFooter } from '@/lib/brand';
 import {
   DEFAULT_LINE_ITEMS,
   VIBES,
@@ -47,9 +48,9 @@ export const useBillStore = create<BestieBillState & BillActions>((set, get) => 
   occasion: '25th Birthday Roast',
   vibe: VIBES[0],
   insideJokes: 'crying over exes, 2am boba, taking 45 mins to order food, getting lost in Target',
-  merchantName: 'EMOTIONAL DAMAGE CO.',
-  cashier: 'Trauma Bonding',
-  footerQuote: 'THANK YOU FOR TOLERATING ME',
+  merchantName: SAMPLE_BRAND.storeName,
+  cashier: SAMPLE_BRAND.cashier,
+  footerQuote: sampleFooter(),
   theme: 'y2k',
   lineItems: seedItems(),
   subtotal: '$420.00 + CHAOS',

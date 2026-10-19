@@ -1,3 +1,4 @@
+import { SAMPLE_BRAND } from '@/lib/brand';
 import {
   LOOP_CARDS,
   type AccordionLayers,
@@ -77,8 +78,12 @@ export function halfStar(value: number) {
 }
 
 function movieDefaults(content: Pack, titles: string[], stars: number): MovieLayers {
+  const opening =
+    content.merchantName === SAMPLE_BRAND.storeName
+      ? SAMPLE_BRAND.movieTagline
+      : `${content.merchantName.replace(/[.!?]+$/, '')}. I kept every receipt.`;
   const captions = [
-    `${content.merchantName.replace(/[.!?]+$/, '')}. I kept every receipt.`,
+    opening,
     `Rated ${stars} out of 5. I rounded down so you'd stay humble.`,
     'Some frames I replay more than others.',
     firstSentence(content.birthdayMessage),

@@ -163,8 +163,8 @@ export function getMockXsoData(): XsoData {
     customerName: 'Alex',
     occasion: 'Birthday Roast',
     timestamp: '03/15/2026 02:47 AM',
-    merchantName: 'EMOTIONAL DAMAGE CO.',
-    cashier: 'Trauma Bonding',
+    merchantName: 'BOBA & BAD DECISIONS CO.',
+    cashier: 'SARAH, HEAD OF HUGS',
     lineItems: [
       { id: 'li-1', qty: '42x', description: 'LATE-NIGHT BOBA RUNS', price: '$69.00' },
       { id: 'li-2', qty: '150h', description: 'BEING YOUR THERAPIST', price: 'UNPAID' },

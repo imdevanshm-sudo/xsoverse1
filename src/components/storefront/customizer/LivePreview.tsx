@@ -8,6 +8,7 @@ import { AUDIT_KEYS } from '@/lib/formats';
 import { FORMAT_CARDS, type CardId } from '@/lib/formatCards';
 import { resolveScrapbook } from '@/lib/scrapbook';
 import { FormatThumb } from '@/components/storefront/customizer/FormatThumb';
+import { StoreName } from '@/components/xso/StoreName';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
 function PaneLabel({ children }: { children: ReactNode }) {
@@ -63,7 +64,7 @@ function CardFace({ id, data }: { id: CardId; data: XsoData }) {
     case 'receipt':
       return (
         <div className="flex h-full flex-col bg-[#fffaf3] p-3 font-receipt text-[8px] uppercase leading-tight text-[#2d1b22]">
-          <p className="text-center text-[9.5px] font-bold">{data.merchantName}</p>
+          <StoreName name={data.merchantName} className="!text-[9px]" />
           <p className="mt-1 text-center text-[#9a6b7b]">Customer: {data.customerName}</p>
           <div className="mt-2 grid gap-1 border-t border-dashed border-[#e8bfd0] pt-2">
             {data.lineItems.slice(0, 4).map((item) => (
@@ -276,7 +277,7 @@ export const DraftReceipt = memo(function DraftReceipt({
     <div>
       <PaneLabel>Live preview · drafting your receipt</PaneLabel>
       <div className="relative mx-auto w-full max-w-[300px] rotate-[-1deg] overflow-hidden rounded-md bg-[#fffaf3] px-5 pb-5 pt-4 font-receipt text-[11px] uppercase text-[#2d1b22] shadow-[0_20px_50px_-18px_rgba(0,0,0,.8)]">
-        <p className="text-center text-[14px] font-bold leading-tight">{data.merchantName}</p>
+        <StoreName name={data.merchantName} className="!text-[14px]" />
         <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 border-b border-dashed border-[#e8bfd0] pb-3">
           <dt className="text-[#9a6b7b]">Customer</dt>
           <dd className="min-w-0 text-right font-bold">

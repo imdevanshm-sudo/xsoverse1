@@ -11,7 +11,18 @@ const INTERVAL_MS = 900;
 const SLOW_INTERVAL_MS = 4000;
 
 /** Waits on the sender's dashboard until the payment webhook marks the gift paid. */
-export function ManagePending({ giftId, preview }: { giftId: string; preview: boolean }) {
+export function ManagePending({
+  giftId,
+  preview,
+  manageKey,
+  paidRedirect,
+}: {
+  giftId: string;
+  preview: boolean;
+  manageKey: string;
+  /** Lemon returned here with `&paid=1` — soft-confirm if the webhook is late. */
+  paidRedirect: boolean;
+}) {
   const router = useRouter();
   const [message, setMessage] = useState('Pressing the wax seal…');
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +44,13 @@ export function ManagePending({ giftId, preview }: { giftId: string; preview: bo
       try {
         if (preview && attempts === 1 && run === 0) {
           await fetch(`/api/gifts/${encodeURIComponent(giftId)}/confirm`, { method: 'POST' });
+        }
+        if (paidRedirect && attempts === 1 && run === 0) {
+          await fetch(`/api/gifts/${encodeURIComponent(giftId)}/confirm-paid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: manageKey }),
+          });
         }
         const response = await fetch(`/api/gifts/${encodeURIComponent(giftId)}`, {
           cache: 'no-store',
@@ -76,7 +94,7 @@ export function ManagePending({ giftId, preview }: { giftId: string; preview: bo
       cancelled = true;
       if (timer) window.clearTimeout(timer);
     };
-  }, [giftId, preview, run, router]);
+  }, [giftId, manageKey, paidRedirect, preview, run, router]);
 
   return (
     <div className="paper-panel w-full max-w-md p-6 text-center sm:p-8">

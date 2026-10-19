@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import type { XsoData } from '@/types/xso';
 
-/** Paper and film grain tiles the formats paint with (see globals.css). */
+/** Paper and film grain tiles the formats paint with (see globals.css), and the unwrap's pearl. */
 export const TEXTURES = [
   '/textures/noise-warm.png',
   '/textures/noise-light.png',
   '/textures/noise-mono.png',
+  '/brand/pearl-720.webp',
 ];
 
 /** next/font exposes each family through a CSS variable on <html>. */

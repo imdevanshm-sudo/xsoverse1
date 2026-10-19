@@ -23,7 +23,8 @@ export function blankFrame(index: number): string {
 }
 
 const BLANKS = new Set(Array.from({ length: MAX_PHOTOS }, (_, i) => blankFrame(i)));
-const CARD_CHARS = 17;
+/** The card wraps over a few lines; past this a receipt line is cut at a word. */
+const CARD_CHARS = 36;
 const CARD_COLORS: [string, string][] = [
   ['#ffe4f1', '#c1177a'],
   ['#e8ff4a', '#1a1814'],
@@ -35,7 +36,7 @@ const CARD_COLORS: [string, string][] = [
 function loreCard(data: XsoData, index: number): string {
   const lore = (data.lineItems[index]?.description ?? data.occasion).toUpperCase();
   const [bg, fg] = CARD_COLORS[index % CARD_COLORS.length];
-  /** About as much as fits across the card in one line, cut between words. */
+  /** The whole line where it fits, otherwise cut between words. */
   const words = lore.split(/\s+/);
   let line = words[0].slice(0, CARD_CHARS);
   for (const word of words.slice(1)) {
@@ -46,14 +47,14 @@ function loreCard(data: XsoData, index: number): string {
 }
 
 /**
- * What the photo booth prints: the sender's uploads, without the editor's empty frames or the
- * theme's stand-ins. The stand-in cards only show when nothing was uploaded, and a gift with no
- * photos at all gets colored cards written from the receipt.
+ * What the photo booth prints: the sender's uploads only, never the editor's empty frames or the
+ * theme's stand-in memories. Any frames left over get colored cards written from the gift's own
+ * receipt, so a gift without photos still shows only things the sender wrote.
  */
 export function stripPhotos(data: XsoData): string[] {
-  const photos = data.photos.filter((src) => src && !BLANKS.has(src));
-  const uploaded = photos.filter((src) => !isPlaceholderPhoto(src));
-  const frames = (uploaded.length ? uploaded : photos).slice(0, MAX_PHOTOS);
+  const frames = data.photos
+    .filter((src) => src && !BLANKS.has(src) && !isPlaceholderPhoto(src))
+    .slice(0, MAX_PHOTOS);
   for (let i = frames.length; i < MIN_FRAMES; i += 1) frames.push(loreCard(data, i));
   return frames;
 }

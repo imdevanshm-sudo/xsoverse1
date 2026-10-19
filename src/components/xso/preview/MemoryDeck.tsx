@@ -74,7 +74,7 @@ const MATERIALS: Record<SlotId, Material> = {
   photos: { surface: 'mat-photo', sheen: 0.9 },
   letter: { surface: 'mat-letter', sheen: 0.14 },
   song: { surface: 'mat-cardstock', sheen: 0.35 },
-  end: { surface: 'mat-letter', sheen: 0.14 },
+  end: { surface: 'mat-receipt', sheen: 0.3 },
 };
 
 interface DeckProps {
@@ -163,7 +163,7 @@ const Deck = memo(function Deck({
       photos: artifacts.find((a) => a.id === 'photos')?.content,
       letter: <Side4BirthdayCard data={data} bare />,
       song: artifacts.find((a) => a.id === 'song')?.content,
-      end: <YourTurn source="loop_end" onDismiss={() => throws.current[end]?.()} />,
+      end: <YourTurn source="loop_end" stub onDismiss={() => throws.current[end]?.()} />,
     }),
     [artifacts, data, end],
   );

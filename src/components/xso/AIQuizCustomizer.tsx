@@ -281,7 +281,7 @@ export function MemorySpark({
 }) {
   const t = TONES[tone];
   const p = PILL[tone];
-  const answerRef = useRef<HTMLInputElement>(null);
+  const answerRef = useRef<HTMLTextAreaElement>(null);
   const pick = (q: string) => {
     onQuestion(q);
     answerRef.current?.focus({ preventScroll: true });
@@ -341,19 +341,28 @@ export function MemorySpark({
       ) : null}
       <label className="mt-4 grid gap-1.5">
         <span className={t.field}>Spill it</span>
-        <input
+        <textarea
           ref={answerRef}
           value={answer}
+          rows={3}
           onChange={(e) => onAnswer(e.target.value.slice(0, CRAFT_LIMITS.memory))}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && answer.trim().length >= CRAFT_LIMITS.minMemory) onSubmit?.();
+            if (e.key === 'Enter' && !e.shiftKey && answer.trim().length >= CRAFT_LIMITS.minMemory) {
+              e.preventDefault();
+              onSubmit?.();
+            }
           }}
           aria-label={question ? `Your answer to: ${question}` : undefined}
-          placeholder="Drop a core memory here..."
+          placeholder="The real thing: a night you still talk about, what they always say, the joke only you two get..."
           autoComplete="off"
           enterKeyHint="next"
-          className={t.input}
+          className={`${t.input} min-h-[5.5rem] resize-y`}
         />
+        <span className={`text-[12.5px] leading-snug ${t.detail}`}>
+          {answer.trim().length < CRAFT_LIMITS.minMemory
+            ? 'A sentence or two. Names, places and their words end up in the gift.'
+            : 'Good. Everything they see is written from this.'}
+        </span>
       </label>
     </div>
   );

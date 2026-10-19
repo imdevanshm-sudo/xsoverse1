@@ -32,7 +32,6 @@ import type { FormatKey, FormatLayers } from '@/lib/formats';
 import { cardsPatch, normalizeCards, selectedCards, type CardId } from '@/lib/formatCards';
 import { compressPhotoForStyle } from '@/lib/media';
 import { startCheckout } from '@/lib/startCheckout';
-import { loadLemonJs } from '@/lib/lemonJs';
 import { pickXsoPayload } from '@/lib/xsoPayload';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { CardDetailsEditor, type FormatPatch } from '@/components/xso/FormatEditor';
@@ -48,6 +47,7 @@ import {
 } from '@/components/storefront/customizer/LivePreview';
 import {
   fromGiftStyle,
+  offeredStyle,
   toGiftStyle,
   type OrderFormat,
   type OrderVibe,
@@ -111,7 +111,9 @@ export function XSOCustomizerModal() {
   const [draft, setDraft] = useState<Draft>(() => seedDraft(theme));
   const [draftId] = useState(() => useXsoStore.getState().id);
   const [config, setConfig] = useState<XSOOrderConfig>(() => {
-    const style = useCustomizerModal.getState().format ?? useXsoStore.getState().giftStyle;
+    const style = offeredStyle(
+      useCustomizerModal.getState().format ?? useXsoStore.getState().giftStyle,
+    );
     return {
       format: fromGiftStyle(style),
       selectedCards: selectedCards({ ...draft, id: '', giftStyle: style }, style),
@@ -434,11 +436,6 @@ export function XSOCustomizerModal() {
       setPaying(false);
     }
   }, [addOns, busy, cards.length, commit, order, price, songMissing, style]);
-
-  /** Warm Lemon.js while the sender is finishing their customizations. */
-  useEffect(() => {
-    if (step === DETAILS) void loadLemonJs();
-  }, [step]);
 
   const canNext = step === 0 || step === 1;
   const photoPicker = (

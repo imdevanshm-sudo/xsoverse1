@@ -24,13 +24,18 @@ export function FitStage({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState<number | null>(null);
+  /** A phone on its side: the keepsake keeps its phone size and the stage scrolls to show it all. */
+  const [short, setShort] = useState(false);
 
   useLayoutEffect(() => {
     const node = box.current;
     if (!node) return;
     const measure = () => {
       const { width: w, height: h } = node.getBoundingClientRect();
-      setScale(w < FIT_FROM ? null : Math.min((w * 0.94) / width, (h * 0.94) / height, max));
+      const fit = Math.min((w * 0.94) / width, (h * 0.94) / height, max);
+      const cramped = w > h && h < height * 0.87;
+      setShort(cramped && (w < FIT_FROM || fit < 0.8));
+      setScale(w < FIT_FROM || (cramped && fit < 0.8) ? null : fit);
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -40,7 +45,16 @@ export function FitStage({
 
   return (
     <div ref={box} className="relative flex h-full w-full items-center justify-center">
-      {scale === null ? (
+      {short ? (
+        <div className="fit-stage-scroll absolute inset-0 overflow-y-auto overscroll-contain">
+          <div
+            className="mx-auto box-content flex w-full justify-center py-5"
+            style={{ height, maxWidth: width }}
+          >
+            {children}
+          </div>
+        </div>
+      ) : scale === null ? (
         children
       ) : (
         <MotionConfig transformPagePoint={(p) => ({ x: p.x / scale, y: p.y / scale })}>

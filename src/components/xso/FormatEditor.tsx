@@ -777,7 +777,9 @@ export const CardDetailsEditor = memo(function CardDetailsEditor({
   tone?: ToneName;
 }) {
   const t = TONES[tone];
-  const [open, setOpen] = useOpenSet<CardId>(cards.slice(0, 1));
+  /** The letter is what they'll reread, so it opens first, for the sender to make their own. */
+  const first = cards.includes('letter' as CardId) ? ['letter' as CardId] : cards.slice(0, 1);
+  const [open, setOpen] = useOpenSet<CardId | 'music'>(first);
   const onScrapbook = useCallback(
     (patch: Partial<ScrapbookLayers>) => onFormat('scrapbook', patch),
     [onFormat],
@@ -790,7 +792,7 @@ export const CardDetailsEditor = memo(function CardDetailsEditor({
         onPatch={onPatch}
         onLayers={onScrapbook}
         photoSlot={photoSlot}
-        defaultOpen={cards.slice(0, 1) as ScrapbookElement[]}
+        defaultOpen={first as ScrapbookElement[]}
         onFocusCard={onFocusCard}
       />
     );
@@ -875,6 +877,21 @@ export const CardDetailsEditor = memo(function CardDetailsEditor({
             {fieldsFor(card.id)}
           </EditorRow>
         ))}
+      {movie ? (
+        <EditorRow
+          t={t}
+          label="Soundtrack"
+          detail={soundtrackLabel(fields.moviebox.soundtrack)}
+          open={open.has('music')}
+          onExpand={() => setOpen('music')}
+        >
+          <SoundtrackField
+            t={t}
+            value={fields.moviebox.soundtrack ?? ''}
+            onChange={(soundtrack) => onFormat('moviebox', { soundtrack })}
+          />
+        </EditorRow>
+      ) : null}
     </ul>
   );
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useId, useState } from 'react';
+import { memo, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { Captions, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import type { RewindLayers } from '@/types/xso';
 
@@ -68,24 +68,61 @@ export const TapePlayer = memo(function TapePlayer({
   const what = voice ? 'voice note' : 'tape';
   const [reading, setReading] = useState(false);
   const transcriptId = useId();
+  /** The side in play, and its title as the sender wrote it on the J-card. */
+  const side = bonus ? 'B' : sideOf(Math.min(current, Math.max(0, count - 1)), Math.max(1, count));
+  const written = (side === 'A' ? tape.sideA : tape.sideB)?.trim();
+  const sideTitle = written && !/^side\s*[ab]$/i.test(written) ? written : '';
+  /**
+   * How much tape has wound onto the right-hand reel. A tape with a soundtrack follows the audio;
+   * on a silent tape the memories are the tape, so it follows the card on top.
+   */
+  const wound = available
+    ? progress
+    : bonus
+      ? 1
+      : count > 1
+        ? Math.min(current, count - 1) / (count - 1)
+        : 0;
+  /** A silent tape winds between memories: forward to the next one, back to an earlier one. */
+  const [winding, setWinding] = useState<'' | 'fwd' | 'back'>('');
+  const lastTrack = useRef(current);
+  useEffect(() => {
+    if (lastTrack.current === current) return;
+    const towards = current > lastTrack.current ? 'fwd' : 'back';
+    lastTrack.current = current;
+    if (available) return;
+    setWinding(towards);
+    const timer = window.setTimeout(() => setWinding(''), 650);
+    return () => window.clearTimeout(timer);
+  }, [current, available]);
 
   return (
     <div className="tape-player relative z-20 mb-2 w-full" role="group" aria-label="Mixtape">
+      <div className="tape-player__label">
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={!available}
-          aria-label={available ? `${playing ? 'Pause' : 'Play'} the ${what}` : 'No soundtrack'}
-          title={available ? undefined : 'This tape has no soundtrack'}
-          className="tape-player__play grid h-12 w-12 shrink-0 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fdba74] disabled:opacity-40"
-        >
-          <Icon className={`h-5 w-5 ${playing ? '' : 'translate-x-[1px]'}`} aria-hidden />
-        </button>
+        {available ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={`${playing ? 'Pause' : 'Play'} the ${what}`}
+            className="tape-player__play grid h-12 w-12 shrink-0 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fdba74]"
+          >
+            <Icon className={`h-5 w-5 ${playing ? '' : 'translate-x-[1px]'}`} aria-hidden />
+          </button>
+        ) : null}
 
-        <p className="min-w-0 flex-1 truncate font-hand text-[22px] leading-none text-[#2d1b22]">
+        <p
+          className={`min-w-0 flex-1 truncate font-hand text-[22px] leading-none text-[#2d1b22] ${available ? '' : 'pl-1'}`}
+        >
           {track?.title}
         </p>
+
+        {available ? null : (
+          /* A silent tape says so on its label instead of offering a Play that can't play. */
+          <span className="tape-player__silent shrink-0">
+            Silent<span className="sr-only"> tape: no soundtrack</span>
+          </span>
+        )}
 
         {transcript ? (
           <button
@@ -117,25 +154,48 @@ export const TapePlayer = memo(function TapePlayer({
         ) : null}
       </div>
 
-      <div
-        className="mt-2 flex gap-1"
-        role="progressbar"
-        aria-label="Tracks"
-        aria-valuemin={1}
-        aria-valuemax={count}
-        aria-valuenow={Math.min(current + 1, count)}
-        aria-valuetext={bonus ? 'Bonus track' : `Track ${current + 1} of ${count}`}
-      >
-        {tracks
-          .filter((t) => t.id !== 'end')
-          .map((t, i) => (
-            <span
-              key={t.id}
-              className={`tape-player__seg ${i < current || bonus ? 'is-done' : ''} ${
-                i === current && !bonus ? 'is-current' : ''
-              }`}
-            />
-          ))}
+      <div className="tape-player__deck" aria-hidden>
+        <span className="tape-player__side-letter">{side}</span>
+        {/* The cassette's window: the hubs only turn while the tape is really playing. */}
+        <div
+          className={`tape-player__window ${playing ? 'is-playing' : ''} ${winding ? `is-winding is-winding--${winding}` : ''}`}
+          style={{ '--wound': wound } as CSSProperties}
+        >
+          <span className="tape-player__pack tape-player__pack--supply" />
+          <span className="tape-player__pack tape-player__pack--takeup" />
+          <i className="tape-player__reel tape-player__reel--supply" />
+          <i className="tape-player__reel tape-player__reel--takeup" />
+        </div>
+        <span className="tape-player__date">{tape.tapeDate?.trim() || 'C60'}</span>
+      </div>
+
+      <div className="mt-1.5 flex items-center gap-2.5">
+        {sideTitle ? (
+          <span className="tape-player__strip">
+            <span className="sr-only">Side {side}: </span>
+            {sideTitle}
+          </span>
+        ) : null}
+        <div
+          className="flex flex-1 gap-1"
+          role="progressbar"
+          aria-label="Tracks"
+          aria-valuemin={1}
+          aria-valuemax={count}
+          aria-valuenow={Math.min(current + 1, count)}
+          aria-valuetext={bonus ? 'Bonus track' : `Side ${side}, track ${current + 1} of ${count}`}
+        >
+          {tracks
+            .filter((t) => t.id !== 'end')
+            .map((t, i) => (
+              <span
+                key={t.id}
+                className={`tape-player__seg ${i < current || bonus ? 'is-done' : ''} ${
+                  i === current && !bonus ? 'is-current' : ''
+                }`}
+              />
+            ))}
+        </div>
       </div>
       {available ? (
         <div aria-hidden className="tape-player__time">
@@ -150,6 +210,9 @@ export const TapePlayer = memo(function TapePlayer({
           The {what} won&apos;t play right now. The cards still work without it.
         </p>
       ) : null}
+      </div>
+      {/* The shell's head: the ramp along the bottom with its capstan holes. */}
+      <span aria-hidden className="tape-player__head" />
       {transcript && reading ? (
         <div
           id={transcriptId}

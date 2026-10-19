@@ -11,7 +11,12 @@ export interface StageSize {
   big: boolean;
   /** True when the stage fills the room edge-to-edge (phones); false on a centered desktop frame. */
   flush: boolean;
+  /** A short landscape stage (a phone on its side): scenes use their tightest layouts. */
+  compact: boolean;
 }
+
+/** Below this height a landscape stage can't stack a title, a scene and the controls. */
+const COMPACT_HEIGHT = 420;
 
 /**
  * Fits a cinematic stage inside its container.
@@ -25,6 +30,7 @@ export function useStage<T extends HTMLElement>() {
     landscape: false,
     big: false,
     flush: true,
+    compact: false,
   });
 
   useEffect(() => {
@@ -42,8 +48,9 @@ export function useStage<T extends HTMLElement>() {
           width: Math.floor(w),
           height: Math.floor(h),
           landscape,
-          big: w >= 640,
+          big: w >= 640 && h >= COMPACT_HEIGHT,
           flush: true,
+          compact: landscape && h < COMPACT_HEIGHT,
         });
         return;
       }
@@ -55,8 +62,9 @@ export function useStage<T extends HTMLElement>() {
         width: Math.floor(width),
         height: Math.floor(height),
         landscape,
-        big: width >= 640,
+        big: width >= 640 && height >= COMPACT_HEIGHT,
         flush: false,
+        compact: landscape && height < COMPACT_HEIGHT,
       });
     };
     measure();

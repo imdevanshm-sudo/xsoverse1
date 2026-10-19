@@ -1,17 +1,14 @@
 import { useXsoStore } from '@/store/useXsoStore';
 import { pickXsoPayload } from '@/lib/xsoPayload';
-import { loadLemonJs, openLemonOverlay } from '@/lib/lemonJs';
-import { playSound, soundOn } from '@/lib/sound';
+import { hostedCheckoutUrl, scrubLemonOverlay } from '@/lib/lemonJs';
 import type { AddOnId } from '@/lib/pricing';
 import type { GiftStyle, XsoData } from '@/types/xso';
 
-/** Long enough for the success chord to ring before the page moves on (which stops all sound). */
-const SUCCESS_HOLD_MS = 900;
-
 /**
- * Saves the current draft as a pending gift and opens payment: the Lemon.js overlay when it
- * loads, otherwise a full-page redirect. Resolves `'overlay'` once the overlay is open; on the
- * redirect path the page navigates away. Throws on failure.
+ * Saves the current draft as a pending gift and opens Lemon's hosted checkout.
+ *
+ * Overlay embed on store.xsoverse.app currently hangs (white blank, iframe height 0,
+ * Lemon's useCheckoutState crash). Full-page hosted checkout is reliable.
  */
 export async function startCheckout(
   style: GiftStyle,
@@ -19,13 +16,14 @@ export async function startCheckout(
   addOns: readonly AddOnId[] = [],
 ): Promise<'overlay' | 'redirect'> {
   const data = pickXsoPayload({ ...(order ?? useXsoStore.getState()), giftStyle: style });
-  const overlay = await loadLemonJs();
+  scrubLemonOverlay();
+
   const response = await fetch('/api/checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       data,
-      overlay,
+      overlay: false,
       addOns,
     }),
   });
@@ -38,18 +36,7 @@ export async function startCheckout(
   if (!response.ok || !json.checkoutUrl) {
     throw new Error(json.error || 'Checkout failed');
   }
-  const done = json.redirectUrl;
-  if (
-    overlay &&
-    json.mode === 'lemon' &&
-    done &&
-    openLemonOverlay(json.checkoutUrl, () => {
-      playSound('wizard.success');
-      window.setTimeout(() => window.location.assign(done), soundOn() ? SUCCESS_HOLD_MS : 0);
-    })
-  ) {
-    return 'overlay';
-  }
-  window.location.assign(json.checkoutUrl);
+
+  window.location.assign(hostedCheckoutUrl(json.checkoutUrl));
   return 'redirect';
 }

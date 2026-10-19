@@ -175,6 +175,19 @@ const wait: Wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function playThrough(page: Page, style: GiftStyle, wait: Wait, more: () => boolean) {
   switch (style) {
     case 'moviebox': {
+      /* The title card is ready once its keepsake box has drawn, or it has settled on the plain card. */
+      const card = await page
+        .waitForFunction(
+          (): string => {
+            const state = document.querySelector('[data-keepsake]')?.getAttribute('data-keepsake');
+            if (!state) return document.querySelector('[aria-label="Play"]') ? 'none' : '';
+            return state === 'loading' ? '' : state;
+          },
+          { timeout: 5000, polling: 100 },
+        )
+        .then((handle) => handle.jsonValue())
+        .catch(() => '');
+      if (card === 'ready') await wait(1800);
       await tap(page, ['[aria-label="Play"]']);
       while (more()) {
         await wait(1000);
@@ -183,6 +196,14 @@ async function playThrough(page: Page, style: GiftStyle, wait: Wait, more: () =>
           .catch(() => false);
         if (fin) {
           return wait(2500);
+        }
+        /** The song credit waits for the viewer; after one dwell, move on like they would. */
+        const holding = await page
+          .evaluate(() => Boolean(document.querySelector('[data-movie-hold]')))
+          .catch(() => false);
+        if (holding) {
+          await wait(DWELL_MS);
+          await tap(page, ['[data-movie-hold]', '[aria-label="Next scene"]']);
         }
       }
       return;
@@ -201,8 +222,18 @@ async function playThrough(page: Page, style: GiftStyle, wait: Wait, more: () =>
         if (!(await tap(page, ['[aria-label="Next fold"]']))) break;
         await wait(DWELL_MS);
       }
+      /* The closing fold joins once the letter has finished writing; end the video on it. */
+      for (let i = 0; i < 12 && more(); i++) {
+        if (await atEnd(page)) return wait(2000);
+        await wait(1000);
+        await tap(page, ['[aria-label="Next fold"]']);
+      }
       return;
     }
+    case 'rewind':
+      /* The tape asks first; a silent video reads along without it. */
+      if (await tapText(page, 'read in silence')) await wait(900);
+    // falls through
     default: {
       for (let i = 0; i < 10 && more(); i++) {
         await wait(DWELL_MS);
@@ -251,8 +282,9 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
       await wait(250);
       wrapped = await page
         .evaluate(() => {
+          /** The parcel's opener: "Unwrap Gift", or the Movie Box's "Break Seal". */
           const button = Array.from(document.querySelectorAll('button')).find((b) =>
-            /unwrap/i.test(b.textContent ?? ''),
+            /unwrap|break seal/i.test(b.textContent ?? ''),
           );
           if (!button) return false;
           const box = button.getBoundingClientRect();
@@ -269,7 +301,7 @@ export async function recordGift(viewUrl: string, style: GiftStyle): Promise<Buf
     const recordingFrom = Date.now();
     log('capturing');
     await wait(1200);
-    if (!(await tapText(page, 'unwrap'))) throw new Error('Gift could not be opened');
+    if (!(await tapText(page, 'unwrap|break seal'))) throw new Error('Gift could not be opened');
     await wait(4500);
     log('unwrapped');
     await playThrough(page, style, wait, () => Date.now() - started < MAX_REAL_MS);

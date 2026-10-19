@@ -32,7 +32,9 @@ export function parseCraftInput(body: unknown): CraftInput | string {
   if (!recipientName) return 'Who is it for? Add their name.';
   if (!relationship) return 'Pick how you know them.';
   if (!tone) return 'Pick a tone.';
-  if (memoryText.length < CRAFT_LIMITS.minMemory) return 'Tell us at least one memory.';
+  if (memoryText.length < CRAFT_LIMITS.minMemory) {
+    return 'Tell us a little more: a sentence or two about a real memory.';
+  }
   if (!format) return 'Unknown format.';
   const cards = Array.isArray(b.cards) ? normalizeCards(format, b.cards) : undefined;
   return {
@@ -148,12 +150,12 @@ ${input.memoryText}
 Write everything specifically about these memories. Rules:
 - storeName: punny store name in ALL CAPS (max 26 chars). cashier: short funny role (max 20).
 - occasion: short reason for the gift (max 28). receiptDate: a plausible date in MM/DD/YYYY.
-- lineItems: exactly 4 hilarious items drawn from the memories. qty like "42x", "3h", "∞" (max 5). description UPPERCASE, max 26 chars. price either money like "$40.00" or a chaotic unit like "UNPAID", "LORE", "PRICELESS" (max 10).
+- lineItems: exactly 4 funny items, each taken from something specific in the memories (reuse their own words, names and places; no generic jokes that could fit anyone). qty like "42x", "3h", "∞" (max 5). description UPPERCASE, max 26 chars. price either money like "$40.00" or a chaotic unit like "UNPAID", "LORE", "PRICELESS" (max 10).
 - total: e.g. "PRICELESS", "$∞", "1x LIFETIME SUB" (max 16).
 - audit: rate each of chaos, loyalty, snacking, advice, support 1-5 stars with a funny custom label for that category (max 18 chars, e.g. "Boba Dependency").
 - greenFlags / redFlags: exactly 3 each, max 50 chars, specific to them.
 - stampText: certification stamp, ALL CAPS, max 22, e.g. "CERTIFIED BESTIE ★".
-- letter: a handwritten letter to ${input.recipientName}, exactly 2 short paragraphs separated by a blank line, max 340 chars total, no sign-off name.
+- letter: a handwritten letter to ${input.recipientName} in the sender's own voice: plain, warm, specific. Build it from the actual memories above and reuse their exact phrases and details. No greeting-card clichés, no "another year of" lines, nothing that could be sent to someone else. 2 short paragraphs separated by a blank line, max 420 chars total, no sign-off name.
 - scratchOffReward: a scratch-off coupon, max 60, e.g. "CODE: BOBA-4-LIFE • One free 3 AM rescue".
 ${FORMAT_GUIDE[input.format] ? `- ${FORMAT_GUIDE[input.format]}` : ''}
 Keep it PG-13. Never invent private facts beyond the memories given.`;

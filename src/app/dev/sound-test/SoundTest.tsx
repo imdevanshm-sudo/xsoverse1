@@ -53,14 +53,17 @@ const SAMPLE_SONG: SongAttachment = {
 export function SoundTest({
   viewer,
   voice,
+  silent = false,
   song,
 }: {
   viewer?: GiftStyle;
   voice: boolean;
+  silent?: boolean;
   song: boolean;
 }) {
   useSoundSurface();
-  if (viewer) return <ViewerHarness style={viewer} voice={voice} song={song} />;
+  if (viewer)
+    return <ViewerHarness style={viewer} voice={voice} silent={silent} song={song} />;
   return <EventBoard />;
 }
 
@@ -68,10 +71,12 @@ export function SoundTest({
 function ViewerHarness({
   style,
   voice,
+  silent,
   song,
 }: {
   style: GiftStyle;
   voice: boolean;
+  silent: boolean;
   song: boolean;
 }) {
   const [open, setOpen] = useState(true);
@@ -86,13 +91,13 @@ function ViewerHarness({
         sideB: 'The ones we replay',
         tapeDate: '2026',
         review: 'Five stars, would rewind again.',
-        soundtrack: voice ? 'track:slow-jam' : 'track:cassette-summer',
-        voice,
-        transcript: voice ? 'Happy birthday!' : '',
+        soundtrack: silent ? '' : voice ? 'track:slow-jam' : 'track:cassette-summer',
+        voice: voice && !silent,
+        transcript: voice && !silent ? 'Happy birthday!' : '',
       },
       song: song ? SAMPLE_SONG : undefined,
     };
-  }, [song, style, voice]);
+  }, [silent, song, style, voice]);
   return (
     <main className="fixed inset-0 bg-black">
       {open ? (

@@ -43,7 +43,7 @@ export const TIERS: Record<TierId, TierSpec> = {
   classic: {
     id: 'classic',
     name: 'Keepsake',
-    blurb: 'The Loop or The Rewind. A swipeable keepsake with your receipt, photos and letter.',
+    blurb: 'The Loop. A swipeable keepsake with your receipt, photos and letter.',
     prices: { USD: 1499, INR: 24900 },
     styles: ['loop', 'rewind'],
     variantEnv: 'LEMONSQUEEZY_VARIANT_CLASSIC',
@@ -51,7 +51,7 @@ export const TIERS: Record<TierId, TierSpec> = {
   premium: {
     id: 'premium',
     name: 'Keepsake',
-    blurb: 'The Scrapbook, The Accordion or The Movie Box. A richer, more interactive keepsake.',
+    blurb: 'The Accordion or The Movie Box. A richer, more interactive keepsake.',
     prices: { USD: 1499, INR: 24900 },
     styles: ['scrapbook', 'accordion', 'moviebox'],
     badge: 'Richer',

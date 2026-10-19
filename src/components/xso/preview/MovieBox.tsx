@@ -29,6 +29,7 @@ import { CINEMA_EASE, CINEMATIC, SOFT_SPRING } from '@/lib/motion';
 import { auditLabel, resolveMovie } from '@/lib/formats';
 import { stackCards } from '@/lib/formatCards';
 import { LazyMedia } from '@/components/xso/LazyMedia';
+import { StoreName } from '@/components/xso/StoreName';
 import { getArtifacts, withSong, type Artifact } from '@/components/xso/viewers/shared';
 import { MovieFeature, SOUNDTRACK_SCENE } from '@/components/xso/movie/MovieFeature';
 
@@ -691,7 +692,10 @@ const FrameBody = memo(function FrameBody({
     return (
       <div className="film-face">
         {scene}
-        <p className="mt-1 font-serif text-xl font-semibold leading-tight">{data.merchantName}</p>
+        <StoreName
+          name={data.merchantName}
+          className="mt-1 font-serif !text-xl font-semibold !tracking-normal"
+        />
         <div className="mt-2 space-y-0.5 font-receipt text-[11px] text-[#fffaf0]/85">
           {data.lineItems.slice(0, 3).map((item) => (
             <p

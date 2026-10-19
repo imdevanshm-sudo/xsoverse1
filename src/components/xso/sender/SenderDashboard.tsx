@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { StoredGift } from '@/lib/giftStore';
 import { previewPath } from '@/lib/giftLinks';
 import { ShareGiftLink } from '@/components/xso/ShareGiftLink';
+import { EmailBuyerLinks } from '@/components/xso/sender/EmailBuyerLinks';
 import { EmailReceiver } from '@/components/xso/sender/EmailReceiver';
 
 function formatDate(iso?: string) {
@@ -45,6 +46,7 @@ export function SenderDashboard({ gift, manageKey }: { gift: StoredGift; manageK
           Preview what they&apos;ll see
         </Link>
         <EmailReceiver giftId={gift.id} manageKey={manageKey} recipientName={data.customerName} />
+        <EmailBuyerLinks giftId={gift.id} manageKey={manageKey} />
       </section>
 
       <section

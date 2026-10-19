@@ -4,6 +4,7 @@ import { memo } from 'react';
 import type { CSSProperties } from 'react';
 import type { LineItem, XsoData } from '@/types/xso';
 import { CoffeeStain, InkStamp, PaperGrain } from '@/components/xso/paper/PaperCraft';
+import { StoreName } from '@/components/xso/StoreName';
 import { formatReceiptQty } from '@/lib/receiptFormat';
 
 export interface Side1ReceiptProps {
@@ -54,9 +55,7 @@ export const Side1Receipt = memo(function Side1Receipt({ data, bare = false }: S
         <CoffeeStain className="bottom-16 left-4" />
 
         <div className="relative z-10">
-          <p className="mb-2 text-center text-[13px] font-bold tracking-[0.06em]">
-            {data.merchantName}
-          </p>
+          <StoreName name={data.merchantName} className="mb-2" />
           {data.cashier ? <ReceiptMeta label="Cashier" value={data.cashier} /> : null}
           {data.customerName ? <ReceiptMeta label="Customer" value={data.customerName} /> : null}
           <p style={{ color: MUTED }}>{data.timestamp}</p>
@@ -82,7 +81,9 @@ export const Side1Receipt = memo(function Side1Receipt({ data, bare = false }: S
               >
                 <span className="text-right">{formatReceiptQty(item.qty)}</span>
                 <span className="flex min-w-0 items-baseline">
-                  <span className="min-w-0 truncate">{item.description}</span>
+                  <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                    {item.description}
+                  </span>
                   <span className="receipt-leader" aria-hidden />
                 </span>
                 <span className="text-right">{item.price}</span>
@@ -105,12 +106,19 @@ export const Side1Receipt = memo(function Side1Receipt({ data, bare = false }: S
 
           <BarcodeSvg id={data.id} />
 
-          <p className="mt-3 text-center font-bold tracking-[0.04em]">No refunds / no returns</p>
-          <div className="mt-3 flex justify-center">
-            <InkStamp size="sm" rotate={-9}>
-              {data.certifiedStampText || 'Certified bestie'}
-            </InkStamp>
-          </div>
+          {/* The gift's own words only: no store footer, and a stamp only if the sender has one. */}
+          {data.occasion ? (
+            <p className="mt-3 text-center text-[10px] font-bold uppercase leading-snug tracking-[0.04em]">
+              {data.occasion}
+            </p>
+          ) : null}
+          {data.certifiedStampText ? (
+            <div className="mt-3 flex justify-center">
+              <InkStamp size="sm" rotate={-9}>
+                {data.certifiedStampText}
+              </InkStamp>
+            </div>
+          ) : null}
         </div>
       </article>
     </div>
@@ -136,6 +144,7 @@ const DashedDivider = memo(function DashedDivider() {
 });
 
 const TotalsRow = memo(function TotalsRow({ label, value }: { label: string; value: string }) {
+  if (!value?.trim()) return null;
   return (
     <div className="flex items-baseline">
       <span className="shrink-0">{label}</span>

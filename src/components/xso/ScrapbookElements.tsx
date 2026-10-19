@@ -258,6 +258,10 @@ export function LetterFields({
 }) {
   return (
     <div className="grid gap-3">
+      <p className={`text-[13px] leading-snug ${t.detail}`}>
+        This is the part they&apos;ll reread. We drafted it from your memory, so rewrite it in
+        your own words: the way you&apos;d actually say it to them.
+      </p>
       <Labeled t={t} label={label} hint={`${message.length}/600`}>
         <textarea
           className={`${t.input} min-h-[170px] resize-y font-hand !text-[20px] leading-[1.25]`}

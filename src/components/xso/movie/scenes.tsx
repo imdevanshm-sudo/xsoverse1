@@ -6,6 +6,7 @@ import { isPlaceholderPhoto, type AuditMetrics, type MovieLayers, type XsoData }
 import { auditLabel } from '@/lib/formats';
 import { photoCaption } from '@/lib/photoStrips';
 import { LazyMedia } from '@/components/xso/LazyMedia';
+import { StoreName } from '@/components/xso/StoreName';
 import { playSound, useTexture } from '@/lib/sound';
 import type { StageSize } from '@/components/xso/movie/useStage';
 
@@ -19,6 +20,8 @@ export interface SceneProps {
   stage: StageSize;
   /** On screen now; animations start when this turns true. */
   active: boolean;
+  /** Held by Pause or a hidden tab: timed progress (slides, typing) waits in place. */
+  paused?: boolean;
   reduce: boolean;
   /** The scene has played out (the letter's last line has landed). */
   onDone?: () => void;
@@ -36,7 +39,7 @@ export const Slate = memo(function Slate({
   return (
     <div className="text-center">
       <p
-        className={`font-receipt uppercase tracking-[0.32em] text-[#fdba74] ${big ? 'text-[13px]' : 'text-[11px]'}`}
+        className={`font-receipt uppercase tracking-[0.32em] text-[#fdba74] ${big ? 'text-[14px]' : 'text-[13px]'}`}
       >
         Scene {String(index + 1).padStart(2, '0')}
       </p>
@@ -80,18 +83,17 @@ export const ReceiptScene = memo(function ReceiptScene({
   index,
   stage,
 }: SceneProps) {
-  const { big, landscape } = stage;
+  const { big, landscape, compact } = stage;
   return (
     <div
-      className={`flex h-full w-full items-center justify-center gap-8 px-6 ${landscape ? 'flex-row' : 'flex-col'}`}
+      className={`flex h-full w-full items-center justify-center px-6 ${landscape ? 'flex-row' : 'flex-col'} ${compact ? 'gap-6' : 'gap-8'}`}
     >
       <Slate index={index} title={sceneTitle(movie, scene, data)} big={big} />
+      {/* The receipt as a prop on set: paper stock under a warm key light, casting a soft shadow. */}
       <div
-        className={`w-full rotate-[-1deg] bg-[#fbf6ec] px-5 py-5 font-receipt uppercase text-[#2a1712] shadow-[0_24px_60px_rgba(0,0,0,0.6)] ${big ? 'max-w-[480px] px-7 py-7 text-[18px]' : 'max-w-[310px] text-[13px]'}`}
+        className={`movie-prop relative w-full rotate-[-1.5deg] px-5 py-5 font-receipt uppercase text-[#2a1712] ${big ? 'max-w-[480px] px-7 py-7 text-[18px]' : 'max-w-[310px] text-[13px]'} max-h-full overflow-y-auto`}
       >
-        {data.merchantName ? (
-          <p className="text-center font-bold tracking-[0.08em]">{data.merchantName}</p>
-        ) : null}
+        {data.merchantName ? <StoreName name={data.merchantName} /> : null}
         <div className="my-3 border-t border-dashed border-[#2a1712]/40" />
         <ul className="space-y-1.5">
           {data.lineItems.slice(0, 5).map((item) => (
@@ -148,13 +150,13 @@ const AuditBar = memo(function AuditBar({
   }, [active, delay, reduce, score]);
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,2.2fr)_2.5rem] items-center gap-2.5 sm:gap-3">
+    <li className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,1.6fr)_2.5rem] items-center gap-2.5 sm:gap-3">
       <span className="break-words font-receipt text-[13px] uppercase leading-tight tracking-[0.08em] text-[#fffaf0]/85 [overflow-wrap:anywhere] sm:text-[14px]">
         {label}
       </span>
-      <span className="h-2.5 overflow-hidden rounded-full bg-[#fffaf0]/10">
+      <span className="h-[3px] rounded-full bg-[#fffaf0]/10">
         <motion.span
-          className="block h-full origin-left rounded-full bg-gradient-to-r from-[#fdba74] to-[#f472b6]"
+          className="movie-bar block h-full origin-left rounded-full"
           initial={reduce ? false : { scaleX: 0 }}
           animate={{ scaleX: active ? score / 100 : 0 }}
           transition={{
@@ -164,7 +166,7 @@ const AuditBar = memo(function AuditBar({
           }}
         />
       </span>
-      <span className="text-right font-receipt text-[14px] tabular-nums text-[#fffaf0]/85">
+      <span className="text-right font-receipt text-[14px] tabular-nums text-[#fffaf0]/90">
         {shown}
       </span>
     </li>
@@ -211,21 +213,29 @@ export const AuditScene = memo(function AuditScene({
       timers.forEach((id) => window.clearTimeout(id));
     };
   }, [active, metrics, movie.stars, reduce]);
+  const { compact } = stage;
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-5 sm:px-6">
-      <Slate index={index} title={sceneTitle(movie, scene, data)} big={big} />
-      <p
-        className={`font-serif font-semibold text-[#fffaf0] ${big ? 'text-[56px]' : 'text-[44px]'}`}
-        aria-label={`Rated ${movie.stars} out of 5`}
+    <div
+      className={`flex h-full w-full items-center justify-center px-5 sm:px-6 ${compact ? 'flex-row gap-8' : 'flex-col gap-6'}`}
+    >
+      <div className="flex shrink-0 flex-col items-center gap-3">
+        <Slate index={index} title={sceneTitle(movie, scene, data)} big={big} />
+        {/* The score is the shot: one numeral under a pool of warm light. */}
+        <p
+          className={`movie-hero relative font-serif font-semibold leading-none tracking-tight text-[#fffaf0] ${big ? 'text-[88px]' : compact ? 'text-[48px]' : 'text-[64px]'}`}
+        >
+          <span className="sr-only">Rated {movie.stars} out of 5</span>
+          <span className="tabular-nums" aria-hidden>
+            {rating.toFixed(1)}
+          </span>
+          <span className="ml-1 align-top text-[0.4em] text-[#fdba74]" aria-hidden>
+            ★
+          </span>
+        </p>
+      </div>
+      <ul
+        className={`w-full ${compact ? 'max-w-[340px] space-y-2.5' : 'space-y-3.5'} ${big ? 'max-w-[560px]' : compact ? '' : 'max-w-[360px]'}`}
       >
-        <span className="tabular-nums" aria-hidden>
-          {rating.toFixed(1)}
-        </span>{' '}
-        <span className="text-[#fdba74]" aria-hidden>
-          ★
-        </span>
-      </p>
-      <ul className={`w-full space-y-3.5 ${big ? 'max-w-[560px]' : 'max-w-[360px]'}`}>
         {metrics.map(([key, score], i) => (
           <AuditBar
             key={key}
@@ -275,6 +285,7 @@ export const PhotoScene = memo(function PhotoScene({
   data,
   movie,
   active,
+  paused = false,
   reduce,
   stage,
 }: SceneProps) {
@@ -283,13 +294,13 @@ export const PhotoScene = memo(function PhotoScene({
   const slides = photos.length || cards.length;
   const [slide, setSlide] = useState(0);
   useEffect(() => {
-    if (!active || slides < 2) return;
+    if (!active || paused || slides < 2) return;
     const timer = window.setInterval(
       () => setSlide((n) => (n + 1) % slides),
       reduce ? SLIDE_MS * 1.5 : SLIDE_MS,
     );
     return () => window.clearInterval(timer);
-  }, [active, reduce, slides]);
+  }, [active, paused, reduce, slides]);
   const current = slides ? slide % slides : 0;
   const next = slides ? (current + 1) % slides : 0;
   /** One soft shutter per new slide. */
@@ -308,13 +319,13 @@ export const PhotoScene = memo(function PhotoScene({
 
   if (!photos.length) {
     return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 overflow-hidden bg-[#0b0507] px-6 pb-8">
+      <div className="movie-intertitle absolute inset-0 flex flex-col items-center justify-center gap-4 overflow-hidden px-6 pb-8">
+        {/* No photos: silent-film intertitles in the gift's own words, lit by the projector. */}
         <AnimatePresence initial={false} mode="wait">
           <motion.p
             key={current}
-            className={`w-full max-w-[20ch] break-words rounded-sm border border-[#fdba74]/25 bg-[#1b0e0b] px-5 py-6 text-center font-serif italic leading-snug text-[#fffaf0] [overflow-wrap:anywhere] ${stage.big ? 'text-[28px]' : 'text-[22px]'}`}
-            style={{ transform: `rotate(${[-1.5, 1, -0.5, 0.8][current % 4]}deg)` }}
-            initial={reduce ? false : { opacity: 0, scale: 0.96 }}
+            className={`relative w-full max-w-[20ch] break-words border-y border-[#fdba74]/30 px-2 py-6 text-center font-serif italic leading-snug text-[#fffaf0] [overflow-wrap:anywhere] ${stage.big ? 'text-[30px]' : 'text-[24px]'}`}
+            initial={reduce ? false : { opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reduce ? 0 : 0.6 }}
@@ -359,12 +370,26 @@ export const PhotoScene = memo(function PhotoScene({
         </motion.div>
       </AnimatePresence>
       {photos.length > 1 ? <link rel="preload" as="image" href={photos[next]} /> : null}
+      {/* A warm print grade over every photo, and a breath of light on each new frame. */}
+      <span aria-hidden className="movie-grade pointer-events-none absolute inset-0" />
+      {reduce ? null : (
+        <motion.span
+          key={`leak-${current}`}
+          aria-hidden
+          className="movie-cut pointer-events-none absolute inset-0"
+          initial={{ opacity: current === 0 ? 0 : 0.6 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 1.4, ease: 'easeOut' }}
+        />
+      )}
       <span
         aria-hidden
         className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/85 via-black/35 to-transparent"
       />
       {caption ? (
-        <p className="pointer-events-none absolute inset-x-0 bottom-[5.25rem] z-10 px-6 text-balance text-center font-serif text-[18px] italic text-[#fffaf0] [text-shadow:0_1px_10px_rgba(0,0,0,0.95)]">
+        <p
+          className={`pointer-events-none absolute inset-x-0 z-10 px-6 text-balance text-center font-serif text-[18px] italic text-[#fffaf0] [text-shadow:0_1px_10px_rgba(0,0,0,0.95)] ${stage.compact ? 'bottom-[3.75rem]' : 'bottom-[5.25rem]'}`}
+        >
           {caption}
         </p>
       ) : null}
@@ -419,6 +444,7 @@ export const LetterScene = memo(function LetterScene({
   data,
   stage,
   active,
+  paused = false,
   reduce,
   onDone,
 }: SceneProps) {
@@ -430,14 +456,14 @@ export const LetterScene = memo(function LetterScene({
   const done = line >= total;
   /** Typewriter keys over the first lines only; reduced motion shows the letter whole, silently. */
   const keys = useTexture('letter.type');
-  const typing = active && !reduce && !done && line < TYPED_LINES;
+  const typing = active && !paused && !reduce && !done && line < TYPED_LINES;
   useEffect(() => {
     if (typing) keys.touch();
     else keys.stop(line >= TYPED_LINES ? 700 : 120);
   }, [typing, keys, line]);
 
   useEffect(() => {
-    if (!active || done) return;
+    if (!active || paused || done) return;
     const text = lines[line];
     if (chars < text.length) {
       const timer = window.setTimeout(() => setChars((c) => c + 1), CHAR_MS);
@@ -451,20 +477,21 @@ export const LetterScene = memo(function LetterScene({
       line === total - 2 ? FINAL_PAUSE : LINE_PAUSE,
     );
     return () => window.clearTimeout(timer);
-  }, [active, chars, done, line, lines, total]);
+  }, [active, chars, done, line, lines, paused, total]);
 
   useEffect(() => {
-    if (!active || !done || !onDone) return;
+    if (!active || paused || !done || !onDone) return;
     const timer = window.setTimeout(onDone, AFTER_LETTER);
     return () => window.clearTimeout(timer);
-  }, [active, done, onDone]);
+  }, [active, done, onDone, paused]);
 
   return (
     <div
-      className="flex h-full w-full items-center justify-center overflow-y-auto px-6 py-16 sm:px-10 sm:py-20"
+      className={`flex h-full w-full items-center justify-center overflow-y-auto px-6 sm:px-10 ${stage.compact ? 'py-6' : 'py-16 sm:py-20'}`}
       onClick={() => setLine(total)}
     >
-      <div className={`w-full ${big ? 'max-w-[720px]' : 'max-w-[min(100%,28rem)]'}`}>
+      <span aria-hidden className="movie-lamp pointer-events-none absolute inset-0" />
+      <div className={`relative w-full ${big ? 'max-w-[720px]' : 'max-w-[min(100%,28rem)]'}`}>
         <p
           className={`font-hand leading-none text-[#fffaf0] ${big ? 'text-[48px]' : 'text-[36px]'}`}
         >
@@ -473,7 +500,7 @@ export const LetterScene = memo(function LetterScene({
         <p className="sr-only">{data.birthdayMessage}</p>
         <div
           aria-hidden
-          className={`mt-6 space-y-3 font-serif italic text-[#fffaf0]/92 ${big ? 'text-[24px] leading-relaxed' : 'text-[22px] leading-snug'}`}
+          className={`mt-6 space-y-3 font-serif italic text-[#fffaf0]/90 ${big ? 'text-[24px] leading-relaxed' : 'text-[22px] leading-snug'}`}
         >
           {lines.map((text, i) => {
             if (i < line) return <p key={i}>{text}</p>;

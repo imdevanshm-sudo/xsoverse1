@@ -25,6 +25,7 @@ const LOADERS = {
 
 /** Starts downloading a format's code ahead of mounting it, e.g. while a gift is unwrapping. */
 export function preloadFormat(style: GiftStyle): Promise<unknown> {
+  if (style === 'moviebox') void import('@/components/xso/movie/KeepsakeBox').catch(() => {});
   return (LOADERS[style] ?? LOADERS.loop)();
 }
 

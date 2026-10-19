@@ -5,13 +5,18 @@ import type { GiftStyle } from '@/types/xso';
 /** Order-facing format ids; stored gifts, URLs and the database keep `GiftStyle`. */
 export type OrderFormat = 'loop' | 'rewind' | 'scrapbook' | 'accordion' | 'movie_box';
 
-export const ORDER_FORMATS: OrderFormat[] = [
-  'loop',
-  'rewind',
-  'scrapbook',
-  'accordion',
-  'movie_box',
-];
+/**
+ * The formats offered for new gifts, in the order they're shown. Rewind and Scrapbook are held back
+ * from the launch: gifts already made in them still open, edit and play, and adding them back here
+ * offers them again.
+ */
+export const ORDER_FORMATS: OrderFormat[] = ['movie_box', 'loop', 'accordion'];
+
+/** A new gift's format: the one asked for if it's offered, otherwise the first that is. */
+export function offeredStyle(style: GiftStyle | null | undefined): GiftStyle {
+  const offered = ORDER_FORMATS.map(toGiftStyle);
+  return style && offered.includes(style) ? style : offered[0];
+}
 
 export interface OrderVibe {
   recipientName: string;

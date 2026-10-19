@@ -25,12 +25,13 @@ import {
   type Variants,
 } from 'framer-motion';
 import { Pause, Play } from 'lucide-react';
-import type { ScrapbookLayers, XsoData } from '@/types/xso';
+import { isPlaceholderPhoto, type ScrapbookLayers, type XsoData } from '@/types/xso';
 import { ROOM_TONE, playSound, useSoundOn, useTexture, type SoundEvent } from '@/lib/sound';
 import { STICKY_COLORS, resolveScrapbook } from '@/lib/scrapbook';
 import { useCoarsePointer, useTouchSpring } from '@/hooks/useTouchSpring';
 import { SOFT_SPRING } from '@/lib/motion';
 import { LazyMedia } from '@/components/xso/LazyMedia';
+import { StoreName } from '@/components/xso/StoreName';
 import { overallStars } from '@/components/xso/Side2Audit';
 import { seededOffset } from '@/components/xso/viewers/shared';
 import { usePolaroidStore, type PolaroidBack } from '@/store/usePolaroidStore';
@@ -229,7 +230,8 @@ function buildItems(
   const on = new Set(layers.elements);
   /** A paid "Our Song" always gets the cassette spot, where its record sleeve sits. */
   if (data.song) on.add('voice');
-  const photos = data.photos.filter(Boolean).slice(0, 3);
+  /** Theme stand-ins show the sender a layout; a recipient only ever gets real prints. */
+  const photos = data.photos.filter((src) => src && !(quiet && isPlaceholderPhoto(src))).slice(0, 3);
   const jitter = (id: string, base: number) =>
     Math.max(-6, Math.min(8, base + seededOffset(data.id || 'xso', id.length * 7 + base, 1.5)));
   const at = (
@@ -372,7 +374,9 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   /** The recipient's desk carries no gesture hints or instructions, only the pieces. */
   const quiet = size === 'fill';
   const fill = size === 'fill';
-  const [fit, setFit] = useState<{ orientation: Orientation; scale: number } | null>(null);
+  const [fit, setFit] = useState<{ orientation: Orientation; scale: number; width: number } | null>(
+    null,
+  );
   const orientation = fit?.orientation ?? 'portrait';
   const design = DESIGN[orientation];
   const items = useMemo(
@@ -392,9 +396,11 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
       const box = DESIGN[next];
       const scale = Math.min(width / box.width, height / box.height, 1.9);
       setFit((current) =>
-        current?.orientation === next && Math.abs(current.scale - scale) < 0.005
+        current?.orientation === next &&
+        Math.abs(current.scale - scale) < 0.005 &&
+        Math.abs(current.width - width) < 1
           ? current
-          : { orientation: next, scale },
+          : { orientation: next, scale, width },
       );
     };
     measure();
@@ -524,6 +530,12 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const openPolaroid = usePolaroidStore((state) => state.open);
   /** The desk print stays hidden while its enlarged copy is out in the lightbox. */
   const lightboxId = usePolaroidStore((state) => state.activePolaroidData?.id);
+  /** A desk without a letter ends once every piece on it has been opened and put back. */
+  const hasLetter = items.some((item) => item.kind === 'letter');
+  const everything = items.length > 0 && items.every((item) => opened.has(item.id));
+  useEffect(() => {
+    if (!hasLetter && everything && !focus && !lightboxId) finish.current?.();
+  }, [hasLetter, everything, focus, lightboxId]);
   const showPolaroid = (item: DeskItemSpec, order: number) => {
     const node = nodes.current[item.id];
     const box = desk.current;
@@ -676,6 +688,11 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     nodes.current[id] = node;
   }, []);
 
+  /** On a shrunken desk the letter is read at full size, up to the width of the screen. */
+  const letterBoost =
+    fill && fit && fit.scale < 1
+      ? Math.max(1, Math.min(1 / fit.scale, (fit.width - 24) / (LETTER_W * fit.scale)))
+      : 1;
   const deskNode = (
     <div
       ref={desk}
@@ -750,7 +767,8 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
             key="letter"
             data={data}
             reduce={reduce}
-            bodyMax={fill ? design.height * 0.42 : undefined}
+            boost={letterBoost}
+            bodyMax={fill ? (design.height * 0.42) / letterBoost : undefined}
             onClose={closeLetter}
           />
         ) : null}
@@ -765,7 +783,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
   const progress = fill ? (
     <p
       aria-live="polite"
-      className="min-w-0 font-receipt text-[11px] uppercase leading-relaxed tracking-[0.16em] text-[#e9c9b4] md:text-[12px]"
+      className="min-w-0 font-receipt text-[13px] uppercase leading-relaxed tracking-[0.14em] text-[#e9c9b4]"
     >
       Opened {openedCount} of {items.length}
       {letterLeft ? <span className="text-[#f5a3b8]"> · Now the letter</span> : null}
@@ -777,7 +795,7 @@ export const ScrapbookDesk = memo(function ScrapbookDesk({
     >
       {progress}
       {quiet ? null : (
-        <p className="min-w-0 font-receipt text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c99aae]">
+        <p className="min-w-0 font-receipt text-[12px] uppercase leading-relaxed tracking-[0.14em] text-[#c99aae]">
           {tactile ? 'Drag anything · tap to look closer' : 'Tap anything to look closer'}
         </p>
       )}
@@ -1030,9 +1048,10 @@ const MiniReceipt = memo(function MiniReceipt({ data }: { data: XsoData }) {
   return (
     <article className="desk-paper desk-paper--receipt relative px-3 pb-4 pt-4 font-receipt text-[#2d1b22]">
       <Tape style={{ left: '30%', top: -9, transform: 'rotate(-4deg)' }} />
-      <p className="text-center text-[12px] font-bold uppercase tracking-[0.12em]">
-        {data.merchantName}
-      </p>
+      <StoreName
+        name={data.merchantName}
+        className="!text-[11px] uppercase !tracking-[0.1em]"
+      />
       <p className="mt-0.5 text-center text-[9px] uppercase tracking-[0.18em] opacity-60">
         {data.timestamp}
       </p>
@@ -1654,14 +1673,20 @@ function HandwrittenBody({
   );
 }
 
+/** The open letter's width in desk pixels. */
+const LETTER_W = 340;
+
 function OpenLetter({
   data,
   reduce,
+  boost = 1,
   bodyMax,
   onClose,
 }: {
   data: XsoData;
   reduce: boolean;
+  /** Undoes the desk's shrink on small screens, so the letter reads at its own size. */
+  boost?: number;
   /** Body height cap in desk pixels when the desk is scaled; otherwise a share of the screen. */
   bodyMax?: number;
   onClose: () => void;
@@ -1705,8 +1730,8 @@ function OpenLetter({
         className="desk-dim absolute bg-[#120a0e]/85 backdrop-blur-[6px]"
       />
       <motion.div
-        className="relative w-full max-w-[340px]"
-        style={{ perspective: 1200 }}
+        className="relative w-full"
+        style={{ perspective: 1200, maxWidth: LETTER_W, zoom: boost === 1 ? undefined : boost }}
         initial={reduce ? false : { scale: 0.55, y: 60, rotate: -6 }}
         animate={{ scale: 1, y: 0, rotate: -1 }}
         exit={
@@ -1721,7 +1746,7 @@ function OpenLetter({
           style={{ transformOrigin: '50% 100%', backfaceVisibility: 'hidden' }}
           {...flap(-170, 0.12)}
         >
-          <p className="font-receipt text-[9px] uppercase tracking-[0.22em] text-[#9a6a7e]">
+          <p className="font-receipt text-[11px] uppercase tracking-[0.18em] text-[#9a6a7e]">
             {data.timestamp} · {data.occasion}
           </p>
           <p className="mt-2 font-hand text-[26px] leading-none text-[#3a2530]">
@@ -1738,7 +1763,7 @@ function OpenLetter({
             ref={closeButton}
             type="button"
             onClick={onClose}
-            className="min-h-11 touch-manipulation rounded-full border border-[#2d1b22]/15 px-4 font-receipt text-[10px] uppercase tracking-[0.18em] text-[#7a5563] hover:bg-[#2d1b22]/[0.05]"
+            className="min-h-11 touch-manipulation rounded-full border border-[#2d1b22]/15 px-4 font-receipt text-[12px] uppercase tracking-[0.16em] text-[#7a5563] hover:bg-[#2d1b22]/[0.05]"
           >
             Fold it back
           </button>

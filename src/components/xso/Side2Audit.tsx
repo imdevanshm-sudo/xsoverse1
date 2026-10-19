@@ -58,7 +58,7 @@ export const Side2Audit = memo(function Side2Audit({ data }: Side2AuditProps) {
   const stars = overallStars(data.auditMetrics);
   const fullStars = Math.floor(stars);
   const hasHalf = stars - fullStars >= 0.4;
-  const stamp = data.certifiedStampText || 'CERTIFIED BESTIE';
+  const stamp = data.certifiedStampText;
   const labels = useMemo(() => AXES.map(({ key, label }) => auditLabel(data, key, label)), [data]);
   const live = useFirstActive();
   const reduce = Boolean(useReducedMotion());
@@ -143,11 +143,13 @@ export const Side2Audit = memo(function Side2Audit({ data }: Side2AuditProps) {
       </div>
 
       {/* Signed off at the foot of the report, clear of the chart and the flags. */}
-      <div className="pointer-events-none relative z-20 mt-4 flex justify-center" aria-hidden>
-        <InkStamp rotate={-8} thunk delayMs={450}>
-          {stamp}
-        </InkStamp>
-      </div>
+      {stamp ? (
+        <div className="pointer-events-none relative z-20 mt-4 flex justify-center" aria-hidden>
+          <InkStamp rotate={-8} thunk delayMs={450}>
+            {stamp}
+          </InkStamp>
+        </div>
+      ) : null}
     </article>
   );
 });

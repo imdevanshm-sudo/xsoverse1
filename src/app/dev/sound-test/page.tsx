@@ -13,12 +13,13 @@ const FORMATS: GiftStyle[] = ['loop', 'rewind', 'scrapbook', 'accordion', 'movie
 /**
  * Every sound event per format, with Play buttons and measured loudness. `?viewer=<format>` opens
  * that format's real viewer on sample data instead (used by scripts/sound-checklist.mjs);
- * `&voice=1` makes the Rewind's tape a voice note; `&song=1` adds a sample "Our Song".
+ * `&voice=1` makes the Rewind's tape a voice note; `&silent=1` gives it no soundtrack at all;
+ * `&song=1` adds a sample "Our Song".
  */
 export default function SoundTestPage({
   searchParams,
 }: {
-  searchParams: { viewer?: string; voice?: string; song?: string };
+  searchParams: { viewer?: string; voice?: string; silent?: string; song?: string };
 }) {
   if (process.env.NODE_ENV === 'production') notFound();
   const viewer = FORMATS.find((format) => format === searchParams.viewer);
@@ -26,6 +27,7 @@ export default function SoundTestPage({
     <SoundTest
       viewer={viewer}
       voice={searchParams.voice === '1'}
+      silent={searchParams.silent === '1'}
       song={searchParams.song === '1'}
     />
   );

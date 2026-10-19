@@ -1,5 +1,6 @@
 'use client';
 
+import { StoreName } from '@/components/xso/StoreName';
 import { THEMES } from '@/lib/constants';
 import { useBillStore } from '@/store/useBillStore';
 
@@ -41,9 +42,7 @@ export function ThermalReceipt() {
         />
 
         <div className="relative z-10">
-          <p className="mb-2 text-center text-[13px] font-bold tracking-[0.04em]">
-            {bill.merchantName}
-          </p>
+          <StoreName name={bill.merchantName} className="mb-2" />
           <p style={{ color: theme.muted }}>CASHIER: {bill.cashier.toUpperCase()}</p>
           <p style={{ color: theme.muted }}>
             CUSTOMER: {bill.customerName.toUpperCase() || 'BESTIE'}

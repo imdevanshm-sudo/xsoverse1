@@ -824,12 +824,12 @@ ${FONTS_CSS}
 
       <div class="store-header">
         <div style="font-size: 11px; letter-spacing: 0.22em; color: #ec4899; font-weight: 700; margin-bottom: 3px;">★ XSOVERSE SOUVENIR STUDIO ★</div>
-        <div class="store-title">THE MEMORY LOUNGE</div>
+        <div class="store-title">XSOVERSE · KEEPSAKE DEPT.</div>
         <div class="store-subtitle">SAN FRANCISCO, CA · LORE ARCHIVE #84920</div>
       </div>
 
       <div class="meta-row">
-        <span>CASHIER: DEV & JAMIE</span>
+        <span>CASHIER: THE XSO TEAM</span>
         <span>REGISTER: 01</span>
       </div>
       <div class="meta-row">
@@ -988,10 +988,10 @@ ${FONTS_CSS}
         </svg>
       </div>
 
-      <div class="tagline-footer">NO REFUNDS · NO RETURNS · MEMORY SEALED</div>
+      <div class="tagline-footer">NO REFUNDS / NO RETURNS · XSOVERSE.APP</div>
 
       <div style="text-align: center; margin-top: 18px;">
-        <div class="stamp-red">CERTIFIED BESTIE ✦ 2024</div>
+        <div class="stamp-red">XSO CERTIFIED</div>
       </div>
     </div>
   </div>

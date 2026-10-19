@@ -21,6 +21,7 @@ export const YourTurn = memo(function YourTurn({
   giftId,
   shareTitle,
   offer = false,
+  stub = false,
 }: {
   /** Where the tap came from, for analytics. */
   source: string;
@@ -33,6 +34,8 @@ export const YourTurn = memo(function YourTurn({
   shareTitle?: string;
   /** Show the recipient discount on Make one back (from pricing config). */
   offer?: boolean;
+  /** Loop: the end card is the receipt's customer copy, with one item still owed. */
+  stub?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const list = quote({ style: 'accordion' });
@@ -66,19 +69,19 @@ export const YourTurn = memo(function YourTurn({
           large ? 'text-[13px] tracking-[0.24em]' : 'text-[12px] tracking-[0.22em]'
         }`}
       >
-        The end · {YOUR_TURN}
+        {stub ? '*** Customer copy ***' : `The end · ${YOUR_TURN}`}
       </p>
       <p
         className={`mt-3 max-w-[16ch] font-serif font-semibold leading-tight ${
           large ? 'text-[34px]' : 'text-[26px]'
         }`}
       >
-        Someone you love deserves one too.
+        {stub ? 'Balance due: one keepsake.' : 'Someone you love deserves one too.'}
       </p>
       <p
         className={`mt-2 font-hand leading-tight text-[#b4234a] ${large ? 'text-[24px]' : 'text-[20px]'}`}
       >
-        Make them a keepsake of their own.
+        {stub ? 'Pay it forward. Someone you love deserves one too.' : 'Make them a keepsake of their own.'}
       </p>
       <a
         href="/"

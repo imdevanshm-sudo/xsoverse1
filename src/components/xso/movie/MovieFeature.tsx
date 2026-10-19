@@ -92,6 +92,8 @@ export const MovieFeature = memo(function MovieFeature({
   const [room, stage] = useStage<HTMLDivElement>();
   const [index, setIndex] = useState(0);
   const [started, setStarted] = useState(false);
+  /** The title card stays over the first scene until its opening has played out. */
+  const [slateGone, setSlateGone] = useState(false);
   const [finished, setFinished] = useState(false);
   const startTimer = useRef<number | null>(null);
   const music = useSoundtrack(soundtrackSrc(movie.soundtrack));
@@ -103,6 +105,7 @@ export const MovieFeature = memo(function MovieFeature({
     startTimer.current = window.setTimeout(() => setStarted(true), reduce ? 0 : 450);
   }, [reduce, startMusic]);
   useEffect(() => () => window.clearTimeout(startTimer.current ?? undefined), []);
+  const hideSlate = useCallback(() => setSlateGone(true), []);
   const count = frames.length;
   const frame = frames[Math.min(index, count - 1)];
 
@@ -133,20 +136,48 @@ export const MovieFeature = memo(function MovieFeature({
     cut.current = index;
     if (started) playSound('movie.splice');
   }, [index, started]);
+  /** Plays on by itself like a film; pause stops it, and reduced motion leaves it to the viewer. */
+  const [paused, setPaused] = useState(false);
+  /** The tab is in the background: the film holds its place (the sound manager mutes the score). */
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    const sync = () => setHidden(document.hidden);
+    document.addEventListener('visibilitychange', sync);
+    return () => document.removeEventListener('visibilitychange', sync);
+  }, []);
+  /** Set when pausing faded the score out, so resuming brings back only what pause stopped. */
+  const musicHeld = useRef(false);
+  const pausedNow = useRef(false);
+  const toggleMusic = music.toggle;
+  const musicPlaying = music.playing;
+  const togglePause = useCallback(() => {
+    const next = !pausedNow.current;
+    pausedNow.current = next;
+    setPaused(next);
+    if (next && musicPlaying) {
+      musicHeld.current = true;
+      toggleMusic();
+    } else if (!next && musicHeld.current) {
+      musicHeld.current = false;
+      toggleMusic();
+    }
+  }, [musicPlaying, toggleMusic]);
+
   const replayMusic = music.replay;
   const replay = useCallback(() => {
     playSound('movie.start');
+    musicHeld.current = false;
+    pausedNow.current = false;
+    setPaused(false);
     replayMusic(MUSIC_AFTER_MS);
     goTo(0);
   }, [goTo, replayMusic]);
   const finish = useCallback(() => setFinished(true), []);
 
-  /** Plays on by itself like a film; pause stops it, and reduced motion leaves it to the viewer. */
-  const [paused, setPaused] = useState(false);
   const photoCount =
     montagePhotos(data, movie).length || montageFallback(data).length || 1;
   useEffect(() => {
-    if (!started || finished || paused || reduce || focusIndex !== undefined) return;
+    if (!started || finished || paused || hidden || reduce || focusIndex !== undefined) return;
     const ms = sceneMs(frame.scene, data, movie, photoCount);
     if (!ms) return;
     const timer = window.setTimeout(() => goTo(index + 1), ms);
@@ -157,6 +188,7 @@ export const MovieFeature = memo(function MovieFeature({
     focusIndex,
     frame.scene,
     goTo,
+    hidden,
     index,
     movie,
     paused,
@@ -168,11 +200,15 @@ export const MovieFeature = memo(function MovieFeature({
   useEffect(() => {
     if (focusIndex === undefined) return;
     setStarted(true);
+    setSlateGone(true);
     goTo(focusIndex);
   }, [focusIndex, goTo]);
 
+  /** The reel only moves once Play has started it and until Fin. comes up. */
+  const rolling = started && !finished;
   const onKey = useCallback(
     (e: KeyboardEvent<HTMLElement>) => {
+      if (!rolling) return;
       if (e.key === 'ArrowRight') {
         goTo(index + 1);
         e.preventDefault();
@@ -180,23 +216,25 @@ export const MovieFeature = memo(function MovieFeature({
         goTo(index - 1);
         e.preventDefault();
       } else if (e.key === ' ' || e.key === 'Spacebar') {
-        if (started && !finished) setPaused((p) => !p);
+        /** A focused button or link keeps Space for itself. */
+        if ((e.target as HTMLElement).closest('button, a')) return;
+        if (!reduce) togglePause();
         e.preventDefault();
       }
     },
-    [finished, goTo, index, started],
+    [goTo, index, reduce, rolling, togglePause],
   );
 
   const downX = useRef<number | null>(null);
   const onPointerDown = (e: PointerEvent) => {
-    if ((e.target as HTMLElement).closest('button, a, [data-chrome]')) {
+    if (!rolling || (e.target as HTMLElement).closest('button, a, [data-chrome]')) {
       downX.current = null;
       return;
     }
     downX.current = e.clientX;
   };
   const onPointerUp = (e: PointerEvent) => {
-    if (downX.current === null) return;
+    if (!rolling || downX.current === null) return;
     const startX = downX.current;
     const dx = e.clientX - startX;
     downX.current = null;
@@ -218,6 +256,7 @@ export const MovieFeature = memo(function MovieFeature({
     index,
     stage,
     active: !finished,
+    paused: paused || hidden,
     reduce,
     onDone: index === count - 1 ? finish : undefined,
   };
@@ -232,14 +271,9 @@ export const MovieFeature = memo(function MovieFeature({
       onKeyDown={onKey}
       className="movie-feature relative flex h-full w-full touch-pan-y items-center justify-center overflow-hidden bg-[#050203] text-[#fffaf0] outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
     >
-      {/* Desktop: a blurred, dimmed copy of the scene fills the room behind the framed stage. */}
-      {stage.width && !stage.flush && started && !finished ? (
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute inset-[-12%] scale-110 opacity-45 blur-3xl saturate-75">
-            <SceneBody {...props} />
-          </div>
-          <div className="absolute inset-0 bg-[#050203]/6" />
-        </div>
+      {/* Desktop: the framed screen glows faintly into a dark room around it. */}
+      {stage.width && !stage.flush ? (
+        <div aria-hidden className="movie-room pointer-events-none absolute inset-0" />
       ) : null}
       {stage.width ? (
         <div
@@ -248,9 +282,7 @@ export const MovieFeature = memo(function MovieFeature({
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
         >
-          {!started ? (
-            <OpeningSlate data={data} stage={stage} reduce={reduce} onPlay={play} />
-          ) : finished ? (
+          {!started ? null : finished ? (
             <EndScreen
               stage={stage}
               reduce={reduce}
@@ -266,7 +298,7 @@ export const MovieFeature = memo(function MovieFeature({
                 <motion.article
                   key={index}
                   aria-label={`Scene ${index + 1} of ${count}: ${frame.label}`}
-                  className="absolute inset-0 pb-[7.5rem]"
+                  className={`absolute inset-0 ${stage.compact ? 'pb-[3.75rem] pt-12' : 'pb-[7.5rem] pt-16'}`}
                   initial={reduce ? false : { opacity: 0, scale: 1.04 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={
@@ -279,40 +311,60 @@ export const MovieFeature = memo(function MovieFeature({
                   <SceneBody {...props} />
                 </motion.article>
               </AnimatePresence>
-              {reduce ? null : (
+              {/* Each cut lets a little warm light leak across the gate; the first scene opens clean. */}
+              {reduce || index === 0 ? null : (
                 <motion.span
-                  key={`flash-${index}`}
+                  key={`cut-${index}`}
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 z-[12] bg-[#fff4e0]"
-                  initial={{ opacity: index === 0 ? 0 : 0.14 }}
+                  className="movie-cut pointer-events-none absolute inset-0 z-[12]"
+                  initial={{ opacity: 0.85 }}
                   animate={{ opacity: 0 }}
-                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
                 />
               )}
 
               {/* Photo scene carries its own per-slide captions so they don't repeat. */}
-              {frame.scene !== 2 && frame.scene !== 3 && caption ? (
-                <div className="pointer-events-none absolute inset-x-0 bottom-[4.25rem] z-10 px-6 pb-[env(safe-area-inset-bottom,0px)]">
+              {frame.scene !== 2 && frame.scene !== 3 && frame.scene !== SOUNDTRACK_SCENE && caption ? (
+                <div
+                  className={`pointer-events-none absolute inset-x-0 z-10 px-6 pb-[env(safe-area-inset-bottom,0px)] ${stage.compact ? 'bottom-[3.25rem]' : 'bottom-[4.25rem]'}`}
+                >
                   <Subtitle big={stage.big}>{caption}</Subtitle>
+                </div>
+              ) : null}
+
+              {/* The song credit holds until the viewer moves on, so the song is never cut off. */}
+              {frame.scene === SOUNDTRACK_SCENE ? (
+                <div
+                  className={`absolute inset-x-0 z-[15] flex justify-center px-6 pb-[env(safe-area-inset-bottom,0px)] ${stage.compact ? 'bottom-[3.25rem]' : 'bottom-[4.5rem]'}`}
+                >
+                  <button
+                    type="button"
+                    data-movie-hold
+                    onClick={() => goTo(index + 1)}
+                    className="movie-hold-cue"
+                  >
+                    Continue
+                    <ChevronRight className="h-4 w-4" aria-hidden />
+                  </button>
                 </div>
               ) : null}
 
               <nav
                 aria-label="Scenes"
-                className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-center gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
+                className={`absolute inset-x-0 bottom-0 z-20 flex items-center justify-center gap-2 px-3 ${stage.compact ? 'pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]' : 'pb-[calc(1rem+env(safe-area-inset-bottom,0px))]'}`}
               >
                 {reduce ? null : (
                   <button
                     type="button"
-                    onClick={() => setPaused((p) => !p)}
+                    onClick={togglePause}
                     aria-pressed={paused}
                     aria-label={paused ? 'Resume' : 'Pause'}
-                    className="movie-control absolute left-4"
+                    className="movie-control"
                   >
                     {paused ? (
-                      <Play className="h-6 w-6 translate-x-px" aria-hidden />
+                      <Play className="h-5 w-5 translate-x-px" aria-hidden />
                     ) : (
-                      <Pause className="h-6 w-6" aria-hidden />
+                      <Pause className="h-5 w-5" aria-hidden />
                     )}
                   </button>
                 )}
@@ -325,7 +377,7 @@ export const MovieFeature = memo(function MovieFeature({
                 >
                   <ChevronLeft className="h-6 w-6" aria-hidden />
                 </button>
-                <ol className="flex items-center gap-1.5" aria-label="Scene progress">
+                <ol className="flex items-center gap-1" aria-label="Scene progress">
                   {frames.map((f, i) => (
                     <li key={f.id}>
                       <button
@@ -333,11 +385,11 @@ export const MovieFeature = memo(function MovieFeature({
                         onClick={() => goTo(i)}
                         aria-label={`Scene ${i + 1}: ${f.label}`}
                         aria-current={i === index ? 'step' : undefined}
-                        className="grid h-11 w-7 place-items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74]"
+                        className={`grid h-11 place-items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#fdba74] ${count > 5 ? 'w-5' : 'w-6'}`}
                       >
                         <span
                           className={`block h-1.5 rounded-full transition-[width,background-color] duration-300 ${
-                            i === index ? 'w-6 bg-[#fdba74]' : 'w-2.5 bg-[#fffaf0]/35'
+                            i === index ? 'w-4 bg-[#fdba74]' : 'w-1.5 bg-[#fffaf0]/40'
                           }`}
                         />
                       </button>
@@ -355,8 +407,20 @@ export const MovieFeature = memo(function MovieFeature({
               </nav>
             </>
           )}
+          <span aria-hidden className="movie-key" />
           <span aria-hidden className="film-grain" style={{ zIndex: 25, opacity: 0.05 }} />
           <span aria-hidden className="movie-vignette" />
+          <span aria-hidden className="movie-gate" />
+          {slateGone ? null : (
+            <OpeningSlate
+              data={data}
+              movie={movie}
+              stage={stage}
+              reduce={reduce}
+              onPlay={play}
+              onDone={hideSlate}
+            />
+          )}
         </div>
       ) : null}
       <p className="sr-only" aria-live="polite">
@@ -377,7 +441,9 @@ function SceneBody(props: SceneProps) {
 
     case SOUNDTRACK_SCENE:
       return props.data.song ? (
-        <SoundtrackCredit song={props.data.song} big={props.stage.big} />
+        <div className="movie-song absolute inset-0 overflow-y-auto">
+          <SoundtrackCredit song={props.data.song} big={props.stage.big} />
+        </div>
       ) : null;
     default:
       return <LetterScene {...props} />;

@@ -1,5 +1,6 @@
 import { newId } from '@/lib/constants';
 import { AUDIT_KEYS, FORMAT_LIMITS, halfStar } from '@/lib/formats';
+import { DEFAULT_SOUNDTRACK } from '@/lib/soundtracks';
 import type { PackContent } from '@/store/useXsoStore';
 import type { CardId } from '@/lib/formatCards';
 import type { AuditMetrics, GiftStyle } from '@/types/xso';
@@ -20,7 +21,7 @@ export const ADJUSTMENTS = [
 ] as const;
 export type Adjustment = (typeof ADJUSTMENTS)[number]['id'];
 
-export const CRAFT_LIMITS = { name: 40, memory: 600, minMemory: 8, question: 120 } as const;
+export const CRAFT_LIMITS = { name: 40, memory: 600, minMemory: 40, question: 120 } as const;
 
 export interface QuestionsResponse {
   questions: string[];
@@ -122,6 +123,8 @@ export function storyToPatch(story: CraftedStory, base: PackContent): Partial<Pa
     const stars = halfStar(story.moviebox.stars);
     patch.moviebox = {
       stars,
+      /** The story is new; the music the sender picked (or the default score) stays. */
+      soundtrack: base.moviebox.soundtrack ?? DEFAULT_SOUNDTRACK,
       scenes: scenes.map((scene, i) => ({
         title: scene.title,
         caption: (i === 1

@@ -1,3 +1,4 @@
+import { SAMPLE_BRAND } from '@/lib/brand';
 import type { XsoData } from '@/types/xso';
 import { formatReceiptQty, RECEIPT_MAX_ITEMS } from '@/lib/receiptFormat';
 
@@ -43,10 +44,6 @@ function dateStamp(label: string, x: number, y: number, rot = -12) {
       <text text-anchor="middle" y="-4" style="font:700 9px monospace;fill:#8b3a3a;opacity:.7;letter-spacing:1px">${escapeXml(label)}</text>
       <text text-anchor="middle" y="12" style="font:700 11px monospace;fill:#8b3a3a;opacity:.75">FILED</text>
     </g>`;
-}
-
-function handNote(text: string, x: number, y: number, rot: number, color = '#2a4a7a') {
-  return `<text x="${x}" y="${y}" transform="rotate(${rot} ${x} ${y})" style="font:italic 22px 'Segoe Print','Bradley Hand',cursive;fill:${color};opacity:.78">${escapeXml(text)}</text>`;
 }
 
 function dogEar() {
@@ -123,7 +120,7 @@ const STAMP_SPECKLES = speckles(STAMP_W, STAMP_H, 110, 11);
 
 /** Angled rubber stamp: double border, uneven ink, static speckle mask. */
 function inkStamp(id: string, text: string, x: number, y: number, rotate: number, color: string) {
-  const label = ellipsize(text.trim().toUpperCase() || 'CERTIFIED BESTIE', 20);
+  const label = ellipsize(text.trim().toUpperCase() || SAMPLE_BRAND.stamp, 20);
   const fontSize = label.length > 16 ? 22 : 26;
   return `
     <defs>
@@ -184,7 +181,7 @@ export function buildMemoryTextureUrls(data: XsoData) {
         <rect width="600" height="820" fill="${PAPER}"/>
         ${grainOverlay()}
         <style>.mono{font:700 22px ${MONO};fill:#242424}.row{font:${ROW_FONT}px ${MONO};fill:#2c2c2c}.meta{font:15px ${MONO};fill:#4a4a4a}.dots{stroke:#2c2c2c;stroke-width:2;stroke-linecap:round;stroke-dasharray:0.1 7;opacity:.5}</style>
-        <text x="300" y="62" text-anchor="middle" class="mono">${escapeXml(data.merchantName.toUpperCase())}</text>
+        ${storeTitleSvg(data.merchantName)}
         <text x="34" y="98" class="meta">CUSTOMER: ${escapeXml(ellipsize(data.customerName.toUpperCase(), 40))}</text>
         <text x="34" y="120" class="meta">${escapeXml(ellipsize(data.timestamp.toUpperCase(), 44))}</text>
         <path d="M30 140H570" stroke="#333" stroke-width="1.5" stroke-dasharray="8 7" opacity=".6"/>
@@ -193,9 +190,8 @@ export function buildMemoryTextureUrls(data: XsoData) {
         ${receiptRow(null, 'TOTAL', data.total, 448, { size: 22, cls: 'mono', left: 34 })}
         <rect x="130" y="478" width="340" height="80" fill="url(#bars)"/>
         <defs><pattern id="bars" width="13" height="1" patternUnits="userSpaceOnUse"><rect width="4" height="80" fill="#222"/><rect x="7" width="2" height="80" fill="#222"/></pattern></defs>
-        ${inkStamp('r', data.certifiedStampText, 300, 626, -10, '#c21d24')}
-        <text x="300" y="728" text-anchor="middle" class="meta">ITEMIZED CHAOS · NO REFUNDS, EVER</text>
-        ${handNote('lol remember this??', 420, 760, -8)}
+        ${data.certifiedStampText ? inkStamp('r', data.certifiedStampText, 300, 626, -10, '#c21d24') : ''}
+        ${data.occasion ? `<text x="300" y="728" text-anchor="middle" class="meta">${escapeXml(data.occasion.toUpperCase())}</text>` : ''}
         ${coffeeRing(120, 720)}
       </g>
       ${dogEar()}
@@ -211,8 +207,7 @@ export function buildMemoryTextureUrls(data: XsoData) {
       <text x="300" y="82" text-anchor="middle" class="title">FRIENDSHIP AUDIT</text>
       <text x="300" y="132" text-anchor="middle" class="label">${escapeXml(data.customerName.toUpperCase())}</text>
       ${metricLines}
-      ${inkStamp('a', data.certifiedStampText, 300, 590, -11, '#b62b32')}
-      ${handNote('never let them navigate', 48, 760, -4, '#5a2a2a')}
+      ${data.certifiedStampText ? inkStamp('a', data.certifiedStampText, 300, 590, -11, '#b62b32') : ''}
       ${dateStamp(stampDate, 500, 740, -18)}
       ${dogEar()}
     </svg>`),
@@ -235,7 +230,6 @@ export function buildMemoryTextureUrls(data: XsoData) {
       <text x="52" y="78" class="head">DEAR ${escapeXml(data.customerName.toUpperCase())},</text>
       ${letterLines}
       <text x="52" y="560" class="body">Always, ${escapeXml(data.billerName)}</text>
-      ${handNote('ps. bring snacks', 380, 600, 6)}
       ${coffeeRing(500, 120)}
       ${dateStamp(stampDate, 520, 520, 8)}
       <rect x="48" y="640" width="504" height="120" rx="14" fill="#d0cbc3" stroke="#9a948a" stroke-width="2"/>
@@ -271,6 +265,18 @@ function wrapWords(value: string, max: number) {
   });
   if (line) lines.push(line);
   return lines;
+}
+
+/** Store header that wraps long names (e.g. XSOVERSE · KEEPSAKE DEPT.) instead of clipping. */
+function storeTitleSvg(name: string) {
+  const lines = wrapWords(name.trim().toUpperCase() || SAMPLE_BRAND.storeName, 22).slice(0, 2);
+  const startY = lines.length > 1 ? 48 : 62;
+  return lines
+    .map(
+      (line, i) =>
+        `<text x="300" y="${startY + i * 24}" text-anchor="middle" class="mono">${escapeXml(line)}</text>`,
+    )
+    .join('');
 }
 
 function escapeXml(value: string) {

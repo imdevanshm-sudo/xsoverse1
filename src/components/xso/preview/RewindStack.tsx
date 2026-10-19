@@ -674,7 +674,8 @@ const RewindCard = memo(function RewindCard({
   chrome: boolean;
   onRewind: (towards?: Direction) => void;
 }) {
-  /** The click that trails a swipe must not rewind a second time. */
+  /** The click that trails a swipe must not rewind a second time; it can land before onDragEnd. */
+  const dragging = useRef(false);
   const dragEndedAt = useRef(0);
   const dragControls = useDragControls();
   const dragX = useMotionValue(0);
@@ -704,6 +705,7 @@ const RewindCard = memo(function RewindCard({
       dragControls={dragControls}
       dragListener={false}
       onPointerDown={(event) => {
+        dragging.current = false;
         if (!tactile) return;
         if ((event.target as Element).closest(INTERACTIVE)) return;
         dragControls.start(event);
@@ -712,14 +714,18 @@ const RewindCard = memo(function RewindCard({
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={PULL_ELASTIC}
       dragTransition={{ bounceStiffness: 200, bounceDamping: 20 }}
+      onDragStart={() => {
+        dragging.current = true;
+      }}
       onDragEnd={(_, info) => {
+        dragging.current = false;
         dragEndedAt.current = performance.now();
         if (Math.abs(info.offset.x) > PULL_DISTANCE || Math.abs(info.velocity.x) > PULL_VELOCITY) {
           onRewind(info.offset.x > 0 ? 1 : -1);
         }
       }}
       onClick={(event) => {
-        if (!active || performance.now() - dragEndedAt.current < 250) return;
+        if (!active || dragging.current || performance.now() - dragEndedAt.current < 250) return;
         if ((event.target as Element).closest(INTERACTIVE)) return;
         onRewind();
       }}
