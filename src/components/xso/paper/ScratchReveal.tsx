@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { playSound, useTexture } from '@/lib/sound';
+import { useActive } from '@/components/xso/stage/ActiveScope';
 
 const BRUSH = 26;
 /** Share of the foil that has to come off before the rest falls away. */
@@ -108,6 +109,8 @@ export function ScratchReveal({
   const revealedRef = useRef(false);
   const paintedSize = useRef('');
   const scratched = useRef(false);
+  /** The shimmer only sweeps on the card in front; one further back in a pile isn't seen. */
+  const inFront = useActive();
   /** The foil's grain sound runs only while the coin is moving. */
   const scratching = useTexture('scratch.texture');
   const sparkEls = useRef<(HTMLSpanElement | null)[]>([]);
@@ -374,7 +377,9 @@ export function ScratchReveal({
           aria-hidden={revealed}
         />
       )}
-      {revealed || scratched.current ? null : <span aria-hidden className="scratch-shimmer" />}
+      {revealed || scratched.current || !inFront ? null : (
+        <span aria-hidden className="scratch-shimmer" />
+      )}
       {revealed ? (
         <span aria-hidden className="scratch-burst">
           {CONFETTI.map((style, i) => (

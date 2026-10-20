@@ -1,6 +1,6 @@
 /** Sample / preview storefront brand for landing cards, wizard live preview, and mock data. */
 export const SAMPLE_BRAND = {
-  storeName: 'XSOVERSE · KEEPSAKE DEPT.',
+  storeName: 'XSOVERSE · SOUVENIR DEPT.',
   cashier: 'THE XSO TEAM',
   stamp: 'XSO CERTIFIED',
   domain: 'xsoverse.app',

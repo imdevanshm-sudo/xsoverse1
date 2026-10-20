@@ -209,6 +209,23 @@ async function playThrough(page: Page, style: GiftStyle, wait: Wait, more: () =>
       return;
     }
     case 'scrapbook': {
+      /* The album is tied shut; once it has drawn (or given way to the desk), break its seal. */
+      const album = await page
+        .waitForFunction(
+          (): string => {
+            const state = document.querySelector('[data-album]')?.getAttribute('data-album');
+            if (!state) return 'none';
+            return state === 'loading' ? '' : state;
+          },
+          { timeout: 5000, polling: 100 },
+        )
+        .then((handle) => handle.jsonValue())
+        .catch(() => '');
+      if (album === 'ready') {
+        await wait(1800);
+        await tap(page, ['[data-album-seal]']);
+        await wait(2600);
+      }
       for (let i = 0; i < 8 && more(); i++) {
         if (!(await tap(page, ['[role="button"][aria-label$="(not opened yet)"]']))) break;
         await wait(DWELL_MS);

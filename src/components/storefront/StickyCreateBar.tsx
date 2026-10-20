@@ -10,7 +10,7 @@ import { track } from '@/lib/analytics';
 import { StyleThumb } from '@/components/storefront/StyleThumb';
 
 /**
- * Mobile-only buy bar pinned to the bottom of the store. It waits until the page's own Make yours
+ * Mobile-only buy bar pinned to the bottom of the store. It waits until the page's own "Create your souvenir"
  * has scrolled away (`shown`), so the two never sit on screen together.
  */
 export const StickyCreateBar = memo(function StickyCreateBar({
@@ -58,7 +58,7 @@ export const StickyCreateBar = memo(function StickyCreateBar({
           className="matte-cta flex min-h-[48px] shrink-0 touch-manipulation items-center gap-2 rounded-full px-5 font-serif text-[16px] font-semibold"
         >
           <Sparkles className="h-4 w-4" aria-hidden />
-          Make yours
+          Create yours
         </button>
       </div>
     </div>

@@ -3367,25 +3367,88 @@ html.is-landscape .xso-dock {
     0 0 0 4px rgba(226, 189, 118, 0.35),
     0 0 36px rgba(255, 196, 120, 0.35),
     0 10px 24px rgba(0, 0, 0, 0.55);
-  animation: keepsake-clasp-glow 2.8s ease-in-out infinite;
 }
 
-@keyframes keepsake-clasp-glow {
+/* The swell of the clasp's glow, on its own layer and faded by opacity: no repaint per frame. */
+.keepsake-clasp::after,
+.album-seal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  animation: press-glow 2.8s ease-in-out infinite;
+}
+
+.keepsake-clasp::after {
+  box-shadow:
+    0 0 0 4px rgba(226, 189, 118, 0.2),
+    0 0 52px rgba(255, 196, 120, 0.3);
+}
+
+@keyframes press-glow {
   50% {
-    box-shadow:
-      inset 0 1px 1px rgba(255, 246, 220, 0.8),
-      inset 0 -2px 4px rgba(60, 34, 8, 0.5),
-      0 0 0 3px rgba(20, 10, 5, 0.55),
-      0 0 0 4px rgba(226, 189, 118, 0.5),
-      0 0 52px rgba(255, 196, 120, 0.55),
-      0 10px 24px rgba(0, 0, 0, 0.55);
+    opacity: 1;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .keepsake-clasp {
+  .keepsake-clasp::after,
+  .album-seal::after {
     animation: none;
   }
+}
+
+/* The Scrapbook's wax seal over its ribbon: rose wax, a pressed ring, lit from the upper left. */
+.album-seal {
+  background:
+    radial-gradient(circle at 50% 50%, transparent 38%, rgba(60, 8, 22, 0.35) 40%, transparent 46%),
+    radial-gradient(circle at 34% 28%, #f08aa0 0%, #c23a5a 30%, #93203d 62%, #5e0f24 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 210, 220, 0.7),
+    inset 0 -3px 5px rgba(40, 4, 14, 0.55),
+    2px 1px 0 -1px #8a1d38,
+    -2px 2px 0 -1px #a52a47,
+    1px -2px 0 -1px #9c2442,
+    0 0 30px rgba(240, 120, 150, 0.35),
+    2px 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+.album-seal::after {
+  box-shadow: 0 0 46px rgba(240, 120, 150, 0.3);
+}
+
+html.lite .album-seal::after {
+  animation: none;
+}
+
+/* The swipe hint's hand: a CSS transform loop, so it runs off the main thread while the deck sits. */
+.swipe-hand {
+  animation: swipe-hand 2s ease-in-out infinite;
+}
+
+@keyframes swipe-hand {
+  0%,
+  80%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  40% {
+    transform: translateX(14px) rotate(8deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swipe-hand {
+    animation: none;
+  }
+}
+
+/* Anything out of reach (the desk under the album, cards behind the top one) stops pulsing. */
+[inert] .desk-unopened::after,
+[inert] .scratch-shimmer::before {
+  animation-play-state: paused;
 }
 
 .movie-end {
@@ -3510,22 +3573,31 @@ html.is-landscape .xso-dock {
   z-index: -1;
   border-radius: 8px;
   box-shadow:
-    0 0 0 1.5px rgba(253, 186, 116, 0.45),
-    0 0 22px 4px rgba(253, 186, 116, 0.3);
+    0 0 0 1.5px rgba(253, 186, 116, 0.2),
+    0 0 14px 2px rgba(253, 186, 116, 0.14);
   pointer-events: none;
+}
+
+/* The brighter half of the pulse, faded by opacity so the glow never repaints frame by frame. */
+.desk-unopened::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    0 0 0 1.5px rgba(253, 186, 116, 0.3),
+    0 0 22px 4px rgba(253, 186, 116, 0.2);
   animation: desk-unopened-glow 2.6s ease-in-out infinite;
 }
 
 @keyframes desk-unopened-glow {
   50% {
-    box-shadow:
-      0 0 0 1.5px rgba(253, 186, 116, 0.2),
-      0 0 14px 2px rgba(253, 186, 116, 0.14);
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .desk-unopened {
+  .desk-unopened::after {
     animation: none;
   }
 }
@@ -3535,6 +3607,16 @@ html.is-landscape .xso-dock {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  overflow: hidden;
+  mix-blend-mode: soft-light;
+}
+
+/* The sweep is a wide band slid across by transform, not a repainted background position. */
+.scratch-shimmer::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 260%;
   background: linear-gradient(
     105deg,
     transparent 35%,
@@ -3542,18 +3624,16 @@ html.is-landscape .xso-dock {
     rgba(255, 255, 255, 0.15) 54%,
     transparent 64%
   );
-  background-size: 260% 100%;
-  mix-blend-mode: soft-light;
   animation: scratch-shimmer 3.2s ease-in-out 0.6s infinite;
 }
 
 @keyframes scratch-shimmer {
   0% {
-    background-position: 130% 0;
+    transform: translateX(-80%);
   }
   55%,
   100% {
-    background-position: -40% 0;
+    transform: translateX(24.6%);
   }
 }
 
@@ -4206,7 +4286,7 @@ html.lite *::after {
   -webkit-backdrop-filter: none !important;
 }
 
-html.lite .desk-unopened,
+html.lite .desk-unopened::after,
 html.lite .led-peach::after,
 html.lite .immersive-cta::after,
 html.lite .projector-beam,
@@ -4238,7 +4318,7 @@ html.lite .movie-grade {
 }
 
 html.lite .movie-hold-cue,
-html.lite .keepsake-clasp {
+html.lite .keepsake-clasp::after {
   animation: none;
 }
 

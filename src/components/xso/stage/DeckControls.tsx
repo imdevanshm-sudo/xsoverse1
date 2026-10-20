@@ -34,15 +34,11 @@ export const SwipeHint = memo(function SwipeHint({
           transition={{ duration: 0.5, ease: 'easeOut' }}
         >
           {/* Straddles the card's bottom edge, which is only the torn-paper border. */}
-          <span className="inline-flex translate-y-1/2 items-center gap-2.5 rounded-full bg-[#1b0f15]/80 py-2 pl-3 pr-4 font-receipt text-[14px] uppercase tracking-[0.18em] text-[#fde7d4] shadow-[0_10px_30px_rgba(0,0,0,.45)] backdrop-blur-sm">
-            <motion.span
-              aria-hidden
-              className="inline-flex"
-              animate={reduce ? undefined : { x: [0, 14, 0], rotate: [0, 8, 0] }}
-              transition={{ duration: 1.6, ease: 'easeInOut', repeat: Infinity, repeatDelay: 0.4 }}
-            >
+          {/* Solid, not blurred: the hand moves every frame, and a live blur behind it would re-render with it. */}
+          <span className="inline-flex translate-y-1/2 items-center gap-2.5 rounded-full bg-[#1b0f15]/90 py-2 pl-3 pr-4 font-receipt text-[14px] uppercase tracking-[0.18em] text-[#fde7d4] shadow-[0_10px_30px_rgba(0,0,0,.45)]">
+            <span aria-hidden className={`inline-flex ${reduce ? '' : 'swipe-hand'}`}>
               <Hand className="h-5 w-5" />
-            </motion.span>
+            </span>
             Swipe <span aria-hidden>→</span>
           </span>
         </motion.div>

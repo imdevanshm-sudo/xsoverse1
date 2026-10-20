@@ -33,7 +33,33 @@ const BG = '0x1a0f14';
 const STYLES = [
   { id: 'loop', stage: '[aria-label="Memory deck"]', act: '[aria-label^="Loop memory"]' },
   { id: 'rewind', stage: '[aria-label="Rewind stack"]', act: '[aria-label^="Rewind — bring"]' },
-  { id: 'scrapbook', stage: '[aria-label="Scrapbook desk"]', act: null },
+  {
+    id: 'scrapbook',
+    stage: '[data-album]',
+    act: '[data-album-seal]',
+    /** The Scrapbook is the tied album in the receiver experience; the seal opens it. */
+    viewport: { width: 390, height: 560 },
+    prepare: async (page) => {
+      await page.getByRole('button', { name: /see receiver experience/i }).first().click();
+      const unwrap = page.getByRole('button', { name: /unwrap/i }).first();
+      await unwrap.waitFor({ state: 'visible', timeout: 30_000 });
+      await page.waitForTimeout(1200);
+      await unwrap.click();
+      await page.waitForSelector('[data-album="ready"]', { timeout: 30_000 });
+      await page.addStyleTag({
+        content:
+          '[data-preview-watermark], [aria-label="Receiver preview"] > button { display: none !important; }',
+      });
+      await page.evaluate(() =>
+        document.querySelectorAll('button').forEach((button) => {
+          if (/sound/i.test(`${button.textContent} ${button.getAttribute('aria-label') ?? ''}`)) {
+            button.style.visibility = 'hidden';
+          }
+        }),
+      );
+      await page.waitForTimeout(1500);
+    },
+  },
   { id: 'accordion', stage: '[aria-label="Accordion letter"]', act: '[aria-label="Next fold"]' },
   {
     id: 'moviebox',

@@ -136,7 +136,7 @@ export function craftPrompt(input: CraftInput) {
       : input.adjust === 'sweeter'
         ? '\nRE-ROLL: make this version noticeably sweeter and more heartfelt, while keeping a little humor.'
         : '';
-  return `You write copy for XSO, a digital keepsake (receipt + friendship audit + photos + handwritten letter) that someone gifts to a person they love.
+  return `You write copy for XSO, a digital souvenir (receipt + friendship audit + photos + handwritten letter) that someone gifts to a person they love.
 
 Recipient: ${input.recipientName}
 ${input.senderName ? `From: ${input.senderName} (the letter is written by them, in first person)\n` : ''}Relationship: ${input.relationship}
@@ -544,7 +544,7 @@ export function questionsPrompt(input: QuestionsInput) {
   const who = input.recipientName
     ? `${input.recipientName}, their ${input.relationship}`
     : `their ${input.relationship}`;
-  return `You help someone write a keepsake gift for ${who}.
+  return `You help someone write a souvenir gift for ${who}.
 Write ${QUESTION_COUNT} short, specific questions that jog a vivid shared memory, inside joke or habit they could write about.${input.tone ? `\nThe gift's vibe: ${TONE_GUIDE[input.tone]}` : ''}
 
 Rules:

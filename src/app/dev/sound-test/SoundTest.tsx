@@ -165,8 +165,8 @@ function EventBoard() {
       <p className="mt-2 max-w-3xl text-sm text-[#e9c9b4]">
         Every named event in <code>lib/sound.ts</code>. Loudness is BS.1770 K-weighted: momentary
         maximum (400 ms) for effects, gated integrated for loops and music. Effects are levelled to
-        a {REFERENCE_LUFS} LUFS reference: ticks {LEVELS.tick} dB, paper {LEVELS.paper} dB, impacts
-        and chimes at reference, music {fmt(LEVELS.music)} dB (ducked {DUCK_DB} dB under effects and
+        a {REFERENCE_LUFS} LUFS reference: ticks {LEVELS.tick} dB, paper {LEVELS.paper} dB, impacts{' '}
+        {LEVELS.impact} dB, chimes {LEVELS.chime} dB, music {fmt(LEVELS.music)} dB (ducked {DUCK_DB} dB under effects and
         voice), voice notes {fmt(LEVELS.voice)} dB and never ducked. &ldquo;Source&rdquo; shows
         whether a recorded file or the synthesized placeholder is playing.
       </p>

@@ -13,7 +13,7 @@ export interface LemonConfig {
   apiKey: string;
   storeId: string;
   /**
-   * The one Lemon Squeezy product used for every keepsake. Add-ons don't need variants of their
+   * The one Lemon Squeezy product used for every souvenir. Add-ons don't need variants of their
    * own: they're priced into the checkout's `custom_price`.
    */
   variantId: string;
@@ -145,7 +145,7 @@ export async function createLemonCheckout(options: {
   const { quote } = options;
   const aesthetic = displayTitle(getCartridge(options.giftStyle));
   const recipient = options.customerName.trim() || 'someone special';
-  const tierName = TIERS[quote.tier]?.name || 'Keepsake';
+  const tierName = TIERS[quote.tier]?.name || 'Souvenir';
   const description = [
     `${tierName} · ${aesthetic}`,
     options.cardNames.join(', '),
@@ -180,14 +180,14 @@ export async function createLemonCheckout(options: {
             name: options.billerName || undefined,
           },
           product_options: {
-            name: `XSO Keepsake for ${recipient} · ${aesthetic}`,
+            name: `XSO Souvenir for ${recipient} · ${aesthetic}`,
             description,
             // No product media: custom thumbs + dark checkout were crashing Lemon's Vue
             // checkout on store.xsoverse.app (blank screen / useCheckoutState loop).
             redirect_url: redirectUrl,
             receipt_button_text: 'Send their gift',
             receipt_link_url: redirectUrl,
-            receipt_thank_you_note: `Your keepsake for ${recipient} is sealed. Open your dashboard to send the link.`,
+            receipt_thank_you_note: `Your souvenir for ${recipient} is sealed. Open your dashboard to send the link.`,
           },
           // Light hosted checkout only. dark+embed on the custom domain blanks the page.
           checkout_options: {

@@ -522,7 +522,7 @@ function AccordionEditor({ t, fields, onPatch, onFormat, photoSlot, onFocusCard 
   );
 }
 
-type MovieSection = 'rating' | 'faces' | 'music' | `scene-${number}`;
+type MovieSection = 'rating' | 'faces' | `scene-${number}`;
 
 function MovieEditor({ t, fields, onFormat, photoSlot, onFocusCard }: EditorProps) {
   const [open, setOpen] = useOpenSet<MovieSection>(['faces']);
@@ -565,19 +565,6 @@ function MovieEditor({ t, fields, onFormat, photoSlot, onFocusCard }: EditorProp
         photoSlot={photoSlot}
         detail="Scene 03's strip and the film reel"
       />
-      <EditorRow
-        t={t}
-        label="Soundtrack"
-        detail={soundtrackLabel(fields.moviebox.soundtrack)}
-        open={open.has('music')}
-        onExpand={() => setOpen('music')}
-      >
-        <SoundtrackField
-          t={t}
-          value={fields.moviebox.soundtrack ?? ''}
-          onChange={(soundtrack) => onFormat('moviebox', { soundtrack })}
-        />
-      </EditorRow>
     </ul>
   );
 }
@@ -779,7 +766,7 @@ export const CardDetailsEditor = memo(function CardDetailsEditor({
   const t = TONES[tone];
   /** The letter is what they'll reread, so it opens first, for the sender to make their own. */
   const first = cards.includes('letter' as CardId) ? ['letter' as CardId] : cards.slice(0, 1);
-  const [open, setOpen] = useOpenSet<CardId | 'music'>(first);
+  const [open, setOpen] = useOpenSet<CardId>(first);
   const onScrapbook = useCallback(
     (patch: Partial<ScrapbookLayers>) => onFormat('scrapbook', patch),
     [onFormat],
@@ -877,21 +864,6 @@ export const CardDetailsEditor = memo(function CardDetailsEditor({
             {fieldsFor(card.id)}
           </EditorRow>
         ))}
-      {movie ? (
-        <EditorRow
-          t={t}
-          label="Soundtrack"
-          detail={soundtrackLabel(fields.moviebox.soundtrack)}
-          open={open.has('music')}
-          onExpand={() => setOpen('music')}
-        >
-          <SoundtrackField
-            t={t}
-            value={fields.moviebox.soundtrack ?? ''}
-            onChange={(soundtrack) => onFormat('moviebox', { soundtrack })}
-          />
-        </EditorRow>
-      ) : null}
     </ul>
   );
 });

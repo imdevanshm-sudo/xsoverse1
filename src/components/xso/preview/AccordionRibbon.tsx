@@ -811,7 +811,7 @@ const RibbonPanel = memo(function RibbonPanel({
             onReplay={onReplay}
             offer
             giftId={data.id}
-            shareTitle={data.customerName ? `A keepsake for ${data.customerName}` : 'A keepsake'}
+            shareTitle={data.customerName ? `A souvenir for ${data.customerName}` : 'A souvenir'}
           />
         ) : (
           <ActiveScope active={current}>

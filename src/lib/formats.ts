@@ -77,7 +77,12 @@ export function halfStar(value: number) {
   return Math.min(5, Math.max(0.5, Math.round(value * 2) / 2));
 }
 
-function movieDefaults(content: Pack, titles: string[], stars: number): MovieLayers {
+function movieDefaults(
+  content: Pack,
+  titles: string[],
+  stars: number,
+  soundtrack: string,
+): MovieLayers {
   const opening =
     content.merchantName === SAMPLE_BRAND.storeName
       ? SAMPLE_BRAND.movieTagline
@@ -91,7 +96,7 @@ function movieDefaults(content: Pack, titles: string[], stars: number): MovieLay
   return {
     scenes: captions.map((caption, i) => ({ title: titles[i], caption, image: '' })),
     stars,
-    soundtrack: DEFAULT_SOUNDTRACK,
+    soundtrack,
   };
 }
 
@@ -121,7 +126,8 @@ export function formatDefaults(content: Pack): FormatLayers {
         .join(' '),
     },
     accordion: { sentiment: `${content.total.toLowerCase()} — worth every cent ♡` },
-    moviebox: movieDefaults(content, MOVIE_TITLES, halfStar(overallStars(content.auditMetrics))),
+    /** No score under the film: music is the sender's own song, on its own scene, if they add one. */
+    moviebox: movieDefaults(content, MOVIE_TITLES, halfStar(overallStars(content.auditMetrics)), ''),
   };
 }
 
@@ -131,7 +137,10 @@ export function resolveLoop(data: XsoData): LoopLayers {
 }
 
 export function resolveMovie(data: XsoData): MovieLayers {
-  return data.moviebox ?? movieDefaults(data, LEGACY_MOVIE_TITLES, overallStars(data.auditMetrics));
+  return (
+    data.moviebox ??
+    movieDefaults(data, LEGACY_MOVIE_TITLES, overallStars(data.auditMetrics), DEFAULT_SOUNDTRACK)
+  );
 }
 
 const clip = (value: unknown, max: number) =>

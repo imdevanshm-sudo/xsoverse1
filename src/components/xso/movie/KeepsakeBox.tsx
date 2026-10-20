@@ -102,16 +102,16 @@ const SLIP_TILT = 0.026;
 const CLASP = new Vector3(0, FOOT + H - 0.06, D / 2 + 0.03);
 const BOX_CENTRE = new Vector3(0, FOOT + (H + LID) / 2 + 0.04, 0);
 
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
-const smooth = (a: number, b: number, v: number) => {
+export const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+export const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+export const smooth = (a: number, b: number, v: number) => {
   const t = clamp01((v - a) / (b - a));
   return t * t * (3 - 2 * t);
 };
-const mix = (a: number, b: number, t: number) => a + (b - a) * t;
+export const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /** Deterministic noise, so every render (and every story video) has the same grain. */
-function random(seed: number) {
+export function random(seed: number) {
   let s = seed >>> 0;
   return () => {
     s = (s + 0x6d2b79f5) >>> 0;
@@ -122,7 +122,7 @@ function random(seed: number) {
   };
 }
 
-function canvas(w: number, h: number) {
+export function canvas(w: number, h: number) {
   const el = document.createElement('canvas');
   el.width = w;
   el.height = h;
@@ -183,7 +183,7 @@ function walnutTexture() {
 }
 
 /** A soft round falloff, used for the lamp glow inside the box and the shadow under it. */
-function radialTexture(inner: string, outer: string) {
+export function radialTexture(inner: string, outer: string) {
   const [el, g] = canvas(256, 256);
   const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
   grad.addColorStop(0, inner);
@@ -236,7 +236,7 @@ function plateTexture() {
  * The receipt slip in the tray, printed with the gift's own lines and laid out like the film's
  * receipt (310 CSS px wide, the same rows and rules), so the push-in can cut straight to it.
  */
-function receiptTexture(contents: KeepsakeContents) {
+export function receiptTexture(contents: KeepsakeContents) {
   const rows = Math.max(1, Math.min(5, contents.lines.length));
   const cssW = 310;
   const cssH = 124 + rows * 25.5;
@@ -371,7 +371,7 @@ function printPaper(layout: PaperLayout) {
 }
 
 /** Paper that has been handled: flat in the middle, lifting a little towards both ends. */
-function curledPlane(w: number, h: number, lift: number) {
+export function curledPlane(w: number, h: number, lift: number) {
   const geometry = new PlaneGeometry(w, h, 1, 16);
   const pos = geometry.attributes.position;
   for (let i = 0; i < pos.count; i++) {
@@ -382,7 +382,7 @@ function curledPlane(w: number, h: number, lift: number) {
   return geometry;
 }
 
-function loadPrint(src: string): Promise<CanvasTexture> {
+export function loadPrint(src: string): Promise<CanvasTexture> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';

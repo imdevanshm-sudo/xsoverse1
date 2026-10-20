@@ -52,7 +52,14 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
   useEffect(() => {
     if (!armed || state !== 'loading') return;
     const timer = window.setTimeout(() => setState('failed'), EMBED_TIMEOUT_MS);
-    return () => window.clearTimeout(timer);
+    /** A frame "loads" even when it couldn't reach Spotify; offline, that's the browser's error page. */
+    const offline = () => setState('failed');
+    if (!navigator.onLine) offline();
+    window.addEventListener('offline', offline);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('offline', offline);
+    };
   }, [armed, state]);
 
   const hushing = onScreen && active && state !== 'failed';
@@ -82,7 +89,9 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
               loading="lazy"
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
               referrerPolicy="strict-origin-when-cross-origin"
-              onLoad={() => setState((s) => (s === 'loading' ? 'ready' : s))}
+              onLoad={() =>
+                setState((s) => (s === 'loading' ? (navigator.onLine ? 'ready' : 'failed') : s))
+              }
               onError={() => setState('failed')}
               className={`absolute inset-0 h-full w-full border-0 transition-opacity duration-300 ${state === 'ready' ? 'opacity-100' : 'opacity-0'}`}
             />
@@ -144,13 +153,16 @@ function OpenInSpotify({ song }: { song: SongAttachment }) {
 
 /** When the player can't load: the cover, the title and artist, and the link still work. */
 function SongFallback({ song }: { song: SongAttachment }) {
+  /** Offline, the cover can't load either; the music tile stands in rather than a broken image. */
+  const [coverFailed, setCoverFailed] = useState(false);
   return (
     <div className="flex items-center gap-3 rounded-xl bg-[#121212] p-3 text-white">
-      {song.thumbnail ? (
+      {song.thumbnail && !coverFailed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={song.thumbnail}
           alt={`Cover of ${song.title}`}
+          onError={() => setCoverFailed(true)}
           className="h-16 w-16 shrink-0 rounded-lg object-cover"
         />
       ) : (
@@ -279,7 +291,7 @@ export function SoundtrackCredit({ song, big }: { song: SongAttachment; big: boo
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center px-6 pb-24 text-center">
       <p className="font-receipt text-[11px] uppercase tracking-[0.34em] text-[#fdba74]">
-        Original soundtrack
+        Dedicated to you
       </p>
       <p
         className={`mt-3 font-serif font-semibold leading-tight text-[#fffaf0] ${big ? 'text-[40px]' : 'text-[28px]'}`}

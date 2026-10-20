@@ -23,8 +23,6 @@ interface BentoFormat {
   name: string;
   /** What the recipient actually does with it. */
   blurb: string;
-  /** The kind of moment it suits. */
-  bestFor: string;
 }
 
 /** Only the formats offered for new gifts are shown, the Movie Box first. */
@@ -33,53 +31,41 @@ const BENTO: BentoFormat[] = (
     {
       style: 'moviebox',
       name: 'The Movie Box',
-      blurb: 'They open a keepsake box and your scenes play, with music.',
-      bestFor: 'Anniversaries, birthdays, the big ones',
+      blurb: 'They open a wooden box and your story plays like a film.',
     },
     {
       style: 'loop',
       name: 'The Loop',
-      blurb: 'They flick through a receipt, an audit, photos and your letter.',
-      bestFor: 'Best friends, roasts, inside jokes',
+      blurb: 'They flick through a receipt of your inside jokes, photos and a letter.',
     },
     {
       style: 'accordion',
       name: 'The Accordion',
       blurb: 'They unfold one long paper, memory by memory, to your letter.',
-      bestFor: 'Thank-yous, long distance, the long letter',
     },
     {
       style: 'rewind',
       name: 'The Rewind',
-      blurb: 'They rewind through a cassette of memories, with a soundtrack.',
-      bestFor: 'Old friends, the songs you share',
+      blurb: 'They rewind through a cassette of your memories.',
     },
     {
       style: 'scrapbook',
       name: 'The Scrapbook',
-      blurb: 'They open each piece on a desk: receipts, photos and your letter.',
-      bestFor: 'Long friendships, keepers of everything',
+      blurb: 'They untie a scrapbook and open each memory inside.',
     },
   ] satisfies BentoFormat[]
 ).filter((format) => offeredStyle(format.style) === format.style);
 
-/** What one keepsake costs, from the pricing config: one price, or the lowest if they differ. */
+/** What one souvenir costs, from the pricing config: one price, or the lowest if they differ. */
 function launchPrice(): string {
   const prices = BENTO.map((format) => quote({ style: format.style }).base);
   const low = Math.min(...prices);
   return prices.every((price) => price === low) ? formatPrice(low) : `From ${formatPrice(low)}`;
 }
 
-const HOW_IT_WORKS = [
-  { title: 'Pick a keepsake', body: 'Movie Box, Loop or Accordion.' },
-  {
-    title: 'Make it yours',
-    body: 'Answer a few questions and we draft the words. Edit anything, add photos and music.',
-  },
-  { title: 'Pay and send', body: 'You get a private link to send them. Nothing to ship.' },
-];
+const HOW_IT_WORKS = ['Choose a format', 'Personalize it', 'Pay and send'];
 
-/** Link-in-bio landing: what it is, one button, the formats on offer, and how it works. */
+/** Link-in-bio storefront: what it is, one button, the formats on offer. Nothing else. */
 export function Store() {
   const router = useRouter();
   const setField = useXsoStore((s) => s.setField);
@@ -161,18 +147,15 @@ export function Store() {
           className="mt-7 text-center sm:mt-11 [@media(max-height:480px)]:mt-4"
           aria-labelledby="hero-heading"
         >
-          <p className="font-receipt text-[11px] uppercase tracking-[0.22em] text-[#f9a8d4]">
-            Keepsakes for the words you never said
-          </p>
           <h1
             id="hero-heading"
-            className="mt-3 text-balance font-serif text-[2.2rem] font-semibold leading-[1.04] tracking-[-0.02em] text-[#fdf2f8] sm:text-[3rem] [@media(max-height:480px)]:text-[2rem]"
+            className="text-balance font-serif text-[2.2rem] font-semibold leading-[1.04] tracking-[-0.02em] text-[#fdf2f8] sm:text-[3rem] [@media(max-height:480px)]:text-[2rem]"
           >
-            Turn your memories into a gift they can <em className="font-medium text-[#f9a8d4]">open.</em>
+            Turn your memories into an{' '}
+            <em className="font-medium text-[#f9a8d4]">experience souvenir.</em>
           </h1>
-          <p className="mx-auto mt-3 max-w-[30rem] text-balance text-[16px] leading-snug text-[#e0b4c6]">
-            A little film, a receipt of your inside jokes, or a letter that unfolds. Made for one
-            person, sent as a private link.
+          <p className="mx-auto mt-3 max-w-[28rem] text-balance text-[16px] leading-snug text-[#e0b4c6]">
+            A personal digital gift made from your moments, photos, words and a song you dedicate.
           </p>
         </section>
 
@@ -182,19 +165,30 @@ export function Store() {
             onClick={onHeroCta}
             className="matte-cta flex min-h-[4rem] w-full touch-manipulation items-center justify-center gap-2 rounded-full px-6 font-serif text-[20px] font-semibold shadow-[0_14px_40px_rgba(236,72,153,.35)] transition-transform active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
           >
-            Make yours
+            Create your souvenir
           </button>
-          <p className="mt-2.5 text-center font-receipt text-[11px] uppercase tracking-[0.16em] text-[#c99aae]">
-            {price} per keepsake · Nothing to ship
-          </p>
+          <div className="mt-2 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => watchExample(BENTO[0].style)}
+              className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[14px] font-semibold text-[#f9a8d4] underline decoration-[#f9a8d4]/40 underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]"
+            >
+              <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
+              See how it feels
+            </button>
+            <span aria-hidden className="h-4 w-px bg-white/15" />
+            <span className="font-receipt text-[12px] uppercase tracking-[0.14em] text-[#c99aae]">
+              {price}
+            </span>
+          </div>
         </div>
 
-        <section className="mt-10" aria-labelledby="formats-heading">
+        <section className="mt-9" aria-labelledby="formats-heading">
           <h2
             id="formats-heading"
             className="mb-3 text-center font-receipt text-[11px] uppercase tracking-[0.22em] text-[#c99aae]"
           >
-            Choose your keepsake
+            Choose your souvenir
           </h2>
           <ul className="m-0 grid list-none gap-3 p-0">
             {BENTO.map((format, i) => (
@@ -210,75 +204,30 @@ export function Store() {
           </ul>
         </section>
 
-        <section className="mt-10" aria-labelledby="how-heading">
-          <h2
-            id="how-heading"
-            className="mb-3 text-center font-receipt text-[11px] uppercase tracking-[0.22em] text-[#c99aae]"
-          >
-            How it works
-          </h2>
-          <ol className="m-0 grid list-none gap-2 p-0">
+        <section className="mt-8 text-center" aria-label="How it works">
+          <ol className="m-0 flex list-none flex-wrap items-center justify-center gap-x-2 gap-y-1 p-0 font-receipt text-[12px] uppercase tracking-[0.12em] text-[#e0b4c6]">
             {HOW_IT_WORKS.map((step, i) => (
-              <li
-                key={step.title}
-                className="flex items-start gap-3 rounded-2xl border border-white/10 bg-[#21131b] px-4 py-3"
-              >
-                <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#ec4899]/20 font-receipt text-[12px] font-bold text-[#f9a8d4]">
-                  {i + 1}
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-serif text-[16px] font-semibold text-[#fdf2f8]">
-                    {step.title}
+              <li key={step} className="flex items-center gap-2">
+                {i > 0 ? (
+                  <span aria-hidden className="text-[#f9a8d4]">
+                    →
                   </span>
-                  <span className="block text-[14px] leading-snug text-[#e0b4c6]">{step.body}</span>
-                </span>
+                ) : null}
+                {step}
               </li>
             ))}
           </ol>
-        </section>
-
-        <section className="mt-10" aria-labelledby="faq-heading">
-          <h2
-            id="faq-heading"
-            className="mb-3 text-center font-receipt text-[11px] uppercase tracking-[0.22em] text-[#c99aae]"
-          >
-            Good to know
-          </h2>
-          <dl className="m-0 grid gap-3 text-[14px] leading-snug">
-            <div>
-              <dt className="font-semibold text-[#fdf2f8]">What do they need to open it?</dt>
-              <dd className="m-0 text-[#e0b4c6]">
-                Just the link. It opens in the browser on their phone or computer, with no app or
-                account.
-              </dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-[#fdf2f8]">What does it cost?</dt>
-              <dd className="m-0 text-[#e0b4c6]">
-                {price} for one keepsake, shown before you pay. Adding a song:{' '}
-                {addOnPrice('spotify_song').toLowerCase()}.
-              </dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-[#fdf2f8]">What happens after I pay?</dt>
-              <dd className="m-0 text-[#e0b4c6]">
-                Your private link is ready straight away. Send it however you like.
-              </dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-[#fdf2f8]">Questions?</dt>
-              <dd className="m-0 text-[#e0b4c6]">
-                Write to{' '}
-                <a
-                  href="mailto:xsoverse@gmail.com"
-                  className="inline-block py-2.5 text-[#f9a8d4] underline decoration-[#f9a8d4]/40 underline-offset-4"
-                >
-                  xsoverse@gmail.com
-                </a>
-                .
-              </dd>
-            </div>
-          </dl>
+          <p className="mt-4 text-[13px] leading-relaxed text-[#c99aae]">
+            {price} per souvenir, shown before you pay. Adding a song is{' '}
+            {addOnPrice('spotify_song').toLowerCase()}. They open it from a private link, with no
+            app. Nothing to ship. Questions?{' '}
+            <a
+              href="mailto:xsoverse@gmail.com"
+              className="inline-block py-2 text-[#f9a8d4] underline decoration-[#f9a8d4]/40 underline-offset-4"
+            >
+              xsoverse@gmail.com
+            </a>
+          </p>
         </section>
       </div>
       <StickyCreateBar shown={!heroInView} price={price} />
@@ -308,9 +257,10 @@ const BentoCard = memo(function BentoCard({
         {
           '--tint': cart.accentSoft,
           '--rim': cart.accent,
+          borderColor: cart.accentSoft,
         } as CSSProperties
       }
-      className="rounded-3xl border border-white/10 bg-[linear-gradient(160deg,var(--tint),rgba(33,18,24,0.92)_70%)] p-3"
+      className="rounded-3xl border bg-[linear-gradient(160deg,var(--tint),rgba(33,18,24,0.92)_70%)] p-3"
     >
       <div className="flex gap-3">
         <button
@@ -340,9 +290,6 @@ const BentoCard = memo(function BentoCard({
             {cart.tagline}
           </p>
           <p className="mt-1 text-[13.5px] leading-snug text-[#e0b4c6]">{format.blurb}</p>
-          <p className="mt-2 font-receipt text-[11px] uppercase leading-snug tracking-[0.12em] text-[#c99aae]">
-            Best for: {format.bestFor}
-          </p>
         </div>
       </div>
       <div className="mt-2.5 grid grid-cols-2 gap-2">
@@ -357,10 +304,10 @@ const BentoCard = memo(function BentoCard({
         <button
           type="button"
           onClick={() => onPick(format.style)}
-          aria-label={`Make a ${format.name.replace(/^The /, '')}`}
+          aria-label={`Create a ${format.name.replace(/^The /, '')}`}
           className="inline-flex min-h-11 touch-manipulation items-center justify-center rounded-full bg-[#fdf2f8] px-3 text-[14px] font-semibold text-[#2d1b22] transition-transform active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
         >
-          Make this one
+          Create this one
         </button>
       </div>
     </article>

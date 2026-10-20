@@ -55,7 +55,7 @@ const PreviewStage = memo(function PreviewStage({
   );
 });
 
-/** Step 1 — paper keepsake deck, secret offer ticket and sticky CTA. */
+/** Step 1 — paper souvenir deck, secret offer ticket and sticky CTA. */
 export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
   useSoundSurface();
   const cart = getCartridge(lockedStyle);
@@ -108,7 +108,7 @@ export function ImmersivePreview({ lockedStyle }: { lockedStyle: GiftStyle }) {
             {cart.tagline}
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-[#e0b4c6]">
-            This is what they&apos;ll hold. Turn each keepsake over, scratch the ticket, then fill
+            This is what they&apos;ll hold. Turn each souvenir over, scratch the ticket, then fill
             every line with the things you never quite found the words for.
           </p>
         </aside>

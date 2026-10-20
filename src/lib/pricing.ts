@@ -42,16 +42,16 @@ export interface TierSpec {
 export const TIERS: Record<TierId, TierSpec> = {
   classic: {
     id: 'classic',
-    name: 'Keepsake',
-    blurb: 'The Loop. A swipeable keepsake with your receipt, photos and letter.',
+    name: 'Souvenir',
+    blurb: 'The Loop. A swipeable souvenir with your receipt, photos and letter.',
     prices: { USD: 1499, INR: 24900 },
     styles: ['loop', 'rewind'],
     variantEnv: 'LEMONSQUEEZY_VARIANT_CLASSIC',
   },
   premium: {
     id: 'premium',
-    name: 'Keepsake',
-    blurb: 'The Accordion or The Movie Box. A richer, more interactive keepsake.',
+    name: 'Souvenir',
+    blurb: 'The Scrapbook, The Accordion or The Movie Box. A richer, more interactive souvenir.',
     prices: { USD: 1499, INR: 24900 },
     styles: ['scrapbook', 'accordion', 'moviebox'],
     badge: 'Richer',
@@ -70,7 +70,7 @@ export const PREMIUM_STYLES: readonly GiftStyle[] = TIERS.premium.styles;
  */
 export const RECIPIENT_OFFER = {
   percentOff: 15,
-  label: '15% off your first keepsake',
+  label: '15% off your first souvenir',
 } as const;
 
 /** The tier an order lands in: by format, not by how many cards are in the stack. */
@@ -92,7 +92,7 @@ export const ADD_ONS: Record<AddOnId, AddOnSpec> = {
   spotify_song: {
     id: 'spotify_song',
     label: 'Our Song',
-    description: 'Add a song that plays with your keepsake.',
+    description: 'Dedicate a Spotify song or playlist. It gets its own page they can play.',
     // Free: Spotify's terms bar charging for its content.
     prices: { USD: 0, INR: 0 },
   },

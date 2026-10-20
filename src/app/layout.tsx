@@ -64,9 +64,9 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   /** Link previews (gift cards in chats) need absolute image URLs on the real domain. */
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.xsoverse.app'),
-  title: 'XSO · Keepsakes for unsaid words',
+  title: 'XSO · Experience souvenirs from your memories',
   description:
-    'An XSO is an experience turned souvenir: the feelings you couldn’t quite voice, pressed into a receipt, an audit, a photo strip and a letter they can hold.',
+    'An XSO is an experience souvenir: your memories, photos and words, made into a little film, a receipt, a folded letter or a scrapbook for one person.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

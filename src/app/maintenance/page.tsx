@@ -16,7 +16,7 @@ export default function MaintenancePage() {
         We&apos;re putting on the finishing touches.
       </h1>
       <p className="mt-4 max-w-[34ch] text-[16px] leading-relaxed text-[#fffaf0]/75">
-        The store is being updated and will be back shortly. If someone sent you a keepsake,
+        The store is being updated and will be back shortly. If someone sent you a souvenir,
         your link still opens as usual.
       </p>
     </main>

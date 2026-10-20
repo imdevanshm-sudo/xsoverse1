@@ -6,11 +6,11 @@ import type { GiftStyle } from '@/types/xso';
 export type OrderFormat = 'loop' | 'rewind' | 'scrapbook' | 'accordion' | 'movie_box';
 
 /**
- * The formats offered for new gifts, in the order they're shown. Rewind and Scrapbook are held back
- * from the launch: gifts already made in them still open, edit and play, and adding them back here
- * offers them again.
+ * The formats offered for new gifts, in the order they're shown. Rewind is held back from the
+ * launch: gifts already made in it still open, edit and play, and adding it back here offers it
+ * again.
  */
-export const ORDER_FORMATS: OrderFormat[] = ['movie_box', 'loop', 'accordion'];
+export const ORDER_FORMATS: OrderFormat[] = ['movie_box', 'loop', 'accordion', 'scrapbook'];
 
 /** A new gift's format: the one asked for if it's offered, otherwise the first that is. */
 export function offeredStyle(style: GiftStyle | null | undefined): GiftStyle {

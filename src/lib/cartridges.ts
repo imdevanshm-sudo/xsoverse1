@@ -28,7 +28,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
     caption: 'Always finds its way back',
     tagline: 'Your inside jokes, printed on a receipt.',
     description:
-      'Four keepsakes in one hand-held stack. Flick one away and it slides back under the pile, like the thing you meant to say that keeps circling back at 2am.',
+      'Four memories in one hand-held stack. Flick one away and it slides back under the pile, like the thing you meant to say that keeps circling back at 2am.',
     year: '1989',
     glow: '#f472b6',
     accent: '#f472b6',
@@ -58,7 +58,7 @@ export const CARTRIDGES: CartridgeSpec[] = [
     title: 'SCRAPBOOK',
     subtitle: 'Flat-Lay Fan',
     caption: 'Proof, scattered softly',
-    tagline: 'Proof that it all happened.',
+    tagline: 'Your memories, kept in a real scrapbook.',
     description:
       'Receipts, photos and a letter scattered like a shoebox of secret history. Every scrap is a quiet confession of something only you two know.',
     year: '1993',

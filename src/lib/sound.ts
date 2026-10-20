@@ -21,13 +21,17 @@ export type MediaKind = 'music' | 'voice';
 
 /** Effects are levelled against this (momentary loudness, BS.1770 K-weighted). */
 export const REFERENCE_LUFS = -20;
-/** Offsets from the reference, in dB. Voice notes land at −16 LUFS and are never ducked. */
+/**
+ * Offsets from the reference, in dB. Effects sit well under anything the sender chose to be heard
+ * (their voice note, a score), and the heavier ones (thuds, chimes) below even the paper sounds, so
+ * nothing lands like a hit. Voice notes land at −16 LUFS and are never ducked.
+ */
 export const LEVELS: Record<Level | MediaKind, number> = {
-  tick: -6,
-  paper: -2,
-  impact: 0,
-  chime: 0,
-  bed: -20,
+  tick: -16,
+  paper: -12,
+  impact: -14,
+  chime: -15,
+  bed: -30,
   music: 2,
   voice: 4,
 };

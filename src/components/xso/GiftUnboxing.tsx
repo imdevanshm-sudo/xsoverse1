@@ -33,6 +33,7 @@ import { PreviewWatermark } from '@/components/xso/PreviewWatermark';
 import { EagerMedia } from '@/components/xso/EagerMedia';
 import { FitStage } from '@/components/xso/stage/FitStage';
 import { FirstVisitHint } from '@/components/xso/stage/FirstVisitHint';
+import { AlbumCover } from '@/components/xso/scrapbook/AlbumCover';
 import { SoundToggle } from '@/components/xso/stage/SoundToggle';
 import { ActiveScope } from '@/components/xso/stage/ActiveScope';
 import { ShareStoryButton, StoryGiftProvider } from '@/components/xso/ShareStory';
@@ -45,7 +46,6 @@ type Phase = 'wrapped' | 'opening';
 
 /** What to do first, per format; the Movie Box has its own Play button; the Loop and the Rewind their own swipe cue. */
 const HINTS: Partial<Record<GiftStyle, string>> = {
-  scrapbook: 'Tap anything to open it',
   accordion: 'Scroll to unfold it',
 };
 
@@ -414,6 +414,37 @@ const CARD_STAGE = 'flex h-full max-h-[600px] w-full items-center justify-center
 /** The phone-sized box the card formats are composed in; FitStage scales it to the canvas. */
 const CARD_DESIGN = { width: 420, height: 600 };
 
+/**
+ * The Scrapbook arrives as an album tied with a ribbon; the desk waits underneath, out of reach,
+ * until the seal is broken. Its first-visit hint follows the album, not the wrap.
+ */
+const ScrapbookGift = memo(function ScrapbookGift({
+  data,
+  cta,
+  onFinish,
+}: {
+  data: XsoData;
+  cta: boolean;
+  onFinish: () => void;
+}) {
+  const reduce = Boolean(useReducedMotion());
+  const [covered, setCovered] = useState(true);
+  const uncover = useCallback(() => setCovered(false), []);
+  const desk = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    desk.current?.toggleAttribute('inert', covered);
+  }, [covered]);
+  return (
+    <div className="scrap-wood relative h-full touch-manipulation overflow-hidden">
+      <div ref={desk} className="h-full">
+        <ScrapbookDesk data={data} size="fill" onFinish={onFinish} />
+      </div>
+      {covered ? <AlbumCover data={data} reduce={reduce} onDone={uncover} /> : null}
+      {cta && !covered ? <FirstVisitHint text="Tap anything to open it" /> : null}
+    </div>
+  );
+});
+
 const Souvenir = memo(function Souvenir({
   data,
   cta,
@@ -438,11 +469,7 @@ const Souvenir = memo(function Souvenir({
         </div>
       );
     case 'scrapbook':
-      return (
-        <div className="scrap-wood h-full touch-manipulation overflow-hidden">
-          <ScrapbookDesk data={data} size="fill" onFinish={onFinish} />
-        </div>
-      );
+      return <ScrapbookGift data={data} cta={cta} onFinish={onFinish} />;
     case 'accordion':
       return (
         <div className="stage-surface flex h-full justify-center overflow-hidden bg-[#180e15] px-0 pb-3 pt-14 sm:px-2 md:px-6 md:pb-5 md:pt-16">

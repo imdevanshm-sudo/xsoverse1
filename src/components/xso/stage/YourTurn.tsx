@@ -47,7 +47,7 @@ export const YourTurn = memo(function YourTurn({
     track('movie_shared', { method: 'share' in navigator ? 'native' : 'copy', source });
     if (navigator.share) {
       try {
-        await navigator.share({ title: shareTitle || 'A keepsake', url: shareUrl });
+        await navigator.share({ title: shareTitle || 'A souvenir', url: shareUrl });
       } catch {
         /* dismissed */
       }
@@ -76,12 +76,12 @@ export const YourTurn = memo(function YourTurn({
           large ? 'text-[34px]' : 'text-[26px]'
         }`}
       >
-        {stub ? 'Balance due: one keepsake.' : 'Someone you love deserves one too.'}
+        {stub ? 'Balance due: one souvenir.' : 'Someone you love deserves one too.'}
       </p>
       <p
         className={`mt-2 font-hand leading-tight text-[#b4234a] ${large ? 'text-[24px]' : 'text-[20px]'}`}
       >
-        {stub ? 'Pay it forward. Someone you love deserves one too.' : 'Make them a keepsake of their own.'}
+        {stub ? 'Pay it forward. Someone you love deserves one too.' : 'Make them a souvenir of their own.'}
       </p>
       <a
         href="/"

@@ -194,7 +194,7 @@ export function renderBuyerGiftReady(options: {
   const who = options.recipientName.trim() || 'them';
   const subject = `Your XSO for ${who} is sealed 💌`;
   const preheader = `It's ready. Preview it first, then send it to ${who} whenever you like.`;
-  const heading = `Your keepsake for ${who} is sealed.`;
+  const heading = `Your souvenir for ${who} is sealed.`;
   const bodyCopy = `It's ready. Preview it first, then send it to ${who} whenever you like.`;
 
   const html = shell({
@@ -217,7 +217,7 @@ export function renderBuyerGiftReady(options: {
         <tr>
           <td style="padding:14px 16px;font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.45;color:${MAIL_INK.warnText}">
             <strong style="display:block;margin-bottom:4px;letter-spacing:0.04em;text-transform:uppercase;font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace">Keep this private</strong>
-            Only share the gift link. Your dashboard link is private to you; anyone who has it can edit and resend your keepsake.
+            Only share the gift link. Your dashboard link is private to you; anyone who has it can edit and resend your souvenir.
           </td>
         </tr>
       </table>
@@ -234,7 +234,7 @@ export function renderBuyerGiftReady(options: {
     `Preview & send it (private dashboard): ${options.manageUrl}`,
     `Gift link (share this): ${options.giftUrl}`,
     '',
-    'WARNING: Only share the gift link. Your dashboard link is private to you; anyone who has it can edit and resend your keepsake.',
+    'WARNING: Only share the gift link. Your dashboard link is private to you; anyone who has it can edit and resend your souvenir.',
     '',
     'Receipt',
     `Format: ${options.receipt.formatName}`,
@@ -262,7 +262,7 @@ export function renderReceiverGiftLink(options: {
 }): RenderedMail {
   const fromName = options.senderName.trim() || 'Someone';
   const toName = options.recipientName.trim() || 'you';
-  const subject = `${fromName} sent you a keepsake`;
+  const subject = `${fromName} sent you a souvenir`;
   const preheader = `${fromName} made you something to open when you have a quiet minute.`;
 
   const html = shell({
@@ -270,7 +270,7 @@ export function renderReceiverGiftLink(options: {
     logoUrl: options.logoUrl ?? null,
     body: `
       <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:26px;line-height:1.2;font-weight:600;color:${MAIL_INK.text};text-align:center">
-        ${escapeHtml(fromName)} sent you a keepsake
+        ${escapeHtml(fromName)} sent you a souvenir
       </h1>
       <p style="margin:0 0 22px;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.5;color:${MAIL_INK.muted};text-align:center">
         Hi ${escapeHtml(toName)} — open it when you have a quiet minute.
@@ -288,7 +288,7 @@ export function renderReceiverGiftLink(options: {
   });
 
   const text = [
-    `${fromName} sent you a keepsake`,
+    `${fromName} sent you a souvenir`,
     '',
     `Hi ${toName} — open it when you have a quiet minute.`,
     '',
