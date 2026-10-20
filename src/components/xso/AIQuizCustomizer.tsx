@@ -175,10 +175,13 @@ export function VibeFields({
   onVibe,
   senderName,
   onSenderName,
+  namesOnly = false,
 }: {
   tone?: ToneName;
   name: string;
   onName: (name: string) => void;
+  /** Just who it's for and who it's from: the relationship and vibe only steer the AI writer. */
+  namesOnly?: boolean;
   /** Shown when the host wants the sign-off name too. */
   senderName?: string;
   onSenderName?: (name: string) => void;
@@ -209,6 +212,8 @@ export function VibeFields({
       ) : (
         <NameInput t={t} name={name} onName={onName} />
       )}
+      {namesOnly ? null : (
+        <>
       <fieldset>
         <legend className={t.field}>They&apos;re your…</legend>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -244,6 +249,8 @@ export function VibeFields({
           ))}
         </div>
       </fieldset>
+        </>
+      )}
     </div>
   );
 }

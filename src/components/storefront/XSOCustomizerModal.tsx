@@ -55,10 +55,19 @@ import {
 } from '@/types/order';
 import { LOOP_CARDS, type LoopCard, type XsoData } from '@/types/xso';
 
+/**
+ * The AI writer isn't switched on yet: step 3 asks only who it's for and goes straight to the
+ * details, where the sender writes it themselves. Flip this to bring back the questions and
+ * "Write it for me".
+ */
+const AI_WRITING = false;
+
 const STEPS = [
   { title: 'Pick the aesthetic', next: 'Next: build the stack' },
-  { title: 'Build the stack', next: 'Next: set the tone' },
-  { title: 'Set the tone', next: '✨ Write it for me' },
+  { title: 'Build the stack', next: AI_WRITING ? 'Next: set the tone' : 'Next: who it’s for' },
+  AI_WRITING
+    ? { title: 'Set the tone', next: '✨ Write it for me' }
+    : { title: 'Who it’s for', next: 'Next: the details' },
   { title: 'The fine print', next: 'Lock it in' },
 ] as const;
 const DETAILS = STEPS.length - 1;
@@ -298,9 +307,10 @@ export function XSOCustomizerModal() {
   const craftedFrom = useRef<string | null>(null);
   const vibeDone =
     name.length > 0 &&
-    vibe.relationship !== null &&
-    vibe.tone !== null &&
-    vibe.answer.trim().length >= CRAFT_LIMITS.minMemory;
+    (!AI_WRITING ||
+      (vibe.relationship !== null &&
+        vibe.tone !== null &&
+        vibe.answer.trim().length >= CRAFT_LIMITS.minMemory));
 
   const generate = useCallback(
     async (adjust?: Adjustment) => {
@@ -340,7 +350,7 @@ export function XSOCustomizerModal() {
   );
   /** Step 3 → 4: write the story, unless these exact answers already did. */
   const writeStory = useCallback(() => {
-    if (crafted && craftedFrom.current === craftKey) {
+    if (!AI_WRITING || (crafted && craftedFrom.current === craftKey)) {
       setDraft((d) => personalize(d, names));
       setStep(DETAILS);
       return;
@@ -538,6 +548,8 @@ export function XSOCustomizerModal() {
                 <FormatShowcase data={order} style={style} />
               ) : step === 1 ? (
                 <CardStack data={order} style={style} cards={cards} />
+              ) : step === 2 && !AI_WRITING ? (
+                <FormatThumb data={order} style={style} fit interactive stillUntilTap />
               ) : step === 2 ? (
                 <DraftReceipt
                   data={order}
@@ -572,8 +584,14 @@ export function XSOCustomizerModal() {
                     onRelationship={(relationship: Relationship) => setVibe({ relationship })}
                     vibe={vibe.tone}
                     onVibe={(tone: CraftTone) => setVibe({ tone })}
+                    namesOnly={!AI_WRITING}
                   />
-                  {vibe.relationship && vibe.tone ? (
+                  {!AI_WRITING ? (
+                    <p className="text-[14px] leading-snug text-[#e0b4c6]">
+                      Next, you&apos;ll write each card in your own words, add photos, and can
+                      dedicate a song.
+                    </p>
+                  ) : vibe.relationship && vibe.tone ? (
                     <div className="border-t border-white/10 pt-5">
                       <h3 className="mb-3 font-serif text-[1.1rem] font-semibold leading-tight">
                         ✨ The core memory
@@ -643,6 +661,19 @@ export function XSOCustomizerModal() {
               className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-[#fdf2f8] font-serif text-[17px] font-semibold text-[#2d1b22] transition-transform active:scale-[0.98] disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
             >
               {STEPS[step].next}
+            </button>
+          ) : step === 2 && !AI_WRITING ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (!vibeDone) return;
+                playSound('wizard.step');
+                writeStory();
+              }}
+              disabled={!vibeDone}
+              className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-[#fdf2f8] font-serif text-[17px] font-semibold text-[#2d1b22] transition-transform active:scale-[0.98] disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f9a8d4]"
+            >
+              {vibeDone ? STEPS[2].next : 'Add their name to continue'}
             </button>
           ) : step === 2 ? (
             <GenerateButton
