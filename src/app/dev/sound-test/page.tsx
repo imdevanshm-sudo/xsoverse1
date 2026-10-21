@@ -19,7 +19,13 @@ const FORMATS: GiftStyle[] = ['loop', 'rewind', 'scrapbook', 'accordion', 'movie
 export default function SoundTestPage({
   searchParams,
 }: {
-  searchParams: { viewer?: string; voice?: string; silent?: string; song?: string };
+  searchParams: {
+    viewer?: string;
+    voice?: string;
+    silent?: string;
+    backdrop?: string;
+    song?: string;
+  };
 }) {
   if (process.env.NODE_ENV === 'production') notFound();
   const viewer = FORMATS.find((format) => format === searchParams.viewer);
@@ -28,6 +34,7 @@ export default function SoundTestPage({
       viewer={viewer}
       voice={searchParams.voice === '1'}
       silent={searchParams.silent === '1'}
+      backdrop={searchParams.backdrop === '1'}
       song={searchParams.song === '1'}
     />
   );

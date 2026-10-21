@@ -1090,8 +1090,13 @@ const GLOSS: Variants = {
 
 const BACK_NOTES = ['always remember this ♡', 'my favourite version of us', 'proof we were here'];
 
-/** Handwriting under each print: the sender's own caption first, then names and the year. */
+/**
+ * Handwriting under each print: what the sender wrote for that photo, else the scrapbook's shared
+ * caption, then names and the year.
+ */
 function polaroidCaption(data: XsoData, caption: string, index: number) {
+  const own = data.photoCaptions?.[index]?.trim();
+  if (own) return own;
   const lines = [
     caption.trim(),
     `${data.customerName} & ${data.billerName}`,

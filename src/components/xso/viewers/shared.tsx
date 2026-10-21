@@ -13,7 +13,7 @@ import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side2Audit } from '@/components/xso/Side2Audit';
 import { Side3PhotoStrip } from '@/components/xso/Side3PhotoStrip';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
-import type { XsoData } from '@/types/xso';
+import { isPlaceholderPhoto, type XsoData } from '@/types/xso';
 
 export const SPRING = {
   type: 'spring' as const,
@@ -37,8 +37,11 @@ export const LIGHT_TWEEN = {
 };
 
 export interface Artifact {
-  /** `song` is the paid "Our Song" card, added by the formats that deal it. */
-  id: 'receipt' | 'audit' | 'photos' | 'letter' | 'song';
+  /**
+   * `song` is the paid "Our Song" card, added by the formats that deal it; `photo-N` is one of the
+   * sender's own photos dealt as its own card.
+   */
+  id: 'receipt' | 'audit' | 'photos' | 'letter' | 'song' | `photo-${number}`;
   label: string;
   rotation: number;
   contentScale?: number;
@@ -81,6 +84,43 @@ export function getArtifacts(data: XsoData, cards?: readonly Artifact['id'][]): 
 }
 
 /** Deals the song card just before the letter (or last, without one). */
+/** The sender's own photos (never the pack's placeholders), each with what they wrote under it. */
+export function photoCards(data: XsoData): { src: string; caption: string }[] {
+  return data.photos
+    .map((src, i) => ({ src, caption: data.photoCaptions?.[i]?.trim() ?? '' }))
+    .filter(({ src }) => src && !isPlaceholderPhoto(src));
+}
+
+/** One photo as its own card: the print, and the sender's caption in their hand underneath. */
+export function PhotoCard({ src, caption, index }: { src: string; caption: string; index: number }) {
+  return (
+    <figure className="mx-auto flex h-full w-full max-w-[340px] flex-col bg-[#fbf8f2] p-3 pb-4 text-[#2d1b22]">
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-[3px] bg-[#1a0f14]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={caption || `Photo ${index + 1}`} className="h-full w-full object-cover" />
+      </div>
+      <figcaption className="mt-3 min-h-[1.6em] text-balance text-center font-hand text-[24px] leading-[1.1] text-[#3a2530]">
+        {caption}
+      </figcaption>
+    </figure>
+  );
+}
+
+/** Each of the sender's photos dealt as its own card, in place of the single photo strip. */
+export function withPhotoCards(items: Artifact[], data: XsoData): Artifact[] {
+  const own = photoCards(data);
+  const at = items.findIndex((item) => item.id === 'photos');
+  if (!own.length || at < 0) return items;
+  const cards: Artifact[] = own.map(({ src, caption }, i) => ({
+    id: `photo-${i}`,
+    label: own.length > 1 ? `Photo ${i + 1}` : 'Photo',
+    rotation: i % 2 ? 1.6 : -1.4,
+    contentScale: 1,
+    content: <PhotoCard src={src} caption={caption} index={i} />,
+  }));
+  return [...items.slice(0, at), ...cards, ...items.slice(at + 1)];
+}
+
 export function withSong<T extends { id: string }>(items: T[], song: T | null): T[] {
   if (!song) return items;
   const at = items.findIndex((item) => item.id === 'letter');

@@ -30,7 +30,12 @@ import { resolveLoop } from '@/lib/formats';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { Side1Receipt } from '@/components/xso/Side1Receipt';
 import { Side4BirthdayCard } from '@/components/xso/Side4BirthdayCard';
-import { getArtifacts, withSong, type Artifact } from '@/components/xso/viewers/shared';
+import {
+  getArtifacts,
+  withPhotoCards,
+  withSong,
+  type Artifact,
+} from '@/components/xso/viewers/shared';
 import { LoopSongCard } from '@/components/xso/song/OurSong';
 import { useProgress } from '@/components/xso/stage/useProgress';
 import { YOUR_TURN, YourTurn } from '@/components/xso/stage/YourTurn';
@@ -68,7 +73,8 @@ const SHADOW = [1, 0.8, 0.65, 0.5];
 type SlotId = Artifact['id'] | 'end';
 
 type Material = { surface: string; sheen: number };
-const MATERIALS: Record<SlotId, Material> = {
+/** Photo cards (`photo-N`) are printed on the photo stock. */
+const MATERIALS: Record<Exclude<SlotId, `photo-${number}`>, Material> = {
   receipt: { surface: 'mat-receipt', sheen: 0.3 },
   audit: { surface: 'mat-cardstock', sheen: 0.35 },
   photos: { surface: 'mat-photo', sheen: 0.9 },
@@ -103,7 +109,11 @@ export const MemoryDeck = memo(function MemoryDeck(props: DeckProps) {
   const artifacts = useMemo(
     () =>
       withSong(
-        all.filter((artifact) => key.split('|').includes(artifact.id)),
+        /** The sender's own photos each come as their own card, in the strip's place. */
+        withPhotoCards(
+          all.filter((artifact) => key.split('|').includes(artifact.id)),
+          data,
+        ),
         song
           ? {
               id: 'song',
@@ -113,12 +123,16 @@ export const MemoryDeck = memo(function MemoryDeck(props: DeckProps) {
             }
           : null,
       ),
-    [all, key, song],
+    [all, data, key, song],
   );
   const focused =
     focusIndex === undefined
       ? undefined
-      : artifacts.findIndex((artifact) => artifact.id === LOOP_CARDS[focusIndex]);
+      : artifacts.findIndex(
+          (artifact) =>
+            artifact.id === LOOP_CARDS[focusIndex] ||
+            (LOOP_CARDS[focusIndex] === 'photos' && artifact.id === 'photo-0'),
+        );
   /** A different hand of cards is a new deck; remounting keeps the pile order valid. */
   return (
     <Deck
@@ -156,8 +170,11 @@ const Deck = memo(function Deck({
   /** Goes up each time the pile comes back round to the first card. */
   const [round, setRound] = useState(1);
   /** Receipt and letter render bare so the deck card itself is the paper. */
-  const faces = useMemo<Record<SlotId, ReactNode>>(
+  const faces = useMemo<Partial<Record<SlotId, ReactNode>>>(
     () => ({
+      ...Object.fromEntries(
+        artifacts.filter((a) => a.id.startsWith('photo-')).map((a) => [a.id, a.content]),
+      ),
       receipt: <Side1Receipt data={data} bare />,
       audit: artifacts.find((a) => a.id === 'audit')?.content,
       photos: artifacts.find((a) => a.id === 'photos')?.content,
@@ -440,7 +457,7 @@ const DeckCard = memo(function DeckCard({
   onLand: (index: number) => void;
   onRegister: (index: number, fly: () => void, enter: () => void) => void;
 }) {
-  const material = MATERIALS[id];
+  const material = MATERIALS[id as keyof typeof MATERIALS] ?? MATERIALS.photos;
   const number = index + 1;
   /** Hand offset: follows the finger while held, carries the flight, springs home under the pile. */
   const x = useMotionValue(0);

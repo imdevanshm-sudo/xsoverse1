@@ -316,7 +316,16 @@ export const MovieFeature = memo(function MovieFeature({
                   }
                   transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  <SceneBody {...props} />
+                  {/* The sender's still behind the receipt, audit or letter; the photo scene uses its own. */}
+                  {frame.scene !== 2 && movie.scenes[frame.scene]?.image ? (
+                    <span aria-hidden className="movie-backdrop pointer-events-none absolute inset-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={movie.scenes[frame.scene].image} alt="" className="h-full w-full object-cover" />
+                    </span>
+                  ) : null}
+                  <div className="relative h-full w-full">
+                    <SceneBody {...props} />
+                  </div>
                 </motion.article>
               </AnimatePresence>
               {/* Each cut lets a little warm light leak across the gate; the first scene opens clean. */}

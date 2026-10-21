@@ -3332,6 +3332,26 @@ html.is-landscape .xso-dock {
   mix-blend-mode: soft-light;
 }
 
+/* A scene's backdrop still: the sender's photo, dimmed and darkened at the edges so the words
+   in front stay the thing you read. */
+.movie-backdrop {
+  overflow: hidden;
+}
+
+.movie-backdrop img {
+  opacity: 0.38;
+  filter: saturate(0.85);
+}
+
+.movie-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 45%, rgba(11, 5, 7, 0.35), rgba(11, 5, 7, 0.85) 100%),
+    linear-gradient(180deg, rgba(11, 5, 7, 0.55), transparent 30%, transparent 70%, rgba(11, 5, 7, 0.7));
+}
+
 /* The letter reads under a reading lamp. */
 .movie-lamp {
   background: radial-gradient(ellipse 75% 60% at 50% 42%, rgba(255, 210, 150, 0.09), transparent 72%);

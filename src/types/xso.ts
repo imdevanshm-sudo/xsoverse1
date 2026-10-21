@@ -113,6 +113,11 @@ export interface XsoData {
   redFlags: string[];
   certifiedStampText: string;
   photos: string[];
+  /**
+   * The sender's words under each of their photos, matched by position. Optional; gifts made
+   * before photo cards have none.
+   */
+  photoCaptions?: string[];
   birthdayMessage: string;
   voiceNoteUrl?: string;
   scratchOffReward: string;

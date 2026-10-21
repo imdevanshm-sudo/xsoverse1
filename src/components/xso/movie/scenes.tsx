@@ -4,7 +4,7 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'reac
 import { AnimatePresence, animate, motion } from 'framer-motion';
 import { isPlaceholderPhoto, type AuditMetrics, type MovieLayers, type XsoData } from '@/types/xso';
 import { auditLabel } from '@/lib/formats';
-import { photoCaption } from '@/lib/photoStrips';
+import { photoCaption, photoCaptionFor } from '@/lib/photoStrips';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { StoreName } from '@/components/xso/StoreName';
 import { playSound, useTexture } from '@/lib/sound';
@@ -318,7 +318,7 @@ export const PhotoScene = memo(function PhotoScene({
   }, [current]);
   const drift = DRIFT[current % DRIFT.length];
   const caption = photos.length
-    ? photoCaption(data, current)
+    ? photoCaptionFor(data, photos[current], current)
     : cards[current]
       ? photoCaption(data, current)
       : movie.scenes[2]?.caption;

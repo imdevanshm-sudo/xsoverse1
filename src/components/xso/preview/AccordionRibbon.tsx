@@ -27,7 +27,7 @@ import {
 } from 'framer-motion';
 import { LOOP_CARDS, isPlaceholderPhoto, type AuditMetrics, type XsoData } from '@/types/xso';
 import { auditLabel } from '@/lib/formats';
-import { photoCaption } from '@/lib/photoStrips';
+import { photoCaptionFor } from '@/lib/photoStrips';
 import { stackCards } from '@/lib/formatCards';
 import { playSound, useTexture } from '@/lib/sound';
 import { FINAL_PAUSE_MS } from '@/lib/pacing';
@@ -950,7 +950,7 @@ function printsOf(data: XsoData): Print[] {
   const uploaded = data.photos.filter((src) => src && !isPlaceholderPhoto(src));
   const photos = (uploaded.length ? uploaded : []).slice(0, MAX_PRINTS);
   if (photos.length) {
-    return photos.map((src, i) => ({ src, caption: photoCaption(data, i) }));
+    return photos.map((src, i) => ({ src, caption: photoCaptionFor(data, src, i) }));
   }
   const year = `'${data.timestamp.split(' ')[0].slice(-2)} ♡`;
   const captions = [

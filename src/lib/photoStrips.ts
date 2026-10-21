@@ -60,6 +60,16 @@ export function stripPhotos(data: XsoData): string[] {
 }
 
 /** Handwriting under each photo: the two of them, then the receipt's lore, then the year. */
+/**
+ * The words under a photo: the sender's own caption when they wrote one (matched by the photo, so
+ * a still placed first doesn't shift them), otherwise the strip's usual line.
+ */
+export function photoCaptionFor(data: XsoData, src: string | undefined, index: number): string {
+  const at = src ? data.photos.indexOf(src) : -1;
+  const own = at >= 0 ? data.photoCaptions?.[at]?.trim() : '';
+  return own || photoCaption(data, index);
+}
+
 export function photoCaption(data: XsoData, index: number): string {
   const lore = data.lineItems[index - 1]?.description.toLowerCase();
   if (index === 0) return `${data.customerName} & ${data.billerName}`;

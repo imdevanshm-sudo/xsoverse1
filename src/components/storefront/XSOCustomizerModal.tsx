@@ -32,7 +32,7 @@ import type { FormatKey, FormatLayers } from '@/lib/formats';
 import { cardsPatch, normalizeCards, selectedCards, type CardId } from '@/lib/formatCards';
 import { compressPhotoForStyle } from '@/lib/media';
 import { startCheckout } from '@/lib/startCheckout';
-import { pickXsoPayload } from '@/lib/xsoPayload';
+import { PHOTO_CAPTION_MAX, pickXsoPayload } from '@/lib/xsoPayload';
 import { MatteCta } from '@/components/desk/MatteCta';
 import { CardDetailsEditor, type FormatPatch } from '@/components/xso/FormatEditor';
 import { personalize } from '@/lib/personalize';
@@ -257,10 +257,20 @@ export function XSOCustomizerModal() {
     },
     [setPhotos],
   );
+  /** Each photo's optional caption, kept in step with the photos (a removed photo takes its own). */
+  const [captions, setCaptions] = useState<string[]>([]);
+  const setCaption = useCallback((index: number, caption: string) => {
+    setCaptions((current) => {
+      const next = [...current];
+      next[index] = caption.slice(0, PHOTO_CAPTION_MAX);
+      return next;
+    });
+  }, []);
   const removePhoto = useCallback(
     (index: number) => {
       filesRef.current = filesRef.current.filter((_, i) => i !== index);
       setPhotos((current) => current.filter((_, i) => i !== index));
+      setCaptions((current) => current.filter((_, i) => i !== index));
     },
     [setPhotos],
   );
@@ -392,10 +402,12 @@ export function XSOCustomizerModal() {
             scrapbook && photos.length
               ? photos
               : [...photos, ...withCards.photos.slice(photos.length)],
+          /** Only the sender's own photos carry captions; the pack's fill-ins never do. */
+          photoCaptions: captions.slice(0, photos.length),
         },
         { recipient: name, sender: vibe.senderName.trim() },
       ),
-    [addOns, draftId, name, photos, scrapbook, style, vibe.senderName, withCards],
+    [addOns, captions, draftId, name, photos, scrapbook, style, vibe.senderName, withCards],
   );
   const songMissing = addOns.includes('spotify_song') && !order.song;
   /** The Scrapbook's Voice Note piece already takes a song, so Our Song would be a second one. */
@@ -454,6 +466,8 @@ export function XSOCustomizerModal() {
       processing={processing}
       onAdd={addPhotos}
       onRemove={removePhoto}
+      captions={captions}
+      onCaption={setCaption}
       compact
     />
   );

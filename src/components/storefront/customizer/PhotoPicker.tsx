@@ -10,12 +10,17 @@ export const PhotoPicker = memo(function PhotoPicker({
   processing,
   onAdd,
   onRemove,
+  captions,
+  onCaption,
   compact = false,
 }: {
   photos: string[];
   processing: number;
   onAdd: (files: File[]) => void;
   onRemove: (index: number) => void;
+  /** Each photo becomes its own card; these are the words under it. */
+  captions?: string[];
+  onCaption?: (index: number, caption: string) => void;
   /** Inside an editor that supplies its own spacing. */
   compact?: boolean;
 }) {
@@ -116,6 +121,27 @@ export const PhotoPicker = memo(function PhotoPicker({
           );
         })}
       </div>
+      {onCaption && photos.length ? (
+        <div className="mt-3 grid gap-2">
+          <p className="font-receipt text-[11px] uppercase tracking-[0.18em] text-[#c99aae]">
+            Each photo gets its own card · add a caption (optional)
+          </p>
+          {photos.map((photo, i) => (
+            <label key={`${i}-${photo.length}`} className="flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
+              <input
+                value={captions?.[i] ?? ''}
+                onChange={(e) => onCaption(i, e.target.value)}
+                maxLength={80}
+                placeholder={i === 0 ? 'the night we missed the last train' : 'What was happening here?'}
+                aria-label={`Caption for photo ${i + 1}`}
+                className="min-h-11 min-w-0 flex-1 rounded-xl border border-white/15 bg-[#21131b] px-3 text-[14px] text-[#fdf2f8] placeholder:text-[#c99aae]/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#f9a8d4]"
+              />
+            </label>
+          ))}
+        </div>
+      ) : null}
       <p className="mt-2 text-[11.5px] leading-snug text-[#c99aae]">
         Use photos you took or have permission to share.
       </p>

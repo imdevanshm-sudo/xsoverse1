@@ -25,6 +25,7 @@ import {
 import { MIXTAPE_TRACKS, SOUNDTRACKS } from '@/lib/soundtracks';
 import type { SongAttachment } from '@/lib/spotify';
 import { getMockXsoData, type GiftStyle, type XsoData } from '@/types/xso';
+import { formatDefaults } from '@/lib/formats';
 
 const SECTIONS: { format: SoundFormat; title: string }[] = [
   { format: 'shared', title: 'Shared (unwrap, photos, scratch-off, audit, letters)' },
@@ -54,16 +55,18 @@ export function SoundTest({
   viewer,
   voice,
   silent = false,
+  backdrop = false,
   song,
 }: {
   viewer?: GiftStyle;
   voice: boolean;
   silent?: boolean;
+  backdrop?: boolean;
   song: boolean;
 }) {
   useSoundSurface();
   if (viewer)
-    return <ViewerHarness style={viewer} voice={voice} silent={silent} song={song} />;
+    return <ViewerHarness style={viewer} voice={voice} silent={silent} backdrop={backdrop} song={song} />;
   return <EventBoard />;
 }
 
@@ -72,11 +75,13 @@ function ViewerHarness({
   style,
   voice,
   silent,
+  backdrop,
   song,
 }: {
   style: GiftStyle;
   voice: boolean;
   silent: boolean;
+  backdrop: boolean;
   song: boolean;
 }) {
   const [open, setOpen] = useState(true);
@@ -96,8 +101,19 @@ function ViewerHarness({
         transcript: voice && !silent ? 'Happy birthday!' : '',
       },
       song: song ? SAMPLE_SONG : undefined,
+      ...(backdrop
+        ? {
+            moviebox: {
+              ...formatDefaults(mock).moviebox,
+              scenes: formatDefaults(mock).moviebox.scenes.map((scene, i) => ({
+                ...scene,
+                image: mock.photos[i % mock.photos.length],
+              })),
+            },
+          }
+        : {}),
     };
-  }, [silent, song, style, voice]);
+  }, [backdrop, silent, song, style, voice]);
   return (
     <main className="fixed inset-0 bg-black">
       {open ? (
