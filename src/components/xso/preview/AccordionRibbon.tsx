@@ -30,6 +30,7 @@ import { auditLabel } from '@/lib/formats';
 import { photoCaption } from '@/lib/photoStrips';
 import { stackCards } from '@/lib/formatCards';
 import { playSound, useTexture } from '@/lib/sound';
+import { FINAL_PAUSE_MS } from '@/lib/pacing';
 import { ActiveScope } from '@/components/xso/stage/ActiveScope';
 import { useCoarsePointer } from '@/hooks/useTouchSpring';
 import { LazyMedia } from '@/components/xso/LazyMedia';
@@ -1358,9 +1359,12 @@ const PanelFace = memo(function PanelFace({
   );
 });
 
-/** Seconds to write one line, and the breath taken before the sign-off. */
-const LINE_TIME = 0.62;
-const LAST_PAUSE = 0.9;
+/**
+ * Seconds to write one line (about 35 characters on a phone, so a little ahead of reading pace,
+ * like `WRITE_MS_PER_CHAR`), and the breath taken before the last line and the sign-off.
+ */
+const LINE_TIME = 1;
+const LAST_PAUSE = FINAL_PAUSE_MS / 1000;
 /** The pen is heard over the first lines only, then fades out under the rest. */
 const PEN_LINES = 3;
 const PEN_FADE_MS = 900;

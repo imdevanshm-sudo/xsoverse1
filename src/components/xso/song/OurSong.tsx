@@ -62,15 +62,47 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
     };
   }, [armed, state]);
 
-  const hushing = onScreen && active && state !== 'failed';
+  /**
+   * Spotify's frame doesn't say when it's playing. Once the recipient has reached into it (turned
+   * it on, or clicked inside, which moves focus to the frame), assume the song may be playing and
+   * keep the app quiet for as long as the player exists, even after its card goes back in the pile.
+   */
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [engaged, setEngaged] = useState(false);
+  useEffect(() => {
+    if (guard && unlocked) setEngaged(true);
+  }, [guard, unlocked]);
+  useEffect(() => {
+    if (engaged || !armed) return;
+    const onBlur = () =>
+      window.setTimeout(() => {
+        if (document.activeElement === frame.current) setEngaged(true);
+      }, 0);
+    window.addEventListener('blur', onBlur);
+    return () => window.removeEventListener('blur', onBlur);
+  }, [armed, engaged]);
+
+  const hushing = state !== 'failed' && (engaged || (onScreen && active));
   useEffect(() => {
     if (!hushing) return;
     hush(true);
     return () => hush(false);
   }, [hushing]);
 
+  /**
+   * The cover's one tap does what the recipient meant: turn the player on and start the song, by
+   * the toggle message Spotify's embed listens for. If a browser won't let it start, the player is
+   * on now and their next tap on Spotify's own Play does.
+   */
+  const turnOn = () => {
+    setUnlocked(true);
+    if (state === 'ready') {
+      frame.current?.contentWindow?.postMessage({ command: 'toggle' }, 'https://open.spotify.com');
+    }
+  };
+
   return (
-    <div className={className}>
+    <div className={className} data-spotify>
       {state === 'failed' ? (
         <SongFallback song={song} />
       ) : (
@@ -82,6 +114,7 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
           {state === 'ready' ? null : <PlayerSkeleton song={song} />}
           {armed ? (
             <iframe
+              ref={frame}
               title={`Spotify player: ${song.title}`}
               src={spotifyEmbedUrl(song)}
               width="100%"
@@ -101,13 +134,13 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
             <div
               role="button"
               tabIndex={0}
-              aria-label={`Turn on the Spotify player for ${credit(song)}`}
+              aria-label={`Play ${credit(song)} on Spotify`}
               className="absolute inset-0 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#1db954]"
               onKeyDown={(e) => {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 e.preventDefault();
                 e.stopPropagation();
-                setUnlocked(true);
+                turnOn();
               }}
               onPointerDown={(e) => {
                 press.current = { x: e.clientX, y: e.clientY };
@@ -120,7 +153,7 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
                   : false;
                 if (moved) return;
                 e.stopPropagation();
-                setUnlocked(true);
+                turnOn();
               }}
             />
           ) : null}
@@ -128,9 +161,7 @@ export const SpotifyPlayer = memo(function SpotifyPlayer({
       )}
       {state === 'failed' ? null : (
         <p className="mt-1.5 text-[11.5px] leading-snug opacity-70">
-          {covered
-            ? 'Tap the player to turn it on, then tap play. Full songs need a Spotify login; otherwise you’ll hear a preview.'
-            : 'Tap play. Full songs require Spotify login; otherwise, you’ll hear a preview.'}
+          Tap play. Full songs need a Spotify login; otherwise you&apos;ll hear a preview.
         </p>
       )}
       <OpenInSpotify song={song} />

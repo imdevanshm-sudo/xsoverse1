@@ -8,6 +8,12 @@ import { photoCaption } from '@/lib/photoStrips';
 import { LazyMedia } from '@/components/xso/LazyMedia';
 import { StoreName } from '@/components/xso/StoreName';
 import { playSound, useTexture } from '@/lib/sound';
+import {
+  FINAL_PAUSE_MS,
+  SENTENCE_PAUSE_MS,
+  WRITE_MS_PER_CHAR,
+  holdAfterLetterMs,
+} from '@/lib/pacing';
 import type { StageSize } from '@/components/xso/movie/useStage';
 
 export interface SceneProps {
@@ -428,11 +434,10 @@ export function letterLines(message: string): string[] {
     .filter(Boolean);
 }
 
-const CHAR_MS = 24;
-const LINE_PAUSE = 450;
+const CHAR_MS = WRITE_MS_PER_CHAR;
+const LINE_PAUSE = SENTENCE_PAUSE_MS;
 /** A breath before the last line lands. */
-const FINAL_PAUSE = 1400;
-const AFTER_LETTER = 2600;
+const FINAL_PAUSE = FINAL_PAUSE_MS;
 /** Lines that are heard being typed before the keys fade out. */
 const TYPED_LINES = 2;
 
@@ -479,11 +484,13 @@ export const LetterScene = memo(function LetterScene({
     return () => window.clearTimeout(timer);
   }, [active, chars, done, line, lines, paused, total]);
 
+  /** Once it's all written, it stays long enough for the last line to be read and to land. */
+  const hold = holdAfterLetterMs(lines[total - 1] ?? '');
   useEffect(() => {
     if (!active || paused || !done || !onDone) return;
-    const timer = window.setTimeout(onDone, AFTER_LETTER);
+    const timer = window.setTimeout(onDone, hold);
     return () => window.clearTimeout(timer);
-  }, [active, done, onDone, paused]);
+  }, [active, done, hold, onDone, paused]);
 
   return (
     <div

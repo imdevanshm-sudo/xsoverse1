@@ -12,6 +12,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { soundtrackSrc } from '@/lib/soundtracks';
+import { readingMs } from '@/lib/pacing';
 import { optIn, playSound } from '@/lib/sound';
 import { useSoundtrack } from '@/components/xso/stage/useSoundtrack';
 import type { MovieLayers, XsoData } from '@/types/xso';
@@ -46,23 +47,29 @@ const MUSIC_AFTER_MS = 600;
 /** The score fades out over this long once "Fin" comes up. */
 const MUSIC_OUT_MS = 2000;
 
-/** How long each scene holds before the film moves on; longer copy and more photos get more time. */
+/**
+ * How long each scene holds before the film moves on: the receipt's lines and the scene's caption
+ * at a comfortable reading pace, more photos get more time, and the letter waits for its reader.
+ */
 function sceneMs(
   scene: number,
   data: XsoData,
   movie: MovieLayers,
   photos: number,
 ): number | null {
-  const caption = movie.scenes[scene]?.caption?.length ?? 0;
+  const caption = readingMs(movie.scenes[scene]?.caption ?? '');
   if (scene === 0) {
-    const lines = data.lineItems
-      .slice(0, 5)
-      .reduce((n, item) => n + item.description.length + item.price.length, 0);
-    return Math.min(14000, Math.max(6500, 4500 + lines * 28 + caption * 18));
+    const lines = readingMs(
+      data.lineItems
+        .slice(0, 5)
+        .map((item) => `${item.description} ${item.price}`)
+        .join(' '),
+    );
+    return Math.min(16000, Math.max(7000, 3000 + lines + caption));
   }
   if (scene === 1) {
     const rows = Object.keys(data.auditMetrics).length;
-    return Math.min(13000, Math.max(7500, 5200 + rows * 950 + caption * 15));
+    return Math.min(15000, Math.max(7500, 4500 + rows * 950 + caption));
   }
   if (scene === 2) {
     const slides = Math.max(photos, 1);
@@ -227,7 +234,8 @@ export const MovieFeature = memo(function MovieFeature({
 
   const downX = useRef<number | null>(null);
   const onPointerDown = (e: PointerEvent) => {
-    if (!rolling || (e.target as HTMLElement).closest('button, a, [data-chrome]')) {
+    /** The Spotify player keeps its taps: its Play button sits in the "next scene" third. */
+    if (!rolling || (e.target as HTMLElement).closest('button, a, [data-chrome], [data-spotify]')) {
       downX.current = null;
       return;
     }

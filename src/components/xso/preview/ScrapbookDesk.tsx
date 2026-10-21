@@ -27,6 +27,7 @@ import {
 import { Pause, Play } from 'lucide-react';
 import { isPlaceholderPhoto, type ScrapbookLayers, type XsoData } from '@/types/xso';
 import { ROOM_TONE, playSound, useSoundOn, useTexture, type SoundEvent } from '@/lib/sound';
+import { writingMs } from '@/lib/pacing';
 import { STICKY_COLORS, resolveScrapbook } from '@/lib/scrapbook';
 import { useCoarsePointer, useTouchSpring } from '@/hooks/useTouchSpring';
 import { SOFT_SPRING } from '@/lib/motion';
@@ -1609,7 +1610,8 @@ function FocusView({
 const UNFOLD = { ...SOFT_SPRING, damping: 18 };
 /** The pen starts once the flaps have opened, and long letters are written faster. */
 const WRITE_DELAY_MS = 650;
-const writeDuration = (length: number) => Math.min(Math.max(length * 32, 1800), 6500);
+/** At the shared pen pace; a long letter is no longer squeezed into a few seconds. */
+const writeDuration = (length: number) => writingMs(length);
 
 /**
  * The letter body, written out at a pen's pace. The unwritten rest is laid out
