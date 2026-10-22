@@ -3,7 +3,7 @@
 import { memo, useState } from 'react';
 import { RotateCcw, Share2 } from 'lucide-react';
 import { track } from '@/lib/analytics';
-import { ShareStoryButton } from '@/components/xso/ShareStory';
+import { ShareStoryButton, useStoryGift } from '@/components/xso/ShareStory';
 import { viewPath } from '@/lib/giftLinks';
 import { RECIPIENT_OFFER, formatPrice, quote } from '@/lib/pricing';
 
@@ -38,6 +38,8 @@ export const YourTurn = memo(function YourTurn({
   stub?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  /** Sharing is the recipient's; the sender's preview of the same ending doesn't offer it. */
+  const shareable = Boolean(useStoryGift());
   const list = quote({ style: 'accordion' });
   const discounted = Math.round(list.total * (1 - RECIPIENT_OFFER.percentOff / 100));
 
@@ -100,7 +102,7 @@ export const YourTurn = memo(function YourTurn({
           </span>
         ) : null}
       </a>
-      {giftId ? (
+      {giftId && shareable ? (
         <button
           type="button"
           onClick={(event) => {

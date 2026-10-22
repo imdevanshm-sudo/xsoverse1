@@ -9,6 +9,14 @@ import { track } from '@/lib/analytics';
 const StoryGift = createContext<string | null>(null);
 export const StoryGiftProvider = StoryGift.Provider;
 
+/**
+ * The opened gift, only when the person looking is its recipient. Sharing (the link, a story
+ * video) belongs to them, so previews and drafts get null and hide it.
+ */
+export function useStoryGift(): string | null {
+  return useContext(StoryGift);
+}
+
 /** Recording takes about a minute; the bar eases towards full so the wait never looks stuck. */
 const EXPECTED_MS = 60_000;
 

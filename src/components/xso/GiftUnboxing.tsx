@@ -181,7 +181,8 @@ export function GiftUnboxing({
   }, [wrapGone, contents]);
   const toggle = <SoundToggle labeled={LABELED_SOUND.includes(wrapper.giftStyle)} />;
   const content = (
-    <StoryGiftProvider value={framed || draft ? null : giftId}>
+    /* Only the recipient shares: the sender's watermarked preview and studio drafts don't. */
+    <StoryGiftProvider value={framed || draft || watermark ? null : giftId}>
       {lit ? <AccordionDesk /> : null}
       {toggle}
       <AnimatePresence onExitComplete={() => setParcelGone(true)}>
